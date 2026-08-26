@@ -4180,16 +4180,39 @@ components:
           enum:
             - pending
             - accepted
+            - confirmed
             - preparing
             - ready
+            - driver_at_restaurant
             - picked_up
             - en_route
+            - out_for_delivery
             - delivered
             - cancelled
         subtotal:
           type: number
         deliveryFee:
           type: number
+        discountAmount:
+          type: number
+        currency:
+          type: string
+        vatRate:
+          type: number
+        vatAmount:
+          type: number
+        serviceFee:
+          type: number
+        commissionRate:
+          type: number
+        merchantEarning:
+          type: number
+        driverEarning:
+          type: number
+        jatekEarning:
+          type: number
+        pricingVersion:
+          type: string
         total:
           type: number
         deliveryAddress:
@@ -4237,6 +4260,16 @@ components:
         - status
         - subtotal
         - deliveryFee
+        - discountAmount
+        - currency
+        - vatRate
+        - vatAmount
+        - serviceFee
+        - commissionRate
+        - merchantEarning
+        - driverEarning
+        - jatekEarning
+        - pricingVersion
         - total
         - deliveryAddress
         - items
@@ -4537,6 +4570,8 @@ components:
         - deliveryEarning
         - totalOrderTax
         - totalCommission
+        - merchantEarning
+        - jatekEarning
         - ordersChart
       properties:
         inProgressOrders:
@@ -4558,6 +4593,10 @@ components:
         totalOrderTax:
           type: number
         totalCommission:
+          type: number
+        merchantEarning:
+          type: number
+        jatekEarning:
           type: number
         ordersChart:
           type: array

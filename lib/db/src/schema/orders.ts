@@ -15,6 +15,16 @@ export const ordersTable = pgTable("orders", {
   deliveryFee: real("delivery_fee").notNull().default(0),
   /** Discount applied via promo code (MAD amount). */
   discountAmount: real("discount_amount").notNull().default(0),
+  /** Immutable pricing snapshot for orders created after the fee model rollout. */
+  currency: text("currency").notNull().default("MAD"),
+  vatRate: real("vat_rate").notNull().default(0),
+  vatAmount: real("vat_amount").notNull().default(0),
+  serviceFee: real("service_fee").notNull().default(0),
+  commissionRate: real("commission_rate").notNull().default(0),
+  merchantEarning: real("merchant_earning").notNull().default(0),
+  driverEarning: real("driver_earning").notNull().default(0),
+  jatekEarning: real("jatek_earning").notNull().default(0),
+  pricingVersion: text("pricing_version").notNull().default("legacy"),
   total: real("total").notNull(),
   deliveryAddress: text("delivery_address").notNull(),
   notes: text("notes"),

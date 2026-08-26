@@ -25,6 +25,11 @@ import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectS
 
 const router: IRouter = Router();
 
+function parseDecimal(value: unknown): number {
+  const parsed = Number(String(value ?? "").trim().replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 const JWT_SECRET = process.env.SESSION_SECRET!; // validated at startup by auth middleware
 
 // ---------- Roles + permissions ----------
@@ -251,7 +256,10 @@ router.get("/backend/dashboard", requireAuth, async (req: AuthedRequest, res): P
     ? (scopedShopIds.length > 0 ? inArray(reviewsTable.restaurantId, scopedShopIds) : sql`false`)
     : undefined;
 
-  const inProgressStatuses = ["pending", "accepted", "preparing", "ready", "picked_up"];
+  const inProgressStatuses = [
+    "pending", "accepted", "confirmed", "preparing", "ready",
+    "driver_at_restaurant", "picked_up", "en_route", "out_for_delivery",
+  ];
 
   const baseOrderWhere = (extra: any) => orderShopFilter ? and(orderShopFilter, extra) : extra;
 
@@ -262,14 +270,17 @@ router.get("/backend/dashboard", requireAuth, async (req: AuthedRequest, res): P
   const [totalProd] = await db.select({ c: count() }).from(menuItemsTable).where(productShopFilter ?? sql`true`);
   const [reviewCount] = await db.select({ c: count() }).from(reviewsTable).where(reviewShopFilter ?? sql`true`);
 
-  const [earnedRow] = await db.select({ s: sum(ordersTable.total) }).from(ordersTable).where(baseOrderWhere(and(eq(ordersTable.status, "delivered"), gte(ordersTable.createdAt, start))));
-  const [deliveryRow] = await db.select({ s: sum(ordersTable.deliveryFee) }).from(ordersTable).where(baseOrderWhere(and(eq(ordersTable.status, "delivered"), gte(ordersTable.createdAt, start))));
+  const deliveredWhere = baseOrderWhere(and(eq(ordersTable.status, "delivered"), gte(ordersTable.createdAt, start)));
+  const [earnedRow] = await db.select({ s: sum(ordersTable.total) }).from(ordersTable).where(deliveredWhere);
+  const [deliveryRow] = await db.select({ s: sum(ordersTable.driverEarning) }).from(ordersTable).where(deliveredWhere);
+  const [taxRow] = await db.select({ s: sum(ordersTable.vatAmount) }).from(ordersTable).where(deliveredWhere);
+  const [merchantRow] = await db.select({ s: sum(ordersTable.merchantEarning) }).from(ordersTable).where(deliveredWhere);
+  const [jatekRow] = await db.select({ s: sum(ordersTable.jatekEarning) }).from(ordersTable).where(deliveredWhere);
   const totalEarned = Number(earnedRow?.s || 0);
   const deliveryEarning = Number(deliveryRow?.s || 0);
-  const taxRate = await getPlatformSettingNumber("taxRate", Number(DEFAULT_PLATFORM_SETTINGS.taxRate));
-  const totalOrderTax = +(totalEarned * taxRate).toFixed(2);
-  const commissionRate = await getPlatformSettingNumber("driverCommissionRate", Number(DEFAULT_PLATFORM_SETTINGS.driverCommissionRate));
-  const totalCommission = +(totalEarned * commissionRate).toFixed(2);
+  const totalOrderTax = Number(taxRow?.s || 0);
+  const merchantEarning = Number(merchantRow?.s || 0);
+  const jatekEarning = Number(jatekRow?.s || 0);
 
   // Orders chart by day for the requested range
   const days = range === "week" ? 7 : range === "year" ? 12 : 30;
@@ -300,7 +311,9 @@ router.get("/backend/dashboard", requireAuth, async (req: AuthedRequest, res): P
     totalEarned,
     deliveryEarning,
     totalOrderTax,
-    totalCommission,
+    totalCommission: jatekEarning,
+    merchantEarning,
+    jatekEarning,
     ordersChart: chart,
   });
 });
@@ -382,12 +395,12 @@ router.post("/backend/products", requireAuth, async (req: AuthedRequest, res, ne
       res.status(403).json({ error: "Forbidden: not your restaurant" }); return;
     }
     const [item] = await db.insert(menuItemsTable).values({
-      restaurantId: rid, name, description: description ?? null, price: Number(price),
+      restaurantId: rid, name, description: description ?? null, price: parseDecimal(price),
       category, imageUrl: normalizeStoredMediaPath(imageUrl) ?? null, isAvailable: isAvailable ?? true,
       isPopular: isPopular ?? false, allergens: allergens ?? null,
       tags: Array.isArray(tags) ? tags : (tags ? [tags] : null),
-      prepTimeMinutes: prepTimeMinutes ? Number(prepTimeMinutes) : null,
-      calories: calories ? Number(calories) : null,
+       prepTimeMinutes: prepTimeMinutes ? parseDecimal(prepTimeMinutes) : null,
+       calories: calories ? parseDecimal(calories) : null,
     }).returning();
     res.status(201).json(item);
   } catch (err) { next(err); }
@@ -408,6 +421,9 @@ router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, re
     const allowed = ["name", "description", "price", "category", "imageUrl", "isAvailable", "isPopular", "allergens", "tags", "prepTimeMinutes", "calories"];
     const updates: Record<string, unknown> = {};
     for (const k of allowed) if ((req.body || {})[k] !== undefined) updates[k] = req.body[k];
+    if ("price" in updates) updates.price = parseDecimal(updates.price);
+    if ("prepTimeMinutes" in updates) updates.prepTimeMinutes = parseDecimal(updates.prepTimeMinutes);
+    if ("calories" in updates) updates.calories = parseDecimal(updates.calories);
     if ("imageUrl" in updates) updates.imageUrl = normalizeStoredMediaPath(updates.imageUrl);
     const [item] = await db.update(menuItemsTable).set(updates as any).where(eq(menuItemsTable.id, id)).returning();
     if (!item) { res.status(404).json({ error: "Not found" }); return; }
@@ -465,11 +481,11 @@ router.get("/backend/menu-categories", requireAuth, async (req: AuthedRequest, r
           eq(menuItemCategoriesTable.restaurantId, rid)
         )
       ))
-      .orderBy(menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.name);
+      .orderBy(menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.name, menuItemCategoriesTable.id);
   } else if (scoped === null) {
     // Admin with no restaurantId filter → return everything
     rows = await db.select().from(menuItemCategoriesTable)
-      .orderBy(menuItemCategoriesTable.restaurantId, menuItemCategoriesTable.sortOrder);
+      .orderBy(menuItemCategoriesTable.restaurantId, menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.name, menuItemCategoriesTable.id);
   } else {
     // Owner with no restaurantId → return their restaurants' categories + global
     if (scoped.length === 0) { res.json([]); return; }
@@ -478,7 +494,7 @@ router.get("/backend/menu-categories", requireAuth, async (req: AuthedRequest, r
         sql`${menuItemCategoriesTable.restaurantId} IS NULL`,
         inArray(menuItemCategoriesTable.restaurantId, scoped)
       ))
-      .orderBy(menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.name);
+      .orderBy(menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.name, menuItemCategoriesTable.id);
   }
   res.json(rows);
 });
@@ -1297,6 +1313,8 @@ router.get("/backend/wallets", requireAuth, async (req: AuthedRequest, res): Pro
     totalOrders: count(ordersTable.id),
     grossRevenue: sum(ordersTable.subtotal),
     deliveryFees: sum(ordersTable.deliveryFee),
+    merchantEarning: sum(ordersTable.merchantEarning),
+    jatekEarning: sum(ordersTable.jatekEarning),
     totalRevenue: sum(ordersTable.total),
   }).from(ordersTable)
     .where(eq(ordersTable.status, "delivered"))
@@ -1307,7 +1325,7 @@ router.get("/backend/wallets", requireAuth, async (req: AuthedRequest, res): Pro
   const driverEarnings = await db.select({
     driverId: ordersTable.driverId,
     totalDeliveries: count(ordersTable.id),
-    totalEarnings: sum(ordersTable.deliveryFee),
+    totalEarnings: sum(ordersTable.driverEarning),
   }).from(ordersTable)
     .where(and(eq(ordersTable.status, "delivered"), sql`${ordersTable.driverId} is not null`))
     .groupBy(ordersTable.driverId)
@@ -1327,6 +1345,8 @@ router.get("/backend/wallets", requireAuth, async (req: AuthedRequest, res): Pro
       totalOrders: Number(r.totalOrders),
       grossRevenue: Number(r.grossRevenue ?? 0),
       deliveryFees: Number(r.deliveryFees ?? 0),
+      merchantEarning: Number(r.merchantEarning ?? 0),
+      jatekEarning: Number(r.jatekEarning ?? 0),
       totalRevenue: Number(r.totalRevenue ?? 0),
     })),
     drivers: driverEarnings.map((r) => {
@@ -1361,7 +1381,28 @@ router.put("/backend/settings", requireAuth, async (req: AuthedRequest, res): Pr
     res.status(403).json({ error: "Forbidden: admin only" }); return;
   }
   try {
-    const data = req.body ?? {};
+    const data = { ...(req.body ?? {}) } as Record<string, unknown>;
+    const decimalKeys = [
+      "defaultDeliveryFee", "freeDeliveryThreshold", "maxDeliveryRadiusKm",
+      "minOrderAmount", "taxRate", "driverCommissionRate", "jatekCommissionRate",
+      "defaultLatitude", "defaultLongitude",
+    ];
+    for (const key of decimalKeys) {
+      if (data[key] === undefined) continue;
+      const raw = String(data[key]).trim().replace(",", ".");
+      const value = Number(raw);
+      if (!Number.isFinite(value)) {
+        res.status(400).json({ error: `${key} doit être numérique` });
+        return;
+      }
+      data[key] = value;
+    }
+    for (const key of ["taxRate", "driverCommissionRate", "jatekCommissionRate"]) {
+      if (data[key] !== undefined && (Number(data[key]) < 0 || Number(data[key]) > 1)) {
+        res.status(400).json({ error: `${key} doit être compris entre 0 et 1` });
+        return;
+      }
+    }
     const [existing] = await db.select().from(platformSettingsTable).limit(1);
     if (existing) {
       const [updated] = await db.update(platformSettingsTable)

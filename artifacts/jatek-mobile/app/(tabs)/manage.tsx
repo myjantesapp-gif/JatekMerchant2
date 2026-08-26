@@ -31,6 +31,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSSE } from "@/hooks/useSSE";
 import { authenticatedFetch, getApiBase } from "@/lib/api";
+import { formatMad } from "@/lib/money";
 
 function haptic(type: "light" | "medium" | "success" | "warning" | "error" = "light") {
   if (Platform.OS === "web") return;
@@ -116,7 +117,7 @@ function OrderRow({
         {/* Items + total */}
         <View style={styles.orderFooter}>
           <Text style={[styles.orderSummary, { color: colors.mutedForeground }]} numberOfLines={1}>{summary}</Text>
-          <Text style={[styles.orderTotal, { color: colors.primary }]}>{order.total?.toFixed(0)} MAD</Text>
+          <Text style={[styles.orderTotal, { color: colors.primary }]}>{formatMad(order.total)} MAD</Text>
         </View>
 
         {/* Action buttons */}
@@ -298,7 +299,7 @@ function MenuSection({ restaurant, colors }: { restaurant: any; colors: any }) {
                   </View>
                   {!!item.description && <Text style={[menuSt.itemDesc, { color: colors.mutedForeground }]} numberOfLines={1}>{item.description}</Text>}
                 </View>
-                <Text style={[menuSt.price, { color: colors.primary }]}>{item.price} MAD</Text>
+                <Text style={[menuSt.price, { color: colors.primary }]}>{formatMad(item.price)} MAD</Text>
                 <Switch value={item.isAvailable} onValueChange={() => toggleAvailable(item)} trackColor={{ false: colors.muted, true: colors.primary + "60" }} thumbColor={item.isAvailable ? colors.primary : colors.mutedForeground} style={{ transform: [{ scale: 0.85 }] }} />
               </TouchableOpacity>
             ))}
@@ -559,7 +560,7 @@ export default function ManageScreen() {
             >
               <Ionicons name="notifications" size={20} color="#fff" />
               <Text style={styles.newOrderText}>
-                Nouvelle commande {newOrderBanner.reference || `#CMD${String(newOrderBanner.id).padStart(6, "0")}`} · {newOrderBanner.total?.toFixed(0)} MAD
+                Nouvelle commande {newOrderBanner.reference || `#CMD${String(newOrderBanner.id).padStart(6, "0")}`} · {formatMad(newOrderBanner.total)} MAD
               </Text>
               <Ionicons name="close" size={16} color="rgba(255,255,255,0.8)" />
             </TouchableOpacity>
@@ -577,7 +578,7 @@ export default function ManageScreen() {
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Actives</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>{todayRevenue.toFixed(0)} MAD</Text>
+            <Text style={[styles.statValue, { color: colors.primary }]}>{formatMad(todayRevenue)} MAD</Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Aujourd'hui</Text>
           </View>
         </View>

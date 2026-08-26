@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/useColors";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { formatMad } from "@/lib/money";
 
 const BTN_FROM = "#FF5FAD";
 const BTN_TO   = "#C81877";
@@ -74,7 +75,7 @@ export function MenuItemCard({ item, quantity, onAdd, onRemove, onPressCard }: M
               </Text>
             ) : null}
             <View style={styles.priceRow}>
-              <Text style={[styles.price, { color: colors.primary }]}>{item.price.toFixed(0)} MAD</Text>
+              <Text style={[styles.price, { color: colors.primary }]}>{formatMad(item.price)} MAD</Text>
               {quantity > 0 ? (
                 <View style={[styles.qtyPill, { backgroundColor: colors.primary }]}>
                   <Text style={styles.qtyPillText}>×{quantity}</Text>

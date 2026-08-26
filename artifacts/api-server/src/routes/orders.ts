@@ -33,6 +33,7 @@ import { notifyDrivers } from "../lib/expoPush";
 import { sendFcmPush } from "../lib/fcmPush";
 import { sendWebPush } from "../lib/vapid";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
+import { calculateOrderPricing } from "../lib/orderPricing";
 
 const router: IRouter = Router();
 
@@ -68,6 +69,11 @@ const CUSTOMER_STATUS_LABELS: Record<
     en: (r) => ({ title: "Order accepted ✅",      body: `${r} confirmed your order.` }),
     ar: (r) => ({ title: "تم قبول طلبك ✅",       body: `${r} أكّد طلبك.` }),
   },
+  confirmed: {
+    fr: (r) => ({ title: "Commande confirmée ✅", body: `${r} confirme la préparation de votre commande.` }),
+    en: (r) => ({ title: "Order confirmed ✅", body: `${r} confirmed your order.` }),
+    ar: (r) => ({ title: "تم تأكيد طلبك ✅", body: `${r} أكد تحضير طلبك.` }),
+  },
   preparing: {
     fr: (r) => ({ title: "En préparation 🍳",     body: `${r} prépare votre commande.` }),
     en: (r) => ({ title: "Preparing your order 🍳", body: `${r} is cooking your order.` }),
@@ -78,10 +84,20 @@ const CUSTOMER_STATUS_LABELS: Record<
     en: (_) => ({ title: "Order ready 🛍️",        body: "A driver will pick up your order soon." }),
     ar: (_) => ({ title: "الطلب جاهز 🛍️",        body: "سيستلم موصِّل طلبك قريباً." }),
   },
+  driver_at_restaurant: {
+    fr: (_) => ({ title: "Livreur arrivé 🛵", body: "Votre livreur est arrivé au restaurant." }),
+    en: (_) => ({ title: "Driver arrived 🛵", body: "Your driver is at the restaurant." }),
+    ar: (_) => ({ title: "وصل الموصّل 🛵", body: "وصل الموصّل إلى المطعم." }),
+  },
   picked_up: {
     fr: (_) => ({ title: "En route 🛵",            body: "Votre livreur est en chemin vers vous." }),
     en: (_) => ({ title: "On the way 🛵",           body: "Your driver is heading your way." }),
     ar: (_) => ({ title: "في الطريق 🛵",           body: "الموصِّل في طريقه إليك." }),
+  },
+  en_route: {
+    fr: (_) => ({ title: "Livraison en route 🛵", body: "Votre commande est en route." }),
+    en: (_) => ({ title: "Delivery on the way 🛵", body: "Your order is on the way." }),
+    ar: (_) => ({ title: "الطلب في الطريق 🛵", body: "طلبك في الطريق." }),
   },
   out_for_delivery: {
     fr: (_) => ({ title: "Livraison en cours 🛵", body: "Votre livreur arrive avec votre commande." }),
@@ -406,7 +422,17 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
     }
   }
 
-  const total = Math.max(0, subtotal + deliveryFee - discountAmount);
+  const taxRate = await getPlatformSettingNumber("taxRate", Number(DEFAULT_PLATFORM_SETTINGS.taxRate));
+  const commissionRate = await getPlatformSettingNumber("jatekCommissionRate", Number(DEFAULT_PLATFORM_SETTINGS.jatekCommissionRate));
+  const pricing = calculateOrderPricing({
+    subtotal,
+    deliveryFee,
+    discountAmount,
+    vatRate: taxRate,
+    commissionRate,
+    currency: String(DEFAULT_PLATFORM_SETTINGS.currency || "MAD"),
+  });
+  const total = pricing.total;
   const reference = await generateUniqueOrderReference();
 
   // Wrap all DB writes in a single transaction so a mid-flight failure
@@ -426,6 +452,15 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
       subtotal,
       deliveryFee,
       discountAmount,
+      currency: pricing.currency,
+      vatRate: pricing.vatRate,
+      vatAmount: pricing.vatAmount,
+      serviceFee: pricing.serviceFee,
+      commissionRate: pricing.commissionRate,
+      merchantEarning: pricing.merchantEarning,
+      driverEarning: pricing.driverEarning,
+      jatekEarning: pricing.jatekEarning,
+      pricingVersion: pricing.pricingVersion,
       total,
       deliveryAddress,
       notes: notes ?? null,

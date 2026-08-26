@@ -5,6 +5,16 @@ import { requireRole, requireAuth, type AuthedRequest } from "../middlewares/aut
 
 const router: IRouter = Router();
 
+function parseDecimal(value: unknown): number {
+  const parsed = Number(String(value ?? "").trim().replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseSortOrder(value: unknown): number {
+  const parsed = Number(String(value ?? "0").trim().replace(",", "."));
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
 /** Unified public catalog contract consumed by the product detail screen. */
 router.get("/products/:id/options", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
@@ -88,8 +98,8 @@ router.post("/menu/:id/sizes", requireRole("admin", "super_admin", "restaurant_o
   const [row] = await db.insert(menuItemSizesTable).values({
     menuItemId: id,
     name,
-    priceAdjustment: Number(priceAdjustment) || 0,
-    sortOrder: Number(sortOrder) || 0,
+     priceAdjustment: parseDecimal(priceAdjustment),
+     sortOrder: parseSortOrder(sortOrder),
     isAvailable: isAvailable !== false,
   }).returning();
   res.status(201).json(row);
@@ -102,8 +112,10 @@ router.patch("/menu/sizes/:id", requireRole("admin", "super_admin", "restaurant_
   if (!checkOwnership(req, ownerId)) { res.status(403).json({ error: "Forbidden" }); return; }
 
   const allowed = ["name", "priceAdjustment", "sortOrder", "isAvailable"];
-  const updates: Record<string, unknown> = {};
+   const updates: Record<string, unknown> = {};
   for (const k of allowed) if (req.body[k] !== undefined) updates[k] = req.body[k];
+   if ("priceAdjustment" in updates) updates.priceAdjustment = parseDecimal(updates.priceAdjustment);
+   if ("sortOrder" in updates) updates.sortOrder = parseSortOrder(updates.sortOrder);
   const [row] = await db.update(menuItemSizesTable).set(updates).where(eq(menuItemSizesTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
@@ -138,8 +150,8 @@ router.post("/menu/:id/extras", requireRole("admin", "super_admin", "restaurant_
   const [row] = await db.insert(menuItemExtrasTable).values({
     menuItemId: id,
     name,
-    price: Number(price) || 0,
-    sortOrder: Number(sortOrder) || 0,
+     price: parseDecimal(price),
+     sortOrder: parseSortOrder(sortOrder),
     isAvailable: isAvailable !== false,
   }).returning();
   res.status(201).json(row);
@@ -154,6 +166,8 @@ router.patch("/menu/extras/:id", requireRole("admin", "super_admin", "restaurant
   const allowed = ["name", "price", "sortOrder", "isAvailable"];
   const updates: Record<string, unknown> = {};
   for (const k of allowed) if (req.body[k] !== undefined) updates[k] = req.body[k];
+   if ("price" in updates) updates.price = parseDecimal(updates.price);
+   if ("sortOrder" in updates) updates.sortOrder = parseSortOrder(updates.sortOrder);
   const [row] = await db.update(menuItemExtrasTable).set(updates).where(eq(menuItemExtrasTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);

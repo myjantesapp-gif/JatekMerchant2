@@ -31,6 +31,7 @@ import { DriverMap } from "@/components/DriverMap";
 import { getApiBase, geocodeAddress, getDriverLocation, getRestaurant, getAuthToken } from "@/lib/api";
 import { useT, useLang } from "@/contexts/LanguageContext";
 import type { TKey } from "@/lib/translations";
+import { formatMad } from "@/lib/money";
 
 const STEP_KEYS: { key: string; icon: string; labelKey: TKey; descKey: TKey }[] = [
   { key: "pending",    icon: "bag-add-outline",          labelKey: "order_status_pending",    descKey: "order_status_pending_desc" },
@@ -484,7 +485,7 @@ export default function OrderDetailScreen() {
               <View style={styles.itemRow}>
                 <Text style={[styles.itemQty, { color: colors.primary }]}>{item.quantity}×</Text>
                 <Text style={[styles.itemName, { color: colors.foreground }]}>{item.menuItemName}</Text>
-                <Text style={[styles.itemPrice, { color: colors.foreground }]}>{item.totalPrice.toFixed(0)} MAD</Text>
+                <Text style={[styles.itemPrice, { color: colors.foreground }]}>{formatMad(item.totalPrice)} MAD</Text>
               </View>
               {idx < order.items.length - 1 && <View style={[styles.divider, { backgroundColor: colors.border }]} />}
             </View>
@@ -492,16 +493,34 @@ export default function OrderDetailScreen() {
           <View style={[styles.divider, { backgroundColor: colors.border, marginTop: 6 }]} />
           <View style={styles.itemRow}>
             <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t("order_subtotal")}</Text>
-            <Text style={[styles.summaryValue, { color: colors.foreground }]}>{order.subtotal.toFixed(0)} MAD</Text>
+            <Text style={[styles.summaryValue, { color: colors.foreground }]}>{formatMad(order.subtotal)} MAD</Text>
           </View>
+          {(order as any).discountAmount > 0 && (
+            <View style={styles.itemRow}>
+              <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Remise</Text>
+              <Text style={[styles.summaryValue, { color: "#16A34A" }]}>−{formatMad((order as any).discountAmount)} MAD</Text>
+            </View>
+          )}
+          {(order as any).vatAmount != null && (
+            <View style={styles.itemRow}>
+              <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>TVA</Text>
+              <Text style={[styles.summaryValue, { color: colors.foreground }]}>{formatMad((order as any).vatAmount)} MAD</Text>
+            </View>
+          )}
+          {(order as any).serviceFee != null && (
+            <View style={styles.itemRow}>
+              <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Frais de service</Text>
+              <Text style={[styles.summaryValue, { color: colors.foreground }]}>{formatMad((order as any).serviceFee)} MAD</Text>
+            </View>
+          )}
           <View style={styles.itemRow}>
             <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t("order_delivery_fee")}</Text>
-            <Text style={[styles.summaryValue, { color: colors.foreground }]}>{order.deliveryFee.toFixed(0)} MAD</Text>
+            <Text style={[styles.summaryValue, { color: colors.foreground }]}>{formatMad(order.deliveryFee)} MAD</Text>
           </View>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.itemRow}>
             <Text style={[styles.totalLabel, { color: colors.foreground }]}>{t("order_total")}</Text>
-            <Text style={[styles.totalValue, { color: colors.primary }]}>{order.total.toFixed(0)} MAD</Text>
+            <Text style={[styles.totalValue, { color: colors.primary }]}>{formatMad(order.total)} MAD</Text>
           </View>
         </View>
 

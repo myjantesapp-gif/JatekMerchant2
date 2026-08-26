@@ -48,6 +48,7 @@ import {
   ApiError,
 } from "@/lib/api";
 import { PickupCodeModal } from "@/components/PickupCodeModal";
+import { formatMad } from "@/lib/money";
 
 function haptic(type: "light" | "medium" | "success" | "warning" | "error" = "light") {
   if (Platform.OS === "web") return;
@@ -480,7 +481,7 @@ export default function DeliverScreen() {
         <View style={styles.statsRow}>
           <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.statValue, { color: colors.foreground }]}>
-              {earnings?.today?.toFixed(0) ?? 0}
+              {formatMad(earnings?.today ?? 0)}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>MAD today</Text>
           </View>
@@ -538,7 +539,7 @@ export default function DeliverScreen() {
                 <View style={styles.activeMeta}>
                   <Text style={[styles.activeMetaLabel, { color: colors.mutedForeground }]}>Total</Text>
                   <Text style={[styles.activeMetaValue, { color: colors.foreground }]}>
-                    {activeDelivery.total.toFixed(0)} MAD
+                    {formatMad(activeDelivery.total)} MAD
                   </Text>
                 </View>
                 <View style={styles.activeMeta}>
@@ -550,7 +551,7 @@ export default function DeliverScreen() {
                 <View style={styles.activeMeta}>
                   <Text style={[styles.activeMetaLabel, { color: colors.mutedForeground }]}>Fee</Text>
                   <Text style={[styles.activeMetaValue, { color: colors.foreground }]}>
-                    {activeDelivery.deliveryFee?.toFixed(0) ?? 0} MAD
+                    {formatMad(activeDelivery.deliveryFee ?? 0)} MAD
                   </Text>
                 </View>
               </View>
@@ -626,7 +627,7 @@ export default function DeliverScreen() {
                       </View>
                       <View style={styles.availPayout}>
                         <Text style={[styles.availPayoutValue, { color: "#16A34A" }]}>
-                          +{order.deliveryFee?.toFixed(0) ?? 0}
+                          +{formatMad(order.driverEarning ?? order.deliveryFee ?? 0)}
                         </Text>
                         <Text style={[styles.availPayoutLabel, { color: colors.mutedForeground }]}>MAD</Text>
                       </View>
@@ -647,7 +648,7 @@ export default function DeliverScreen() {
                       <View style={styles.availMeta}>
                         <Ionicons name="cash-outline" size={14} color={colors.mutedForeground} />
                         <Text style={[styles.availMetaText, { color: colors.mutedForeground }]}>
-                          {order.total?.toFixed(0)} MAD
+                          {formatMad(order.total)} MAD
                         </Text>
                       </View>
                       <TouchableOpacity

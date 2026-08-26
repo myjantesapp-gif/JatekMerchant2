@@ -19,6 +19,7 @@ import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { useListRestaurants, useGetFeaturedRestaurants, useListCategories, type Restaurant } from "@workspace/api-client-react";
 import { getApiBaseSafe } from "@/lib/apiBase";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { formatMad } from "@/lib/money";
 
 function trackBannerClick(restaurantId: number) {
   try {
@@ -174,7 +175,7 @@ function RestaurantCardGrid({ restaurant, onPress, color }: { restaurant: Restau
           {restaurant.deliveryFee != null && (
             <>
               <Text style={styles.metaDot}>·</Text>
-              <Text style={styles.metaTxt}>{restaurant.deliveryFee} MAD</Text>
+              <Text style={styles.metaTxt}>{formatMad(restaurant.deliveryFee)} MAD</Text>
             </>
           )}
         </View>

@@ -10,6 +10,7 @@ export const DEFAULT_PLATFORM_SETTINGS = {
   minOrderAmount: "30",
   taxRate: "0.20",
   driverCommissionRate: "0.15",
+  jatekCommissionRate: "0.10",
   defaultLatitude: "34.6814",
   defaultLongitude: "-1.9078",
   orderNotificationsEnabled: true,
@@ -31,7 +32,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
 export async function getPlatformSettingNumber(key: string, fallback: number): Promise<number> {
   try {
     const settings = await getPlatformSettings();
-    const value = Number(settings[key]);
+    const value = Number(String(settings[key] ?? "").trim().replace(",", "."));
     return Number.isFinite(value) ? value : fallback;
   } catch {
     return fallback;

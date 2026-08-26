@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 import ReAnimated, { FadeIn, SlideInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { formatMad } from "@/lib/money";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import {
   getGetProductOptionsQueryKey,
@@ -165,7 +166,7 @@ export function MenuItemDetailModal({ visible, item, initialQty = 0, restaurantO
               {/* Title row */}
               <View style={styles.titleRow}>
                 <Text style={[styles.name, { color: colors.heading }]}>{item.name}</Text>
-                <Text style={[styles.price, { color: colors.primary }]}>{item.price.toFixed(0)} MAD</Text>
+                <Text style={[styles.price, { color: colors.primary }]}>{formatMad(item.price)} MAD</Text>
               </View>
 
               {/* Description */}
@@ -214,7 +215,7 @@ export function MenuItemDetailModal({ visible, item, initialQty = 0, restaurantO
                       >
                         <Text style={[styles.sizeLabel, { color: selectedSize?.id === s.id ? colors.primary : colors.heading }]}>{s.name}</Text>
                         <Text style={[styles.sizeAdjust, { color: colors.mutedForeground }]}>
-                          {s.priceAdjustment === 0 ? "Standard" : `${s.priceAdjustment > 0 ? "+" : ""}${s.priceAdjustment} MAD`}
+                          {s.priceAdjustment === 0 ? "Standard" : `${s.priceAdjustment > 0 ? "+" : ""}${formatMad(s.priceAdjustment)} MAD`}
                         </Text>
                       </Pressable>
                     ))}
@@ -240,7 +241,7 @@ export function MenuItemDetailModal({ visible, item, initialQty = 0, restaurantO
                       >
                         <Text style={styles.extraEmoji}>✨</Text>
                         <Text style={[styles.extraLabel, { color: colors.heading }]}>{ex.name}</Text>
-                        <Text style={[styles.extraPrice, { color: colors.mutedForeground }]}>{ex.price > 0 ? `+${ex.price} MAD` : ex.price < 0 ? `${ex.price} MAD` : "Inclus"}</Text>
+                        <Text style={[styles.extraPrice, { color: colors.mutedForeground }]}>{ex.price > 0 ? `+${formatMad(ex.price)} MAD` : ex.price < 0 ? `${formatMad(ex.price)} MAD` : "Inclus"}</Text>
                         <View style={[styles.checkbox, on && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
                           {on ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
                         </View>

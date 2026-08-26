@@ -14,6 +14,8 @@ interface WalletData {
     totalOrders: number;
     grossRevenue: number;
     deliveryFees: number;
+    merchantEarning: number;
+    jatekEarning: number;
     totalRevenue: number;
   }[];
   drivers: {
@@ -97,12 +99,13 @@ export default function Wallets() {
                     <TableHead className="text-right">Commandes</TableHead>
                     <TableHead className="text-right">Sous-total</TableHead>
                     <TableHead className="text-right">Frais livraison</TableHead>
+                    <TableHead className="text-right">Gain restaurant</TableHead>
                     <TableHead className="text-right">Total TTC</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
+            Array.from({ length: 6 }).map((_, i) => (
                       <TableRow key={i}>
                         {Array.from({ length: 5 }).map((_, j) => (
                           <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>
@@ -110,7 +113,7 @@ export default function Wallets() {
                       </TableRow>
                     ))
                   ) : data?.restaurants.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">Aucune donnée.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Aucune donnée.</TableCell></TableRow>
                   ) : (
                     data?.restaurants.map((r) => (
                       <TableRow key={r.restaurantId}>
@@ -118,7 +121,8 @@ export default function Wallets() {
                         <TableCell className="text-right">{r.totalOrders.toLocaleString("fr-MA")}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{r.grossRevenue.toLocaleString("fr-MA")} MAD</TableCell>
                         <TableCell className="text-right text-muted-foreground">{r.deliveryFees.toLocaleString("fr-MA")} MAD</TableCell>
-                        <TableCell className="text-right font-semibold">{r.totalRevenue.toLocaleString("fr-MA")} MAD</TableCell>
+                        <TableCell className="text-right font-semibold">{r.merchantEarning.toLocaleString("fr-MA", { minimumFractionDigits: 2 })} MAD</TableCell>
+                        <TableCell className="text-right font-semibold">{r.totalRevenue.toLocaleString("fr-MA", { minimumFractionDigits: 2 })} MAD</TableCell>
                       </TableRow>
                     ))
                   )}

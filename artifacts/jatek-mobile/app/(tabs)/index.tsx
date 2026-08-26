@@ -32,6 +32,7 @@ import { useAds, useShorts } from "@/hooks/useContent";
 import type { Ad } from "@/lib/api";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { getApiBaseSafe } from "@/lib/apiBase";
+import { formatMad } from "@/lib/money";
 import { WaveEdge } from "@/components/WaveEdge";
 import { ShortPlayerModal } from "@/components/ShortPlayerModal";
 import { AddressQuickPicker } from "@/components/AddressQuickPicker";
@@ -235,7 +236,7 @@ function RestaurantTile({
                 color={TEXT_MUTED}
                 style={{ marginLeft: 8 }}
               />
-              <Text style={s.tileMetaTxt}>{restaurant.deliveryFee} MAD</Text>
+              <Text style={s.tileMetaTxt}>{formatMad(restaurant.deliveryFee)} MAD</Text>
             </>
           )}
         </View>

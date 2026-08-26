@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/useColors";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { formatMad } from "@/lib/money";
 
 const BTN_FROM = "#FF5FAD";
 const BTN_TO = "#C81877";
@@ -78,7 +79,7 @@ export function MenuItemGridCard({ item, quantity, width, onPressCard, onAdd, re
           <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={2}>{item.name}</Text>
           <Text style={[styles.price, { color: colors.foreground }]}>
             <Text style={[styles.currency, { color: colors.mutedForeground }]}>MAD </Text>
-            {item.price.toFixed(item.price % 1 === 0 ? 0 : 2)}
+            {formatMad(item.price)}
           </Text>
         </View>
       </Animated.View>

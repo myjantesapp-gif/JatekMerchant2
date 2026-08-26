@@ -198,6 +198,13 @@ export interface AuthResponse {
 }
 
 export type SendOtpBodyIntent = typeof SendOtpBodyIntent[keyof typeof SendOtpBodyIntent];
+
+
+export const SendOtpBodyIntent = {
+  login: 'login',
+  signup: 'signup',
+} as const;
+
 /**
  * Delivery channel for the OTP code
  */
@@ -227,6 +234,13 @@ export interface SendOtpResponse {
 }
 
 export type VerifyOtpBodyIntent = typeof VerifyOtpBodyIntent[keyof typeof VerifyOtpBodyIntent];
+
+
+export const VerifyOtpBodyIntent = {
+  login: 'login',
+  signup: 'signup',
+} as const;
+
 export interface VerifyOtpBody {
   phone?: string;
   email?: string;
@@ -369,10 +383,13 @@ export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
 export const OrderStatus = {
   pending: 'pending',
   accepted: 'accepted',
+  confirmed: 'confirmed',
   preparing: 'preparing',
   ready: 'ready',
+  driver_at_restaurant: 'driver_at_restaurant',
   picked_up: 'picked_up',
   en_route: 'en_route',
+  out_for_delivery: 'out_for_delivery',
   delivered: 'delivered',
   cancelled: 'cancelled',
 } as const;
@@ -396,6 +413,16 @@ export interface Order {
   status: OrderStatus;
   subtotal: number;
   deliveryFee: number;
+  discountAmount: number;
+  currency: string;
+  vatRate: number;
+  vatAmount: number;
+  serviceFee: number;
+  commissionRate: number;
+  merchantEarning: number;
+  driverEarning: number;
+  jatekEarning: number;
+  pricingVersion: string;
   total: number;
   deliveryAddress: string;
   /** @nullable */
@@ -573,6 +600,8 @@ export interface BackendDashboard {
   deliveryEarning: number;
   totalOrderTax: number;
   totalCommission: number;
+  merchantEarning: number;
+  jatekEarning: number;
   ordersChart: BackendDashboardOrdersChartItem[];
 }
 
@@ -1323,14 +1352,3 @@ search?: string;
 export type ListAdsParams = {
 type?: string;
 };
-
-
-export const VerifyOtpBodyIntent = {
-  login: 'login',
-  signup: 'signup',
-} as const;
-
-export const SendOtpBodyIntent = {
-  login: 'login',
-  signup: 'signup',
-} as const;

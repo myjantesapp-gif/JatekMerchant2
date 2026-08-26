@@ -82,7 +82,7 @@ export default function Products() {
   const buildProductPayload = (f: typeof EMPTY) => ({
     name: f.name,
     description: f.description || undefined,
-    price: Number(f.price),
+    price: Number(String(f.price).replace(",", ".")),
     category: f.category,
     imageUrl: f.imageUrl || undefined,
     isAvailable: f.isAvailable,
@@ -423,7 +423,7 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
             <Input required value={form.category} onChange={(e: any) => set("category", e.target.value)} placeholder="Catégorie" />
           )}
         </Field>
-        <Field label="Prix (DH) *"><Input required type="number" step="0.01" value={form.price} onChange={(e: any) => set("price", e.target.value)} /></Field>
+        <Field label="Prix (DH) *"><Input required type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" step="0.01" value={form.price} onChange={(e: any) => set("price", e.target.value)} /></Field>
         <ImageUploadField
           label="Image"
           value={form.imageUrl}
@@ -666,7 +666,7 @@ function OptionsDialog({ product, onClose }: { product: any | null; onClose: () 
               </div>
               <div className="w-full sm:w-28 space-y-1">
                 <Label className="text-xs">Ajust. prix</Label>
-                <Input type="number" value={sizeForm.priceAdjustment} onChange={(e) => setSizeForm({ ...sizeForm, priceAdjustment: e.target.value })} />
+                 <Input type="text" inputMode="decimal" value={sizeForm.priceAdjustment} onChange={(e) => setSizeForm({ ...sizeForm, priceAdjustment: e.target.value })} />
               </div>
               <div className="w-full sm:w-20 space-y-1">
                 <Label className="text-xs">Ordre</Label>
@@ -687,7 +687,7 @@ function OptionsDialog({ product, onClose }: { product: any | null; onClose: () 
                 {sizes?.map((s) => editingSize?.id === s.id ? (
                   <div key={s.id} className="flex flex-col sm:flex-row gap-2 items-end bg-muted/40 p-2 rounded-md">
                     <Input className="flex-1" value={editingSize.name} onChange={(e) => setEditingSize({ ...editingSize, name: e.target.value })} />
-                    <Input className="w-full sm:w-28" type="number" value={editingSize.priceAdjustment} onChange={(e) => setEditingSize({ ...editingSize, priceAdjustment: Number(e.target.value) })} />
+                     <Input className="w-full sm:w-28" type="text" inputMode="decimal" value={editingSize.priceAdjustment} onChange={(e) => setEditingSize({ ...editingSize, priceAdjustment: Number(String(e.target.value).replace(",", ".")) })} />
                     <Input className="w-full sm:w-20" type="number" value={editingSize.sortOrder} onChange={(e) => setEditingSize({ ...editingSize, sortOrder: Number(e.target.value) })} />
                     <Switch checked={editingSize.isAvailable} onCheckedChange={(v) => setEditingSize({ ...editingSize, isAvailable: v })} />
                     <div className="flex gap-1 shrink-0">
@@ -720,7 +720,7 @@ function OptionsDialog({ product, onClose }: { product: any | null; onClose: () 
               </div>
               <div className="w-full sm:w-28 space-y-1">
                 <Label className="text-xs">Prix (DH)</Label>
-                <Input type="number" value={extraForm.price} onChange={(e) => setExtraForm({ ...extraForm, price: e.target.value })} />
+                 <Input type="text" inputMode="decimal" value={extraForm.price} onChange={(e) => setExtraForm({ ...extraForm, price: e.target.value })} />
               </div>
               <div className="w-full sm:w-20 space-y-1">
                 <Label className="text-xs">Ordre</Label>
@@ -741,7 +741,7 @@ function OptionsDialog({ product, onClose }: { product: any | null; onClose: () 
                 {extras?.map((x) => editingExtra?.id === x.id ? (
                   <div key={x.id} className="flex flex-col sm:flex-row gap-2 items-end bg-muted/40 p-2 rounded-md">
                     <Input className="flex-1" value={editingExtra.name} onChange={(e) => setEditingExtra({ ...editingExtra, name: e.target.value })} />
-                    <Input className="w-full sm:w-28" type="number" value={editingExtra.price} onChange={(e) => setEditingExtra({ ...editingExtra, price: Number(e.target.value) })} />
+                     <Input className="w-full sm:w-28" type="text" inputMode="decimal" value={editingExtra.price} onChange={(e) => setEditingExtra({ ...editingExtra, price: Number(String(e.target.value).replace(",", ".")) })} />
                     <Input className="w-full sm:w-20" type="number" value={editingExtra.sortOrder} onChange={(e) => setEditingExtra({ ...editingExtra, sortOrder: Number(e.target.value) })} />
                     <Switch checked={editingExtra.isAvailable} onCheckedChange={(v) => setEditingExtra({ ...editingExtra, isAvailable: v })} />
                     <div className="flex gap-1 shrink-0">

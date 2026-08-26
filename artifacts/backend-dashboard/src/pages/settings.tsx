@@ -24,6 +24,7 @@ interface PlatformSettings {
   minOrderAmount: string;
   taxRate: string;
   driverCommissionRate: string;
+  jatekCommissionRate: string;
   defaultLatitude: string;
   defaultLongitude: string;
   orderNotificationsEnabled: boolean;
@@ -52,6 +53,7 @@ function defaultSettings(): PlatformSettings {
     minOrderAmount: "30",
     taxRate: "0.20",
     driverCommissionRate: "0.15",
+    jatekCommissionRate: "0.10",
     defaultLatitude: "34.6814",
     defaultLongitude: "-1.9078",
     orderNotificationsEnabled: true,
@@ -80,14 +82,14 @@ function Section({ title, icon: Icon, description, children }: {
 
 function Field({ label, value, onChange, type = "text", placeholder, suffix, disabled }: {
   label: string; value: string; onChange: (v: string) => void;
-  type?: string; placeholder?: string; suffix?: string; disabled?: boolean;
+           type?: string; placeholder?: string; suffix?: string; disabled?: boolean;
 }) {
   return (
     <div className="grid gap-1.5">
       <Label>{label}</Label>
       <div className="flex gap-2 items-center">
         <Input
-          type={type} value={value} onChange={(e) => onChange(e.target.value)}
+           type={type} inputMode={type === "number" ? "decimal" : undefined} value={value} onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder} className="flex-1" disabled={disabled}
         />
         {suffix && <span className="text-sm text-muted-foreground whitespace-nowrap">{suffix}</span>}
@@ -207,6 +209,7 @@ export default function SettingsPage() {
           <Field label="Montant minimum de commande" value={settings.minOrderAmount} onChange={set("minOrderAmount")} type="number" suffix="MAD" disabled={!isAdmin} />
           <Field label="Taux de taxe" value={settings.taxRate} onChange={set("taxRate")} type="number" suffix="0–1" disabled={!isAdmin} />
           <Field label="Commission livreur" value={settings.driverCommissionRate} onChange={set("driverCommissionRate")} type="number" suffix="0–1" disabled={!isAdmin} />
+          <Field label="Commission Jatek / frais de service" value={settings.jatekCommissionRate} onChange={set("jatekCommissionRate")} type="number" suffix="0–1" disabled={!isAdmin} />
           <Separator />
           <Field label="Latitude par défaut" value={settings.defaultLatitude} onChange={set("defaultLatitude")} type="number" disabled={!isAdmin} />
           <Field label="Longitude par défaut" value={settings.defaultLongitude} onChange={set("defaultLongitude")} type="number" disabled={!isAdmin} />

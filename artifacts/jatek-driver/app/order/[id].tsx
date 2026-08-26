@@ -20,6 +20,7 @@ import { DeliveryCodeModal } from "@/components/DeliveryCodeModal";
 import { DeliveryMap } from "@/components/DeliveryMap";
 import { useActiveOrder } from "@/context/ActiveOrderContext";
 import { useColors } from "@/hooks/useColors";
+import { formatMad } from "@/lib/money";
 import { useOrderNotifications } from "@/hooks/useOrderNotifications";
 import {
   acceptOrder,
@@ -304,12 +305,12 @@ export default function OrderDetailScreen() {
 
         {/* Summary */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
-          <SummaryRow label="Sous-total commande" value={`${order.subtotalMad} DH`} colors={colors} />
-          <SummaryRow label="Frais de livraison" value={`${(order.priceMad - order.subtotalMad).toFixed(1)} DH`} colors={colors} />
-          <SummaryRow label="Total client" value={`${order.priceMad} DH`} colors={colors} bold />
+          <SummaryRow label="Sous-total commande" value={`${formatMad(order.subtotalMad)} MAD`} colors={colors} />
+          <SummaryRow label="Frais de livraison" value={`${formatMad(order.priceMad - order.subtotalMad)} MAD`} colors={colors} />
+          <SummaryRow label="Total client" value={`${formatMad(order.priceMad)} MAD`} colors={colors} bold />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <SummaryRow label="Votre commission (15%)" value={`${order.driverEarningsMad} DH`} colors={colors} accent />
-          {order.tipMad > 0 && <SummaryRow label="Pourboire" value={`${order.tipMad} DH`} colors={colors} accent />}
+          <SummaryRow label="Votre commission" value={`${formatMad(order.driverEarningsMad)} MAD`} colors={colors} accent />
+          {order.tipMad > 0 && <SummaryRow label="Pourboire" value={`${formatMad(order.tipMad)} MAD`} colors={colors} accent />}
         </View>
       </ScrollView>
 

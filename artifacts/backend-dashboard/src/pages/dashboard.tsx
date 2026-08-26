@@ -43,6 +43,10 @@ import { format } from "date-fns";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
+function formatMad(value: number | null | undefined): string {
+  return new Intl.NumberFormat("fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value ?? 0));
+}
+
 function KpiCard({ title, value, icon: Icon, description }: { title: string, value: string | number, icon: React.ElementType, description?: string }) {
   return (
     <Card>
@@ -166,7 +170,7 @@ function RecentOrders({ showRestaurant = true }: { showRestaurant?: boolean }) {
                   {showRestaurant && <p className="text-xs text-muted-foreground">{order.restaurantName}</p>}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold">{order.total} DH</p>
+                   <p className="text-sm font-bold">{formatMad(order.total)} MAD</p>
                   <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary uppercase">
                     {order.status}
                   </span>
@@ -239,12 +243,12 @@ export default function Dashboard() {
         
         {!isEmployee && (
           <>
-            <KpiCard title="Chiffre d'affaires" value={`${dashboard.totalEarned} DH`} icon={DollarSign} />
-            <KpiCard title="Frais de livraison" value={`${dashboard.deliveryEarning} DH`} icon={Truck} />
+            <KpiCard title="Chiffre d'affaires" value={`${formatMad(dashboard.totalEarned)} MAD`} icon={DollarSign} />
+            <KpiCard title="Frais de livraison" value={`${formatMad(dashboard.deliveryEarning)} MAD`} icon={Truck} />
             {!isOwner && (
               <>
-                <KpiCard title="Taxes" value={`${dashboard.totalOrderTax} DH`} icon={Receipt} />
-                <KpiCard title="Commission" value={`${dashboard.totalCommission} DH`} icon={Percent} />
+                <KpiCard title="Taxes" value={`${formatMad(dashboard.totalOrderTax)} MAD`} icon={Receipt} />
+                <KpiCard title="Commission Jatek" value={`${formatMad(dashboard.totalCommission)} MAD`} icon={Percent} />
               </>
             )}
           </>

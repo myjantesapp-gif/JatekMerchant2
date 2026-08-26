@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, notificationPrefsTable, usersTable } from "@workspace/db";
+import { db, notificationPrefsTable, usersTable, driversTable } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { z } from "@workspace/api-zod";
 import { requireAuth, requireRole, type AuthedRequest } from "../middlewares/auth";
@@ -80,6 +80,12 @@ router.put("/notifications/push-token", requireAuth, async (req: AuthedRequest, 
       set: { pushToken: token, updatedAt: new Date() },
     })
     .returning({ userId: notificationPrefsTable.userId, pushToken: notificationPrefsTable.pushToken });
+  // Drivers are also read from drivers.pushToken when new delivery jobs are
+  // broadcast. Keep both stores in sync regardless of which mobile client
+  // registered the token.
+  await db.update(driversTable)
+    .set({ pushToken: token })
+    .where(eq(driversTable.userId, req.userId!));
   res.json(saved);
 });
 
@@ -87,6 +93,9 @@ router.delete("/notifications/push-token", requireAuth, async (req: AuthedReques
   await db.update(notificationPrefsTable)
     .set({ pushToken: null })
     .where(eq(notificationPrefsTable.userId, req.userId!));
+  await db.update(driversTable)
+    .set({ pushToken: null })
+    .where(eq(driversTable.userId, req.userId!));
   res.json({ success: true });
 });
 

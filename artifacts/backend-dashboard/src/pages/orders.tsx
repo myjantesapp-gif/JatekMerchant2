@@ -21,6 +21,14 @@ import { Switch } from "@/components/ui/switch";
 
 type OrderWithItems = Order & { items: Array<{ id: number; quantity: number; menuItemName: string; totalPrice: number; selectedSize?: string; selectedExtras?: string }> };
 
+function formatMad(value: number | null | undefined): string {
+  return new Intl.NumberFormat("fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value ?? 0));
+}
+
+function parseMad(value: string): number {
+  return Number(value.trim().replace(",", "."));
+}
+
 async function fetchOrderDetail(id: number): Promise<OrderWithItems> {
   return apiFetch(`/api/backend/orders/${id}`) as Promise<OrderWithItems>;
 }
@@ -28,8 +36,10 @@ async function fetchOrderDetail(id: number): Promise<OrderWithItems> {
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   accepted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  confirmed: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
   preparing: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
   ready: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400",
+  driver_at_restaurant: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400",
   picked_up: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400",
   en_route: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400",
   delivered: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
@@ -90,9 +100,9 @@ export default function Orders() {
       if (actionModal === "refund") {
         const res = await apiFetch(`/api/backend/orders/${selectedOrder.id}/refund`, {
           method: "POST",
-          body: JSON.stringify({ amount: Number(actionForm.amount), reason: actionForm.reason, notes: actionForm.notes }),
+          body: JSON.stringify({ amount: parseMad(actionForm.amount), reason: actionForm.reason, notes: actionForm.notes }),
         }) as any;
-        toast({ title: `Remboursement effectué: ${res.refundedAmount} DH crédité ✓` });
+        toast({ title: `Remboursement effectué: ${formatMad(res.refundedAmount)} MAD crédité ✓` });
       } else if (actionModal === "cancel") {
         const res = await apiFetch(`/api/backend/orders/${selectedOrder.id}/cancel`, {
           method: "PATCH",
@@ -104,9 +114,9 @@ export default function Orders() {
       } else if (actionModal === "gesture") {
         const res = await apiFetch(`/api/backend/orders/${selectedOrder.id}/gesture`, {
           method: "POST",
-          body: JSON.stringify({ amount: Number(actionForm.amount), reason: actionForm.reason }),
+          body: JSON.stringify({ amount: parseMad(actionForm.amount), reason: actionForm.reason }),
         }) as any;
-        toast({ title: `Geste commercial: ${res.creditedAmount} DH crédité ✓` });
+        toast({ title: `Geste commercial: ${formatMad(res.creditedAmount)} MAD crédité ✓` });
       }
       setActionModal(null);
       setActionForm({ amount: "", reason: "", notes: "", refundToWallet: true });
@@ -199,7 +209,7 @@ export default function Orders() {
                       {order.status}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right font-bold">{order.total} DH</TableCell>
+                  <TableCell className="text-right font-bold">{formatMad(order.total)} MAD</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -228,8 +238,8 @@ export default function Orders() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground mb-1">Total</p>
-                    <p className="text-xl font-bold text-primary">{selectedOrder.total} DH</p>
-                    {(selectedOrder as any).discountAmount > 0 && <p className="text-xs text-green-600">-{(selectedOrder as any).discountAmount} DH promo</p>}
+                    <p className="text-xl font-bold text-primary">{formatMad(selectedOrder.total)} MAD</p>
+                    {(selectedOrder as any).discountAmount > 0 && <p className="text-xs text-green-600">-{formatMad((selectedOrder as any).discountAmount)} MAD promo</p>}
                   </div>
                 </div>
 
@@ -251,12 +261,31 @@ export default function Orders() {
                           <span>{item.quantity}× {item.menuItemName}
                             {(item as any).selectedSize && <span className="text-xs text-muted-foreground ml-1">({(item as any).selectedSize})</span>}
                           </span>
-                          <span className="font-medium">{item.totalPrice} DH</span>
+                          <span className="font-medium">{formatMad(item.totalPrice)} MAD</span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
+
+                {orderDetail && (
+                  <div className="rounded-lg border p-3 space-y-1.5 text-sm">
+                    <p className="text-sm font-medium mb-2">Détail financier (figé à la création)</p>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Produits</span><span>{formatMad(orderDetail.subtotal)} MAD</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Remise</span><span className="text-green-600">-{formatMad(orderDetail.discountAmount)} MAD</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Livraison</span><span>{formatMad(orderDetail.deliveryFee)} MAD</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Frais de service Jatek ({(Number((orderDetail as any).commissionRate ?? 0) * 100).toFixed(2)} %)</span><span>{formatMad((orderDetail as any).serviceFee)} MAD</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">TVA ({(Number((orderDetail as any).vatRate ?? 0) * 100).toFixed(2)} %)</span><span>{formatMad((orderDetail as any).vatAmount)} MAD</span></div>
+                    <div className="flex justify-between border-t pt-1.5 font-semibold"><span>Total</span><span>{formatMad(orderDetail.total)} MAD</span></div>
+                    {!isOwner && (
+                      <div className="border-t pt-1.5 mt-1.5 text-xs text-muted-foreground space-y-1">
+                        <div className="flex justify-between"><span>Gain restaurant</span><span>{formatMad((orderDetail as any).merchantEarning)} MAD</span></div>
+                        <div className="flex justify-between"><span>Gain livreur</span><span>{formatMad((orderDetail as any).driverEarning)} MAD</span></div>
+                        <div className="flex justify-between"><span>Gain Jatek</span><span>{formatMad((orderDetail as any).jatekEarning)} MAD</span></div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Change status */}
                 <div className="rounded-lg border p-3 space-y-2">
@@ -265,7 +294,7 @@ export default function Orders() {
                     <Select value={newStatus || selectedOrder.status} onValueChange={setNewStatus}>
                       <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {["pending","accepted","preparing","ready","picked_up","en_route","delivered","cancelled"].map((s) => (
+                        {["pending","accepted","confirmed","preparing","ready","driver_at_restaurant","picked_up","en_route","out_for_delivery","delivered","cancelled"].map((s) => (
                           <SelectItem key={s} value={s}>{s}</SelectItem>
                         ))}
                       </SelectContent>
@@ -307,7 +336,7 @@ export default function Orders() {
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>Rembourser la commande</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            <div className="space-y-1"><Label className="text-xs">Montant (DH) *</Label><Input type="number" step="0.01" placeholder={`Max: ${selectedOrder?.total} DH`} value={actionForm.amount} onChange={(e) => setActionForm({ ...actionForm, amount: e.target.value })} /></div>
+            <div className="space-y-1"><Label className="text-xs">Montant (MAD) *</Label><Input type="text" inputMode="decimal" placeholder={`Max: ${formatMad(selectedOrder?.total)} MAD`} value={actionForm.amount} onChange={(e) => setActionForm({ ...actionForm, amount: e.target.value })} /></div>
             <div className="space-y-1"><Label className="text-xs">Raison *</Label><Input value={actionForm.reason} onChange={(e) => setActionForm({ ...actionForm, reason: e.target.value })} placeholder="Ex: Article manquant, retard excessif…" /></div>
             <div className="space-y-1"><Label className="text-xs">Notes internes</Label><Textarea rows={2} value={actionForm.notes} onChange={(e) => setActionForm({ ...actionForm, notes: e.target.value })} /></div>
             <p className="text-xs text-muted-foreground">Le montant sera crédité sur le wallet du client.</p>
@@ -328,7 +357,7 @@ export default function Orders() {
             <div className="space-y-1"><Label className="text-xs">Raison *</Label><Input value={actionForm.reason} onChange={(e) => setActionForm({ ...actionForm, reason: e.target.value })} placeholder="Ex: Restaurant fermé, stock épuisé…" /></div>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <Switch checked={actionForm.refundToWallet} onCheckedChange={(v) => setActionForm({ ...actionForm, refundToWallet: v })} />
-              <span>Rembourser {selectedOrder?.total} DH sur le wallet client</span>
+              <span>Rembourser {formatMad(selectedOrder?.total)} MAD sur le wallet client</span>
             </label>
           </div>
           <DialogFooter>
@@ -344,7 +373,7 @@ export default function Orders() {
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>Geste commercial</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            <div className="space-y-1"><Label className="text-xs">Montant à créditer (DH) *</Label><Input type="number" step="0.01" value={actionForm.amount} onChange={(e) => setActionForm({ ...actionForm, amount: e.target.value })} /></div>
+            <div className="space-y-1"><Label className="text-xs">Montant à créditer (MAD) *</Label><Input type="text" inputMode="decimal" value={actionForm.amount} onChange={(e) => setActionForm({ ...actionForm, amount: e.target.value })} /></div>
             <div className="space-y-1"><Label className="text-xs">Raison *</Label><Input value={actionForm.reason} onChange={(e) => setActionForm({ ...actionForm, reason: e.target.value })} placeholder="Ex: Geste de fidélité, compensation retard…" /></div>
             <p className="text-xs text-muted-foreground">Ce montant sera ajouté au wallet du client, sans annuler la commande.</p>
           </div>

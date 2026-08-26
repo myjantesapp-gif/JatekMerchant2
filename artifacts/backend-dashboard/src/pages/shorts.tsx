@@ -16,7 +16,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImageUploadField } from "@/components/ImageUploadField";
-import { VideoUploadField } from "@/components/VideoUploadField";
+import { VideoUploadField, getYouTubeEmbedUrl } from "@/components/VideoUploadField";
 
 interface Short {
   id: number;
@@ -249,8 +249,10 @@ export default function Shorts() {
           <div className="flex gap-3 overflow-x-auto pb-2">
             {activeShorts.map((s) => (
               <div key={s.id} className="shrink-0 relative rounded-xl overflow-hidden w-32 h-52 bg-zinc-900 shadow-md">
-                {s.videoUrl
-                  ? <video src={s.videoUrl} className="absolute inset-0 h-full w-full object-cover" muted playsInline preload="metadata" />
+                 {s.videoUrl
+                   ? getYouTubeEmbedUrl(s.videoUrl)
+                     ? <iframe src={getYouTubeEmbedUrl(s.videoUrl) ?? undefined} title={`Aperçu YouTube — ${s.title}`} className="absolute inset-0 h-full w-full border-0" allow="encrypted-media; picture-in-picture" />
+                     : <video src={s.videoUrl} className="absolute inset-0 h-full w-full object-cover" muted playsInline preload="metadata" />
                   : s.imageUrl
                     ? <img src={s.imageUrl} alt={s.title} className="absolute inset-0 w-full h-full object-cover" />
                     : <div className="absolute inset-0 flex items-center justify-center"><Film className="h-8 w-8 text-zinc-600" /></div>
@@ -300,8 +302,10 @@ export default function Shorts() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="h-12 w-8 rounded-md shrink-0 overflow-hidden bg-zinc-100 relative flex items-center justify-center">
-                             {s.videoUrl
-                               ? <video src={s.videoUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                              {s.videoUrl
+                                ? getYouTubeEmbedUrl(s.videoUrl)
+                                  ? <iframe src={getYouTubeEmbedUrl(s.videoUrl) ?? undefined} title={`Aperçu YouTube — ${s.title}`} className="h-full w-full border-0" allow="encrypted-media; picture-in-picture" />
+                                  : <video src={s.videoUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
                                : s.imageUrl
                                  ? <img src={s.imageUrl} alt={s.title} className="h-full w-full object-cover" />
                                  : <Film className="h-4 w-4 text-zinc-400" />

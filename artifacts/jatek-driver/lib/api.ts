@@ -218,6 +218,15 @@ type BackendOrder = {
   subtotal: number;
   deliveryFee: number;
   discountAmount: number;
+  currency?: string;
+  vatRate?: number;
+  vatAmount?: number;
+  serviceFee?: number;
+  commissionRate?: number;
+  merchantEarning?: number;
+  driverEarning?: number;
+  jatekEarning?: number;
+  pricingVersion?: string;
   total: number;
   deliveryAddress: string;
   notes?: string;
@@ -266,8 +275,7 @@ function toFiniteCoordinate(value: unknown): number | null {
 }
 
 function mapOrder(o: BackendOrder): Order {
-  const COMMISSION = 0.15;
-  const driverEarnings = Math.round(o.total * COMMISSION * 10) / 10;
+  const driverEarnings = o.driverEarning ?? o.deliveryFee ?? 0;
   const items: OrderItem[] = (o.items ?? []).map((i) => ({
     name: i.menuItemName,
     quantity: i.quantity,

@@ -14,7 +14,7 @@ router.get("/categories", async (req, res): Promise<void> => {
   // Support optional filters: ?type=service_shortcut|category, ?businessType=restaurant, ?parentId=123, ?isActive=true|false
   const { type: typeFilter, businessType: btFilter, parentId: parentIdFilter } = req.query as Record<string, string | undefined>;
 
-  const all = await db.select().from(categoriesTable).orderBy(asc(categoriesTable.sortOrder));
+  const all = await db.select().from(categoriesTable).orderBy(asc(categoriesTable.sortOrder), asc(categoriesTable.name), asc(categoriesTable.id));
 
   // Apply type / businessType filters
   let filtered = all;
@@ -71,7 +71,7 @@ router.get("/menu-categories", async (req, res): Promise<void> => {
 
   const rows = await db.select().from(menuItemCategoriesTable)
     .where(condition)
-    .orderBy(asc(menuItemCategoriesTable.sortOrder), asc(menuItemCategoriesTable.name));
+    .orderBy(asc(menuItemCategoriesTable.sortOrder), asc(menuItemCategoriesTable.name), asc(menuItemCategoriesTable.id));
   res.json(rows);
 });
 

@@ -13,7 +13,7 @@ type VideoUploadFieldProps = {
   uploadKind?: Extract<MediaUploadKind, "short">;
 };
 
-function getYouTubeEmbedUrl(url: string): string | null {
+export function getYouTubeEmbedUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase();

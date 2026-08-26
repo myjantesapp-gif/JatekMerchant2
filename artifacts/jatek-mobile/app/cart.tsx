@@ -15,6 +15,7 @@ import { useFriendlyAlert } from "@/components/FriendlyAlert";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { WaveEdge } from "@/components/WaveEdge";
+import { formatMad } from "@/lib/money";
 
 const PINK = "#E91E63";
 
@@ -263,7 +264,7 @@ export default function CartScreen() {
                       ].filter(Boolean).join(" · ")}
                     </Text>
                   )}
-                  <Text style={[styles.cartItemPrice, { color: colors.primary }]}>{t("cart_each", { price: item.price.toFixed(0) })}</Text>
+                  <Text style={[styles.cartItemPrice, { color: colors.primary }]}>{t("cart_each", { price: formatMad(item.price) })}</Text>
                 </View>
                 <View style={styles.qtyRow}>
                   <TouchableOpacity
@@ -286,7 +287,7 @@ export default function CartScreen() {
                   </TouchableOpacity>
                 </View>
                 <Text style={[styles.cartItemTotal, { color: colors.foreground }]}>
-                  {(item.price * item.quantity).toFixed(0)} MAD
+                  {formatMad(item.price * item.quantity)} MAD
                 </Text>
               </View>
               {idx < items.length - 1 && <View style={[styles.divider, { backgroundColor: colors.border }]} />}
@@ -380,7 +381,7 @@ export default function CartScreen() {
                 <Text style={[styles.freeDeliveryText, { color: colors.turquoise }]} numberOfLines={2}>
                   {reached
                     ? "Livraison gratuite débloquée 🎉"
-                    : `Plus que ${remaining.toFixed(0)} MAD pour la livraison gratuite`}
+                    : `Plus que ${formatMad(remaining)} MAD pour la livraison gratuite`}
                 </Text>
               </View>
               <View style={[styles.freeDeliveryBarTrack, { backgroundColor: "rgba(0,194,199,0.2)" }]}>
@@ -395,7 +396,7 @@ export default function CartScreen() {
           <Text style={[styles.summaryTitle, { color: colors.foreground }]}>{t("cart_summary")}</Text>
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t("cart_subtotal")}</Text>
-            <Text style={[styles.summaryValue, { color: colors.foreground }]}>{subtotal.toFixed(0)} MAD</Text>
+            <Text style={[styles.summaryValue, { color: colors.foreground }]}>{formatMad(subtotal)} MAD</Text>
           </View>
           {appliedCoupon && (
             <View style={styles.summaryRow}>
@@ -412,20 +413,20 @@ export default function CartScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={[styles.summaryValue, { color: "#16A34A", fontFamily: "Inter_700Bold" }]}>
-                {itemsDiscount > 0 ? `−${itemsDiscount.toFixed(0)} MAD` : "Livraison offerte"}
+                {itemsDiscount > 0 ? `−${formatMad(itemsDiscount)} MAD` : "Livraison offerte"}
               </Text>
             </View>
           )}
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t("cart_delivery_fee")}</Text>
             <Text style={[styles.summaryValue, { color: colors.turquoise, fontFamily: "Inter_700Bold" }]}>
-              {effectiveDeliveryFee === 0 ? "Offerte" : `${effectiveDeliveryFee} MAD`}
+              {effectiveDeliveryFee === 0 ? "Offerte" : `${formatMad(effectiveDeliveryFee)} MAD`}
             </Text>
           </View>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.summaryRow}>
             <Text style={[styles.totalLabel, { color: colors.foreground }]}>{t("cart_total")}</Text>
-            <Text style={[styles.totalValue, { color: colors.primary }]}>{orderTotal.toFixed(0)} MAD</Text>
+            <Text style={[styles.totalValue, { color: colors.primary }]}>{formatMad(orderTotal)} MAD</Text>
           </View>
         </View>
       </KeyboardAwareScrollView>
@@ -442,7 +443,7 @@ export default function CartScreen() {
           disabled={orderDisabled}
           loading={createOrder.isPending}
           label={!!address && !selectedAddressInZone ? t("cart_address_out_zone_btn") : t("cart_place_order")}
-          price={`${orderTotal.toFixed(0)} MAD`}
+          price={`${formatMad(orderTotal)} MAD`}
           color={PINK}
           mutedColor={colors.muted}
           mutedFg={colors.mutedForeground}

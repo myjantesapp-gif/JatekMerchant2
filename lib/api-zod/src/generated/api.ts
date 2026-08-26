@@ -5,23 +5,15 @@
  * Jatek Food Delivery API
  * OpenAPI spec version: 0.1.0
  */
-import * as zodModule from 'zod';
-
-// Orval emits Zod 4 helpers while this workspace uses Zod 3.
-// Keep the generated contract usable without mutating the ESM module namespace.
-const zod = Object.assign({}, zodModule, {
-  int: () => zodModule.number().int(),
-  email: () => zodModule.string().email(),
-  url: () => zodModule.string().url(),
-});
+import * as zod from 'zod';
 
 
 /**
  * @summary List current user's addresses
  */
 export const ListAddressesResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "label": zod.string(),
   "fullAddress": zod.string(),
   "details": zod.string().nullish(),
@@ -42,8 +34,8 @@ export const CreateAddressBody = zod.object({
 })
 
 export const CreateAddressResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "label": zod.string(),
   "fullAddress": zod.string(),
   "details": zod.string().nullish(),
@@ -67,8 +59,8 @@ export const UpdateAddressBody = zod.object({
 })
 
 export const UpdateAddressResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "label": zod.string(),
   "fullAddress": zod.string(),
   "details": zod.string().nullish(),
@@ -93,26 +85,36 @@ export const DeleteAddressResponse = zod.void()
 export const getRecentOrdersResponsePaymentMethodDefault = `cash`;
 
 export const GetRecentOrdersResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(getRecentOrdersResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -129,14 +131,14 @@ export const GetRecentOrdersResponse = zod.array(GetRecentOrdersResponseItem)
  * @summary Get admin dashboard statistics
  */
 export const GetAdminStatsResponse = zod.object({
-  "totalUsers": zod.int(),
-  "totalRestaurants": zod.int(),
-  "totalOrders": zod.int(),
-  "totalDrivers": zod.int(),
-  "activeOrders": zod.int(),
+  "totalUsers": zod.number().int(),
+  "totalRestaurants": zod.number().int(),
+  "totalOrders": zod.number().int(),
+  "totalDrivers": zod.number().int(),
+  "activeOrders": zod.number().int(),
   "revenue": zod.number(),
-  "ordersToday": zod.int(),
-  "newUsersToday": zod.int()
+  "ordersToday": zod.number().int(),
+  "newUsersToday": zod.number().int()
 })
 
 
@@ -144,7 +146,7 @@ export const GetAdminStatsResponse = zod.object({
  * @summary Send a password reset OTP to the phone attached to an email
  */
 export const ForgotPasswordBody = zod.object({
-  "email": zod.email()
+  "email": zod.string().email()
 })
 
 export const ForgotPasswordResponse = zod.object({
@@ -165,7 +167,7 @@ export const LoginBody = zod.object({
 export const LoginResponse = zod.object({
   "token": zod.string(),
   "user": zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -173,9 +175,9 @@ export const LoginResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 })
 
@@ -192,7 +194,7 @@ export const LogoutResponse = zod.object({
  * @summary Get current user
  */
 export const GetMeResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -200,9 +202,9 @@ export const GetMeResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 
 
@@ -228,7 +230,7 @@ export const RegisterBody = zod.object({
 export const RegisterResponse = zod.object({
   "token": zod.string(),
   "user": zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -236,9 +238,9 @@ export const RegisterResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 })
 
@@ -251,7 +253,7 @@ export const resetPasswordBodyNewPasswordMin = 6;
 
 
 export const ResetPasswordBody = zod.object({
-  "email": zod.email(),
+  "email": zod.string().email(),
   "code": zod.string(),
   "newPassword": zod.string().min(resetPasswordBodyNewPasswordMin)
 })
@@ -260,7 +262,7 @@ export const ResetPasswordResponse = zod.object({
   "success": zod.boolean(),
   "token": zod.string(),
   "user": zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -268,9 +270,9 @@ export const ResetPasswordResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 })
 
@@ -280,7 +282,7 @@ export const ResetPasswordResponse = zod.object({
  */
 export const SendOtpBody = zod.object({
   "phone": zod.string().optional(),
-  "email": zod.email().optional(),
+  "email": zod.string().email().optional(),
   "name": zod.string().optional(),
   "intent": zod.enum(['login', 'signup']).optional(),
   "channel": zod.enum(['sms', 'whatsapp']).optional().describe('Delivery channel for the OTP code')
@@ -308,7 +310,7 @@ export const UpdateAuthNameBody = zod.object({
 
 export const UpdateAuthNameResponse = zod.object({
   "user": zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -316,9 +318,9 @@ export const UpdateAuthNameResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 })
 
@@ -328,7 +330,7 @@ export const UpdateAuthNameResponse = zod.object({
  */
 export const VerifyOtpBody = zod.object({
   "phone": zod.string().optional(),
-  "email": zod.email().optional(),
+  "email": zod.string().email().optional(),
   "code": zod.string(),
   "name": zod.string().optional(),
   "password": zod.string().optional(),
@@ -339,7 +341,7 @@ export const VerifyOtpBody = zod.object({
 export const VerifyOtpResponse = zod.object({
   "token": zod.string(),
   "user": zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -347,9 +349,9 @@ export const VerifyOtpResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 })
 
@@ -360,7 +362,7 @@ export const VerifyOtpResponse = zod.object({
  */
 export const ListBackendCategoriesResponseItem = zod.object({
   "name": zod.string(),
-  "count": zod.int()
+  "count": zod.number().int()
 })
 export const ListBackendCategoriesResponse = zod.array(ListBackendCategoriesResponseItem)
 
@@ -373,26 +375,26 @@ export const CreateBackendCategoryBody = zod.object({
   "slug": zod.string(),
   "icon": zod.string().optional(),
   "accentColor": zod.string().optional(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "businessType": zod.string().optional(),
   "type": zod.enum(['category', 'service_shortcut', 'subcategory']).optional(),
   "bannerImageUrl": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
-  "sortOrder": zod.int().optional()
+  "sortOrder": zod.number().int().optional()
 })
 
 export const CreateBackendCategoryResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "slug": zod.string(),
   "icon": zod.string(),
   "accentColor": zod.string(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "businessType": zod.string(),
   "type": zod.enum(['category', 'service_shortcut', 'subcategory']).optional(),
   "bannerImageUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })
@@ -407,7 +409,7 @@ export const ListBackendCustomersQueryParams = zod.object({
 })
 
 export const ListBackendCustomersResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -415,9 +417,9 @@ export const ListBackendCustomersResponseItem = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 export const ListBackendCustomersResponse = zod.array(ListBackendCustomersResponseItem)
 
@@ -433,19 +435,21 @@ export const GetBackendDashboardQueryParams = zod.object({
 })
 
 export const GetBackendDashboardResponse = zod.object({
-  "inProgressOrders": zod.int(),
-  "cancelledOrders": zod.int(),
-  "deliveredOrders": zod.int(),
-  "outOfStockProducts": zod.int(),
-  "totalProducts": zod.int(),
-  "orderReviews": zod.int(),
+  "inProgressOrders": zod.number().int(),
+  "cancelledOrders": zod.number().int(),
+  "deliveredOrders": zod.number().int(),
+  "outOfStockProducts": zod.number().int(),
+  "totalProducts": zod.number().int(),
+  "orderReviews": zod.number().int(),
   "totalEarned": zod.number(),
   "deliveryEarning": zod.number(),
   "totalOrderTax": zod.number(),
   "totalCommission": zod.number(),
+  "merchantEarning": zod.number(),
+  "jatekEarning": zod.number(),
   "ordersChart": zod.array(zod.object({
   "label": zod.string(),
-  "value": zod.int()
+  "value": zod.number().int()
 }))
 })
 
@@ -455,14 +459,14 @@ export const GetBackendDashboardResponse = zod.object({
  * @summary List delivery drivers
  */
 export const ListBackendDeliverymenResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "name": zod.string(),
   "phone": zod.string().nullish(),
   "vehicleType": zod.string().nullish(),
   "isVerified": zod.boolean(),
   "isAvailable": zod.boolean(),
-  "totalDeliveries": zod.int(),
+  "totalDeliveries": zod.number().int(),
   "rating": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
   "vehiclePlate": zod.string().nullish(),
@@ -474,7 +478,7 @@ export const ListBackendDeliverymenResponseItem = zod.object({
   "locationUpdatedAt": zod.coerce.date().nullish(),
   "profileCompletedAt": zod.coerce.date().nullish()
 }).and(zod.object({
-  "email": zod.email().nullable(),
+  "email": zod.string().email().nullable(),
   "accountActive": zod.boolean()
 }))
 export const ListBackendDeliverymenResponse = zod.array(ListBackendDeliverymenResponseItem)
@@ -491,7 +495,7 @@ export const BackendLoginBody = zod.object({
 export const BackendLoginResponse = zod.object({
   "token": zod.string(),
   "user": zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -499,9 +503,9 @@ export const BackendLoginResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 })
 
@@ -512,7 +516,7 @@ export const BackendLoginResponse = zod.object({
  */
 export const BackendMeResponse = zod.object({
   "user": zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -520,12 +524,12 @@ export const BackendMeResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 }),
   "permissions": zod.array(zod.string()),
-  "scopedShopIds": zod.array(zod.int()).optional().describe('Restricts data to these shops (merchant + employee). Empty = no scope restriction.')
+  "scopedShopIds": zod.array(zod.number().int()).optional().describe('Restricts data to these shops (merchant + employee). Empty = no scope restriction.')
 })
 
 
@@ -545,26 +549,36 @@ export const ListBackendOrdersQueryParams = zod.object({
 export const listBackendOrdersResponsePaymentMethodDefault = `cash`;
 
 export const ListBackendOrdersResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(listBackendOrdersResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -588,8 +602,8 @@ export const ListBackendProductsQueryParams = zod.object({
 })
 
 export const ListBackendProductsResponseItem = zod.object({
-  "id": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
@@ -611,12 +625,12 @@ export const ListBackendReviewsQueryParams = zod.object({
 })
 
 export const ListBackendReviewsResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "orderId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "orderId": zod.number().int().nullish(),
   "userName": zod.string(),
-  "rating": zod.int(),
+  "rating": zod.number().int(),
   "comment": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -645,8 +659,8 @@ export const ListBackendShopsQueryParams = zod.object({
 })
 
 export const ListBackendShopsResponseItem = zod.object({
-  "id": zod.int(),
-  "ownerId": zod.int(),
+  "id": zod.number().int(),
+  "ownerId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string(),
@@ -658,11 +672,11 @@ export const ListBackendShopsResponseItem = zod.object({
   "businessType": zod.string(),
   "isLocal": zod.boolean(),
   "isOpen": zod.boolean(),
-  "deliveryTime": zod.int().nullish(),
+  "deliveryTime": zod.number().int().nullish(),
   "deliveryFee": zod.number().nullish(),
   "minimumOrder": zod.number().nullish(),
   "rating": zod.number().nullish(),
-  "reviewCount": zod.int(),
+  "reviewCount": zod.number().int(),
   "isVerified": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "legalName": zod.string().nullish(),
@@ -679,7 +693,7 @@ export const ListBackendShopsResponse = zod.array(ListBackendShopsResponseItem)
  * @summary List staff & admin users (admin only)
  */
 export const ListBackendStaffResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -687,9 +701,9 @@ export const ListBackendStaffResponseItem = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 export const ListBackendStaffResponse = zod.array(ListBackendStaffResponseItem)
 
@@ -704,11 +718,11 @@ export const CreateBackendStaffBody = zod.object({
   "password": zod.string(),
   "role": zod.enum(['admin', 'super_admin', 'manager', 'restaurant_owner', 'employee']),
   "phone": zod.string().nullish(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 
 export const CreateBackendStaffResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -716,9 +730,9 @@ export const CreateBackendStaffResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 
 
@@ -737,11 +751,11 @@ export const UpdateBackendStaffBody = zod.object({
   "role": zod.string().optional(),
   "phone": zod.string().optional(),
   "isActive": zod.boolean().optional(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 
 export const UpdateBackendStaffResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -749,9 +763,9 @@ export const UpdateBackendStaffResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 
 
@@ -771,8 +785,8 @@ export const DeleteBackendStaffResponse = zod.void()
  * @summary List dashboard todos for current user
  */
 export const ListBackendTodosResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "text": zod.string(),
   "done": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -789,8 +803,8 @@ export const CreateBackendTodoBody = zod.object({
 })
 
 export const CreateBackendTodoResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "text": zod.string(),
   "done": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -810,8 +824,8 @@ export const ToggleBackendTodoBody = zod.object({
 })
 
 export const ToggleBackendTodoResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "text": zod.string(),
   "done": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -833,7 +847,7 @@ export const DeleteBackendTodoResponse = zod.void()
  * @summary Get privacy consents and current legal versions
  */
 export const GetUserConsentsResponse = zod.object({
-  "userId": zod.int().optional(),
+  "userId": zod.number().int().optional(),
   "cookiesEssential": zod.boolean().optional(),
   "cookiesAnalytics": zod.boolean().optional(),
   "cookiesMarketing": zod.boolean().optional(),
@@ -876,7 +890,7 @@ export const UpdateUserConsentsBody = zod.object({
 })
 
 export const UpdateUserConsentsResponse = zod.object({
-  "userId": zod.int(),
+  "userId": zod.number().int(),
   "cookiesEssential": zod.boolean(),
   "cookiesAnalytics": zod.boolean(),
   "cookiesMarketing": zod.boolean(),
@@ -900,7 +914,7 @@ export const UpdateUserConsentsResponse = zod.object({
  * @summary Accept all privacy consents
  */
 export const AcceptAllConsentsResponse = zod.object({
-  "userId": zod.int(),
+  "userId": zod.number().int(),
   "cookiesEssential": zod.boolean(),
   "cookiesAnalytics": zod.boolean(),
   "cookiesMarketing": zod.boolean(),
@@ -924,7 +938,7 @@ export const AcceptAllConsentsResponse = zod.object({
  * @summary Reject optional privacy consents
  */
 export const RejectAllConsentsResponse = zod.object({
-  "userId": zod.int(),
+  "userId": zod.number().int(),
   "cookiesEssential": zod.boolean(),
   "cookiesAnalytics": zod.boolean(),
   "cookiesMarketing": zod.boolean(),
@@ -952,14 +966,14 @@ export const ListDriversQueryParams = zod.object({
 })
 
 export const ListDriversResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "name": zod.string(),
   "phone": zod.string().nullish(),
   "vehicleType": zod.string().nullish(),
   "isVerified": zod.boolean(),
   "isAvailable": zod.boolean(),
-  "totalDeliveries": zod.int(),
+  "totalDeliveries": zod.number().int(),
   "rating": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
   "vehiclePlate": zod.string().nullish(),
@@ -982,14 +996,14 @@ export const GetDriverParams = zod.object({
 })
 
 export const GetDriverResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "name": zod.string(),
   "phone": zod.string().nullish(),
   "vehicleType": zod.string().nullish(),
   "isVerified": zod.boolean(),
   "isAvailable": zod.boolean(),
-  "totalDeliveries": zod.int(),
+  "totalDeliveries": zod.number().int(),
   "rating": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
   "vehiclePlate": zod.string().nullish(),
@@ -1017,14 +1031,14 @@ export const UpdateDriverBody = zod.object({
 })
 
 export const UpdateDriverResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "name": zod.string(),
   "phone": zod.string().nullish(),
   "vehicleType": zod.string().nullish(),
   "isVerified": zod.boolean(),
   "isAvailable": zod.boolean(),
-  "totalDeliveries": zod.int(),
+  "totalDeliveries": zod.number().int(),
   "rating": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
   "vehiclePlate": zod.string().nullish(),
@@ -1060,14 +1074,14 @@ export const CompleteDriverProfileBody = zod.object({
 })
 
 export const CompleteDriverProfileResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "name": zod.string(),
   "phone": zod.string().nullish(),
   "vehicleType": zod.string().nullish(),
   "isVerified": zod.boolean(),
   "isAvailable": zod.boolean(),
-  "totalDeliveries": zod.int(),
+  "totalDeliveries": zod.number().int(),
   "rating": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
   "vehiclePlate": zod.string().nullish(),
@@ -1093,8 +1107,8 @@ export const GetDriverEarningsResponse = zod.object({
   "today": zod.number(),
   "thisWeek": zod.number(),
   "thisMonth": zod.number(),
-  "totalDeliveries": zod.int(),
-  "completedToday": zod.int()
+  "totalDeliveries": zod.number().int(),
+  "completedToday": zod.number().int()
 })
 
 
@@ -1147,12 +1161,12 @@ export const SubscribeEventsResponse = zod.unknown()
  * @summary List favorite restaurants for current user
  */
 export const ListFavoritesResponseItem = zod.object({
-  "id": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "createdAt": zod.coerce.date(),
   "restaurant": zod.object({
-  "id": zod.int(),
-  "ownerId": zod.int(),
+  "id": zod.number().int(),
+  "ownerId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string(),
@@ -1164,11 +1178,11 @@ export const ListFavoritesResponseItem = zod.object({
   "businessType": zod.string(),
   "isLocal": zod.boolean(),
   "isOpen": zod.boolean(),
-  "deliveryTime": zod.int().nullish(),
+  "deliveryTime": zod.number().int().nullish(),
   "deliveryFee": zod.number().nullish(),
   "minimumOrder": zod.number().nullish(),
   "rating": zod.number().nullish(),
-  "reviewCount": zod.int(),
+  "reviewCount": zod.number().int(),
   "isVerified": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "legalName": zod.string().nullish(),
@@ -1185,13 +1199,13 @@ export const ListFavoritesResponse = zod.array(ListFavoritesResponseItem)
  * @summary Add a restaurant to favorites
  */
 export const AddFavoriteBody = zod.object({
-  "restaurantId": zod.int()
+  "restaurantId": zod.number().int()
 })
 
 export const AddFavoriteResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "createdAt": zod.coerce.date()
 })
 
@@ -1228,7 +1242,7 @@ export const exportMyDataResponseOrdersItemPaymentMethodDefault = `cash`;
 export const ExportMyDataResponse = zod.object({
   "generatedAt": zod.coerce.date(),
   "user": zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -1236,31 +1250,41 @@ export const ExportMyDataResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 }),
   "orders": zod.array(zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(exportMyDataResponseOrdersItemPaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -1271,17 +1295,17 @@ export const ExportMyDataResponse = zod.object({
   "pickupCode": zod.string().nullish()
 })),
   "orderItems": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
   "addresses": zod.array(zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "label": zod.string(),
   "fullAddress": zod.string(),
   "details": zod.string().nullish(),
@@ -1289,8 +1313,8 @@ export const ExportMyDataResponse = zod.object({
   "createdAt": zod.coerce.date()
 })),
   "paymentMethods": zod.array(zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "type": zod.string(),
   "label": zod.string(),
   "last4": zod.string().nullish(),
@@ -1299,13 +1323,13 @@ export const ExportMyDataResponse = zod.object({
   "createdAt": zod.coerce.date()
 })),
   "favorites": zod.array(zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "createdAt": zod.coerce.date()
 })),
   "notificationPrefs": zod.union([zod.object({
-  "userId": zod.int(),
+  "userId": zod.number().int(),
   "pushOrders": zod.boolean(),
   "pushPromos": zod.boolean(),
   "emailReceipts": zod.boolean(),
@@ -1315,7 +1339,7 @@ export const ExportMyDataResponse = zod.object({
   "updatedAt": zod.coerce.date()
 }),zod.null()]).optional(),
   "consents": zod.union([zod.object({
-  "userId": zod.int(),
+  "userId": zod.number().int(),
   "cookiesEssential": zod.boolean(),
   "cookiesAnalytics": zod.boolean(),
   "cookiesMarketing": zod.boolean(),
@@ -1334,18 +1358,18 @@ export const ExportMyDataResponse = zod.object({
   "updatedAt": zod.coerce.date()
 }),zod.null()]).optional(),
   "reviews": zod.array(zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "orderId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "orderId": zod.number().int().nullish(),
   "userName": zod.string(),
-  "rating": zod.int(),
+  "rating": zod.number().int(),
   "comment": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })),
   "supportTickets": zod.array(zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "category": zod.string(),
   "subject": zod.string(),
   "message": zod.string(),
@@ -1365,8 +1389,8 @@ export const GetMenuItemParams = zod.object({
 })
 
 export const GetMenuItemResponse = zod.object({
-  "id": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
@@ -1397,8 +1421,8 @@ export const UpdateMenuItemBody = zod.object({
 })
 
 export const UpdateMenuItemResponse = zod.object({
-  "id": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
@@ -1430,8 +1454,8 @@ export const GetProductOptionsParams = zod.object({
 
 export const GetProductOptionsResponse = zod.object({
   "product": zod.object({
-  "id": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
@@ -1442,19 +1466,19 @@ export const GetProductOptionsResponse = zod.object({
   "createdAt": zod.coerce.date()
 }),
   "sizes": zod.array(zod.object({
-  "id": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "name": zod.string(),
   "priceAdjustment": zod.number(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "isAvailable": zod.boolean()
 })),
   "extras": zod.array(zod.object({
-  "id": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "name": zod.string(),
   "price": zod.number(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "isAvailable": zod.boolean()
 }))
 })
@@ -1464,7 +1488,7 @@ export const GetProductOptionsResponse = zod.object({
  * @summary Get notification preferences
  */
 export const GetNotificationPrefsResponse = zod.object({
-  "userId": zod.int(),
+  "userId": zod.number().int(),
   "pushOrders": zod.boolean(),
   "pushPromos": zod.boolean(),
   "emailReceipts": zod.boolean(),
@@ -1488,7 +1512,7 @@ export const UpdateNotificationPrefsBody = zod.object({
 })
 
 export const UpdateNotificationPrefsResponse = zod.object({
-  "userId": zod.int(),
+  "userId": zod.number().int(),
   "pushOrders": zod.boolean(),
   "pushPromos": zod.boolean(),
   "emailReceipts": zod.boolean(),
@@ -1512,7 +1536,7 @@ export const RegisterPushTokenBody = zod.object({
 })
 
 export const RegisterPushTokenResponse = zod.object({
-  "userId": zod.int(),
+  "userId": zod.number().int(),
   "pushToken": zod.string().nullish()
 })
 
@@ -1534,8 +1558,8 @@ export const sendNotificationBodyUserIdsMax = 100;
 
 
 export const SendNotificationBody = zod.object({
-  "userId": zod.int().optional(),
-  "userIds": zod.array(zod.int()).max(sendNotificationBodyUserIdsMax).optional(),
+  "userId": zod.number().int().optional(),
+  "userIds": zod.array(zod.number().int()).max(sendNotificationBodyUserIdsMax).optional(),
   "title": zod.string(),
   "body": zod.string(),
   "data": zod.record(zod.string(), zod.unknown()).optional()
@@ -1543,9 +1567,9 @@ export const SendNotificationBody = zod.object({
 
 export const SendNotificationResponse = zod.object({
   "success": zod.boolean(),
-  "recipients": zod.int(),
-  "inAppSaved": zod.int(),
-  "remoteSent": zod.int()
+  "recipients": zod.number().int(),
+  "inAppSaved": zod.number().int(),
+  "remoteSent": zod.number().int()
 })
 
 
@@ -1563,18 +1587,18 @@ export const updateCartItemBodySelectedExtraIdsMax = 30;
 
 
 export const UpdateCartItemBody = zod.object({
-  "quantity": zod.int().min(1).max(updateCartItemBodyQuantityMax).optional(),
-  "selectedSizeId": zod.int().nullish(),
-  "selectedExtraIds": zod.array(zod.int()).max(updateCartItemBodySelectedExtraIdsMax).optional()
+  "quantity": zod.number().int().min(1).max(updateCartItemBodyQuantityMax).optional(),
+  "selectedSizeId": zod.number().int().nullish(),
+  "selectedExtraIds": zod.array(zod.number().int()).max(updateCartItemBodySelectedExtraIdsMax).optional()
 })
 
 export const UpdateCartItemResponse = zod.object({
-  "id": zod.int(),
-  "cartId": zod.int(),
-  "menuItemId": zod.int(),
-  "quantity": zod.int(),
-  "selectedSizeId": zod.int().nullish(),
-  "selectedExtraIds": zod.array(zod.int()).nullish(),
+  "id": zod.number().int(),
+  "cartId": zod.number().int(),
+  "menuItemId": zod.number().int(),
+  "quantity": zod.number().int(),
+  "selectedSizeId": zod.number().int().nullish(),
+  "selectedExtraIds": zod.array(zod.number().int()).nullish(),
   "unitPrice": zod.number(),
   "subtotal": zod.number()
 })
@@ -1594,26 +1618,36 @@ export const ListOrdersQueryParams = zod.object({
 export const listOrdersResponsePaymentMethodDefault = `cash`;
 
 export const ListOrdersResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(listOrdersResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -1633,41 +1667,51 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
 export const createOrderBodyPaymentMethodDefault = `cash`;
 
 export const CreateOrderBody = zod.object({
-  "restaurantId": zod.int(),
+  "restaurantId": zod.number().int(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().optional(),
   "paymentMethod": zod.enum(['cash', 'card']).default(createOrderBodyPaymentMethodDefault),
   "items": zod.array(zod.object({
-  "menuItemId": zod.int(),
-  "quantity": zod.int(),
-  "selectedSizeId": zod.int().optional(),
-  "selectedExtraIds": zod.array(zod.int()).optional()
+  "menuItemId": zod.number().int(),
+  "quantity": zod.number().int(),
+  "selectedSizeId": zod.number().int().optional(),
+  "selectedExtraIds": zod.array(zod.number().int()).optional()
 }))
 })
 
 export const createOrderResponsePaymentMethodDefault = `cash`;
 
 export const CreateOrderResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(createOrderResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -1689,26 +1733,36 @@ export const GetOrderParams = zod.object({
 export const getOrderResponsePaymentMethodDefault = `cash`;
 
 export const GetOrderResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(getOrderResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -1728,32 +1782,42 @@ export const AcceptOrderDeliveryParams = zod.object({
 })
 
 export const AcceptOrderDeliveryBody = zod.object({
-  "driverId": zod.int()
+  "driverId": zod.number().int()
 })
 
 export const acceptOrderDeliveryResponsePaymentMethodDefault = `cash`;
 
 export const AcceptOrderDeliveryResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(acceptOrderDeliveryResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -1782,26 +1846,36 @@ export const ConfirmOrderDeliveryBody = zod.object({
 export const confirmOrderDeliveryResponsePaymentMethodDefault = `cash`;
 
 export const ConfirmOrderDeliveryResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(confirmOrderDeliveryResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -1852,32 +1926,42 @@ export const UpdateOrderStatusParams = zod.object({
 
 export const UpdateOrderStatusBody = zod.object({
   "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
-  "driverId": zod.int().optional()
+  "driverId": zod.number().int().optional()
 })
 
 export const updateOrderStatusResponsePaymentMethodDefault = `cash`;
 
 export const UpdateOrderStatusResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(updateOrderStatusResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -1898,32 +1982,42 @@ export const UpdateOrderStepParams = zod.object({
 
 export const UpdateOrderStepBody = zod.object({
   "step": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'in_delivery', 'delivered', 'cancelled']),
-  "driverId": zod.int().optional()
+  "driverId": zod.number().int().optional()
 })
 
 export const updateOrderStepResponsePaymentMethodDefault = `cash`;
 
 export const UpdateOrderStepResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(updateOrderStepResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -1941,26 +2035,36 @@ export const UpdateOrderStepResponse = zod.object({
 export const getActiveOrdersResponsePaymentMethodDefault = `cash`;
 
 export const GetActiveOrdersResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(getActiveOrdersResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -1979,26 +2083,36 @@ export const GetActiveOrdersResponse = zod.array(GetActiveOrdersResponseItem)
 export const getAvailableOrdersResponsePaymentMethodDefault = `cash`;
 
 export const GetAvailableOrdersResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "driverId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "driverId": zod.number().int().nullish(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
-  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
+  "discountAmount": zod.number(),
+  "currency": zod.string(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "serviceFee": zod.number(),
+  "commissionRate": zod.number(),
+  "merchantEarning": zod.number(),
+  "driverEarning": zod.number(),
+  "jatekEarning": zod.number(),
+  "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(getAvailableOrdersResponsePaymentMethodDefault),
-  "estimatedDeliveryTime": zod.int().nullish(),
+  "estimatedDeliveryTime": zod.number().int().nullish(),
   "items": zod.array(zod.object({
-  "id": zod.int(),
-  "orderId": zod.int(),
-  "menuItemId": zod.int(),
+  "id": zod.number().int(),
+  "orderId": zod.number().int(),
+  "menuItemId": zod.number().int(),
   "menuItemName": zod.string(),
-  "quantity": zod.int(),
+  "quantity": zod.number().int(),
   "unitPrice": zod.number(),
   "totalPrice": zod.number()
 })),
@@ -2015,8 +2129,8 @@ export const GetAvailableOrdersResponse = zod.array(GetAvailableOrdersResponseIt
  * @summary List current user's payment methods
  */
 export const ListPaymentMethodsResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "type": zod.string(),
   "label": zod.string(),
   "last4": zod.string().nullish(),
@@ -2039,8 +2153,8 @@ export const CreatePaymentMethodBody = zod.object({
 })
 
 export const CreatePaymentMethodResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "type": zod.string(),
   "label": zod.string(),
   "last4": zod.string().nullish(),
@@ -2066,8 +2180,8 @@ export const UpdatePaymentMethodBody = zod.object({
 })
 
 export const UpdatePaymentMethodResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "type": zod.string(),
   "label": zod.string(),
   "last4": zod.string().nullish(),
@@ -2099,15 +2213,15 @@ export const createQuoteBodyDescriptionMax = 4000;
 
 
 export const CreateQuoteBody = zod.object({
-  "restaurantId": zod.int(),
+  "restaurantId": zod.number().int(),
   "subject": zod.string().min(createQuoteBodySubjectMin).max(createQuoteBodySubjectMax),
   "description": zod.string().min(createQuoteBodyDescriptionMin).max(createQuoteBodyDescriptionMax)
 })
 
 export const CreateQuoteResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
   "userPhone": zod.string().nullish(),
@@ -2129,9 +2243,9 @@ export const ListQuotesQueryParams = zod.object({
 })
 
 export const ListQuotesResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
   "userPhone": zod.string().nullish(),
@@ -2154,9 +2268,9 @@ export const GetQuoteParams = zod.object({
 })
 
 export const GetQuoteResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
   "userPhone": zod.string().nullish(),
@@ -2190,9 +2304,9 @@ export const UpdateQuoteBody = zod.object({
 })
 
 export const UpdateQuoteResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "restaurantName": zod.string(),
   "userName": zod.string(),
   "userPhone": zod.string().nullish(),
@@ -2233,8 +2347,8 @@ export const ListRestaurantsQueryParams = zod.object({
 })
 
 export const ListRestaurantsResponseItem = zod.object({
-  "id": zod.int(),
-  "ownerId": zod.int(),
+  "id": zod.number().int(),
+  "ownerId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string(),
@@ -2246,11 +2360,11 @@ export const ListRestaurantsResponseItem = zod.object({
   "businessType": zod.string(),
   "isLocal": zod.boolean(),
   "isOpen": zod.boolean(),
-  "deliveryTime": zod.int().nullish(),
+  "deliveryTime": zod.number().int().nullish(),
   "deliveryFee": zod.number().nullish(),
   "minimumOrder": zod.number().nullish(),
   "rating": zod.number().nullish(),
-  "reviewCount": zod.int(),
+  "reviewCount": zod.number().int(),
   "isVerified": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "legalName": zod.string().nullish(),
@@ -2277,14 +2391,14 @@ export const CreateRestaurantBody = zod.object({
   "category": zod.string(),
   "businessType": zod.string().optional(),
   "isLocal": zod.boolean().optional(),
-  "deliveryTime": zod.int().optional(),
+  "deliveryTime": zod.number().int().optional(),
   "deliveryFee": zod.number().optional(),
   "minimumOrder": zod.number().optional()
 })
 
 export const CreateRestaurantResponse = zod.object({
-  "id": zod.int(),
-  "ownerId": zod.int(),
+  "id": zod.number().int(),
+  "ownerId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string(),
@@ -2296,11 +2410,11 @@ export const CreateRestaurantResponse = zod.object({
   "businessType": zod.string(),
   "isLocal": zod.boolean(),
   "isOpen": zod.boolean(),
-  "deliveryTime": zod.int().nullish(),
+  "deliveryTime": zod.number().int().nullish(),
   "deliveryFee": zod.number().nullish(),
   "minimumOrder": zod.number().nullish(),
   "rating": zod.number().nullish(),
-  "reviewCount": zod.int(),
+  "reviewCount": zod.number().int(),
   "isVerified": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "legalName": zod.string().nullish(),
@@ -2319,8 +2433,8 @@ export const GetRestaurantParams = zod.object({
 })
 
 export const GetRestaurantResponse = zod.object({
-  "id": zod.int(),
-  "ownerId": zod.int(),
+  "id": zod.number().int(),
+  "ownerId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string(),
@@ -2332,11 +2446,11 @@ export const GetRestaurantResponse = zod.object({
   "businessType": zod.string(),
   "isLocal": zod.boolean(),
   "isOpen": zod.boolean(),
-  "deliveryTime": zod.int().nullish(),
+  "deliveryTime": zod.number().int().nullish(),
   "deliveryFee": zod.number().nullish(),
   "minimumOrder": zod.number().nullish(),
   "rating": zod.number().nullish(),
-  "reviewCount": zod.int(),
+  "reviewCount": zod.number().int(),
   "isVerified": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "legalName": zod.string().nullish(),
@@ -2367,15 +2481,15 @@ export const UpdateRestaurantBody = zod.object({
   "businessType": zod.string().optional(),
   "isLocal": zod.boolean().optional(),
   "isOpen": zod.boolean().optional(),
-  "deliveryTime": zod.int().optional(),
+  "deliveryTime": zod.number().int().optional(),
   "deliveryFee": zod.number().optional(),
   "minimumOrder": zod.number().optional(),
   "isVerified": zod.boolean().optional()
 })
 
 export const UpdateRestaurantResponse = zod.object({
-  "id": zod.int(),
-  "ownerId": zod.int(),
+  "id": zod.number().int(),
+  "ownerId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string(),
@@ -2387,11 +2501,11 @@ export const UpdateRestaurantResponse = zod.object({
   "businessType": zod.string(),
   "isLocal": zod.boolean(),
   "isOpen": zod.boolean(),
-  "deliveryTime": zod.int().nullish(),
+  "deliveryTime": zod.number().int().nullish(),
   "deliveryFee": zod.number().nullish(),
   "minimumOrder": zod.number().nullish(),
   "rating": zod.number().nullish(),
-  "reviewCount": zod.int(),
+  "reviewCount": zod.number().int(),
   "isVerified": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "legalName": zod.string().nullish(),
@@ -2422,9 +2536,9 @@ export const GetRestaurantHeaderParams = zod.object({
 
 export const GetRestaurantHeaderResponse = zod.object({
   "id": zod.string(),
-  "headerUrl": zod.url(),
-  "fallbacks": zod.array(zod.url()),
-  "placeholderUrl": zod.url()
+  "headerUrl": zod.string().url(),
+  "fallbacks": zod.array(zod.string().url()),
+  "placeholderUrl": zod.string().url()
 })
 
 
@@ -2444,12 +2558,12 @@ export const completeRestaurantProfileBodyIceRegExp = new RegExp('^\\d{8,15}$');
 export const CompleteRestaurantProfileBody = zod.object({
   "legalName": zod.string().min(completeRestaurantProfileBodyLegalNameMin),
   "ice": zod.string().regex(completeRestaurantProfileBodyIceRegExp),
-  "printerEmail": zod.email().nullish()
+  "printerEmail": zod.string().email().nullish()
 })
 
 export const CompleteRestaurantProfileResponse = zod.object({
-  "id": zod.int(),
-  "ownerId": zod.int(),
+  "id": zod.number().int(),
+  "ownerId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string(),
@@ -2461,11 +2575,11 @@ export const CompleteRestaurantProfileResponse = zod.object({
   "businessType": zod.string(),
   "isLocal": zod.boolean(),
   "isOpen": zod.boolean(),
-  "deliveryTime": zod.int().nullish(),
+  "deliveryTime": zod.number().int().nullish(),
   "deliveryFee": zod.number().nullish(),
   "minimumOrder": zod.number().nullish(),
   "rating": zod.number().nullish(),
-  "reviewCount": zod.int(),
+  "reviewCount": zod.number().int(),
   "isVerified": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "legalName": zod.string().nullish(),
@@ -2484,12 +2598,12 @@ export const GetRestaurantStatsParams = zod.object({
 })
 
 export const GetRestaurantStatsResponse = zod.object({
-  "totalOrders": zod.int(),
-  "completedOrders": zod.int(),
+  "totalOrders": zod.number().int(),
+  "completedOrders": zod.number().int(),
   "totalRevenue": zod.number(),
   "averageRating": zod.number().nullish(),
-  "totalReviews": zod.int(),
-  "pendingOrders": zod.int()
+  "totalReviews": zod.number().int(),
+  "pendingOrders": zod.number().int()
 })
 
 
@@ -2505,8 +2619,8 @@ export const ListMenuItemsQueryParams = zod.object({
 })
 
 export const ListMenuItemsResponseItem = zod.object({
-  "id": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
@@ -2538,8 +2652,8 @@ export const CreateMenuItemBody = zod.object({
 })
 
 export const CreateMenuItemResponse = zod.object({
-  "id": zod.int(),
-  "restaurantId": zod.int(),
+  "id": zod.number().int(),
+  "restaurantId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
@@ -2555,8 +2669,8 @@ export const CreateMenuItemResponse = zod.object({
  * @summary Get featured/top restaurants
  */
 export const GetFeaturedRestaurantsResponseItem = zod.object({
-  "id": zod.int(),
-  "ownerId": zod.int(),
+  "id": zod.number().int(),
+  "ownerId": zod.number().int(),
   "name": zod.string(),
   "description": zod.string().nullish(),
   "address": zod.string(),
@@ -2568,11 +2682,11 @@ export const GetFeaturedRestaurantsResponseItem = zod.object({
   "businessType": zod.string(),
   "isLocal": zod.boolean(),
   "isOpen": zod.boolean(),
-  "deliveryTime": zod.int().nullish(),
+  "deliveryTime": zod.number().int().nullish(),
   "deliveryFee": zod.number().nullish(),
   "minimumOrder": zod.number().nullish(),
   "rating": zod.number().nullish(),
-  "reviewCount": zod.int(),
+  "reviewCount": zod.number().int(),
   "isVerified": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "legalName": zod.string().nullish(),
@@ -2593,12 +2707,12 @@ export const ListReviewsQueryParams = zod.object({
 })
 
 export const ListReviewsResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "orderId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "orderId": zod.number().int().nullish(),
   "userName": zod.string(),
-  "rating": zod.int(),
+  "rating": zod.number().int(),
   "comment": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -2610,19 +2724,19 @@ export const ListReviewsResponse = zod.array(ListReviewsResponseItem)
  * @summary Create a review
  */
 export const CreateReviewBody = zod.object({
-  "restaurantId": zod.int(),
-  "orderId": zod.int().optional(),
-  "rating": zod.int(),
+  "restaurantId": zod.number().int(),
+  "orderId": zod.number().int().optional(),
+  "rating": zod.number().int(),
   "comment": zod.string().optional()
 })
 
 export const CreateReviewResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
-  "restaurantId": zod.int(),
-  "orderId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "orderId": zod.number().int().nullish(),
   "userName": zod.string(),
-  "rating": zod.int(),
+  "rating": zod.number().int(),
   "comment": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -2643,11 +2757,11 @@ export const DeleteReviewResponse = zod.void()
  * @summary Get current user rewards/points
  */
 export const GetMyRewardsResponse = zod.object({
-  "userId": zod.int(),
-  "loyaltyPoints": zod.int(),
+  "userId": zod.number().int(),
+  "loyaltyPoints": zod.number().int(),
   "tier": zod.string(),
-  "nextTierPoints": zod.int(),
-  "totalOrdersCount": zod.int(),
+  "nextTierPoints": zod.number().int(),
+  "totalOrdersCount": zod.number().int(),
   "totalSpent": zod.number()
 })
 
@@ -2687,8 +2801,8 @@ export const UploadImageResponse = zod.object({
  * @summary List support tickets
  */
 export const ListSupportTicketsResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "category": zod.string(),
   "subject": zod.string(),
   "message": zod.string(),
@@ -2710,8 +2824,8 @@ export const CreateSupportTicketBody = zod.object({
 })
 
 export const CreateSupportTicketResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "category": zod.string(),
   "subject": zod.string(),
   "message": zod.string(),
@@ -2735,8 +2849,8 @@ export const UpdateSupportTicketBody = zod.object({
 })
 
 export const UpdateSupportTicketResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "category": zod.string(),
   "subject": zod.string(),
   "message": zod.string(),
@@ -2767,7 +2881,7 @@ export const ListUsersQueryParams = zod.object({
 })
 
 export const ListUsersResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -2775,9 +2889,9 @@ export const ListUsersResponseItem = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
@@ -2790,7 +2904,7 @@ export const GetUserParams = zod.object({
 })
 
 export const GetUserResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -2798,9 +2912,9 @@ export const GetUserResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 
 
@@ -2821,7 +2935,7 @@ export const UpdateUserBody = zod.object({
 })
 
 export const UpdateUserResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
@@ -2829,9 +2943,9 @@ export const UpdateUserResponse = zod.object({
   "address": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "loyaltyPoints": zod.int(),
+  "loyaltyPoints": zod.number().int(),
   "createdAt": zod.coerce.date(),
-  "assignedShopId": zod.int().nullish()
+  "assignedShopId": zod.number().int().nullish()
 })
 
 
@@ -2850,29 +2964,29 @@ export const DeleteUserResponse = zod.void()
  * @summary List active categories with sub-categories
  */
 export const ListCategoriesResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "slug": zod.string(),
   "icon": zod.string(),
   "accentColor": zod.string(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "businessType": zod.string(),
   "type": zod.enum(['category', 'service_shortcut', 'subcategory']).optional(),
   "bannerImageUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "subCategories": zod.array(zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "slug": zod.string(),
   "icon": zod.string(),
   "accentColor": zod.string(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "businessType": zod.string(),
   "type": zod.enum(['category', 'service_shortcut', 'subcategory']).optional(),
   "bannerImageUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })).optional(),
@@ -2890,7 +3004,7 @@ export const ListAdsQueryParams = zod.object({
 })
 
 export const ListAdsResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "type": zod.string(),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
@@ -2901,7 +3015,7 @@ export const ListAdsResponseItem = zod.object({
   "imageUrl": zod.string().nullish(),
   "linkUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })
@@ -2912,18 +3026,18 @@ export const ListAdsResponse = zod.array(ListAdsResponseItem)
  * @summary List active shorts
  */
 export const ListShortsResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "title": zod.string(),
   "imageUrl": zod.string().nullish(),
   "videoUrl": zod.string().nullish(),
-  "restaurantId": zod.int().nullish(),
+  "restaurantId": zod.number().int().nullish(),
   "restaurantName": zod.string().nullish(),
   "audioCodec": zod.string().nullish(),
-  "audioBitrate": zod.int().nullish(),
+  "audioBitrate": zod.number().int().nullish(),
   "durationSeconds": zod.number().nullish(),
   "audio": zod.object({
   "codec": zod.string().nullish(),
-  "bitrate": zod.int().nullish(),
+  "bitrate": zod.number().int().nullish(),
   "duration": zod.number().nullish()
 }).optional(),
   "stream": zod.object({
@@ -2931,7 +3045,7 @@ export const ListShortsResponseItem = zod.object({
   "contentType": zod.string().optional()
 }).optional(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })
@@ -2942,29 +3056,29 @@ export const ListShortsResponse = zod.array(ListShortsResponseItem)
  * @summary List all categories (admin)
  */
 export const ListBackendCategoriesAllResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "slug": zod.string(),
   "icon": zod.string(),
   "accentColor": zod.string(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "businessType": zod.string(),
   "type": zod.enum(['category', 'service_shortcut', 'subcategory']).optional(),
   "bannerImageUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "subCategories": zod.array(zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "slug": zod.string(),
   "icon": zod.string(),
   "accentColor": zod.string(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "businessType": zod.string(),
   "type": zod.enum(['category', 'service_shortcut', 'subcategory']).optional(),
   "bannerImageUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })).optional(),
@@ -2986,26 +3100,26 @@ export const UpdateBackendCategoryBody = zod.object({
   "slug": zod.string(),
   "icon": zod.string().optional(),
   "accentColor": zod.string().optional(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "businessType": zod.string().optional(),
   "type": zod.enum(['category', 'service_shortcut', 'subcategory']).optional(),
   "bannerImageUrl": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
-  "sortOrder": zod.int().optional()
+  "sortOrder": zod.number().int().optional()
 })
 
 export const UpdateBackendCategoryResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "name": zod.string(),
   "slug": zod.string(),
   "icon": zod.string(),
   "accentColor": zod.string(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "businessType": zod.string(),
   "type": zod.enum(['category', 'service_shortcut', 'subcategory']).optional(),
   "bannerImageUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })
@@ -3025,7 +3139,7 @@ export const DeleteBackendCategoryResponse = zod.void()
  * @summary List all ads (admin)
  */
 export const ListBackendAdsResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "type": zod.string(),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
@@ -3036,7 +3150,7 @@ export const ListBackendAdsResponseItem = zod.object({
   "imageUrl": zod.string().nullish(),
   "linkUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })
@@ -3057,11 +3171,11 @@ export const CreateBackendAdBody = zod.object({
   "imageUrl": zod.string().optional(),
   "linkUrl": zod.string().optional(),
   "isActive": zod.boolean().optional(),
-  "sortOrder": zod.int().optional()
+  "sortOrder": zod.number().int().optional()
 })
 
 export const CreateBackendAdResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "type": zod.string(),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
@@ -3072,7 +3186,7 @@ export const CreateBackendAdResponse = zod.object({
   "imageUrl": zod.string().nullish(),
   "linkUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })
@@ -3096,11 +3210,11 @@ export const UpdateBackendAdBody = zod.object({
   "imageUrl": zod.string().optional(),
   "linkUrl": zod.string().optional(),
   "isActive": zod.boolean().optional(),
-  "sortOrder": zod.int().optional()
+  "sortOrder": zod.number().int().optional()
 })
 
 export const UpdateBackendAdResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "type": zod.string(),
   "title": zod.string(),
   "subtitle": zod.string().nullish(),
@@ -3111,7 +3225,7 @@ export const UpdateBackendAdResponse = zod.object({
   "imageUrl": zod.string().nullish(),
   "linkUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })
@@ -3131,18 +3245,18 @@ export const DeleteBackendAdResponse = zod.void()
  * @summary List all shorts (admin)
  */
 export const ListBackendShortsResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "title": zod.string(),
   "imageUrl": zod.string().nullish(),
   "videoUrl": zod.string().nullish(),
-  "restaurantId": zod.int().nullish(),
+  "restaurantId": zod.number().int().nullish(),
   "restaurantName": zod.string().nullish(),
   "audioCodec": zod.string().nullish(),
-  "audioBitrate": zod.int().nullish(),
+  "audioBitrate": zod.number().int().nullish(),
   "durationSeconds": zod.number().nullish(),
   "audio": zod.object({
   "codec": zod.string().nullish(),
-  "bitrate": zod.int().nullish(),
+  "bitrate": zod.number().int().nullish(),
   "duration": zod.number().nullish()
 }).optional(),
   "stream": zod.object({
@@ -3150,7 +3264,7 @@ export const ListBackendShortsResponseItem = zod.object({
   "contentType": zod.string().optional()
 }).optional(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })
@@ -3164,25 +3278,25 @@ export const CreateBackendShortBody = zod.object({
   "title": zod.string(),
   "imageUrl": zod.string().optional(),
   "videoUrl": zod.string().optional(),
-  "restaurantId": zod.int().optional(),
+  "restaurantId": zod.number().int().optional(),
   "restaurantName": zod.string().optional(),
   "isActive": zod.boolean().optional(),
-  "sortOrder": zod.int().optional()
+  "sortOrder": zod.number().int().optional()
 })
 
 export const CreateBackendShortResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "title": zod.string(),
   "imageUrl": zod.string().nullish(),
   "videoUrl": zod.string().nullish(),
-  "restaurantId": zod.int().nullish(),
+  "restaurantId": zod.number().int().nullish(),
   "restaurantName": zod.string().nullish(),
   "audioCodec": zod.string().nullish(),
-  "audioBitrate": zod.int().nullish(),
+  "audioBitrate": zod.number().int().nullish(),
   "durationSeconds": zod.number().nullish(),
   "audio": zod.object({
   "codec": zod.string().nullish(),
-  "bitrate": zod.int().nullish(),
+  "bitrate": zod.number().int().nullish(),
   "duration": zod.number().nullish()
 }).optional(),
   "stream": zod.object({
@@ -3190,7 +3304,7 @@ export const CreateBackendShortResponse = zod.object({
   "contentType": zod.string().optional()
 }).optional(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })
@@ -3207,25 +3321,25 @@ export const UpdateBackendShortBody = zod.object({
   "title": zod.string(),
   "imageUrl": zod.string().optional(),
   "videoUrl": zod.string().optional(),
-  "restaurantId": zod.int().optional(),
+  "restaurantId": zod.number().int().optional(),
   "restaurantName": zod.string().optional(),
   "isActive": zod.boolean().optional(),
-  "sortOrder": zod.int().optional()
+  "sortOrder": zod.number().int().optional()
 })
 
 export const UpdateBackendShortResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "title": zod.string(),
   "imageUrl": zod.string().nullish(),
   "videoUrl": zod.string().nullish(),
-  "restaurantId": zod.int().nullish(),
+  "restaurantId": zod.number().int().nullish(),
   "restaurantName": zod.string().nullish(),
   "audioCodec": zod.string().nullish(),
-  "audioBitrate": zod.int().nullish(),
+  "audioBitrate": zod.number().int().nullish(),
   "durationSeconds": zod.number().nullish(),
   "audio": zod.object({
   "codec": zod.string().nullish(),
-  "bitrate": zod.int().nullish(),
+  "bitrate": zod.number().int().nullish(),
   "duration": zod.number().nullish()
 }).optional(),
   "stream": zod.object({
@@ -3233,7 +3347,7 @@ export const UpdateBackendShortResponse = zod.object({
   "contentType": zod.string().optional()
 }).optional(),
   "isActive": zod.boolean(),
-  "sortOrder": zod.int(),
+  "sortOrder": zod.number().int(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })

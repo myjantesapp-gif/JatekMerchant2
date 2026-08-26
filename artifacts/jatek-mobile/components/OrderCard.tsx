@@ -2,13 +2,18 @@ import React from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
+import { formatMad } from "@/lib/money";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   pending: { label: "Pending", color: "#B58900", icon: "time-outline" },
   accepted: { label: "Accepted", color: "#00C2C7", icon: "checkmark-circle-outline" },
+  confirmed: { label: "Confirmed", color: "#2563EB", icon: "checkmark-circle-outline" },
   preparing: { label: "Preparing", color: "#00C2C7", icon: "restaurant-outline" },
   ready: { label: "Ready", color: "#00C2C7", icon: "bag-check-outline" },
+  driver_at_restaurant: { label: "Driver at restaurant", color: "#0284C7", icon: "location-outline" },
   picked_up: { label: "On the way", color: "#E2006A", icon: "bicycle-outline" },
+  en_route: { label: "On the way", color: "#E2006A", icon: "bicycle-outline" },
+  out_for_delivery: { label: "Delivery in progress", color: "#E2006A", icon: "bicycle-outline" },
   delivered: { label: "Delivered", color: "#0F172A", icon: "checkmark-done-circle-outline" },
   cancelled: { label: "Cancelled", color: "#64748B", icon: "close-circle-outline" },
 };
@@ -64,7 +69,7 @@ export function OrderCard({ order, onPress }: OrderCardProps) {
           {summary}
         </Text>
         <Text style={[styles.total, { color: colors.primary }]}>
-          {order.total.toFixed(0)} MAD
+          {formatMad(order.total)} MAD
         </Text>
       </View>
     </TouchableOpacity>
