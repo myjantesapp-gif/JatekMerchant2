@@ -145,6 +145,100 @@ export class ObjectNotFoundError extends Error {
   }
 }
 
+export type ObjectStorageErrorCode =
+  | "STORAGE_PERMISSION_DENIED"
+  | "STORAGE_NOT_FOUND"
+  | "STORAGE_UNAVAILABLE";
+
+/**
+ * Error raised by the managed App Storage client.
+ *
+ * The SDK deliberately returns a Result for Google errors, so callers must
+ * turn a failed result into an exception before it reaches an HTTP handler.
+ * Keeping the public message separate from the provider message means the
+ * dashboard gets a useful diagnosis without exposing bucket or identity
+ * details from the provider response.
+ */
+export class ObjectStorageError extends Error {
+  readonly code: ObjectStorageErrorCode;
+  readonly statusCode?: number;
+  readonly operation: string;
+  readonly providerMessage: string;
+
+  constructor(
+    operation: string,
+    code: ObjectStorageErrorCode,
+    message: string,
+    providerMessage: string,
+    statusCode?: number,
+  ) {
+    super(message);
+    this.name = "ObjectStorageError";
+    this.code = code;
+    this.statusCode = statusCode;
+    this.operation = operation;
+    this.providerMessage = providerMessage;
+    Object.setPrototypeOf(this, ObjectStorageError.prototype);
+  }
+}
+
+function providerStatusCode(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const candidate = error as { statusCode?: unknown; code?: unknown };
+  if (typeof candidate.statusCode === "number") return candidate.statusCode;
+  if (typeof candidate.code === "number") return candidate.code;
+  if (typeof candidate.code === "string" && /^\d+$/.test(candidate.code)) {
+    return Number(candidate.code);
+  }
+  return undefined;
+}
+
+function providerErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
+  return "Unknown App Storage error";
+}
+
+function statusFromProviderMessage(message: string): number | undefined {
+  const match = message.match(/(?:code|status(?:Code)?)["\s:=]+["']?([45]\d{2})/i);
+  return match ? Number(match[1]) : undefined;
+}
+
+function toObjectStorageError(operation: string, error: unknown): ObjectStorageError {
+  if (error instanceof ObjectStorageError) return error;
+
+  const providerMessage = providerErrorMessage(error);
+  const statusCode = providerStatusCode(error) ?? statusFromProviderMessage(providerMessage);
+  if (statusCode === 403) {
+    return new ObjectStorageError(
+      operation,
+      "STORAGE_PERMISSION_DENIED",
+      `App Storage a refusé l’écriture (${statusCode}). Vérifiez que le bucket géré est accessible en écriture par ce déploiement.`,
+      providerMessage,
+      statusCode,
+    );
+  }
+  if (statusCode === 404) {
+    return new ObjectStorageError(
+      operation,
+      "STORAGE_NOT_FOUND",
+      "Le bucket App Storage géré est introuvable. Vérifiez la configuration du stockage de l’application.",
+      providerMessage,
+      statusCode,
+    );
+  }
+  return new ObjectStorageError(
+    operation,
+    "STORAGE_UNAVAILABLE",
+    `App Storage n’a pas pu ${operation === "upload" ? "enregistrer le fichier" : "lire le fichier"}. Vérifiez la configuration du stockage puis réessayez.`,
+    providerMessage,
+    statusCode,
+  );
+}
+
 export class ObjectStorageService {
   constructor() {}
 
@@ -203,10 +297,15 @@ export class ObjectStorageService {
     rangeHeader?: string,
   ): Promise<Response> {
     if ("objectName" in file) {
-      const result = await managedObjectStorageClient.downloadAsBytes(file.objectName);
+      let result;
+      try {
+        result = await managedObjectStorageClient.downloadAsBytes(file.objectName);
+      } catch (error) {
+        throw toObjectStorageError("read", error);
+      }
       if (!result.ok) {
         if (result.error.statusCode === 404) throw new ObjectNotFoundError();
-        throw new Error(`Unable to download object: ${result.error.message}`);
+        throw toObjectStorageError("read", result.error);
       }
 
       const [buffer] = result.value;
@@ -303,8 +402,17 @@ export class ObjectStorageService {
     }
 
     const entityId = parts.slice(1).join("/");
-    const exists = await managedObjectStorageClient.exists(entityId);
+    let exists;
+    try {
+      exists = await managedObjectStorageClient.exists(entityId);
+    } catch (error) {
+      throw toObjectStorageError("read", error);
+    }
+    if (!exists.ok && exists.error.statusCode === 404) {
+      throw new ObjectNotFoundError();
+    }
     if (!exists.ok || !exists.value) {
+      if (!exists.ok) throw toObjectStorageError("read", exists.error);
       throw new ObjectNotFoundError();
     }
     return { objectName: entityId };
@@ -322,11 +430,19 @@ export class ObjectStorageService {
   ): Promise<string> {
     const objectId = randomUUID();
     const objectName = `${folder}/${objectId}`;
-    const result = await managedObjectStorageClient.uploadFromBytes(objectName, buffer, {
-      compress: false,
-    });
+    let result;
+    try {
+      // The managed SDK resolves the writable App Storage bucket itself.
+      // Its upload API intentionally has no metadata argument; playback
+      // responses use the validated bytes to derive the MIME type instead.
+      result = await managedObjectStorageClient.uploadFromBytes(objectName, buffer, {
+        compress: false,
+      });
+    } catch (error) {
+      throw toObjectStorageError("upload", error);
+    }
     if (!result.ok) {
-      throw new Error(`Unable to upload object: ${result.error.message}`);
+      throw toObjectStorageError("upload", result.error);
     }
 
     return `/objects/${objectName}`;

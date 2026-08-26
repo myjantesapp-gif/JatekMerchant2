@@ -75,7 +75,7 @@ app.use(
     origin: corsOriginCheck,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Jatek-Media-Kind"],
     maxAge: 86400,
   }),
 );
@@ -161,8 +161,10 @@ app.use("/api/auth", authLimiter);
 app.use("/api", apiLimiter);
 
 app.use((req, res, next) => {
-  req.setTimeout(30_000);
-  res.setTimeout(30_000);
+  const isMediaUpload = req.originalUrl.split("?")[0].startsWith("/api/storage/uploads/");
+  const timeout = isMediaUpload ? 120_000 : 30_000;
+  req.setTimeout(timeout);
+  res.setTimeout(timeout);
   next();
 });
 

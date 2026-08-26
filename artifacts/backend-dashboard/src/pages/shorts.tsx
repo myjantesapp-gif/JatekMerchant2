@@ -252,7 +252,7 @@ export default function Shorts() {
                  {s.videoUrl
                    ? getYouTubeEmbedUrl(s.videoUrl)
                      ? <iframe src={getYouTubeEmbedUrl(s.videoUrl) ?? undefined} title={`Aperçu YouTube — ${s.title}`} className="absolute inset-0 h-full w-full border-0" allow="encrypted-media; picture-in-picture" />
-                     : <video src={s.videoUrl} className="absolute inset-0 h-full w-full object-cover" muted playsInline preload="metadata" />
+                      : <video src={s.videoUrl} className="absolute inset-0 h-full w-full object-cover" muted playsInline preload="metadata" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                   : s.imageUrl
                     ? <img src={s.imageUrl} alt={s.title} className="absolute inset-0 w-full h-full object-cover" />
                     : <div className="absolute inset-0 flex items-center justify-center"><Film className="h-8 w-8 text-zinc-600" /></div>
@@ -305,7 +305,7 @@ export default function Shorts() {
                               {s.videoUrl
                                 ? getYouTubeEmbedUrl(s.videoUrl)
                                   ? <iframe src={getYouTubeEmbedUrl(s.videoUrl) ?? undefined} title={`Aperçu YouTube — ${s.title}`} className="h-full w-full border-0" allow="encrypted-media; picture-in-picture" />
-                                  : <video src={s.videoUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                                  : <video src={s.videoUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                                : s.imageUrl
                                  ? <img src={s.imageUrl} alt={s.title} className="h-full w-full object-cover" />
                                  : <Film className="h-4 w-4 text-zinc-400" />

@@ -166,7 +166,14 @@ export function VideoUploadField({
             />
           </div>
         ) : (
-          <video className="h-44 w-full rounded-lg border bg-black object-cover" controls muted playsInline preload="metadata">
+          <video
+            className="h-44 w-full rounded-lg border bg-black object-cover"
+            controls
+            muted
+            playsInline
+            preload="metadata"
+            onError={() => setError("Cette vidéo ne peut pas être lue. Vérifiez que le fichier est encore disponible dans App Storage.")}
+          >
             <source src={previewUrl} />
             Votre navigateur ne peut pas lire cette vidéo.
           </video>

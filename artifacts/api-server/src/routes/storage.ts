@@ -3,6 +3,7 @@ import { Readable } from "stream";
 import {
   ObjectStorageService,
   ObjectNotFoundError,
+  ObjectStorageError,
   getMediaFolder,
   type MediaKind,
 } from "../lib/objectStorage";
@@ -110,6 +111,38 @@ function getMediaKind(req: express.Request, fallback: MediaKind): MediaKind {
   return fallback;
 }
 
+function sendUploadStorageError(
+  req: AuthedRequest,
+  res: Response,
+  mediaLabel: "image" | "video" | "avatar",
+  error: unknown,
+): void {
+  if (error instanceof ObjectStorageError) {
+    req.log.error({
+      err: error,
+      storageCode: error.code,
+      storageStatus: error.statusCode,
+      storageOperation: error.operation,
+      providerMessage: error.providerMessage,
+    }, `Error uploading ${mediaLabel}`);
+    res.status(500).json({
+      error: `Échec du téléversement de ${mediaLabel} : ${error.message}`,
+      code: error.code,
+      cause: error.message,
+      operation: error.operation,
+    });
+    return;
+  }
+
+  req.log.error({ err: error }, `Error uploading ${mediaLabel}`);
+  res.status(500).json({
+    error: `Échec du téléversement de ${mediaLabel}. Le serveur n’a pas pu enregistrer le fichier.`,
+    code: "STORAGE_UNAVAILABLE",
+    cause: "Le stockage de l’application est indisponible.",
+    operation: "upload",
+  });
+}
+
 /**
  * POST /storage/uploads/image
  *
@@ -148,8 +181,7 @@ router.post(
       const pathPart = objectPath.replace(/^\/objects/, "");
       res.status(201).json({ url: `/api/storage/objects${pathPart}`, contentType: detectedMime });
     } catch (error) {
-      req.log.error({ err: error }, "Error uploading image");
-      res.status(500).json({ error: "Failed to upload image" });
+      sendUploadStorageError(req, res, "image", error);
     }
   },
 );
@@ -196,8 +228,7 @@ router.post(
       const pathPart = objectPath.replace(/^\/objects/, "");
       res.status(201).json({ url: `/api/storage/objects${pathPart}`, contentType: detectedMime });
     } catch (error) {
-      req.log.error({ err: error }, "Error uploading video");
-      res.status(500).json({ error: "Failed to upload video" });
+      sendUploadStorageError(req, res, "video", error);
     }
   },
 );
@@ -233,8 +264,7 @@ router.post(
       const servedUrl = `/api/storage/objects${pathPart}`;
       res.status(201).json({ url: servedUrl, contentType: detectedMime });
     } catch (error) {
-      req.log.error({ err: error }, "Error uploading avatar");
-      res.status(500).json({ error: "Failed to upload avatar" });
+      sendUploadStorageError(req, res, "avatar", error);
     }
   },
 );
