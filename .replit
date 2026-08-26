@@ -1,0 +1,240 @@
+modules = ["nodejs-20", "web", "bash", "python-base-3.13", "postgresql-16"]
+
+  [deployment]
+  router = "application"
+deploymentTarget = "autoscale"
+run = ["bash", "scripts/start-production.sh"]
+build = ["bash", "scripts/build-production.sh"]
+
+  [deployment.postBuild]
+  args = ["pnpm", "store", "prune"]
+  env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "artifacts/jatek-mobile: web"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=25896 pnpm --filter @workspace/jatek-mobile run preview"
+waitForPort = 25896
+
+[[workflows.workflow]]
+name = "artifacts/jatek-landing: web"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "artifacts/jatek-landing"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/jatek-landing run dev"
+cwd = "./artifacts/jatek-landing"
+waitForPort = 5000
+ensurePreviewReachable = "/"
+router = "path"
+
+[workflows.workflow.tasks.env]
+PORT = "5000"
+BASE_PATH = "/"
+
+[[workflows.workflow]]
+name = "artifacts/mockup-sandbox: Component Preview Server"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "XegfDyZt7HqfW2Bb8Ghoy"
+isCanvasWorkflow = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/mockup-sandbox run dev"
+cwd = "./artifacts/mockup-sandbox"
+waitForPort = 8081
+ensurePreviewReachable = "/"
+router = "path"
+
+[workflows.workflow.tasks.env]
+PORT = "8081"
+BASE_PATH = "/__mockup"
+
+[[workflows.workflow]]
+name = "artifacts/jatek-mobile: expo"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "artifacts/jatek-mobile"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/jatek-mobile run dev"
+cwd = "./artifacts/jatek-mobile"
+waitForPort = 25896
+ensurePreviewReachable = "/status"
+router = "expo-domain"
+
+[workflows.workflow.tasks.env]
+PORT = "25896"
+BASE_PATH = "/mobile/"
+
+[[workflows.workflow]]
+name = "artifacts/backend-dashboard: web"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "artifacts/backend-dashboard"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/backend-dashboard run dev"
+cwd = "./artifacts/backend-dashboard"
+waitForPort = 19167
+ensurePreviewReachable = "/"
+router = "path"
+
+[workflows.workflow.tasks.env]
+PORT = "19167"
+BASE_PATH = "/admin/"
+
+[[workflows.workflow]]
+name = "artifacts/api-server: API Server"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "3B4_FFSkEVBkAeYMFRJ2e"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run dev"
+cwd = "./artifacts/api-server"
+waitForPort = 8080
+ensurePreviewReachable = "/"
+router = "path"
+
+[workflows.workflow.tasks.env]
+PORT = "8080"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/jatek-driver: expo"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/jatek-mobile: web"
+
+[[workflows.workflow]]
+name = "artifacts/jatek-driver: expo"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8099 EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_PROJECT_ID=$EXPO_PUBLIC_PROJECT_ID EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm --filter @workspace/jatek-driver exec expo start --localhost --port 8099"
+waitForPort = 8099
+
+  [agent]
+  stack = "BEST_EFFORT_FALLBACK"
+expertMode = true
+  integrations = ["twilio:1.0.0"]
+
+  [postMerge]
+  path = "scripts/post-merge.sh"
+  timeoutMs = 20000
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 8082
+externalPort = 3003
+
+[[ports]]
+localPort = 8090
+externalPort = 5000
+
+[[ports]]
+localPort = 18244
+externalPort = 3000
+
+[[ports]]
+localPort = 18245
+externalPort = 4200
+
+[[ports]]
+localPort = 19167
+externalPort = 3001
+
+[[ports]]
+localPort = 25896
+externalPort = 3002
+
+[[ports]]
+localPort = 25897
+externalPort = 5173
+
+  [nix]
+channel = "stable-25_05"
+packages = ["eas-cli", "unzipNLS", "gir-rs"]
+
+  [userenv]
+
+  [userenv.shared]
+VAPID_PUBLIC_KEY = "BKdEq8KVX9EuyJ4hlkeOTiXCgfwLyff2DorTnKQIgJY3YuDamX2kliSO9pyG5dvFILYz3ymzdZVxntjZhaUph0I"
+VAPID_SUBJECT = "mailto:admin@jatek.ma"
+TWILIO_FROM_NUMBER = "+15072600620"
+INFOBIP_BASE_URL = "w4kgd8.api.infobip.com"
+VAPID_PRIVATE_KEY = "CepGJ21FnGHCxtMSTn9uujjKuGVRWT7guRY2-iDTBlQ"
+TWILIO_VERIFY_SID = "m9vle6.api.infobip.com"
+EXPO_PUBLIC_OWNER = "jatekplatforms-team"
+EXPO_PUBLIC_PROJECT_ID = "d30cddea-9dd6-42aa-8339-80d86b9ad76e"
+EXPO_PUBLIC_SLUG = "jatekclient"
+
+  [userenv.development]
+  EXPO_PUBLIC_DOMAIN = "ma.jatek.app"
+
+  [userenv.production]
+  EXPO_PUBLIC_DOMAIN = "ma.jatek.app"
+ALLOWED_ORIGINS = "https://c242aedf-c2ef-40b5-8095-e3992aa34a14-00-1y412fgtbqgy8.kirk.replit.dev,https://ma.jatek.app"
+
+  [objectStorage]
+defaultBucketID = "replit-objstore-4d552e7f-5275-491d-bcf0-2a88ae31fb35"

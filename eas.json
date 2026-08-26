@@ -1,0 +1,77 @@
+{
+  "cli": {
+    "version": ">=21.3.0",
+    "appVersionSource": "local",
+    "appRoot": "artifacts/jatek-mobile"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "cache": {
+        "key": "gradle-dev-v1",
+        "paths": ["~/.gradle/caches", "~/.gradle/wrapper"]
+      },
+      "env": {
+        "PNPM_VERSION": "10.26.1",
+        "EXPO_PUBLIC_PROJECT_ID": "d30cddea-9dd6-42aa-8339-80d86b9ad76e",
+        "EXPO_OWNER": "jatekplatforms-team",
+        "EXPO_SLUG": "jatekclient",
+        "npm_config_frozen_lockfile": "false",
+        "pnpm_config_frozen_lockfile": "false",
+        "NODE_VERSION": "20"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "credentialsSource": "remote",
+      "cache": {
+        "key": "gradle-preview-v1",
+        "paths": ["~/.gradle/caches", "~/.gradle/wrapper"]
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "ma.jatek.app",
+        "EXPO_PUBLIC_PROJECT_ID": "d30cddea-9dd6-42aa-8339-80d86b9ad76e",
+        "PNPM_VERSION": "10.26.1",
+        "EXPO_OWNER": "jatekplatforms-team",
+        "EXPO_SLUG": "jatekclient",
+        "npm_config_frozen_lockfile": "false",
+        "pnpm_config_frozen_lockfile": "false",
+        "NODE_VERSION": "20"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "cache": {
+        "key": "gradle-prod-v1",
+        "paths": ["~/.gradle/caches", "~/.gradle/wrapper"]
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "ma.jatek.app",
+        "EXPO_PUBLIC_API_URL": "https://ma.jatek.app",
+        "EXPO_PUBLIC_PROJECT_ID": "d30cddea-9dd6-42aa-8339-80d86b9ad76e",
+        "PNPM_VERSION": "10.26.1",
+        "EXPO_OWNER": "jatekplatforms-team",
+        "EXPO_SLUG": "jatekclient",
+        "npm_config_frozen_lockfile": "false",
+        "pnpm_config_frozen_lockfile": "false",
+        "NODE_VERSION": "20"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "project_info": {
+    "project_number": "150121359050",
+    "project_id": "jatek2026",
+    "storage_bucket": "jatek2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:150121359050:android:3f3c480240c97c4d273633",
+        "android_client_info": {
+          "package_name": "App.jatek.ma"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "150121359050-vini1dcsrkjsshfemuo8nfd8f18lg84b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZkjY6TqUfftwPZqAQpaRH9vDRjC61Svw"
+        },
+        {
+          "current_key": "AIzaSyAk-N-BJ9PD93-mkvz6fQdKBjzoTu1TnNw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "150121359050-vini1dcsrkjsshfemuo8nfd8f18lg84b.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "150121359050-1l6koamibis14dhotma0cipt9l2efljm.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.jatek.app"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:150121359050:android:e3d9b072fe6f72e4273633",
+        "android_client_info": {
+          "package_name": "com.jatek"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "150121359050-1biq7ctginh9567hj7cqbgppgbkpir77.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jatek",
+            "certificate_hash": "a2ba47341282c9f9b750a6bd1b2a56589f83c3ed"
+          }
+        },
+        {
+          "client_id": "150121359050-milqfkjmes38hnob7jq9llctfcsnppdt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jatek",
+            "certificate_hash": "a1f49ee6a310fae9c7d3deb5731a6ee6ff826efa"
+          }
+        },
+        {
+          "client_id": "150121359050-vini1dcsrkjsshfemuo8nfd8f18lg84b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZkjY6TqUfftwPZqAQpaRH9vDRjC61Svw"
+        },
+        {
+          "current_key": "AIzaSyAk-N-BJ9PD93-mkvz6fQdKBjzoTu1TnNw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "150121359050-vini1dcsrkjsshfemuo8nfd8f18lg84b.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "150121359050-1l6koamibis14dhotma0cipt9l2efljm.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.jatek.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

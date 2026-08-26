@@ -1,0 +1,15 @@
+- [Jatek API auth pattern](jatek-api-auth.md) — API uses JWT Bearer tokens; no cookie sessions; always send Authorization header in fetch calls.
+- [OpenAPI Zod codegen compatibility](openapi-zod-codegen.md) — Orval emits Zod 4 helpers while this workspace uses Zod 3; preserve the compatibility adapter when regenerating.
+- [Jatek notification route order](jatek-notification-routes.md) — PATCH /notifications/read-all must be registered before /notifications/:id/read in Express to avoid route-param capture.
+- [Jatek mobile API base resolution](jatek-mobile-apibase.md) — Always use getApiBaseSafe() from lib/apiBase.ts, never raw process.env.EXPO_PUBLIC_DOMAIN, which is empty in LAN/Expo-Go dev mode.
+- [Jatek mobile EAS build setup](jatek-mobile-eas.md) — EAS + pnpm workspace quirks: use app.config.js not .ts, set PNPM_VERSION=10.0.0, run via node_modules/.bin/eas.
+- [GitHub push auth](git-push-auth.md) — push via GIT_TOKEN as Basic auth header, never in the remote URL; Git pane pushes fail until user connects GitHub to Replit.
+- [Admin profile verification](admin-profile-verification.md) — admin-created restaurants/drivers are operationally verified and complete; never invent legal identity data for legacy profiles.
+- [Mobile production Expo project](mobile-production-expo-project.md) — published mobile manifest fallback must match the current static Expo config, EAS project, and preview channel.
+- [Expo tunnel availability](expo-tunnel-outage.md) — Ngrok may block Android previews even when the mobile app itself builds successfully.
+- [Twilio Verify SID misconfigured](twilio-verify-misconfigured.md) — TWILIO_VERIFY_SID secret has invalid value (not "VA…"); ops fix needed, not code.
+- [Token-bound session invalidation](token-bound-session-invalidation.md) — reject only the session token that caused a 401; stale requests must not log out a newer login.
+- [Mobile preview download](mobile-preview-download.md) — serve the tracked Android Preview APK from a stable route and keep web Preview separate from Metro's port.
+- [Jatek App Storage access](jatek-app-storage.md) — use the official App Storage SDK’s default bucket; the deployment bucket ID can reject writes.
+- [Safe media migration](safe-media-migration.md) — copy and verify managed media before updating references or deleting legacy objects.
+- [Legacy media compatibility](legacy-media-compatibility.md) — production DB references can lag storage-folder migrations; remap legacy paths on API reads until data is migrated.
