@@ -125,6 +125,62 @@ function serializeShort(row: typeof shortsTable.$inferSelect) {
   };
 }
 
+function isMissingShortAudioColumns(error: unknown): boolean {
+  const candidate = error as { code?: unknown; cause?: unknown; message?: unknown } | null;
+  const message = String(candidate?.message ?? error);
+  if (
+    candidate?.code === "42703" ||
+    /column "(audio_codec|audio_bitrate|duration_seconds)" does not exist/i.test(message)
+  ) {
+    return true;
+  }
+  return candidate?.cause ? isMissingShortAudioColumns(candidate.cause) : false;
+}
+
+async function listShortRows(
+  condition: ReturnType<typeof eq> | ReturnType<typeof and> | ReturnType<typeof or>,
+  limit: number,
+): Promise<Array<typeof shortsTable.$inferSelect>> {
+  try {
+    return await db
+      .select()
+      .from(shortsTable)
+      .where(condition)
+      .orderBy(asc(shortsTable.sortOrder), asc(shortsTable.id))
+      .limit(limit);
+  } catch (error) {
+    // Published deployments can briefly run the new API against the previous
+    // database schema. Keep public Shorts readable until the additive columns
+    // are applied by the publish migration.
+    if (!isMissingShortAudioColumns(error)) throw error;
+
+    const legacyRows = await db
+      .select({
+        id: shortsTable.id,
+        title: shortsTable.title,
+        imageUrl: shortsTable.imageUrl,
+        videoUrl: shortsTable.videoUrl,
+        restaurantId: shortsTable.restaurantId,
+        restaurantName: shortsTable.restaurantName,
+        isActive: shortsTable.isActive,
+        sortOrder: shortsTable.sortOrder,
+        createdAt: shortsTable.createdAt,
+        updatedAt: shortsTable.updatedAt,
+      })
+      .from(shortsTable)
+      .where(condition)
+      .orderBy(asc(shortsTable.sortOrder), asc(shortsTable.id))
+      .limit(limit);
+
+    return legacyRows.map((row) => ({
+      ...row,
+      audioCodec: null,
+      audioBitrate: null,
+      durationSeconds: null,
+    }));
+  }
+}
+
 router.get("/shorts", async (req, res): Promise<void> => {
   const hasPagination = req.query.limit !== undefined || req.query.cursor !== undefined;
   const requestedLimit = req.query.limit === undefined ? 20 : Number(req.query.limit);
@@ -148,12 +204,7 @@ router.get("/shorts", async (req, res): Promise<void> => {
         ),
       )
     : eq(shortsTable.isActive, true);
-  const rows = await db
-    .select()
-    .from(shortsTable)
-    .where(condition)
-    .orderBy(asc(shortsTable.sortOrder), asc(shortsTable.id))
-    .limit(hasPagination ? requestedLimit + 1 : requestedLimit);
+  const rows = await listShortRows(condition, hasPagination ? requestedLimit + 1 : requestedLimit);
 
   const hasMore = hasPagination && rows.length > requestedLimit;
   const page = (hasMore ? rows.slice(0, requestedLimit) : rows).map(serializeShort);
