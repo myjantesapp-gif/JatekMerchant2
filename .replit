@@ -22,7 +22,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=25896 pnpm --filter @workspace/jatek-mobile run preview"
+args = "EAS_UPDATE_CHANNEL=preview PORT=25896 pnpm --filter @workspace/jatek-mobile run preview"
 waitForPort = 25896
 
 [[workflows.workflow]]
