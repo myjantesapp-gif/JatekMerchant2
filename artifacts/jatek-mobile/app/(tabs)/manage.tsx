@@ -23,12 +23,14 @@ import {
   useListOrders,
   getListRestaurantsQueryKey,
   getListOrdersQueryKey,
+  useUpdateOrderStep,
+  type UpdateOrderStepBodyStep,
 } from "@workspace/api-client-react";
 
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSSE } from "@/hooks/useSSE";
-import { authenticatedFetch, getApiBase, updateOrderStatus } from "@/lib/api";
+import { authenticatedFetch, getApiBase } from "@/lib/api";
 
 function haptic(type: "light" | "medium" | "success" | "warning" | "error" = "light") {
   if (Platform.OS === "web") return;
@@ -39,7 +41,7 @@ function haptic(type: "light" | "medium" | "success" | "warning" | "error" = "li
   else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 }
 
-const STATUS_FLOW: Record<string, { label: string; icon: string; next?: string; nextLabel?: string }> = {
+const STATUS_FLOW: Record<string, { label: string; icon: string; next?: UpdateOrderStepBodyStep; nextLabel?: string }> = {
   pending: { label: "Nouveau", icon: "time-outline", next: "accepted", nextLabel: "Accepter" },
   accepted: { label: "Accepté", icon: "checkmark-circle-outline", next: "preparing", nextLabel: "En préparation" },
   preparing: { label: "Préparation", icon: "restaurant-outline", next: "ready", nextLabel: "Prêt pour livraison" },
@@ -67,7 +69,7 @@ function OrderRow({
 }: {
   order: any;
   profileComplete: boolean;
-  onAction: (id: number, status: string) => void;
+  onAction: (id: number, status: UpdateOrderStepBodyStep) => void;
   actionLoading: number | null;
 }) {
   const colors = useColors();
@@ -388,7 +390,7 @@ export default function ManageScreen() {
     }
   );
   const myRestaurant = restaurants?.[0];
-  const profileComplete = !!(myRestaurant as any)?.profileCompletedAt;
+  const profileComplete = !!myRestaurant?.profileCompletedAt;
 
   const ordersParams = myRestaurant ? { restaurantId: myRestaurant.id } : undefined;
   const { data: orders, isLoading, refetch: refetchOrders } = useListOrders(
@@ -439,11 +441,13 @@ export default function ManageScreen() {
     setRefreshing(false);
   };
 
-  const handleAction = async (orderId: number, status: string) => {
+  const updateOrderStep = useUpdateOrderStep();
+
+  const handleAction = async (orderId: number, status: UpdateOrderStepBodyStep) => {
     haptic("medium");
     setActionLoading(orderId);
     try {
-      await updateOrderStatus(orderId, status);
+      await updateOrderStep.mutateAsync({ id: orderId, data: { step: status } });
       haptic("success");
       refetchOrders();
     } catch (e: any) {

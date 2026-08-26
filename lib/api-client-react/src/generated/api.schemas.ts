@@ -197,6 +197,7 @@ export interface AuthResponse {
   user: User;
 }
 
+export type SendOtpBodyIntent = typeof SendOtpBodyIntent[keyof typeof SendOtpBodyIntent];
 /**
  * Delivery channel for the OTP code
  */
@@ -209,8 +210,10 @@ export const SendOtpBodyChannel = {
 } as const;
 
 export interface SendOtpBody {
-  phone: string;
+  phone?: string;
+  email?: string;
   name?: string;
+  intent?: SendOtpBodyIntent;
   /** Delivery channel for the OTP code */
   channel?: SendOtpBodyChannel;
 }
@@ -218,13 +221,19 @@ export interface SendOtpBody {
 export interface SendOtpResponse {
   success: boolean;
   message: string;
+  channel?: string;
+  otpSent?: boolean;
   demoOtp?: string;
 }
 
+export type VerifyOtpBodyIntent = typeof VerifyOtpBodyIntent[keyof typeof VerifyOtpBodyIntent];
 export interface VerifyOtpBody {
-  phone: string;
+  phone?: string;
+  email?: string;
   code: string;
   name?: string;
+  password?: string;
+  intent?: VerifyOtpBodyIntent;
   role?: string;
 }
 
@@ -1315,3 +1324,13 @@ export type ListAdsParams = {
 type?: string;
 };
 
+
+export const VerifyOtpBodyIntent = {
+  login: 'login',
+  signup: 'signup',
+} as const;
+
+export const SendOtpBodyIntent = {
+  login: 'login',
+  signup: 'signup',
+} as const;

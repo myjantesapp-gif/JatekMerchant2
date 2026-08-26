@@ -9,20 +9,12 @@ import ReAnimated, { FadeIn, SlideInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
-import { listMenuItemSizes, listMenuItemExtras } from "@/lib/api";
-
-interface MenuItemSize {
-  id: number;
-  name: string;
-  priceAdjustment: number;
-  isAvailable: boolean;
-}
-interface MenuItemExtra {
-  id: number;
-  name: string;
-  price: number;
-  isAvailable: boolean;
-}
+import {
+  getGetProductOptionsQueryKey,
+  useGetProductOptions,
+  type MenuItemExtra,
+  type MenuItemSize,
+} from "@workspace/api-client-react";
 
 interface MenuItem {
   id: number;
@@ -59,44 +51,34 @@ export function MenuItemDetailModal({ visible, item, initialQty = 0, restaurantO
   const [extrasList, setExtrasList] = useState<MenuItemExtra[]>([]);
   const [selectedSize, setSelectedSize] = useState<MenuItemSize | null>(null);
   const [selectedExtras, setSelectedExtras] = useState<Record<number, boolean>>({});
-  const [loadingOptions, setLoadingOptions] = useState(false);
-  const [optionsError, setOptionsError] = useState(false);
-  const [optionsRetry, setOptionsRetry] = useState(0);
+  const optionsQuery = useGetProductOptions(item?.id ?? 0, {
+    query: {
+      queryKey: getGetProductOptionsQueryKey(item?.id ?? 0),
+      enabled: visible && !!item,
+    },
+  });
+  const loadingOptions = optionsQuery.isLoading;
+  const optionsError = optionsQuery.isError;
 
   const addPulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (!visible || !item) return;
-    // Cancellation guard: prevents a slow response for a previous item from
-    // overwriting the options (and pricing) of the currently displayed item.
-    let cancelled = false;
     setQty(Math.max(1, initialQty));
     setSelectedSize(null);
     setSelectedExtras({});
     setSizes([]);
     setExtrasList([]);
-    setOptionsError(false);
-    setLoadingOptions(true);
-    Promise.all([listMenuItemSizes(item.id), listMenuItemExtras(item.id)])
-      .then(([sz, ex]) => {
-        if (cancelled) return;
-        const availableSizes = (sz || []).filter((s) => s.isAvailable !== false);
-        const availableExtras = (ex || []).filter((e) => e.isAvailable !== false);
-        setSizes(availableSizes);
-        setExtrasList(availableExtras);
-        if (availableSizes.length > 0) setSelectedSize(availableSizes[0]);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setSizes([]);
-        setExtrasList([]);
-        setOptionsError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingOptions(false);
-      });
-    return () => { cancelled = true; };
-  }, [visible, item?.id, initialQty, optionsRetry]);
+  }, [visible, item?.id, initialQty]);
+
+  useEffect(() => {
+    if (!visible || !item || !optionsQuery.data) return;
+    const availableSizes = optionsQuery.data.sizes.filter((s) => s.isAvailable !== false);
+    const availableExtras = optionsQuery.data.extras.filter((e) => e.isAvailable !== false);
+    setSizes(availableSizes);
+    setExtrasList(availableExtras);
+    setSelectedSize(availableSizes[0] ?? null);
+  }, [visible, item?.id, optionsQuery.data]);
 
   if (!item) return null;
 
@@ -203,7 +185,7 @@ export function MenuItemDetailModal({ visible, item, initialQty = 0, restaurantO
                     Les tailles et suppléments n’ont pas pu être chargés.
                   </Text>
                   <Pressable
-                    onPress={() => setOptionsRetry((attempt) => attempt + 1)}
+                    onPress={() => void optionsQuery.refetch()}
                     accessibilityRole="button"
                     accessibilityLabel="Réessayer de charger les options"
                   >

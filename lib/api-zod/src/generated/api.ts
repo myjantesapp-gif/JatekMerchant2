@@ -7,8 +7,8 @@
  */
 import * as zodModule from 'zod';
 
-// Orval 8.23+ emits Zod 4 helpers. Keep the generated contract compatible
-// with this workspace's Zod 3 runtime.
+// Orval emits Zod 4 helpers while this workspace uses Zod 3.
+// Keep the generated contract usable without mutating the ESM module namespace.
 const zod = Object.assign({}, zodModule, {
   int: () => zodModule.number().int(),
   email: () => zodModule.string().email(),
@@ -279,14 +279,18 @@ export const ResetPasswordResponse = zod.object({
  * @summary Send OTP to phone number
  */
 export const SendOtpBody = zod.object({
-  "phone": zod.string(),
+  "phone": zod.string().optional(),
+  "email": zod.email().optional(),
   "name": zod.string().optional(),
+  "intent": zod.enum(['login', 'signup']).optional(),
   "channel": zod.enum(['sms', 'whatsapp']).optional().describe('Delivery channel for the OTP code')
 })
 
 export const SendOtpResponse = zod.object({
   "success": zod.boolean(),
   "message": zod.string(),
+  "channel": zod.string().optional(),
+  "otpSent": zod.boolean().optional(),
   "demoOtp": zod.string().optional()
 })
 
@@ -323,9 +327,12 @@ export const UpdateAuthNameResponse = zod.object({
  * @summary Verify OTP and authenticate
  */
 export const VerifyOtpBody = zod.object({
-  "phone": zod.string(),
+  "phone": zod.string().optional(),
+  "email": zod.email().optional(),
   "code": zod.string(),
   "name": zod.string().optional(),
+  "password": zod.string().optional(),
+  "intent": zod.enum(['login', 'signup']).optional(),
   "role": zod.string().optional()
 })
 

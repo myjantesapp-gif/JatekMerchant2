@@ -6,7 +6,12 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useVerifyOtp, useSendOtp } from "@workspace/api-client-react";
+import {
+  useVerifyOtp,
+  useSendOtp,
+  type SendOtpBody,
+  type VerifyOtpBody,
+} from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,6 +41,7 @@ export default function OtpScreen() {
   const refs = useRef<(TextInput | null)[]>([]);
   const verifyOtp = useVerifyOtp();
   const sendOtp = useSendOtp();
+  const otpIntent = params.intent === "signup" ? "signup" : "login";
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -55,26 +61,26 @@ export default function OtpScreen() {
     if (c.length < 6) return;
     setError("");
 
-    const payload: any = isEmailMode
-      ? { email: identifier, code: c, intent: params.intent ?? "login", ...(params.name ? { name: params.name } : {}) }
-      : { phone: identifier, code: c, intent: params.intent ?? "login" };
+    const payload: VerifyOtpBody = isEmailMode
+      ? { email: identifier, code: c, intent: otpIntent, ...(params.name ? { name: params.name } : {}) }
+      : { phone: identifier, code: c, intent: otpIntent };
 
     verifyOtp.mutate({ data: payload }, {
-      onSuccess: async (res: any) => {
+      onSuccess: async (res) => {
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        await login(res.token, res.user);
+        await login(res.token, { ...res.user, phone: res.user.phone ?? null });
         // Redirect by role so drivers and merchants land on their own dashboard
         const role = res.user?.role;
         if (role === "driver") router.replace("/(tabs)/deliver");
         else if (role === "restaurant_owner" || role === "owner") router.replace("/(tabs)/manage");
         else router.replace("/(tabs)");
       },
-      onError: (err: any) => {
+      onError: (err) => {
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        const msg = err?.data?.error || t("otp_invalid");
+        const msg = err instanceof Error ? err.message : t("otp_invalid");
         if (!isEmailMode) {
           // Phone mode: 404 means no account exists → guide to register
-          const isNotFound = err?.status === 404 || msg?.toLowerCase().includes("introuvable") || msg?.toLowerCase().includes("aucun compte");
+          const isNotFound = msg.toLowerCase().includes("404") || msg.toLowerCase().includes("introuvable") || msg.toLowerCase().includes("aucun compte");
           setError(isNotFound ? "Aucun compte trouvé pour ce numéro. Inscrivez-vous d'abord." : msg);
         } else {
           // Email mode: account is created automatically or conflict if already used with signup intent
@@ -104,18 +110,18 @@ export default function OtpScreen() {
     if (!identifier) return;
     // Preserve intent and name so a signup resend doesn't revert to login behaviour
     const basePayload = isEmailMode ? { email: identifier } : { phone: identifier };
-    const resendPayload = {
+    const resendPayload: SendOtpBody = {
       ...basePayload,
-      ...(params.intent ? { intent: params.intent } : {}),
+      intent: otpIntent,
       ...(params.name  ? { name:  params.name  } : {}),
     };
-    sendOtp.mutate({ data: resendPayload as any }, {
-      onSuccess: (res: any) => {
+    sendOtp.mutate({ data: resendPayload }, {
+      onSuccess: (res) => {
         setCountdown(60);
         setDigits(res?.demoOtp?.length === 6 ? res.demoOtp.split("") : ["", "", "", "", "", ""]);
         setError("");
       },
-      onError: (err: any) => setError(err?.data?.error || t("login_send_fail")),
+      onError: (err) => setError(err instanceof Error ? err.message : t("login_send_fail")),
     });
   };
 

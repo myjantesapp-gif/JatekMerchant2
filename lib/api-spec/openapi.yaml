@@ -3721,16 +3721,20 @@ components:
       properties:
         phone:
           type: string
+        email:
+          type: string
+          format: email
         name:
           type: string
+        intent:
+          type: string
+          enum: [login, signup]
         channel:
           type: string
           enum:
             - sms
             - whatsapp
           description: Delivery channel for the OTP code
-      required:
-        - phone
     SendOtpResponse:
       type: object
       properties:
@@ -3738,6 +3742,10 @@ components:
           type: boolean
         message:
           type: string
+        channel:
+          type: string
+        otpSent:
+          type: boolean
         demoOtp:
           type: string
       required:
@@ -3748,14 +3756,21 @@ components:
       properties:
         phone:
           type: string
+        email:
+          type: string
+          format: email
         code:
           type: string
         name:
           type: string
+        password:
+          type: string
+        intent:
+          type: string
+          enum: [login, signup]
         role:
           type: string
       required:
-        - phone
         - code
     User:
       type: object

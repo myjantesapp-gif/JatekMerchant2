@@ -8,7 +8,7 @@ import { WebView } from "react-native-webview";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useGetRestaurant, useListMenuItems } from "@workspace/api-client-react";
+import { useGetRestaurant, useGetRestaurantHeader, useListMenuItems } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -82,6 +82,7 @@ export default function RestaurantScreen() {
     isError: restaurantError,
     refetch: refetchRestaurant,
   } = useGetRestaurant(restaurantId);
+  const { data: restaurantHeader } = useGetRestaurantHeader(restaurantId);
   const {
     data: menuItems,
     isLoading: mLoading,
@@ -90,10 +91,8 @@ export default function RestaurantScreen() {
   } = useListMenuItems(restaurantId);
 
   useEffect(() => {
-    if (!infoModalOpen || restaurantCoords) return;
-    const addr = (restaurant as any)?.address as string | undefined;
-    if (!addr) return;
-    geocodeAddress(addr).then((pos) => { if (pos) setRestaurantCoords(pos); }).catch(() => {});
+    if (!infoModalOpen || restaurantCoords || !restaurant) return;
+    geocodeAddress(restaurant.address).then((pos) => { if (pos) setRestaurantCoords(pos); }).catch(() => {});
   }, [infoModalOpen, restaurant, restaurantCoords]);
 
   const categories = useMemo(
@@ -114,7 +113,7 @@ export default function RestaurantScreen() {
   // actual cart lines.
   const getQty = (itemId: number) =>
     cartItems.find((i) => i.cartLineId === String(itemId))?.quantity ?? 0;
-  const businessType = (restaurant as any)?.businessType ?? "restaurant";
+  const businessType = restaurant?.businessType ?? "restaurant";
   const isServices = businessType === "services";
 
   if (rLoading) {
@@ -147,8 +146,8 @@ export default function RestaurantScreen() {
 
   // The dashboard's "Image bannière" field is imageUrl. Keep coverImageUrl
   // only as a legacy fallback so cards and detail always show the same banner.
-  const heroUri = restaurant.imageUrl || restaurant.coverImageUrl;
-  const isOpen = (restaurant as { isOpen?: boolean | null }).isOpen !== false;
+  const heroUri = restaurantHeader?.headerUrl || restaurant.imageUrl || restaurant.coverImageUrl;
+  const isOpen = restaurant.isOpen !== false;
 
   const Header = (
     <View>
@@ -224,9 +223,9 @@ export default function RestaurantScreen() {
                 <Text style={[styles.ratingTxt, { color: colors.foreground }]}>
                   {restaurant.rating != null ? restaurant.rating.toFixed(1) : "—"}
                 </Text>
-                {(restaurant as any).reviewCount != null && (
+                {restaurant.reviewCount != null && (
                   <Text style={[styles.ratingCount, { color: colors.mutedForeground }]}>
-                    ({(restaurant as any).reviewCount}+)
+                    ({restaurant.reviewCount}+)
                   </Text>
                 )}
               </View>
@@ -500,7 +499,7 @@ export default function RestaurantScreen() {
             ) : null}
 
             {/* Address + mini-map */}
-            {(restaurant as any).address ? (
+            {restaurant.address ? (
               <>
                 <View style={styles.infoModalRow}>
                   <View style={[styles.infoModalIconWrap, { backgroundColor: "#FEE2E2" }]}>
@@ -508,7 +507,7 @@ export default function RestaurantScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.infoModalRowLabel, { color: colors.mutedForeground }]}>Adresse</Text>
-                    <Text style={[styles.infoModalRowValue, { color: colors.foreground }]}>{(restaurant as any).address}</Text>
+                    <Text style={[styles.infoModalRowValue, { color: colors.foreground }]}>{restaurant.address}</Text>
                   </View>
                 </View>
                 {restaurantCoords ? (
@@ -526,9 +525,9 @@ export default function RestaurantScreen() {
                       onPress={() => {
                         const url = Platform.OS === "ios"
                           ? `maps://?ll=${restaurantCoords.lat},${restaurantCoords.lng}&q=${encodeURIComponent(restaurant.name ?? "")}`
-                          : `geo:${restaurantCoords.lat},${restaurantCoords.lng}?q=${encodeURIComponent((restaurant as any).address)}`;
+                          : `geo:${restaurantCoords.lat},${restaurantCoords.lng}?q=${encodeURIComponent(restaurant.address)}`;
                         Linking.openURL(url).catch(() =>
-                          Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((restaurant as any).address)}`),
+                          Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.address)}`),
                         );
                       }}
                     >
@@ -541,14 +540,14 @@ export default function RestaurantScreen() {
             ) : null}
 
             {/* Phone */}
-            {(restaurant as any).phone ? (
+            {restaurant.phone ? (
               <View style={styles.infoModalRow}>
                 <View style={[styles.infoModalIconWrap, { backgroundColor: "#D1FAE5" }]}>
                   <Ionicons name="call-outline" size={16} color="#059669" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.infoModalRowLabel, { color: colors.mutedForeground }]}>Téléphone</Text>
-                  <Text style={[styles.infoModalRowValue, { color: colors.foreground }]}>{(restaurant as any).phone}</Text>
+                  <Text style={[styles.infoModalRowValue, { color: colors.foreground }]}>{restaurant.phone}</Text>
                 </View>
               </View>
             ) : null}

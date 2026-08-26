@@ -14,9 +14,7 @@ router.get("/categories", async (req, res): Promise<void> => {
   // Support optional filters: ?type=service_shortcut|category, ?businessType=restaurant, ?parentId=123, ?isActive=true|false
   const { type: typeFilter, businessType: btFilter, parentId: parentIdFilter } = req.query as Record<string, string | undefined>;
 
-  const all = await db.select().from(categoriesTable)
-    .where(eq(categoriesTable.isActive, true))
-    .orderBy(asc(categoriesTable.sortOrder));
+  const all = await db.select().from(categoriesTable).orderBy(asc(categoriesTable.sortOrder));
 
   // Apply type / businessType filters
   let filtered = all;
@@ -42,10 +40,10 @@ router.get("/categories", async (req, res): Promise<void> => {
   }
 
   // Default (no parentId filter): return full hierarchy — parents with nested subCategories[]
-  const parents = filtered.filter((c) => !c.parentId);
+  const parents = all.filter((c) => !c.parentId);
   const result = parents.map((p) => ({
     ...p,
-    subCategories: all.filter((c) => c.parentId === p.id && c.isActive),
+    subCategories: all.filter((c) => c.parentId === p.id),
   }));
   res.json(result);
 });

@@ -17,6 +17,7 @@ const { validateStaticBuild } = require("./build-check");
 const STATIC_ROOT = path.resolve(
   process.env.STATIC_ROOT || path.join(__dirname, "..", "static-build"),
 );
+const APK_PATH = path.resolve(__dirname, "..", "builds", "jatek-preview.apk");
 const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
 
@@ -143,14 +144,33 @@ function serveLandingPage(req, res, landingPageTemplate, appName) {
   const baseUrl = `${protocol}://${host}`;
   // Include basePath so the QR deep-link points to /mobile/ not just /
   const expsUrl = basePath ? `${host}${basePath}` : host;
+  const apkUrl = `${baseUrl}${basePath}/downloads/jatek-preview.apk`;
 
   const html = landingPageTemplate
     .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
     .replace(/EXPS_URL_PLACEHOLDER/g, expsUrl)
+    .replace(/APK_URL_PLACEHOLDER/g, apkUrl)
     .replace(/APP_NAME_PLACEHOLDER/g, appName);
 
   res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
   res.end(html);
+}
+
+function serveApkDownload(res) {
+  if (!fs.existsSync(APK_PATH)) {
+    res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+    res.end("Android preview APK is not available");
+    return;
+  }
+
+  const stat = fs.statSync(APK_PATH);
+  res.writeHead(200, {
+    "content-type": "application/vnd.android.package-archive",
+    "content-length": stat.size,
+    "content-disposition": 'attachment; filename="jatek-preview.apk"',
+    "cache-control": "no-store, no-cache, must-revalidate",
+  });
+  fs.createReadStream(APK_PATH).pipe(res);
 }
 
 function serveStaticFile(urlPath, res, req) {
@@ -242,6 +262,10 @@ const server = http.createServer((req, res) => {
     if (pathname === "/") {
       return serveLandingPage(req, res, landingPageTemplate, appName);
     }
+  }
+
+  if (pathname === "/downloads/jatek-preview.apk") {
+    return serveApkDownload(res);
   }
 
   serveStaticFile(pathname, res, req);

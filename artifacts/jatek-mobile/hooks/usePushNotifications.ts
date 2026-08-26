@@ -9,13 +9,12 @@
  *  - scheduleOrderStatusNotification(): standalone async utility.
  *    Call from any screen when the order status changes locally.
  */
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import Constants, { ExecutionEnvironment } from "expo-constants";
-import { getApiBaseSafe } from "@/lib/apiBase";
-import { authenticatedFetch } from "@/lib/api";
+import { useRegisterPushToken } from "@workspace/api-client-react";
 
 /**
  * Expo Go on SDK 53+ no longer ships the native `expo-notifications` module.
@@ -76,19 +75,18 @@ async function fetchExpoPushToken(): Promise<string | null> {
  * send remote push notifications for order status changes.
  * Requires a valid auth token — no-ops if absent.
  */
-async function registerPushTokenWithBackend(authToken: string): Promise<void> {
+async function fetchAndRegisterPushToken(
+  register: ReturnType<typeof useRegisterPushToken>["mutateAsync"],
+): Promise<void> {
   const expoPushToken = await fetchExpoPushToken();
   if (!expoPushToken) return;
-  const base = getApiBaseSafe();
   try {
-    await authenticatedFetch(`${base}/api/notification-prefs`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
+    const platform = Platform.OS === "ios" ? "ios" : "android";
+    await register({
+      data: {
+        token: expoPushToken,
+        platform,
       },
-      body: JSON.stringify({ pushToken: expoPushToken }),
-      signal: AbortSignal.timeout(8_000),
     });
   } catch (err) {
     console.warn("[push] could not register token with backend:", err);
@@ -105,6 +103,11 @@ async function registerPushTokenWithBackend(authToken: string): Promise<void> {
  * @param authToken  Live auth token from AuthContext (null when logged out).
  */
 export function useNotificationSetup(authToken: string | null) {
+  const registerPushToken = useRegisterPushToken();
+  const registerPushTokenWithBackend = useCallback(
+    () => fetchAndRegisterPushToken(registerPushToken.mutateAsync),
+    [registerPushToken.mutateAsync],
+  );
   const listenerRef = useRef<Notifications.EventSubscription | null>(null);
   // Keep a ref to the latest authToken so the async permission callback can
   // access it without capturing a stale closure value.
@@ -126,7 +129,7 @@ export function useNotificationSetup(authToken: string | null) {
       // current auth token (via ref) in case the auth-aware effect below fired
       // before permission was granted and was silently skipped by getExpoPushTokenAsync.
       if (status === "granted" && authTokenRef.current) {
-        void registerPushTokenWithBackend(authTokenRef.current);
+        void registerPushTokenWithBackend();
       }
     })();
 
@@ -140,7 +143,7 @@ export function useNotificationSetup(authToken: string | null) {
     return () => {
       listenerRef.current?.remove();
     };
-  }, []);
+  }, [registerPushTokenWithBackend]);
 
   // ── Auth-aware: re-register token with backend whenever user logs in ───────
   // Covers the case where the user was already logged in on first render,
@@ -149,8 +152,8 @@ export function useNotificationSetup(authToken: string | null) {
   useEffect(() => {
     if (!pushSupported) return;
     if (!authToken) return;
-    void registerPushTokenWithBackend(authToken);
-  }, [authToken]);
+    void registerPushTokenWithBackend();
+  }, [authToken, registerPushTokenWithBackend]);
 }
 
 /**
