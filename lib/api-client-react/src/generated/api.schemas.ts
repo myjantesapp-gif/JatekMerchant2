@@ -13,6 +13,139 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface RestaurantHeader {
+  id: string;
+  headerUrl: string;
+  fallbacks: string[];
+  placeholderUrl: string;
+}
+
+export type PushTokenBodyPlatform = typeof PushTokenBodyPlatform[keyof typeof PushTokenBodyPlatform];
+
+
+export const PushTokenBodyPlatform = {
+  ios: 'ios',
+  android: 'android',
+  web: 'web',
+  fcm: 'fcm',
+} as const;
+
+export interface PushTokenBody {
+  /** @minLength 10 */
+  token: string;
+  platform?: PushTokenBodyPlatform;
+}
+
+export interface PushTokenResponse {
+  userId: number;
+  /** @nullable */
+  pushToken?: string | null;
+}
+
+export type SendNotificationBodyData = { [key: string]: unknown };
+
+export interface SendNotificationBody {
+  userId?: number;
+  /** @maxItems 100 */
+  userIds?: number[];
+  title: string;
+  body: string;
+  data?: SendNotificationBodyData;
+}
+
+export interface SendNotificationResponse {
+  success: boolean;
+  recipients: number;
+  inAppSaved: number;
+  remoteSent: number;
+}
+
+export interface UpdateCartItemBody {
+  /**
+     * @minimum 1
+     * @maximum 99
+     */
+  quantity?: number;
+  /** @nullable */
+  selectedSizeId?: number | null;
+  /** @maxItems 30 */
+  selectedExtraIds?: number[];
+}
+
+export interface CartItem {
+  id: number;
+  cartId: number;
+  menuItemId: number;
+  quantity: number;
+  /** @nullable */
+  selectedSizeId?: number | null;
+  /** @nullable */
+  selectedExtraIds?: number[] | null;
+  unitPrice: number;
+  subtotal: number;
+}
+
+export interface MenuItem {
+  id: number;
+  restaurantId: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  price: number;
+  /** @nullable */
+  imageUrl?: string | null;
+  category: string;
+  isAvailable: boolean;
+  isPopular: boolean;
+  createdAt: string;
+}
+
+export interface MenuItemSize {
+  id: number;
+  menuItemId: number;
+  name: string;
+  priceAdjustment: number;
+  sortOrder: number;
+  isAvailable: boolean;
+}
+
+export interface MenuItemExtra {
+  id: number;
+  menuItemId: number;
+  name: string;
+  price: number;
+  sortOrder: number;
+  isAvailable: boolean;
+}
+
+export interface ProductOptions {
+  product: MenuItem;
+  sizes: MenuItemSize[];
+  extras: MenuItemExtra[];
+}
+
+export type UpdateOrderStepBodyStep = typeof UpdateOrderStepBodyStep[keyof typeof UpdateOrderStepBodyStep];
+
+
+export const UpdateOrderStepBodyStep = {
+  pending: 'pending',
+  accepted: 'accepted',
+  confirmed: 'confirmed',
+  preparing: 'preparing',
+  ready: 'ready',
+  driver_at_restaurant: 'driver_at_restaurant',
+  picked_up: 'picked_up',
+  en_route: 'en_route',
+  in_delivery: 'in_delivery',
+  delivered: 'delivered',
+  cancelled: 'cancelled',
+} as const;
+
+export interface UpdateOrderStepBody {
+  step: UpdateOrderStepBodyStep;
+  driverId?: number;
+}
+
 export interface SuccessResponse {
   success: boolean;
 }
@@ -189,21 +322,6 @@ export interface RestaurantStats {
   averageRating?: number | null;
   totalReviews: number;
   pendingOrders: number;
-}
-
-export interface MenuItem {
-  id: number;
-  restaurantId: number;
-  name: string;
-  /** @nullable */
-  description?: string | null;
-  price: number;
-  /** @nullable */
-  imageUrl?: string | null;
-  category: string;
-  isAvailable: boolean;
-  isPopular: boolean;
-  createdAt: string;
 }
 
 export interface CreateMenuItemBody {
@@ -1032,6 +1150,20 @@ export interface AdBody {
   sortOrder?: number;
 }
 
+export type ShortAudio = {
+  /** @nullable */
+  codec?: string | null;
+  /** @nullable */
+  bitrate?: number | null;
+  /** @nullable */
+  duration?: number | null;
+};
+
+export type ShortStream = {
+  supportsRange?: boolean;
+  contentType?: string;
+};
+
 export interface Short {
   id: number;
   title: string;
@@ -1043,6 +1175,14 @@ export interface Short {
   restaurantId?: number | null;
   /** @nullable */
   restaurantName?: string | null;
+  /** @nullable */
+  audioCodec?: string | null;
+  /** @nullable */
+  audioBitrate?: number | null;
+  /** @nullable */
+  durationSeconds?: number | null;
+  audio?: ShortAudio;
+  stream?: ShortStream;
   isActive: boolean;
   sortOrder: number;
   createdAt?: string;
@@ -1110,6 +1250,10 @@ export type SubscribeEventsParams = {
  * Comma-separated channels such as order:5,restaurant:2,available_orders,driver:7.
  */
 channels: string;
+};
+
+export type DeletePushToken200 = {
+  success?: boolean;
 };
 
 export type ListOrdersParams = {

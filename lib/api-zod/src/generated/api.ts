@@ -7,11 +7,12 @@
  */
 import * as zodModule from 'zod';
 
-// Orval 8.23+ emits Zod 4 helpers. Mirror them in a local adapter while this
-// workspace remains on Zod 3, without mutating the ESM module namespace.
+// Orval 8.23+ emits Zod 4 helpers. Keep the generated contract compatible
+// with this workspace's Zod 3 runtime.
 const zod = Object.assign({}, zodModule, {
   int: () => zodModule.number().int(),
   email: () => zodModule.string().email(),
+  url: () => zodModule.string().url(),
 });
 
 
@@ -1414,6 +1415,45 @@ export const DeleteMenuItemResponse = zod.void()
 
 
 /**
+ * @summary Get the available sizes and extras for a product
+ */
+export const GetProductOptionsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetProductOptionsResponse = zod.object({
+  "product": zod.object({
+  "id": zod.int(),
+  "restaurantId": zod.int(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "price": zod.number(),
+  "imageUrl": zod.string().nullish(),
+  "category": zod.string(),
+  "isAvailable": zod.boolean(),
+  "isPopular": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}),
+  "sizes": zod.array(zod.object({
+  "id": zod.int(),
+  "menuItemId": zod.int(),
+  "name": zod.string(),
+  "priceAdjustment": zod.number(),
+  "sortOrder": zod.int(),
+  "isAvailable": zod.boolean()
+})),
+  "extras": zod.array(zod.object({
+  "id": zod.int(),
+  "menuItemId": zod.int(),
+  "name": zod.string(),
+  "price": zod.number(),
+  "sortOrder": zod.int(),
+  "isAvailable": zod.boolean()
+}))
+})
+
+
+/**
  * @summary Get notification preferences
  */
 export const GetNotificationPrefsResponse = zod.object({
@@ -1449,6 +1489,87 @@ export const UpdateNotificationPrefsResponse = zod.object({
   "smsAlerts": zod.boolean(),
   "language": zod.enum(['fr', 'en', 'ar']),
   "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Register the current user's push token
+ */
+export const registerPushTokenBodyTokenMin = 10;
+
+
+
+export const RegisterPushTokenBody = zod.object({
+  "token": zod.string().min(registerPushTokenBodyTokenMin),
+  "platform": zod.enum(['ios', 'android', 'web', 'fcm']).optional()
+})
+
+export const RegisterPushTokenResponse = zod.object({
+  "userId": zod.int(),
+  "pushToken": zod.string().nullish()
+})
+
+
+/**
+ * @summary Remove the current user's push token
+ */
+export const DeletePushTokenResponse = zod.object({
+  "success": zod.boolean().optional()
+})
+
+
+/**
+ * Staff-only; recipients are always explicit user IDs.
+ * @summary Send an in-app and remote notification
+ */
+export const sendNotificationBodyUserIdsMax = 100;
+
+
+
+export const SendNotificationBody = zod.object({
+  "userId": zod.int().optional(),
+  "userIds": zod.array(zod.int()).max(sendNotificationBodyUserIdsMax).optional(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "data": zod.record(zod.string(), zod.unknown()).optional()
+})
+
+export const SendNotificationResponse = zod.object({
+  "success": zod.boolean(),
+  "recipients": zod.int(),
+  "inAppSaved": zod.int(),
+  "remoteSent": zod.int()
+})
+
+
+/**
+ * @summary Update a cart item for the current user
+ */
+export const UpdateCartItemParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateCartItemBodyQuantityMax = 99;
+
+export const updateCartItemBodySelectedExtraIdsMax = 30;
+
+
+
+export const UpdateCartItemBody = zod.object({
+  "quantity": zod.int().min(1).max(updateCartItemBodyQuantityMax).optional(),
+  "selectedSizeId": zod.int().nullish(),
+  "selectedExtraIds": zod.array(zod.int()).max(updateCartItemBodySelectedExtraIdsMax).optional()
+})
+
+export const UpdateCartItemResponse = zod.object({
+  "id": zod.int(),
+  "cartId": zod.int(),
+  "menuItemId": zod.int(),
+  "quantity": zod.int(),
+  "selectedSizeId": zod.int().nullish(),
+  "selectedExtraIds": zod.array(zod.int()).nullish(),
+  "unitPrice": zod.number(),
+  "subtotal": zod.number()
 })
 
 
@@ -1743,6 +1864,52 @@ export const UpdateOrderStatusResponse = zod.object({
   "deliveryAddress": zod.string(),
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(updateOrderStatusResponsePaymentMethodDefault),
+  "estimatedDeliveryTime": zod.int().nullish(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "orderId": zod.int(),
+  "menuItemId": zod.int(),
+  "menuItemName": zod.string(),
+  "quantity": zod.int(),
+  "unitPrice": zod.number(),
+  "totalPrice": zod.number()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "reference": zod.string().nullish(),
+  "kitchenCode": zod.string().nullish(),
+  "pickupCode": zod.string().nullish()
+})
+
+
+/**
+ * @summary Advance an order through the transition machine
+ */
+export const UpdateOrderStepParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateOrderStepBody = zod.object({
+  "step": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'in_delivery', 'delivered', 'cancelled']),
+  "driverId": zod.int().optional()
+})
+
+export const updateOrderStepResponsePaymentMethodDefault = `cash`;
+
+export const UpdateOrderStepResponse = zod.object({
+  "id": zod.int(),
+  "userId": zod.int(),
+  "restaurantId": zod.int(),
+  "driverId": zod.int().nullish(),
+  "restaurantName": zod.string(),
+  "userName": zod.string(),
+  "status": zod.enum(['pending', 'accepted', 'preparing', 'ready', 'picked_up', 'en_route', 'delivered', 'cancelled']),
+  "subtotal": zod.number(),
+  "deliveryFee": zod.number(),
+  "total": zod.number(),
+  "deliveryAddress": zod.string(),
+  "notes": zod.string().nullish(),
+  "paymentMethod": zod.enum(['cash', 'card']).default(updateOrderStepResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.int().nullish(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -2240,6 +2407,21 @@ export const DeleteRestaurantResponse = zod.void()
 
 
 /**
+ * @summary Resolve a restaurant header image with fallbacks
+ */
+export const GetRestaurantHeaderParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetRestaurantHeaderResponse = zod.object({
+  "id": zod.string(),
+  "headerUrl": zod.url(),
+  "fallbacks": zod.array(zod.url()),
+  "placeholderUrl": zod.url()
+})
+
+
+/**
  * RBAC: admin or the owning restaurant_owner. Required before accepting orders.
  * @summary Complete a restaurant business profile
  */
@@ -2729,6 +2911,18 @@ export const ListShortsResponseItem = zod.object({
   "videoUrl": zod.string().nullish(),
   "restaurantId": zod.int().nullish(),
   "restaurantName": zod.string().nullish(),
+  "audioCodec": zod.string().nullish(),
+  "audioBitrate": zod.int().nullish(),
+  "durationSeconds": zod.number().nullish(),
+  "audio": zod.object({
+  "codec": zod.string().nullish(),
+  "bitrate": zod.int().nullish(),
+  "duration": zod.number().nullish()
+}).optional(),
+  "stream": zod.object({
+  "supportsRange": zod.boolean().optional(),
+  "contentType": zod.string().optional()
+}).optional(),
   "isActive": zod.boolean(),
   "sortOrder": zod.int(),
   "createdAt": zod.coerce.date().optional(),
@@ -2936,6 +3130,18 @@ export const ListBackendShortsResponseItem = zod.object({
   "videoUrl": zod.string().nullish(),
   "restaurantId": zod.int().nullish(),
   "restaurantName": zod.string().nullish(),
+  "audioCodec": zod.string().nullish(),
+  "audioBitrate": zod.int().nullish(),
+  "durationSeconds": zod.number().nullish(),
+  "audio": zod.object({
+  "codec": zod.string().nullish(),
+  "bitrate": zod.int().nullish(),
+  "duration": zod.number().nullish()
+}).optional(),
+  "stream": zod.object({
+  "supportsRange": zod.boolean().optional(),
+  "contentType": zod.string().optional()
+}).optional(),
   "isActive": zod.boolean(),
   "sortOrder": zod.int(),
   "createdAt": zod.coerce.date().optional(),
@@ -2964,6 +3170,18 @@ export const CreateBackendShortResponse = zod.object({
   "videoUrl": zod.string().nullish(),
   "restaurantId": zod.int().nullish(),
   "restaurantName": zod.string().nullish(),
+  "audioCodec": zod.string().nullish(),
+  "audioBitrate": zod.int().nullish(),
+  "durationSeconds": zod.number().nullish(),
+  "audio": zod.object({
+  "codec": zod.string().nullish(),
+  "bitrate": zod.int().nullish(),
+  "duration": zod.number().nullish()
+}).optional(),
+  "stream": zod.object({
+  "supportsRange": zod.boolean().optional(),
+  "contentType": zod.string().optional()
+}).optional(),
   "isActive": zod.boolean(),
   "sortOrder": zod.int(),
   "createdAt": zod.coerce.date().optional(),
@@ -2995,6 +3213,18 @@ export const UpdateBackendShortResponse = zod.object({
   "videoUrl": zod.string().nullish(),
   "restaurantId": zod.int().nullish(),
   "restaurantName": zod.string().nullish(),
+  "audioCodec": zod.string().nullish(),
+  "audioBitrate": zod.int().nullish(),
+  "durationSeconds": zod.number().nullish(),
+  "audio": zod.object({
+  "codec": zod.string().nullish(),
+  "bitrate": zod.int().nullish(),
+  "duration": zod.number().nullish()
+}).optional(),
+  "stream": zod.object({
+  "supportsRange": zod.boolean().optional(),
+  "contentType": zod.string().optional()
+}).optional(),
   "isActive": zod.boolean(),
   "sortOrder": zod.int(),
   "createdAt": zod.coerce.date().optional(),

@@ -25,6 +25,7 @@ import { containsLegacyMediaReference } from "../lib/objectStorage";
 import promoCodesRouter from "./promoCodes";
 import chatRouter from "./chat";
 import notificationsRouter from "./notifications";
+import cartRouter from "./cart";
 import referralsRouter from "./referrals";
 import promotionsRouter from "./promotions";
 import { subscribe } from "../lib/sse";
@@ -72,6 +73,7 @@ router.use(contentRouter);
 router.use(promoCodesRouter);
 router.use(chatRouter);
 router.use(notificationsRouter);
+router.use(cartRouter);
 router.use(referralsRouter);
 router.use(promotionsRouter);
 

@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response, type NextFunction } from "express";
 import {
   db,
   ordersTable,
@@ -30,6 +30,7 @@ import { publish } from "../lib/sse";
 import * as tracking from "../lib/trackingService";
 import { pushNotification } from "./notifications";
 import { notifyDrivers } from "../lib/expoPush";
+import { sendFcmPush } from "../lib/fcmPush";
 import { sendWebPush } from "../lib/vapid";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
 
@@ -81,6 +82,11 @@ const CUSTOMER_STATUS_LABELS: Record<
     fr: (_) => ({ title: "En route 🛵",            body: "Votre livreur est en chemin vers vous." }),
     en: (_) => ({ title: "On the way 🛵",           body: "Your driver is heading your way." }),
     ar: (_) => ({ title: "في الطريق 🛵",           body: "الموصِّل في طريقه إليك." }),
+  },
+  out_for_delivery: {
+    fr: (_) => ({ title: "Livraison en cours 🛵", body: "Votre livreur arrive avec votre commande." }),
+    en: (_) => ({ title: "Delivery in progress 🛵", body: "Your driver is on the way with your order." }),
+    ar: (_) => ({ title: "التوصيل جارٍ 🛵", body: "الموصِّل في طريقه إليك بطلبك." }),
   },
   delivered: {
     fr: (_) => ({ title: "Commande livrée 🎉",     body: "Bon appétit ! Évaluez votre expérience." }),
@@ -137,15 +143,14 @@ async function notifyCustomerStatus(
         console.warn("[orders] DB notification failed:", e),
       );
 
-      // 3 — Expo mobile push
+      // 3 — Mobile push (Expo tokens for the published app, FCM for native
+      // clients that register a Firebase token).
       if (prefs.pushToken && prefs.pushOrders !== false) {
-        notifyDrivers(
-          [prefs.pushToken],
-          title,
-          body,
-          { orderId, status },
-          { channelId: "order-status", priority: "high", ttl: 300 },
-        ).catch((e) => console.warn("[orders] expo-push-to-customer failed:", e));
+        const pushData = { orderId: String(orderId), status };
+        const pushPromise = prefs.pushToken.startsWith("ExponentPushToken[")
+          ? notifyDrivers([prefs.pushToken], title, body, { orderId, status }, { channelId: "order-status", priority: "high", ttl: 300 })
+          : sendFcmPush({ token: prefs.pushToken, title, body, data: pushData, channelId: "order-status" });
+        pushPromise.catch((e) => console.warn("[orders] mobile-push-to-customer failed:", e));
       }
 
       // 4 — Web push (browser)
@@ -284,6 +289,10 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
     isContactless?: boolean;
     paymentMethod?: "cash" | "card";
   };
+  if (paymentMethod !== undefined && paymentMethod !== "cash" && paymentMethod !== "card") {
+    res.status(400).json({ error: "paymentMethod must be cash or card" });
+    return;
+  }
 
   const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId)).limit(1);
   if (!restaurant) {
@@ -312,6 +321,10 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
     }
     if (menuItem.restaurantId !== restaurantId) {
       res.status(400).json({ error: `Menu item ${item.menuItemId} does not belong to this restaurant` });
+      return;
+    }
+    if (!menuItem.isAvailable) {
+      res.status(409).json({ error: `Menu item ${item.menuItemId} is currently unavailable` });
       return;
     }
 
@@ -512,7 +525,7 @@ router.get("/orders/:id", attachAuth, async (req: AuthedRequest, res, next): Pro
   }
 });
 
-router.patch("/orders/:id/status", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
+async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
   const params = UpdateOrderStatusParams.safeParse(req.params);
   if (!params.success) {
@@ -713,6 +726,24 @@ router.patch("/orders/:id/status", requireAuth, async (req: AuthedRequest, res, 
   } catch (err) {
     next(err);
   }
+}
+
+router.patch("/orders/:id/status", requireAuth, updateOrderStatusHandler);
+
+/**
+ * Public contract name for the same transition machine. The old /status route
+ * remains available for published clients while new clients use /step.
+ */
+router.patch("/orders/:id/step", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
+  const rawStep = req.body?.step ?? req.body?.status;
+  const aliases: Record<string, string> = {
+    IN_DELIVERY: "out_for_delivery",
+    in_delivery: "out_for_delivery",
+    OUT_FOR_DELIVERY: "out_for_delivery",
+  };
+  const step = typeof rawStep === "string" ? (aliases[rawStep] ?? rawStep.toLowerCase()) : rawStep;
+  req.body = { ...(req.body ?? {}), status: step };
+  await updateOrderStatusHandler(req, res, next);
 });
 
 /**

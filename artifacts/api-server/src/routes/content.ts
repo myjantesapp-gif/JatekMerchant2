@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, categoriesTable, menuItemCategoriesTable, adsTable, shortsTable } from "@workspace/db";
-import { normalizeStoredMediaPath } from "../lib/objectStorage";
+import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectStorage";
 import { eq, asc, and, or, sql } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 
@@ -93,9 +93,82 @@ router.get("/ads", async (req, res): Promise<void> => {
 // Shorts (public read)
 // ─────────────────────────────────────────────────────────────
 
-router.get("/shorts", async (_req, res): Promise<void> => {
-  const rows = await db.select().from(shortsTable).where(eq(shortsTable.isActive, true)).orderBy(asc(shortsTable.sortOrder));
-  res.json(rows);
+function encodeShortCursor(sortOrder: number, id: number): string {
+  return Buffer.from(JSON.stringify({ sortOrder, id }), "utf8").toString("base64url");
+}
+
+function decodeShortCursor(value: unknown): { sortOrder: number; id: number } | null {
+  if (typeof value !== "string" || value.length > 200) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+    if (!Number.isInteger(parsed.sortOrder) || !Number.isInteger(parsed.id)) return null;
+    return { sortOrder: parsed.sortOrder, id: parsed.id };
+  } catch {
+    return null;
+  }
+}
+
+function serializeShort(row: typeof shortsTable.$inferSelect) {
+  return {
+    ...row,
+    imageUrl: resolveLegacyMediaPath(row.imageUrl, "images"),
+    videoUrl: resolveLegacyMediaPath(row.videoUrl, "shorts"),
+    audio: {
+      codec: row.audioCodec,
+      bitrate: row.audioBitrate,
+      duration: row.durationSeconds,
+    },
+    stream: {
+      supportsRange: true,
+      contentType: "video/*",
+    },
+  };
+}
+
+router.get("/shorts", async (req, res): Promise<void> => {
+  const hasPagination = req.query.limit !== undefined || req.query.cursor !== undefined;
+  const requestedLimit = req.query.limit === undefined ? 20 : Number(req.query.limit);
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 50) {
+    res.status(400).json({ error: "limit must be an integer between 1 and 50" });
+    return;
+  }
+
+  const cursor = req.query.cursor === undefined ? null : decodeShortCursor(req.query.cursor);
+  if (req.query.cursor !== undefined && !cursor) {
+    res.status(400).json({ error: "Invalid cursor" });
+    return;
+  }
+
+  const condition = cursor
+    ? and(
+        eq(shortsTable.isActive, true),
+        or(
+          sql`${shortsTable.sortOrder} > ${cursor.sortOrder}`,
+          and(eq(shortsTable.sortOrder, cursor.sortOrder), sql`${shortsTable.id} > ${cursor.id}`),
+        ),
+      )
+    : eq(shortsTable.isActive, true);
+  const rows = await db
+    .select()
+    .from(shortsTable)
+    .where(condition)
+    .orderBy(asc(shortsTable.sortOrder), asc(shortsTable.id))
+    .limit(hasPagination ? requestedLimit + 1 : requestedLimit);
+
+  const hasMore = hasPagination && rows.length > requestedLimit;
+  const page = (hasMore ? rows.slice(0, requestedLimit) : rows).map(serializeShort);
+  const last = page.at(-1);
+  const nextCursor = hasMore && last ? encodeShortCursor(last.sortOrder, last.id) : null;
+
+  // Keep the historical array response when no pagination query is supplied.
+  // New clients opt into the cursor contract with ?limit=... and receive
+  // metadata without breaking older published mobile builds.
+  res.json(hasPagination ? {
+    items: page,
+    nextCursor,
+    hasMore,
+    limit: requestedLimit,
+  } : page);
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -137,7 +210,7 @@ router.get("/backend/shorts", requireAuth, async (req: AuthedRequest, res): Prom
 
 router.post("/backend/shorts", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   if (!await requireAdmin(req, res)) return;
-  const { title, imageUrl, videoUrl, restaurantId, restaurantName, isActive, sortOrder } = req.body ?? {};
+  const { title, imageUrl, videoUrl, restaurantId, restaurantName, audioCodec, audioBitrate, durationSeconds, isActive, sortOrder } = req.body ?? {};
   if (!title) { res.status(400).json({ error: "title required" }); return; }
   const [row] = await db.insert(shortsTable).values({
     title,
@@ -145,6 +218,9 @@ router.post("/backend/shorts", requireAuth, async (req: AuthedRequest, res): Pro
     videoUrl: normalizeStoredMediaPath(videoUrl) ?? null,
     restaurantId: restaurantId ?? null,
     restaurantName: restaurantName ?? null,
+    audioCodec: typeof audioCodec === "string" ? audioCodec.slice(0, 80) : null,
+    audioBitrate: Number.isInteger(audioBitrate) && audioBitrate > 0 ? audioBitrate : null,
+    durationSeconds: typeof durationSeconds === "number" && Number.isFinite(durationSeconds) && durationSeconds >= 0 ? durationSeconds : null,
     isActive: isActive !== false,
     sortOrder: sortOrder ?? 0,
   }).returning();
@@ -155,7 +231,7 @@ router.patch("/backend/shorts/:id", requireAuth, async (req: AuthedRequest, res)
   if (!await requireAdmin(req, res)) return;
   const id = Number(req.params.id);
   const updates: Record<string, any> = {};
-  const fields = ["title", "imageUrl", "videoUrl", "restaurantId", "restaurantName", "isActive", "sortOrder"];
+  const fields = ["title", "imageUrl", "videoUrl", "restaurantId", "restaurantName", "audioCodec", "audioBitrate", "durationSeconds", "isActive", "sortOrder"];
   for (const f of fields) {
     if (req.body?.[f] !== undefined) updates[f] = req.body[f];
   }

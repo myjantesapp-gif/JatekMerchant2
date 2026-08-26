@@ -49,6 +49,10 @@ tags:
     description: Server-sent event subscriptions
   - name: content
     description: Categories, ads/promos, and shorts content operations
+  - name: cart
+    description: Authenticated cart operations
+  - name: notifications
+    description: Push notification registration and delivery
 paths:
   /addresses:
     get:
@@ -1660,6 +1664,27 @@ paths:
       security:
         - bearerAuth: []
       description: "RBAC: admin or owning restaurant_owner."
+  /products/{id}/options:
+    get:
+      operationId: getProductOptions
+      tags:
+        - menu
+      summary: Get the available sizes and extras for a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product options
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductOptions"
+        "404":
+          description: Product not found
   /notification-prefs:
     get:
       operationId: getNotificationPrefs
@@ -1707,6 +1732,107 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /notifications/push-token:
+    put:
+      operationId: registerPushToken
+      tags:
+        - notifications
+      summary: Register the current user's push token
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTokenBody"
+      responses:
+        "200":
+          description: Token registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushTokenResponse"
+        "400":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePushToken
+      tags:
+        - notifications
+      summary: Remove the current user's push token
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Token removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+  /notifications/send:
+    post:
+      operationId: sendNotification
+      tags:
+        - notifications
+      summary: Send an in-app and remote notification
+      description: Staff-only; recipients are always explicit user IDs.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendNotificationBody"
+      responses:
+        "200":
+          description: Notification dispatched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendNotificationResponse"
+        "403":
+          description: Staff role required
+  /cart/items/{id}:
+    put:
+      operationId: updateCartItem
+      tags:
+        - cart
+      summary: Update a cart item for the current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCartItemBody"
+      responses:
+        "200":
+          description: Repriced cart item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartItem"
+        "400":
+          description: Invalid item or options
+        "404":
+          description: Cart item not found
+        "409":
+          description: Product unavailable
   /orders:
     get:
       operationId: listOrders
@@ -2006,6 +2132,35 @@ paths:
       security:
         - bearerAuth: []
       description: JWT required. Additional role/ownership checks apply when accepting restaurant orders or assigning drivers.
+  /orders/{id}/step:
+    patch:
+      operationId: updateOrderStep
+      tags:
+        - orders
+      summary: Advance an order through the transition machine
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStepBody"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "409":
+          description: Invalid or concurrent transition
   /orders/active:
     get:
       operationId: getActiveOrders
@@ -2483,6 +2638,27 @@ paths:
         "204":
           description: Deleted
       description: "RBAC: admin only."
+  /restaurants/{id}/header:
+    get:
+      operationId: getRestaurantHeader
+      tags:
+        - restaurants
+      summary: Resolve a restaurant header image with fallbacks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Header resolution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantHeader"
+        "404":
+          description: Restaurant not found
   /restaurants/{id}/complete-profile:
     post:
       operationId: completeRestaurantProfile
@@ -3334,6 +3510,160 @@ components:
           type: string
       required:
         - error
+    RestaurantHeader:
+      type: object
+      properties:
+        id:
+          type: string
+        headerUrl:
+          type: string
+          format: uri
+        fallbacks:
+          type: array
+          items:
+            type: string
+            format: uri
+        placeholderUrl:
+          type: string
+          format: uri
+      required:
+        - id
+        - headerUrl
+        - fallbacks
+        - placeholderUrl
+    PushTokenBody:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 10
+        platform:
+          type: string
+          enum: [ios, android, web, fcm]
+      required:
+        - token
+    PushTokenResponse:
+      type: object
+      properties:
+        userId:
+          type: integer
+        pushToken:
+          type:
+            - string
+            - "null"
+      required:
+        - userId
+    SendNotificationBody:
+      type: object
+      properties:
+        userId:
+          type: integer
+        userIds:
+          type: array
+          maxItems: 100
+          items:
+            type: integer
+        title:
+          type: string
+        body:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+      required:
+        - title
+        - body
+    SendNotificationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        recipients:
+          type: integer
+        inAppSaved:
+          type: integer
+        remoteSent:
+          type: integer
+      required:
+        - success
+        - recipients
+        - inAppSaved
+        - remoteSent
+    UpdateCartItemBody:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 99
+        selectedSizeId:
+          type:
+            - integer
+            - "null"
+        selectedExtraIds:
+          type: array
+          maxItems: 30
+          items:
+            type: integer
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        cartId:
+          type: integer
+        menuItemId:
+          type: integer
+        quantity:
+          type: integer
+        selectedSizeId:
+          type:
+            - integer
+            - "null"
+        selectedExtraIds:
+          type:
+            - array
+            - "null"
+          items:
+            type: integer
+        unitPrice:
+          type: number
+        subtotal:
+          type: number
+      required:
+        - id
+        - cartId
+        - menuItemId
+        - quantity
+        - unitPrice
+        - subtotal
+    ProductOptions:
+      type: object
+      properties:
+        product:
+          $ref: "#/components/schemas/MenuItem"
+        sizes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuItemSize"
+        extras:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuItemExtra"
+      required:
+        - product
+        - sizes
+        - extras
+    UpdateOrderStepBody:
+      type: object
+      properties:
+        step:
+          type: string
+          enum: [pending, accepted, confirmed, preparing, ready, driver_at_restaurant, picked_up, en_route, in_delivery, delivered, cancelled]
+        driverId:
+          type: integer
+      required:
+        - step
     SuccessResponse:
       type: object
       properties:
@@ -3706,6 +4036,50 @@ components:
         - isAvailable
         - isPopular
         - createdAt
+    MenuItemSize:
+      type: object
+      properties:
+        id:
+          type: integer
+        menuItemId:
+          type: integer
+        name:
+          type: string
+        priceAdjustment:
+          type: number
+        sortOrder:
+          type: integer
+        isAvailable:
+          type: boolean
+      required:
+        - id
+        - menuItemId
+        - name
+        - priceAdjustment
+        - sortOrder
+        - isAvailable
+    MenuItemExtra:
+      type: object
+      properties:
+        id:
+          type: integer
+        menuItemId:
+          type: integer
+        name:
+          type: string
+        price:
+          type: number
+        sortOrder:
+          type: integer
+        isAvailable:
+          type: boolean
+      required:
+        - id
+        - menuItemId
+        - name
+        - price
+        - sortOrder
+        - isAvailable
     CreateMenuItemBody:
       type: object
       properties:
@@ -5271,6 +5645,40 @@ components:
           type:
             - string
             - "null"
+        audioCodec:
+          type:
+            - string
+            - "null"
+        audioBitrate:
+          type:
+            - integer
+            - "null"
+        durationSeconds:
+          type:
+            - number
+            - "null"
+        audio:
+          type: object
+          properties:
+            codec:
+              type:
+                - string
+                - "null"
+            bitrate:
+              type:
+                - integer
+                - "null"
+            duration:
+              type:
+                - number
+                - "null"
+        stream:
+          type: object
+          properties:
+            supportsRange:
+              type: boolean
+            contentType:
+              type: string
         isActive:
           type: boolean
         sortOrder:

@@ -16,6 +16,20 @@ import { resolveLegacyMediaPath } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
+function publicApiUrl(req: { protocol: string; get(name: string): string | undefined }): string {
+  const configured = (process.env.PUBLIC_API_URL ?? process.env.EXPO_PUBLIC_DOMAIN ?? "").trim();
+  if (configured) return configured.startsWith("http") ? configured.replace(/\/+$/, "") : `https://${configured}`;
+  return `${req.protocol}://${req.get("host") ?? "localhost"}`;
+}
+
+function absoluteMediaUrl(req: { protocol: string; get(name: string): string | undefined }, value: string): string {
+  return value.startsWith("http://") || value.startsWith("https://")
+    ? value
+    : `${publicApiUrl(req)}${value.startsWith("/") ? "" : "/"}${value}`;
+}
+
+const RESTAURANT_HEADER_PLACEHOLDER = "/api/restaurants/placeholder/header.svg";
+
 async function withDeliveryDefaults<T extends { deliveryFee?: number | null; freeDeliveryThreshold?: number | null }>(r: T) {
   const settings = await getPlatformSettings();
   const defaultFee = Number(settings.defaultDeliveryFee);
@@ -31,6 +45,18 @@ async function withDeliveryDefaults<T extends { deliveryFee?: number | null; fre
       : (Number.isFinite(defaultThreshold) ? defaultThreshold : Number(DEFAULT_PLATFORM_SETTINGS.freeDeliveryThreshold)),
   };
 }
+
+router.get("/restaurants/placeholder/header.svg", (_req, res): void => {
+  res.type("image/svg+xml").set("Cache-Control", "public, max-age=86400").send(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" role="img" aria-label="Restaurant">
+      <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#ff4593"/><stop offset="1" stop-color="#00bfa6"/></linearGradient></defs>
+      <rect width="1200" height="480" fill="url(#g)"/>
+      <circle cx="1000" cy="80" r="220" fill="rgba(255,255,255,.12)"/>
+      <circle cx="180" cy="420" r="280" fill="rgba(0,0,0,.08)"/>
+      <text x="600" y="260" text-anchor="middle" fill="white" font-family="Arial,sans-serif" font-size="72" font-weight="700">Jatek</text>
+    </svg>`,
+  );
+});
 
 router.post("/restaurants/:id/track-click", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
@@ -146,6 +172,50 @@ router.get("/restaurants/:id", async (req, res): Promise<void> => {
   }
 
   res.json(await withDeliveryDefaults(restaurant));
+});
+
+/**
+ * Stable banner contract for mobile clients. imageUrl is the canonical
+ * dashboard banner; coverImageUrl is retained as a legacy fallback.
+ */
+router.get("/restaurants/:id/header", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid restaurant id" });
+    return;
+  }
+
+  const [restaurant] = await db
+    .select({
+      id: restaurantsTable.id,
+      imageUrl: restaurantsTable.imageUrl,
+      coverImageUrl: restaurantsTable.coverImageUrl,
+    })
+    .from(restaurantsTable)
+    .where(eq(restaurantsTable.id, id))
+    .limit(1);
+
+  if (!restaurant) {
+    res.status(404).json({ error: "Restaurant not found" });
+    return;
+  }
+
+  const imageUrl = resolveLegacyMediaPath(restaurant.imageUrl, "banners");
+  const legacyCoverUrl = resolveLegacyMediaPath(restaurant.coverImageUrl, "banners");
+  const placeholderUrl = absoluteMediaUrl(req, RESTAURANT_HEADER_PLACEHOLDER);
+  const headerPath = imageUrl || legacyCoverUrl || RESTAURANT_HEADER_PLACEHOLDER;
+  const fallbacks = Array.from(new Set(
+    [legacyCoverUrl, imageUrl, RESTAURANT_HEADER_PLACEHOLDER]
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .map((value) => absoluteMediaUrl(req, value)),
+  ));
+
+  res.json({
+    id: String(restaurant.id),
+    headerUrl: absoluteMediaUrl(req, headerPath),
+    fallbacks,
+    placeholderUrl,
+  });
 });
 
 router.patch("/restaurants/:id", requireRole("admin", "restaurant_owner"), async (req: AuthedRequest, res): Promise<void> => {

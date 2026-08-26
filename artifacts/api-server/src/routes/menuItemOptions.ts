@@ -5,6 +5,33 @@ import { requireRole, requireAuth, type AuthedRequest } from "../middlewares/aut
 
 const router: IRouter = Router();
 
+/** Unified public catalog contract consumed by the product detail screen. */
+router.get("/products/:id/options", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid product id" });
+    return;
+  }
+  const [product] = await db.select({
+    id: menuItemsTable.id,
+    restaurantId: menuItemsTable.restaurantId,
+    name: menuItemsTable.name,
+    price: menuItemsTable.price,
+    isAvailable: menuItemsTable.isAvailable,
+  }).from(menuItemsTable).where(eq(menuItemsTable.id, id)).limit(1);
+  if (!product) { res.status(404).json({ error: "Product not found" }); return; }
+
+  const [sizes, extras] = await Promise.all([
+    db.select().from(menuItemSizesTable)
+      .where(and(eq(menuItemSizesTable.menuItemId, id), eq(menuItemSizesTable.isAvailable, true)))
+      .orderBy(asc(menuItemSizesTable.sortOrder), asc(menuItemSizesTable.id)),
+    db.select().from(menuItemExtrasTable)
+      .where(and(eq(menuItemExtrasTable.menuItemId, id), eq(menuItemExtrasTable.isAvailable, true)))
+      .orderBy(asc(menuItemExtrasTable.sortOrder), asc(menuItemExtrasTable.id)),
+  ]);
+  res.json({ product, sizes, extras });
+});
+
 async function getRestaurantOwnerIdByMenuItem(menuItemId: number): Promise<number | null> {
   const [row] = await db
     .select({ ownerId: restaurantsTable.ownerId })

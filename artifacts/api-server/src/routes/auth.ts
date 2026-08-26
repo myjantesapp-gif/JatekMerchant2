@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { randomInt, timingSafeEqual } from "node:crypto";
 import { db, usersTable, driversTable, otpCodesTable } from "@workspace/db";
 import { eq, and, gt, desc } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
@@ -23,7 +24,7 @@ const OTP_MAX_ATTEMPTS = 3;
 const OTP_RATE_LIMIT_MINUTES = 1;
 
 function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString();
 }
 
 /**
@@ -125,12 +126,35 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
     ? email.trim().toLowerCase()
     : normalizePhone(phone.trim());
 
+  // Rate-limit every provider, including Twilio Verify. This prevents a
+  // fallback provider or a provider outage from becoming a resend bypass.
+  const recentOtp = await db
+    .select({ id: otpCodesTable.id })
+    .from(otpCodesTable)
+    .where(
+      and(
+        eq(otpCodesTable.phone, identifier),
+        gt(otpCodesTable.createdAt, new Date(Date.now() - OTP_RATE_LIMIT_MINUTES * 60 * 1000)),
+      ),
+    )
+    .limit(1);
+  if (recentOtp.length > 0) {
+    res.status(429).json({ error: "Veuillez attendre avant de demander un nouveau code" });
+    return;
+  }
+
   // ── Phone OTP via Twilio Verify (no DB row needed) ──────────────────────────
-  // On success: return immediately (no DB row needed).
+  // A short-lived sentinel row keeps Twilio under the same resend limit and
+  // lets the successful verification consume the local request.
   // On failure: fall through to the DB-managed path so Infobip can serve as backup.
   if (!isEmailMode && twilioVerifyConfigured()) {
     try {
       await sendTwilioVerify(identifier, "whatsapp");
+      await db.insert(otpCodesTable).values({
+        phone: identifier,
+        code: "__twilio_verify__",
+        expiresAt: new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000),
+      });
       res.json({
         success: true,
         channel: "twilio-verify-whatsapp",
@@ -150,25 +174,10 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
   }
 
   // ── Email OTP / legacy phone OTP — DB-managed ───────────────────────────────
-  const recentOtp = await db
-    .select()
-    .from(otpCodesTable)
-    .where(
-      and(
-        eq(otpCodesTable.phone, identifier),
-        gt(otpCodesTable.createdAt, new Date(Date.now() - OTP_RATE_LIMIT_MINUTES * 60 * 1000))
-      )
-    )
-    .limit(1);
-
-  if (recentOtp.length > 0) {
-    res.status(429).json({ error: "Veuillez attendre avant de demander un nouveau code" });
-    return;
-  }
-
   const code = generateOtp();
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-  await db.insert(otpCodesTable).values({ phone: identifier, code, expiresAt });
+  const codeHash = await bcrypt.hash(code, 10);
+  await db.insert(otpCodesTable).values({ phone: identifier, code: codeHash, expiresAt });
 
   const messageBody = `Votre code Jatek : ${code}\nValable ${OTP_EXPIRY_MINUTES} minutes. Ne le communiquez à personne.`;
 
@@ -252,6 +261,11 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
       res.status(400).json({ error: "Code incorrect." });
       return;
     }
+
+    await db
+      .update(otpCodesTable)
+      .set({ used: true })
+      .where(and(eq(otpCodesTable.phone, identifier), eq(otpCodesTable.used, false)));
 
     // Code approved — proceed to account creation (signup) or standard login.
     const isSignup = intent === "signup";
@@ -345,11 +359,21 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     return;
   }
 
-  if (otpRecord.code !== code.trim()) {
+  const suppliedCode = String(code).trim();
+  let codeMatches = false;
+  if (otpRecord.code.startsWith("$2")) {
+    codeMatches = await bcrypt.compare(suppliedCode, otpRecord.code);
+  } else {
+    const expected = Buffer.from(otpRecord.code);
+    const actual = Buffer.from(suppliedCode);
+    codeMatches = expected.length === actual.length && timingSafeEqual(expected, actual);
+  }
+
+  if (!codeMatches) {
     await db
       .update(otpCodesTable)
       .set({ attempts: otpRecord.attempts + 1 })
-      .where(eq(otpCodesTable.id, otpRecord.id));
+      .where(and(eq(otpCodesTable.id, otpRecord.id), eq(otpCodesTable.attempts, otpRecord.attempts)));
 
     const remaining = OTP_MAX_ATTEMPTS - (otpRecord.attempts + 1);
     res.status(400).json({
@@ -357,6 +381,18 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
         ? `Code incorrect. ${remaining} tentative${remaining === 1 ? "" : "s"} restante${remaining === 1 ? "" : "s"}.`
         : "Trop de tentatives. Demandez un nouveau code.",
     });
+    return;
+  }
+
+  // Consume before account work so two concurrent verify requests cannot both
+  // mint a session or create the same account.
+  const [consumedOtp] = await db
+    .update(otpCodesTable)
+    .set({ used: true })
+    .where(and(eq(otpCodesTable.id, otpRecord.id), eq(otpCodesTable.used, false)))
+    .returning({ id: otpCodesTable.id });
+  if (!consumedOtp) {
+    res.status(409).json({ error: "Ce code a déjà été utilisé. Demandez un nouveau code." });
     return;
   }
 
