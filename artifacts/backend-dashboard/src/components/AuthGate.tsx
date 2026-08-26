@@ -55,7 +55,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
     const expire = () => {
       stream.close();
-      endBackendSession();
+      endBackendSession(token);
     };
     stream.addEventListener("session_expired", expire);
     return () => {

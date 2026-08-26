@@ -13,7 +13,7 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const res = await fetch(path, { ...init, headers });
   if (!res.ok) {
-    if (res.status === 401) endBackendSession();
+    if (res.status === 401) endBackendSession(token);
     let msg = `Request failed (${res.status})`;
     let details: unknown;
     try {

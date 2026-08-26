@@ -11,8 +11,11 @@ export function clearBackendSession(): void {
  * Ends the session exactly once after a protected API answers 401. Later
  * failing requests are ignored because the token has already been removed.
  */
-export function endBackendSession(): void {
-  if (!localStorage.getItem(BACKEND_TOKEN_KEY)) return;
+export function endBackendSession(requestToken?: string | null): void {
+  const activeToken = localStorage.getItem(BACKEND_TOKEN_KEY);
+  // A delayed response or SSE event from an older session must never clear a
+  // newer login that has already replaced this token.
+  if (!activeToken || (requestToken !== undefined && requestToken !== activeToken)) return;
   clearBackendSession();
   sessionStorage.setItem(BACKEND_SESSION_EXPIRED_FLAG, "true");
   window.dispatchEvent(new CustomEvent(BACKEND_SESSION_EXPIRED_EVENT));

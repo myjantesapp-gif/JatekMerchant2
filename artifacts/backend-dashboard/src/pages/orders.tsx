@@ -46,6 +46,20 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: "En attente",
+  accepted: "Accepté",
+  confirmed: "Confirmé",
+  preparing: "En préparation",
+  ready: "Prêt",
+  driver_at_restaurant: "Livreur au restaurant",
+  picked_up: "Récupéré",
+  en_route: "En route",
+  out_for_delivery: "Chez le client",
+  delivered: "Livré",
+  cancelled: "Annulé",
+};
+
 type ActionModal = "refund" | "cancel" | "gesture" | "chat" | null;
 
 export default function Orders() {
@@ -206,7 +220,7 @@ export default function Orders() {
                   <TableCell className="hidden sm:table-cell text-sm">{order.restaurantName}</TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-800"}`}>
-                      {order.status}
+                      {STATUS_LABELS[order.status] ?? order.status}
                     </span>
                   </TableCell>
                   <TableCell className="text-right font-bold">{formatMad(order.total)} MAD</TableCell>
@@ -233,7 +247,7 @@ export default function Orders() {
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Statut</p>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[selectedOrder.status] ?? ""}`}>
-                      {selectedOrder.status}
+                      {STATUS_LABELS[selectedOrder.status] ?? selectedOrder.status}
                     </span>
                   </div>
                   <div className="text-right">
@@ -295,7 +309,7 @@ export default function Orders() {
                       <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {["pending","accepted","confirmed","preparing","ready","driver_at_restaurant","picked_up","en_route","out_for_delivery","delivered","cancelled"].map((s) => (
-                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                          <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

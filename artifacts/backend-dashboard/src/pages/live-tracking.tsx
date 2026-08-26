@@ -9,6 +9,10 @@ import { Radio, Truck, ShoppingCart, Clock, MapPin, RefreshCw, Wifi } from "luci
 import { formatDistanceToNow, format } from "date-fns";
 import { fr } from "date-fns/locale";
 
+function formatMad(value: number | null | undefined): string {
+  return new Intl.NumberFormat("fr-MA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value ?? 0));
+}
+
 interface LiveOrder {
   id: number;
   reference: string | null;
@@ -39,19 +43,25 @@ interface LiveTrackingData {
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
   accepted: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  confirmed: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
   preparing: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
   ready: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400",
+  driver_at_restaurant: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400",
   picked_up: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400",
   en_route: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400",
+  out_for_delivery: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400",
 };
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
   accepted: "Accepté",
+  confirmed: "Confirmé",
   preparing: "En préparation",
   ready: "Prêt",
+  driver_at_restaurant: "Livreur au restaurant",
   picked_up: "Récupéré",
   en_route: "En route",
+  out_for_delivery: "Chez le client",
 };
 
 function StatCard({ title, value, sub, icon: Icon, color }: {
@@ -98,7 +108,11 @@ function useAdminTrackingSSE(onEvent: () => void) {
 
     function connect() {
       if (!mounted) return;
-      const url = `/api/events?channels=admin_tracking&token=${encodeURIComponent(token!)}`;
+      // Read the token for every reconnect. A session may have been replaced
+      // while the previous EventSource was still closing.
+      const requestToken = localStorage.getItem("jatek_backend_token");
+      if (!requestToken) return;
+      const url = `/api/events?channels=admin_tracking&token=${encodeURIComponent(requestToken)}`;
       const es = new EventSource(url);
       esRef.current = es;
 
@@ -112,7 +126,7 @@ function useAdminTrackingSSE(onEvent: () => void) {
        es.addEventListener("session_expired", () => {
          // The server sends this before closing a disabled account's stream.
          // Ending the session removes the token, so onerror cannot reconnect.
-         endBackendSession();
+         endBackendSession(requestToken);
          es.close();
          esRef.current = null;
          if (retryRef.current !== null) {
@@ -293,7 +307,7 @@ export default function LiveTracking() {
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right font-bold text-sm">{order.total} DH</TableCell>
+                  <TableCell className="text-right font-bold text-sm">{formatMad(order.total)} DH</TableCell>
                 </TableRow>
               ))}
             </TableBody>

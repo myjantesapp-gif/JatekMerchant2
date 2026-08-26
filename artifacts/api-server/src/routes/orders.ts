@@ -235,6 +235,7 @@ router.get("/orders/available", requireAuth, async (req: AuthedRequest, res, nex
         deliveryAddress: ordersTable.deliveryAddress,
         total: ordersTable.total,
         deliveryFee: ordersTable.deliveryFee,
+        driverEarning: ordersTable.driverEarning,
         estimatedDeliveryTime: ordersTable.estimatedDeliveryTime,
         status: ordersTable.status,
         createdAt: ordersTable.createdAt,

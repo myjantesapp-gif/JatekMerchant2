@@ -59,6 +59,15 @@ function haptic(type: "light" | "medium" | "success" | "warning" | "error" = "li
   else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 }
 
+const DELIVERY_STATUS_LABELS: Record<string, string> = {
+  accepted: "Accepté",
+  ready: "Prêt",
+  driver_at_restaurant: "Au restaurant",
+  picked_up: "Récupéré",
+  en_route: "En route",
+  out_for_delivery: "Chez le client",
+};
+
 export default function DeliverScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -113,8 +122,15 @@ export default function DeliverScreen() {
   const isOnline = !!myDriver?.isAvailable;
   const profileComplete = !!(myDriver as any)?.profileCompletedAt;
   const activeDelivery = myOrders?.find((o) =>
-    ["ready", "picked_up", "driver_at_restaurant", "en_route", "out_for_delivery"].includes(o.status ?? "")
+    ["accepted", "ready", "driver_at_restaurant", "picked_up", "en_route", "out_for_delivery"].includes(o.status ?? "")
   );
+
+  const DELIVERY_STEPS: Record<string, { next: "driver_at_restaurant" | "picked_up" | "en_route" | "out_for_delivery"; label: string }> = {
+    accepted: { next: "driver_at_restaurant", label: "Arrivé au restaurant" },
+    driver_at_restaurant: { next: "picked_up", label: "Récupérer la commande" },
+    picked_up: { next: "en_route", label: "Partir en livraison" },
+    en_route: { next: "out_for_delivery", label: "Arrivé chez le client" },
+  };
 
   // Load available orders on mount + when becoming online
   const loadAvailable = useCallback(async () => {
@@ -307,6 +323,21 @@ export default function DeliverScreen() {
   const onMarkDelivered = (orderId: number) => {
     haptic("medium");
     setPickupModalOrderId(orderId);
+  };
+
+  const onAdvanceDelivery = async () => {
+    if (!activeDelivery) return;
+    const step = DELIVERY_STEPS[activeDelivery.status];
+    if (!step) return;
+    haptic("medium");
+    try {
+      await updateStatus.mutateAsync({ id: activeDelivery.id, data: { status: step.next } });
+      haptic("success");
+      await refetchMyOrders();
+    } catch (e: any) {
+      haptic("error");
+      Alert.alert("Impossible de mettre à jour la course", e?.message ?? "Actualisez puis réessayez.");
+    }
   };
 
   const onConfirmPickupCode = async (code: string) => {
@@ -512,6 +543,9 @@ export default function DeliverScreen() {
                 <Text style={[styles.activeOrderId, { color: colors.mutedForeground }]}>
                   Order #{activeDelivery.id}
                 </Text>
+                <Text style={[styles.activeOrderId, { color: colors.primary, fontFamily: "Inter_700Bold" }]}>
+                  {DELIVERY_STATUS_LABELS[activeDelivery.status] ?? activeDelivery.status}
+                </Text>
               </View>
 
               <Text style={[styles.activeRest, { color: colors.foreground }]}>
@@ -556,20 +590,37 @@ export default function DeliverScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={styles.deliveredBtn}
-                onPress={() => onMarkDelivered(activeDelivery.id)}
-                disabled={updateStatus.isPending}
-              >
-                {updateStatus.isPending ? (
+              {DELIVERY_STEPS[activeDelivery.status] ? (
+                <TouchableOpacity
+                  style={styles.deliveredBtn}
+                  onPress={onAdvanceDelivery}
+                  disabled={updateStatus.isPending}
+                >
+                  {updateStatus.isPending ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="arrow-forward-circle" size={20} color="#fff" />
+                      <Text style={styles.deliveredBtnText}>{DELIVERY_STEPS[activeDelivery.status].label}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.deliveredBtn}
+                  onPress={() => onMarkDelivered(activeDelivery.id)}
+                  disabled={updateStatus.isPending}
+                >
+                  {updateStatus.isPending ? (
                   <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                    <Text style={styles.deliveredBtnText}>Mark as delivered</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                      <Text style={styles.deliveredBtnText}>Confirmer la livraison</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           </Animated.View>
         )}

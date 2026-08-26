@@ -1483,7 +1483,17 @@ router.get("/backend/live-tracking", requireAuth, async (req: AuthedRequest, res
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
 
-  const ACTIVE_STATUSES = ["pending", "accepted", "preparing", "ready", "picked_up", "en_route"] as const;
+  const ACTIVE_STATUSES = [
+    "pending",
+    "accepted",
+    "confirmed",
+    "preparing",
+    "ready",
+    "driver_at_restaurant",
+    "picked_up",
+    "en_route",
+    "out_for_delivery",
+  ] as const;
 
   const activeOrders = await db
     .select({
@@ -1563,7 +1573,7 @@ router.get("/backend/live-tracking", requireAuth, async (req: AuthedRequest, res
     activeOrders: enriched,
     totalActiveCount: enriched.length,
     pendingCount: enriched.filter((o) => o.status === "pending").length,
-    enRouteCount: enriched.filter((o) => ["picked_up", "en_route"].includes(o.status)).length,
+    enRouteCount: enriched.filter((o) => ["driver_at_restaurant", "picked_up", "en_route", "out_for_delivery"].includes(o.status)).length,
     onlineDriversCount: onlineDriverIds.size,
   });
 });

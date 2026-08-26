@@ -45,9 +45,13 @@ function haptic(type: "light" | "medium" | "success" | "warning" | "error" = "li
 const STATUS_FLOW: Record<string, { label: string; icon: string; next?: UpdateOrderStepBodyStep; nextLabel?: string }> = {
   pending: { label: "Nouveau", icon: "time-outline", next: "accepted", nextLabel: "Accepter" },
   accepted: { label: "Accepté", icon: "checkmark-circle-outline", next: "preparing", nextLabel: "En préparation" },
+  confirmed: { label: "Confirmé", icon: "checkmark-circle-outline", next: "preparing", nextLabel: "En préparation" },
   preparing: { label: "Préparation", icon: "restaurant-outline", next: "ready", nextLabel: "Prêt pour livraison" },
   ready: { label: "Prêt", icon: "bag-check-outline" },
+  driver_at_restaurant: { label: "Livreur au restaurant", icon: "location-outline" },
   picked_up: { label: "En route", icon: "bicycle-outline" },
+  en_route: { label: "En route", icon: "bicycle-outline" },
+  out_for_delivery: { label: "Chez le client", icon: "navigate-outline" },
   delivered: { label: "Livré", icon: "checkmark-done-circle-outline" },
   cancelled: { label: "Annulé", icon: "close-circle-outline" },
 };
@@ -55,9 +59,13 @@ const STATUS_FLOW: Record<string, { label: string; icon: string; next?: UpdateOr
 const STATUS_COLOR: Record<string, string> = {
   pending: "#E2006A",
   accepted: "#2563EB",
+  confirmed: "#2563EB",
   preparing: "#7C3AED",
   ready: "#059669",
+  driver_at_restaurant: "#0284C7",
   picked_up: "#0284C7",
+  en_route: "#E2006A",
+  out_for_delivery: "#E2006A",
   delivered: "#0F172A",
   cancelled: "#64748B",
 };
@@ -154,7 +162,7 @@ function OrderRow({
           </View>
         )}
 
-        {cfg.next && order.status !== "pending" && (
+        {cfg.next && order.status !== "pending" && !order.driverId && (
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: colors.primary, opacity: loading ? 0.6 : 1 }]}
             onPress={() => onAction(order.id, cfg.next!)}
