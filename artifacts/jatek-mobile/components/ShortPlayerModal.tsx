@@ -22,7 +22,7 @@ import { router } from "expo-router";
 import { WebView } from "react-native-webview";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Short } from "@/lib/api";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { getYouTubeThumbnailUrl, getYouTubeVideoId, resolveMediaUrl } from "@/lib/mediaUrl";
 
 const PINK = "#FF4593";
 const TURQUOISE = "#00BFA6";
@@ -32,20 +32,10 @@ function resolveVideoUrl(url: string): string {
 }
 
 function getYouTubeEmbedUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase();
-    if (host !== "youtu.be" && host !== "youtube.com" && !host.endsWith(".youtube.com")) return null;
-    let videoId = parsed.searchParams.get("v");
-    if (parsed.hostname === "youtu.be") videoId = parsed.pathname.slice(1).split("/")[0] ?? null;
-    if (parsed.pathname.startsWith("/embed/")) videoId = parsed.pathname.split("/")[2] ?? null;
-    if (parsed.pathname.startsWith("/shorts/")) videoId = parsed.pathname.split("/")[2] ?? null;
-    return videoId && /^[\w-]{6,}$/.test(videoId)
-      ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&loop=1&playlist=${videoId}&rel=0`
-      : null;
-  } catch {
-    return null;
-  }
+  const videoId = getYouTubeVideoId(url);
+  return videoId
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&loop=1&playlist=${videoId}&rel=0`
+    : null;
 }
 
 function getVideoHtml(url: string): string {
@@ -244,10 +234,8 @@ function ShortFrame({
     <View style={[styles.frame, { width, height }]}>
       {short.videoUrl && active ? (
         <ShortVideo url={short.videoUrl} poster={short.imageUrl} soundEnabled={soundEnabled} />
-      ) : short.imageUrl ? (
-        <Image source={{ uri: resolveMediaUrl(short.imageUrl) }} style={styles.bg} resizeMode="cover" />
       ) : (
-        <View style={[styles.bg, { backgroundColor: "#111" }]} />
+        <ShortPoster short={short} />
       )}
       <LinearGradient
         colors={["rgba(0,0,0,0.45)", "transparent", "rgba(0,0,0,0.85)"]}
@@ -340,7 +328,13 @@ function ShortVideo({
   const nativeWebViewRef = useRef<WebView>(null);
   const webVideoRef = useRef<any>(null);
   const webFrameRef = useRef<any>(null);
+  const [videoFailed, setVideoFailed] = useState(false);
   const youtubeUrl = getYouTubeEmbedUrl(url);
+  const posterUrl = resolveMediaUrl(poster) ?? getYouTubeThumbnailUrl(url);
+
+  useEffect(() => {
+    setVideoFailed(false);
+  }, [url]);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -367,6 +361,14 @@ function ShortVideo({
   // media elements there so Shorts still autoplay instead of showing a poster
   // placeholder in the web/mobile preview.
   if (Platform.OS === "web") {
+    if (videoFailed) {
+      return posterUrl ? (
+        <Image source={{ uri: posterUrl }} style={styles.bg} resizeMode="cover" />
+      ) : (
+        <View style={[styles.bg, { backgroundColor: "#111" }]} />
+      );
+    }
+
     if (youtubeUrl) {
       return React.createElement("iframe", {
         ref: webFrameRef,
@@ -375,13 +377,14 @@ function ShortVideo({
         allow: "autoplay; encrypted-media; picture-in-picture",
         allowFullScreen: true,
         style: styles.webMedia,
+        onError: () => setVideoFailed(true),
       });
     }
 
     return React.createElement("video", {
       ref: webVideoRef,
       src: resolveVideoUrl(url),
-      poster: poster ? resolveMediaUrl(poster) : undefined,
+      poster: poster ? resolveMediaUrl(poster) : getYouTubeThumbnailUrl(url),
       autoPlay: true,
       muted: !soundEnabled,
       loop: true,
@@ -389,7 +392,16 @@ function ShortVideo({
       preload: "auto",
       "aria-label": "Short vidéo",
       style: styles.webMedia,
+      onError: () => setVideoFailed(true),
     });
+  }
+
+  if (videoFailed) {
+    return posterUrl ? (
+      <Image source={{ uri: posterUrl }} style={styles.bg} resizeMode="cover" />
+    ) : (
+      <View style={[styles.bg, { backgroundColor: "#111" }]} />
+    );
   }
 
   return (
@@ -404,6 +416,34 @@ function ShortVideo({
       allowsFullscreenVideo
       javaScriptEnabled
       onLoadEnd={() => nativeWebViewRef.current?.injectJavaScript(buildSoundScript(soundEnabled))}
+      onError={() => setVideoFailed(true)}
+      onHttpError={(event) => {
+        if (event.nativeEvent.statusCode >= 400) setVideoFailed(true);
+      }}
+    />
+  );
+}
+
+function ShortPoster({ short }: { short: Short }) {
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const sources = [
+    resolveMediaUrl(short.imageUrl),
+    getYouTubeThumbnailUrl(short.videoUrl),
+  ].filter((value): value is string => Boolean(value));
+
+  useEffect(() => {
+    setSourceIndex(0);
+  }, [short.id, short.imageUrl, short.videoUrl]);
+
+  const source = sources[sourceIndex];
+  if (!source) return <View style={[styles.bg, { backgroundColor: "#111" }]} />;
+
+  return (
+    <Image
+      source={{ uri: source }}
+      style={styles.bg}
+      resizeMode="cover"
+      onError={() => setSourceIndex((current) => current + 1)}
     />
   );
 }

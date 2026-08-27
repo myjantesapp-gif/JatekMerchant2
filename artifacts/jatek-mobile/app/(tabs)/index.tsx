@@ -30,7 +30,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAds, useShorts } from "@/hooks/useContent";
 import type { Ad } from "@/lib/api";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { getYouTubeThumbnailUrl, resolveMediaUrl } from "@/lib/mediaUrl";
 import { getApiBaseSafe } from "@/lib/apiBase";
 import { formatMad } from "@/lib/money";
 import { WaveEdge } from "@/components/WaveEdge";
@@ -104,6 +104,33 @@ function LoadRetry({ message, onRetry }: { message: string; onRetry: () => void 
         <Text style={s.loadRetryButtonText}>Réessayer</Text>
       </TouchableOpacity>
     </View>
+  );
+}
+
+function ShortThumbnail({ short }: { short: { id: number; imageUrl?: string | null; videoUrl?: string | null } }) {
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const sources = useMemo(
+    () => [resolveMediaUrl(short.imageUrl), getYouTubeThumbnailUrl(short.videoUrl)]
+      .filter((value): value is string => Boolean(value)),
+    [short.imageUrl, short.videoUrl],
+  );
+  const source = sources[sourceIndex];
+
+  if (!source) {
+    return (
+      <View style={[s.videoImg, s.videoImgPlaceholder]}>
+        <Ionicons name="videocam-outline" size={30} color="rgba(255,255,255,0.7)" />
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri: source }}
+      style={s.videoImg}
+      resizeMode="cover"
+      onError={() => setSourceIndex((current) => current + 1)}
+    />
   );
 }
 
@@ -589,11 +616,7 @@ export default function HomeScreen() {
           >
             {shorts.map((short, i) => (
               <Pressable key={short.id} onPress={() => openShort(i)} style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}>
-                <Image
-                  source={{ uri: resolveMediaUrl(short.imageUrl) }}
-                  style={s.videoImg}
-                  resizeMode="cover"
-                />
+                <ShortThumbnail short={short} />
                 <View style={s.videoScrim} />
                 {/* play icon centered */}
                 <View style={s.videoPlayWrap}>
@@ -1047,6 +1070,11 @@ const s = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: undefined,
     height: undefined,
+  },
+  videoImgPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#111827",
   },
   videoScrim: {
     ...StyleSheet.absoluteFillObject,

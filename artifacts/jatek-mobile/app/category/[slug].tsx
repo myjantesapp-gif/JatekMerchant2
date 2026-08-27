@@ -125,7 +125,7 @@ function PromoBannerCard({
 }
 
 function RestaurantCardGrid({ restaurant, onPress, color }: { restaurant: Restaurant; onPress: () => void; color: string }) {
-  const img = restaurant.imageUrl;
+  const img = restaurant.imageUrl || restaurant.coverImageUrl;
 
   return (
     <Pressable
