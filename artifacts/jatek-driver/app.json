@@ -41,6 +41,9 @@
         "POST_NOTIFICATIONS"
       ]
     },
+    "updates": {
+      "url": "https://u.expo.dev/135003c2-4828-403d-8176-068364215286"
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -54,6 +57,7 @@
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",
+      "expo-updates",
       [
         "expo-location",
         {

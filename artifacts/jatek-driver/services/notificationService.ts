@@ -1,4 +1,5 @@
 import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type { Order, OrderStatus } from "@/lib/api";
 
@@ -60,13 +61,24 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 export async function getExpoPushToken(): Promise<string | null> {
   if (Platform.OS === "web") return null;
   try {
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      process.env.EXPO_PUBLIC_PROJECT_ID ??
+      Constants.easConfig?.projectId;
     const token = await Notifications.getExpoPushTokenAsync({
-      projectId: process.env.EXPO_PUBLIC_REPL_ID ?? undefined,
+      projectId,
     });
     return token.data;
-  } catch {
+  } catch (error) {
+    console.warn("[notifications] unable to get Expo push token", error);
     return null;
   }
+}
+
+export async function registerForPushNotifications(): Promise<string | null> {
+  const granted = await requestNotificationPermissions();
+  if (!granted) return null;
+  return getExpoPushToken();
 }
 
 // ─── Boot setup (call once on app start) ─────────────────────────────

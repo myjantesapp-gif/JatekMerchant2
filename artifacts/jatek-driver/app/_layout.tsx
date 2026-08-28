@@ -48,6 +48,11 @@ function RootLayoutNav() {
         }
       },
     );
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (!response) return;
+      const orderId = getOrderIdFromResponse(response);
+      if (orderId) router.push(`/order/${orderId}`);
+    });
     return () => tapSub.remove();
   }, [router]);
 

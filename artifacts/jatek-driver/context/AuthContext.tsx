@@ -2,7 +2,7 @@ import { useRouter, useSegments } from "expo-router";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { clearToken, getToken, setToken as persistToken, subscribeToTokenChanges } from "@/lib/auth";
 import { getMe, setDriverOnline, updatePushToken, type Me } from "@/lib/api";
-import { getExpoPushToken } from "@/services/notificationService";
+import { registerForPushNotifications } from "@/services/notificationService";
 
 type AuthState = {
   ready: boolean;
@@ -44,18 +44,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const registerPushToken = useCallback(() => {
+    registerForPushNotifications()
+      .then((pushToken) => {
+        if (!pushToken) return;
+        return updatePushToken(pushToken);
+      })
+      .catch((error) => {
+        console.warn("[auth] unable to register driver push token", error);
+      });
+  }, []);
+
   useEffect(() => {
     (async () => {
       const t = await getToken();
       if (t) {
         setTokenState(t);
         setLoading(true);
-        await fetchMe();
+        const me = await fetchMe();
         setLoading(false);
+        if (me) registerPushToken();
       }
       setReady(true);
     })();
-  }, [fetchMe]);
+  }, [fetchMe, registerPushToken]);
 
   useEffect(() => subscribeToTokenChanges((nextToken) => {
     setTokenState(nextToken);
@@ -71,12 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTokenState(newToken);
     const me = await fetchMe();
     setLoading(false);
-    // Register push token best-effort after login (don't await)
-    getExpoPushToken()
-      .then((pt) => { if (pt) updatePushToken(pt).catch(() => {}); })
-      .catch(() => {});
+    // Register after login without blocking navigation.
+    if (me) registerPushToken();
     return me;
-  }, [fetchMe]);
+  }, [fetchMe, registerPushToken]);
 
   const refresh = useCallback(async () => {
     if (!token) return null;
