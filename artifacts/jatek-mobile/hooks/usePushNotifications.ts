@@ -53,12 +53,40 @@ if (pushSupported) {
  */
 let cachedExpoPushToken: string | null = null;
 
+async function configureAndroidNotificationChannels(): Promise<void> {
+  if (Platform.OS !== "android" || !pushSupported) return;
+
+  await Promise.all([
+    Notifications.setNotificationChannelAsync("order-status", {
+      name: "Suivi des commandes",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      sound: "default",
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    }),
+    Notifications.setNotificationChannelAsync("incoming-order", {
+      name: "Nouvelles courses",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 300, 200, 300],
+      sound: "default",
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    }),
+  ]);
+}
+
 async function fetchExpoPushToken(): Promise<string | null> {
   if (!pushSupported) return null;
   if (cachedExpoPushToken) return cachedExpoPushToken;
   try {
+    const projectId =
+      process.env.EXPO_PUBLIC_PROJECT_ID ??
+      Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) {
+      console.warn("[push] Expo project ID is missing");
+      return null;
+    }
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
+      projectId,
     });
     if (tokenData?.data) {
       cachedExpoPushToken = tokenData.data;
@@ -119,6 +147,12 @@ export function useNotificationSetup(authToken: string | null) {
     if (!pushSupported) return;
 
     (async () => {
+      try {
+        await configureAndroidNotificationChannels();
+      } catch (err) {
+        console.warn("[push] could not configure Android channels:", err);
+      }
+
       const { status: existing } = await Notifications.getPermissionsAsync();
       let status = existing;
       if (status !== "granted") {
