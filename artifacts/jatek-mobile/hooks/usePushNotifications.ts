@@ -10,7 +10,7 @@
  *    Call from any screen when the order status changes locally.
  */
 import { useCallback, useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import Constants, { ExecutionEnvironment } from "expo-constants";
@@ -108,16 +108,23 @@ async function fetchAndRegisterPushToken(
 ): Promise<void> {
   const expoPushToken = await fetchExpoPushToken();
   if (!expoPushToken) return;
-  try {
-    const platform = Platform.OS === "ios" ? "ios" : "android";
-    await register({
-      data: {
-        token: expoPushToken,
-        platform,
-      },
-    });
-  } catch (err) {
-    console.warn("[push] could not register token with backend:", err);
+  const platform = Platform.OS === "ios" ? "ios" : "android";
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await register({
+        data: {
+          token: expoPushToken,
+          platform,
+        },
+      });
+      return;
+    } catch (err) {
+      if (attempt === 3) {
+        console.warn("[push] could not register token with backend:", err);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
   }
 }
 
@@ -149,27 +156,26 @@ export function useNotificationSetup(authToken: string | null) {
     (async () => {
       try {
         await configureAndroidNotificationChannels();
+        const { status: existing } = await Notifications.getPermissionsAsync();
+        let status = existing;
+        if (status !== "granted") {
+          const { status: asked } = await Notifications.requestPermissionsAsync();
+          status = asked;
+        }
+        // After permission is resolved, re-trigger backend registration using the
+        // current auth token in case login and permission happened in either order.
+        if (status === "granted" && authTokenRef.current) {
+          void registerPushTokenWithBackend();
+        }
       } catch (err) {
-        console.warn("[push] could not configure Android channels:", err);
-      }
-
-      const { status: existing } = await Notifications.getPermissionsAsync();
-      let status = existing;
-      if (status !== "granted") {
-        const { status: asked } = await Notifications.requestPermissionsAsync();
-        status = asked;
-      }
-      // After permission is resolved, re-trigger backend registration using the
-      // current auth token (via ref) in case the auth-aware effect below fired
-      // before permission was granted and was silently skipped by getExpoPushTokenAsync.
-      if (status === "granted" && authTokenRef.current) {
-        void registerPushTokenWithBackend();
+        console.warn("[push] notification setup failed:", err);
       }
     })();
 
     listenerRef.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const orderId = response.notification.request.content.data?.orderId as number | undefined;
-      if (orderId) {
+      const rawOrderId = response.notification.request.content.data?.orderId;
+      const orderId = typeof rawOrderId === "number" ? rawOrderId : Number(rawOrderId);
+      if (Number.isInteger(orderId) && orderId > 0) {
         router.push({ pathname: "/order/[id]", params: { id: String(orderId) } });
       }
     });
@@ -177,6 +183,21 @@ export function useNotificationSetup(authToken: string | null) {
     return () => {
       listenerRef.current?.remove();
     };
+  }, [registerPushTokenWithBackend]);
+
+  // A user may grant push permission later from the system settings.
+  // Re-checking on foreground makes the registration self-healing.
+  useEffect(() => {
+    if (!pushSupported) return;
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active" || !authTokenRef.current) return;
+      void Notifications.getPermissionsAsync()
+        .then(({ status }) => {
+          if (status === "granted") void registerPushTokenWithBackend();
+        })
+        .catch((err) => console.warn("[push] permission refresh failed:", err));
+    });
+    return () => subscription.remove();
   }, [registerPushTokenWithBackend]);
 
   // ── Auth-aware: re-register token with backend whenever user logs in ───────
