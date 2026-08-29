@@ -34,6 +34,7 @@
       "pnpm": "10.26.1",
       "distribution": "internal",
       "channel": "preview",
+      "resourceClass": "medium",
       "credentialsSource": "remote",
       "cache": {
         "key": "gradle-preview-v1",

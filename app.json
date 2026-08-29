@@ -1,18 +1,29 @@
 {
   "expo": {
+    "name": "Jatek",
+    "slug": "jatekclient",
+    "owner": "jatekplatforms-team",
+    "version": "1.0.0",
     "extra": {
       "eas": {
-        "projectId": "11e89fef-b97e-4823-ba4a-07c2942ba6b0"
+        "projectId": "d30cddea-9dd6-42aa-8339-80d86b9ad76e"
       }
     },
     "android": {
-      "package": "ma.jatek.app"
+      "package": "ma.jatek.app",
+      "versionCode": 13
     },
     "ios": {
       "bundleIdentifier": "ma.jatek.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d30cddea-9dd6-42aa-8339-80d86b9ad76e"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
