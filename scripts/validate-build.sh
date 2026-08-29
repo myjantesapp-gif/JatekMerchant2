@@ -22,9 +22,9 @@ check() {
 # ── 1. Single lockfile at root ─────────────────────────────
 echo -e "\n── Lockfile ──"
 check "pnpm-lock.yaml present at root" test -f pnpm-lock.yaml
-check "No package-lock.json" bash -c '! find . -name "package-lock.json" -not -path "*/node_modules/*" | grep -q .'
-check "No yarn.lock" bash -c '! find . -name "yarn.lock" -not -path "*/node_modules/*" | grep -q .'
-check "No bun.lockb" bash -c '! find . -name "bun.lockb" -not -path "*/node_modules/*" | grep -q .'
+check "No package-lock.json" bash -c '! find . -name "package-lock.json" -not -path "./.cache/*" -not -path "*/node_modules/*" | grep -q .'
+check "No yarn.lock" bash -c '! find . -name "yarn.lock" -not -path "./.cache/*" -not -path "*/node_modules/*" | grep -q .'
+check "No bun.lockb" bash -c '! find . -name "bun.lockb" -not -path "./.cache/*" -not -path "*/node_modules/*" | grep -q .'
 
 # ── 2. pnpm version ────────────────────────────────────────
 echo -e "\n── pnpm version ──"
@@ -58,7 +58,7 @@ check "artifacts/backend-dashboard/package.json" test -f artifacts/backend-dashb
 echo -e "\n── EAS config ──"
 check "eas.json present" test -f eas.json
 check "artifacts/jatek-mobile/eas.json present" test -f artifacts/jatek-mobile/eas.json
-check "app.config.js present" test -f artifacts/jatek-mobile/app.config.js
+check "static Expo app.json present" test -f artifacts/jatek-mobile/app.json
 check "PNPM_VERSION set in root eas.json" node -e "
   const e=require('./eas.json');
   const profiles=Object.values(e.build||{});
