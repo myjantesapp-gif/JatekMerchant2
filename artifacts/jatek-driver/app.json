@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Jatek Driver",
-    "slug": "jatek-driver",
+    "name": "JatekDriver",
+    "slug": "jatekdriver",
     "owner": "jatekplatforms-team",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -42,7 +42,7 @@
       ]
     },
     "updates": {
-      "url": "https://u.expo.dev/135003c2-4828-403d-8176-068364215286"
+      "url": "https://u.expo.dev/3c515b02-249e-427b-a45f-e15e22e4f25d"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -88,7 +88,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "135003c2-4828-403d-8176-068364215286"
+        "projectId": "3c515b02-249e-427b-a45f-e15e22e4f25d"
       }
     }
   }
