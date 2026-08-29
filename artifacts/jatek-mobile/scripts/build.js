@@ -212,7 +212,17 @@ async function downloadFile(url, outputPath) {
     const response = await fetch(url, { signal: controller.signal });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const responseText = await response.text();
+      let detail = responseText;
+
+      try {
+        const payload = JSON.parse(responseText);
+        detail = payload.message || payload.error || responseText;
+      } catch {
+        // Keep the raw response when Metro does not return JSON.
+      }
+
+      throw new Error(`HTTP ${response.status}: ${detail}`);
     }
 
     const file = fs.createWriteStream(outputPath);
@@ -239,9 +249,12 @@ async function downloadFile(url, outputPath) {
 }
 
 async function downloadBundle(platform, timestamp) {
-  const entryPath = path.resolve(projectRoot, "node_modules", "expo-router", "entry");
-  const bundlePath = path.relative(workspaceRoot, entryPath);
-  const url = new URL(`http://localhost:${metroPort}/${bundlePath}.bundle`);
+  // Expo rewrites this virtual path to the configured app entry and adds the
+  // router-specific transform parameters. It also works with pnpm symlinks
+  // without exposing a node_modules-relative path in the request.
+  const url = new URL(
+    `http://localhost:${metroPort}/.expo/.virtual-metro-entry.bundle`,
+  );
   url.searchParams.set("platform", platform);
   url.searchParams.set("dev", "false");
   url.searchParams.set("hot", "false");

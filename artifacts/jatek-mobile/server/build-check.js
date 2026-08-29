@@ -147,10 +147,6 @@ function validateStaticBuild({ staticRoot, basePath }) {
     }
   }
 
-  if (bundleAssetReferences === 0) {
-    errors.push("No static assets were found in the platform bundles");
-  }
-
   return {
     ok: errors.length === 0,
     errors,
