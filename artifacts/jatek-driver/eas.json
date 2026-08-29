@@ -13,10 +13,10 @@
         "paths": ["~/.gradle/caches", "~/.gradle/wrapper"]
       },
       "env": {
-        "EXPO_PUBLIC_PROJECT_ID": "135003c2-4828-403d-8176-068364215286",
+        "EXPO_PUBLIC_PROJECT_ID": "3c515b02-249e-427b-a45f-e15e22e4f25d",
         "EXPO_PUBLIC_DOMAIN": "ma.jatek.app",
         "EXPO_OWNER": "jatekplatforms-team",
-        "EXPO_SLUG": "jatek-driver",
+        "EXPO_SLUG": "jatekdriver",
         "PNPM_VERSION": "10.26.1",
         "npm_config_frozen_lockfile": "false",
         "pnpm_config_frozen_lockfile": "false",
@@ -38,9 +38,9 @@
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "ma.jatek.app",
-        "EXPO_PUBLIC_PROJECT_ID": "135003c2-4828-403d-8176-068364215286",
+        "EXPO_PUBLIC_PROJECT_ID": "3c515b02-249e-427b-a45f-e15e22e4f25d",
         "EXPO_OWNER": "jatekplatforms-team",
-        "EXPO_SLUG": "jatek-driver",
+        "EXPO_SLUG": "jatekdriver",
         "PNPM_VERSION": "10.26.1",
         "npm_config_frozen_lockfile": "false",
         "pnpm_config_frozen_lockfile": "false",
@@ -63,9 +63,9 @@
       "env": {
         "EXPO_PUBLIC_DOMAIN": "ma.jatek.app",
         "EXPO_PUBLIC_API_URL": "https://ma.jatek.app",
-        "EXPO_PUBLIC_PROJECT_ID": "135003c2-4828-403d-8176-068364215286",
+        "EXPO_PUBLIC_PROJECT_ID": "3c515b02-249e-427b-a45f-e15e22e4f25d",
         "EXPO_OWNER": "jatekplatforms-team",
-        "EXPO_SLUG": "jatek-driver",
+        "EXPO_SLUG": "jatekdriver",
         "PNPM_VERSION": "10.26.1",
         "npm_config_frozen_lockfile": "false",
         "pnpm_config_frozen_lockfile": "false",
