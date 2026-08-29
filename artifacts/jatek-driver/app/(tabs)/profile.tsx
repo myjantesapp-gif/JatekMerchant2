@@ -1,32 +1,22 @@
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { getEarnings } from "@/lib/api";
-import { type ApiTarget, getApiTargetSync, setApiTarget } from "@/lib/apiTarget";
 
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
-  const [target, setTarget] = useState<ApiTarget>(getApiTargetSync());
-
   const { data: earnings } = useQuery({ queryKey: ["earnings"], queryFn: getEarnings, staleTime: 30_000 });
 
   const driver = user?.driver;
   const initials = (driver?.fullName ?? user?.fullName ?? "D").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   // Prefer live earnings total (updated after every delivery) over the AuthContext snapshot
   const totalDeliveries = earnings?.totalDeliveries ?? driver?.totalDeliveries;
-
-  const onToggleTarget = async (val: boolean) => {
-    const next: ApiTarget = val ? "prod" : "local";
-    setTarget(next);
-    await setApiTarget(next);
-    Alert.alert("Serveur changé", `Connecté au serveur ${next === "prod" ? "production (backend.jatek.app)" : "local (démo)"}.`);
-  };
 
   const onSignOut = () => {
     Alert.alert("Se déconnecter", "Êtes-vous sûr de vouloir vous déconnecter ?", [
@@ -64,7 +54,7 @@ export default function ProfileScreen() {
           <InfoRow icon="zap" label="Type" value={driver.vehicleType} colors={colors} />
           <InfoRow icon="hash" label="Plaque" value={driver.vehiclePlate} colors={colors} />
           <InfoRow icon="award" label="Permis" value={driver.licenseNumber} colors={colors} />
-          {driver.rating && <InfoRow icon="star" label="Note" value={`${driver.rating.toFixed(1)} / 5`} colors={colors} />}
+          {driver.rating && <InfoRow icon="star" label="Note" value={`${driver.rating} / 5`} colors={colors} />}
           {totalDeliveries !== undefined && <InfoRow icon="package" label="Livraisons" value={String(totalDeliveries)} colors={colors} />}
         </Section>
       )}
@@ -72,13 +62,13 @@ export default function ProfileScreen() {
       <Section title="Connexion" colors={colors}>
         <View style={[styles.row, { borderBottomColor: colors.border }]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
-            <Feather name="server" size={16} color={colors.mutedForeground} />
+            <Feather name="lock" size={16} color={colors.success} />
             <View>
-              <Text style={[styles.rowLabel, { color: colors.foreground, fontFamily: "Inter_500Medium" }]}>Mode production</Text>
-              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 11 }}>backend.jatek.app</Text>
+              <Text style={[styles.rowLabel, { color: colors.foreground, fontFamily: "Inter_500Medium" }]}>Source des données</Text>
+              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 11 }}>ma.jatek.app · production</Text>
             </View>
           </View>
-          <Switch value={target === "prod"} onValueChange={onToggleTarget} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#fff" />
+          <Feather name="check-circle" size={20} color={colors.success} />
         </View>
       </Section>
 

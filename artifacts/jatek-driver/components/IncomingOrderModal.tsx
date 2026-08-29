@@ -6,6 +6,7 @@ import { Alert, Animated, Easing, Modal, Pressable, StyleSheet, Text, Vibration,
 import { useActiveOrder } from "@/context/ActiveOrderContext";
 import { useColors } from "@/hooks/useColors";
 import { acceptOrder, getErrorMessage, type Order } from "@/lib/api";
+import { addMoney, formatExact, formatMad } from "@/lib/money";
 
 const COUNTDOWN_SECONDS = 20;
 
@@ -88,11 +89,11 @@ export function IncomingOrderModal({
             <View>
               <Text style={[styles.tag, { color: colors.primary, fontFamily: "Inter_600SemiBold" }]}>NOUVELLE COURSE</Text>
               <Text style={[styles.price, { color: colors.foreground, fontFamily: "Inter_700Bold" }]}>
-                {order.driverEarningsMad + order.tipMad} DH
+                {formatMad(addMoney(order.driverEarningsMad, order.tipMad))} DH
               </Text>
               {order.tipMad > 0 && (
                 <Text style={[styles.tip, { color: colors.warning, fontFamily: "Inter_500Medium" }]}>
-                  Inclut {order.tipMad} DH de pourboire
+                  Inclut {formatMad(order.tipMad)} DH de pourboire
                 </Text>
               )}
             </View>
@@ -102,7 +103,7 @@ export function IncomingOrderModal({
           </View>
 
           <View style={styles.metaRow}>
-            <Meta icon="map-pin" text={`${order.distanceKm.toFixed(1)} km`} colors={colors} />
+            <Meta icon="map-pin" text={`${formatExact(order.distanceKm)} km`} colors={colors} />
             <Meta icon="clock" text={`~${order.etaMinutes} min`} colors={colors} />
             <Meta icon="shopping-bag" text={`${order.items.reduce((s, i) => s + i.quantity, 0)} art.`} colors={colors} />
           </View>

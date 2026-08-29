@@ -12,7 +12,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
-import { useColorScheme } from "react-native";
+import { Platform, useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -40,6 +40,8 @@ function RootLayoutNav() {
   const router = useRouter();
 
   useEffect(() => {
+    if (Platform.OS === "web") return;
+
     const tapSub = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         const orderId = getOrderIdFromResponse(response);

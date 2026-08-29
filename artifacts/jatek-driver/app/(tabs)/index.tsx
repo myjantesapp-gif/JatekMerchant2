@@ -19,6 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useOnline } from "@/context/OnlineContext";
 import { useColors } from "@/hooks/useColors";
 import { getEarnings, listAvailableOrders, type Order } from "@/lib/api";
+import { addMoney, formatExact, formatMad } from "@/lib/money";
 import { fireNewOrderNotification } from "@/services/notificationService";
 
 export default function HomeScreen() {
@@ -144,8 +145,8 @@ export default function HomeScreen() {
             <View style={styles.statsRow}>
               {[
                 { value: String(earnings.data?.todayDeliveries ?? 0), label: "Livraisons", color: colors.info },
-                { value: `${earnings.data?.todayMad ?? 0} DH`, label: "Gains", color: colors.success },
-                { value: `${earnings.data?.todayTipsMad ?? 0} DH`, label: "Pourboires", color: colors.primary },
+                { value: `${formatMad(earnings.data?.todayMad ?? 0)} DH`, label: "Gains", color: colors.success },
+                { value: `${formatMad(earnings.data?.todayTipsMad ?? 0)} DH`, label: "Pourboires", color: colors.primary },
               ].map((s) => (
                 <View
                   key={s.label}
@@ -248,12 +249,12 @@ function OrderCard({
           <View style={styles.metaRow}>
             <Feather name="clock" size={13} color={colors.mutedForeground} />
             <Text style={[styles.metaText, { color: colors.mutedForeground, fontFamily: "Inter_500Medium" }]}>
-              ~{order.etaMinutes} min · {order.distanceKm.toFixed(1)} km
+              ~{order.etaMinutes} min · {formatExact(order.distanceKm)} km
             </Text>
           </View>
         </View>
         <Text style={[styles.orderPrice, { color: colors.success, fontFamily: "Inter_700Bold" }]}>
-          {order.driverEarningsMad + order.tipMad} DH
+          {formatMad(addMoney(order.driverEarningsMad, order.tipMad))} DH
         </Text>
       </View>
 

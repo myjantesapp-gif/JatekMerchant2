@@ -20,7 +20,7 @@ import { DeliveryCodeModal } from "@/components/DeliveryCodeModal";
 import { DeliveryMap } from "@/components/DeliveryMap";
 import { useActiveOrder } from "@/context/ActiveOrderContext";
 import { useColors } from "@/hooks/useColors";
-import { formatMad } from "@/lib/money";
+import { addMoney, formatExact, formatMad } from "@/lib/money";
 import { useOrderNotifications } from "@/hooks/useOrderNotifications";
 import {
   acceptOrder,
@@ -210,7 +210,7 @@ export default function OrderDetailScreen() {
   const config = STATUS_CONFIG[order.status];
   const actions = getActions(order.status);
   const isDone = order.status === "delivered" || order.status === "cancelled";
-  const totalEarning = order.driverEarningsMad + order.tipMad;
+  const totalEarning = addMoney(order.driverEarningsMad, order.tipMad);
   const hasNavigationCoordinates = [order.pickupLat, order.pickupLng, order.dropoffLat, order.dropoffLng]
     .every((value) => typeof value === "number" && Number.isFinite(value));
 
@@ -228,12 +228,12 @@ export default function OrderDetailScreen() {
         <View style={[styles.earningRow, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
           <View>
             <Text style={[styles.earningLabel, { color: colors.mutedForeground, fontFamily: "Inter_500Medium" }]}>Votre gain</Text>
-            <Text style={[styles.earningAmount, { color: colors.success, fontFamily: "Inter_700Bold" }]}>{totalEarning} DH</Text>
-            {order.tipMad > 0 && <Text style={{ color: colors.warning, fontFamily: "Inter_400Regular", fontSize: 11 }}>Inclut {order.tipMad} DH de pourboire</Text>}
+            <Text style={[styles.earningAmount, { color: colors.success, fontFamily: "Inter_700Bold" }]}>{formatMad(totalEarning)} DH</Text>
+            {order.tipMad > 0 && <Text style={{ color: colors.warning, fontFamily: "Inter_400Regular", fontSize: 11 }}>Inclut {formatMad(order.tipMad)} DH de pourboire</Text>}
           </View>
           <View style={{ alignItems: "flex-end", gap: 6 }}>
             <MetaBadge icon="clock" text={`~${order.etaMinutes} min`} colors={colors} />
-            <MetaBadge icon="navigation" text={`${order.distanceKm.toFixed(1)} km`} colors={colors} />
+            <MetaBadge icon="navigation" text={`${formatExact(order.distanceKm)} km`} colors={colors} />
             <MetaBadge icon={order.paymentMethod === "cash" ? "dollar-sign" : "credit-card"} text={order.paymentMethod === "cash" ? "Espèces" : "Carte"} colors={colors} />
           </View>
         </View>
@@ -306,7 +306,7 @@ export default function OrderDetailScreen() {
         {/* Summary */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
           <SummaryRow label="Sous-total commande" value={`${formatMad(order.subtotalMad)} MAD`} colors={colors} />
-          <SummaryRow label="Frais de livraison" value={`${formatMad(order.priceMad - order.subtotalMad)} MAD`} colors={colors} />
+          <SummaryRow label="Frais de livraison" value={`${formatMad(order.deliveryFeeMad)} MAD`} colors={colors} />
           <SummaryRow label="Total client" value={`${formatMad(order.priceMad)} MAD`} colors={colors} bold />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <SummaryRow label="Votre commission" value={`${formatMad(order.driverEarningsMad)} MAD`} colors={colors} accent />

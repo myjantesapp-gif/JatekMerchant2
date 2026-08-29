@@ -5,6 +5,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { getEarnings } from "@/lib/api";
+import { formatMad } from "@/lib/money";
 
 export default function EarningsScreen() {
   const colors = useColors();
@@ -28,7 +29,7 @@ export default function EarningsScreen() {
       <View style={[styles.hero, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30", borderRadius: colors.radius }]}>
         <Text style={[styles.heroLabel, { color: colors.primary, fontFamily: "Inter_500Medium" }]}>Gains du jour</Text>
         <Text style={[styles.heroAmount, { color: colors.foreground, fontFamily: "Inter_700Bold" }]}>
-          {data?.todayMad ?? 0} <Text style={{ fontSize: 20 }}>DH</Text>
+          {formatMad(data?.todayMad ?? 0)} <Text style={{ fontSize: 20 }}>DH</Text>
         </Text>
         <View style={styles.heroMeta}>
           <View style={styles.heroMetaItem}>
@@ -38,7 +39,7 @@ export default function EarningsScreen() {
           {(data?.todayTipsMad ?? 0) > 0 && (
             <View style={styles.heroMetaItem}>
               <Feather name="heart" size={14} color={colors.warning} />
-              <Text style={[styles.heroMetaText, { color: colors.warning, fontFamily: "Inter_500Medium" }]}>{data?.todayTipsMad ?? 0} DH pourboires</Text>
+              <Text style={[styles.heroMetaText, { color: colors.warning, fontFamily: "Inter_500Medium" }]}>{formatMad(data?.todayTipsMad ?? 0)} DH pourboires</Text>
             </View>
           )}
         </View>
@@ -51,9 +52,9 @@ export default function EarningsScreen() {
               <Feather name={c.icon} size={16} color={colors.primary} />
             </View>
             <Text style={[styles.cardPeriod, { color: colors.mutedForeground, fontFamily: "Inter_500Medium" }]}>{c.period}</Text>
-            <Text style={[styles.cardAmount, { color: colors.foreground, fontFamily: "Inter_700Bold" }]}>{c.amount} <Text style={{ fontSize: 13 }}>DH</Text></Text>
+            <Text style={[styles.cardAmount, { color: colors.foreground, fontFamily: "Inter_700Bold" }]}>{formatMad(c.amount)} <Text style={{ fontSize: 13 }}>DH</Text></Text>
             {c.deliveries > 0 && <Text style={[styles.cardMeta, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>{c.deliveries} courses</Text>}
-            {c.tips > 0 && <Text style={[styles.cardMeta, { color: colors.warning, fontFamily: "Inter_400Regular" }]}>+{c.tips} DH tips</Text>}
+            {c.tips > 0 && <Text style={[styles.cardMeta, { color: colors.warning, fontFamily: "Inter_400Regular" }]}>+{formatMad(c.tips)} DH tips</Text>}
           </View>
         ))}
       </View>

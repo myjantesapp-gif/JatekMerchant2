@@ -8,31 +8,27 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { getErrorMessage, loginWithCredentials, sendOtp } from "@/lib/api";
-import { type ApiTarget, getApiTarget, setApiTarget } from "@/lib/apiTarget";
 
 export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { signIn } = useAuth();
-  const [target, setTarget] = useState<ApiTarget>("local");
+  const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { getApiTarget().then(setTarget); }, []);
-
   const cleanPhone = phone.replace(/\s+/g, "");
-  const localValid = cleanPhone.length >= 9;
-  const prodValid = email.includes("@") && password.length >= 4;
-  const valid = target === "prod" ? prodValid : localValid;
+  const phoneValid = cleanPhone.length >= 9;
+  const emailValid = email.includes("@") && password.length >= 4;
+  const valid = loginMethod === "email" ? emailValid : phoneValid;
 
-  const onChangeTarget = async (next: ApiTarget) => {
+  const onChangeLoginMethod = (next: "phone" | "email") => {
     setError(null);
-    setTarget(next);
-    await setApiTarget(next);
+    setLoginMethod(next);
   };
 
   const onContinue = async () => {
@@ -41,7 +37,7 @@ export default function LoginScreen() {
     setError(null);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      if (target === "prod") {
+      if (loginMethod === "email") {
         const { token } = await loginWithCredentials(email.trim(), password);
         const me = await signIn(token);
         if (!me) {
@@ -75,16 +71,16 @@ export default function LoginScreen() {
 
       <Text style={[styles.title, { color: colors.foreground, fontFamily: "Inter_700Bold" }]}>Bienvenue sur Jatek Driver</Text>
       <Text style={[styles.subtitle, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>
-        {target === "prod" ? "Connectez-vous avec votre email et mot de passe" : "Connectez-vous pour commencer vos livraisons"}
+        Connectez-vous pour commencer vos livraisons
       </Text>
 
       <View style={[styles.toggleRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-        {(["local", "prod"] as const).map((t) => {
-          const active = target === t;
+        {(["phone", "email"] as const).map((method) => {
+          const active = loginMethod === method;
           return (
-            <Pressable key={t} onPress={() => onChangeTarget(t)} style={[styles.toggleBtn, { backgroundColor: active ? colors.primary : "transparent" }]}>
+            <Pressable key={method} onPress={() => onChangeLoginMethod(method)} style={[styles.toggleBtn, { backgroundColor: active ? colors.primary : "transparent" }]}>
               <Text style={{ color: active ? colors.primaryForeground : colors.mutedForeground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
-                {t === "local" ? "Démo (OTP)" : "Production"}
+                {method === "phone" ? "Téléphone (OTP)" : "Email"}
               </Text>
             </Pressable>
           );
@@ -92,7 +88,7 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.form}>
-        {target === "prod" ? (
+        {loginMethod === "email" ? (
           <>
             <Text style={[styles.label, { color: colors.mutedForeground, fontFamily: "Inter_500Medium" }]}>Email</Text>
             <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.background }]}>
@@ -117,7 +113,7 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.bottom}>
-        {target === "prod" && (
+        {loginMethod === "email" && (
           <Pressable
             onPress={() => router.push("/(auth)/forgot-password")}
             style={{ alignSelf: "center" }}
@@ -129,12 +125,12 @@ export default function LoginScreen() {
           </Pressable>
         )}
         <Text style={[styles.legal, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>
-          {target === "prod" ? "Connecté à ma.jatek.app" : "En continuant, vous acceptez les conditions d'utilisation de Jatek."}
+          Connecté à ma.jatek.app
         </Text>
         <Pressable onPress={onContinue} disabled={!valid || loading} style={({ pressed }) => [styles.button, { backgroundColor: valid ? colors.primary : colors.muted, opacity: pressed ? 0.85 : 1 }]}>
           {loading ? <ActivityIndicator color={colors.primaryForeground} /> : (
             <Text style={[styles.buttonText, { color: valid ? colors.primaryForeground : colors.mutedForeground, fontFamily: "Inter_700Bold" }]}>
-              {target === "prod" ? "Se connecter" : "Continuer"}
+              {loginMethod === "email" ? "Se connecter" : "Continuer"}
             </Text>
           )}
         </Pressable>

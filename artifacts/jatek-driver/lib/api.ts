@@ -145,6 +145,7 @@ export type Order = {
   etaMinutes: number;
   items: OrderItem[];
   subtotalMad: number;
+  deliveryFeeMad: number;
   priceMad: number;
   driverEarningsMad: number;
   tipMad: number;
@@ -304,10 +305,11 @@ function mapOrder(o: BackendOrder): Order {
     pickupLng,
     dropoffLat,
     dropoffLng,
-    distanceKm: Math.round(distanceKm * 10) / 10,
+    distanceKm,
     etaMinutes: o.estimatedDeliveryTime ?? 20,
     items,
     subtotalMad: o.subtotal,
+    deliveryFeeMad: o.deliveryFee,
     priceMad: o.total,
     driverEarningsMad: driverEarnings,
     tipMad: 0,

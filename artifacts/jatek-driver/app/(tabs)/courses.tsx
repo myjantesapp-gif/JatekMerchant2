@@ -6,6 +6,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "rea
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { listMyOrders, type Order, type OrderStatus } from "@/lib/api";
+import { addMoney, formatMad } from "@/lib/money";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   pending: "En attente",
@@ -108,7 +109,7 @@ function CourseCard({ order, colors, onPress }: { order: Order; colors: ReturnTy
           <View style={[styles.statusPill, { backgroundColor: statusColor + "20" }]}>
             <Text style={{ color: statusColor, fontFamily: "Inter_600SemiBold", fontSize: 11 }}>{STATUS_LABEL[order.status]}</Text>
           </View>
-          <Text style={[styles.price, { color: colors.success, fontFamily: "Inter_700Bold" }]}>{order.driverEarningsMad + order.tipMad} DH</Text>
+          <Text style={[styles.price, { color: colors.success, fontFamily: "Inter_700Bold" }]}>{formatMad(addMoney(order.driverEarningsMad, order.tipMad))} DH</Text>
         </View>
       </View>
       <View style={[styles.divider, { backgroundColor: colors.border }]} />

@@ -2,6 +2,7 @@ import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type { Order, OrderStatus } from "@/lib/api";
+import { addMoney, formatMad, formatExact } from "@/lib/money";
 
 // ─── Notification handler (must run before any notification fires) ───
 
@@ -94,12 +95,12 @@ export async function setupNotifications(): Promise<void> {
 
 export async function fireNewOrderNotification(order: Order): Promise<void> {
   if (Platform.OS === "web") return;
-  const earning = order.driverEarningsMad + order.tipMad;
-  const distanceStr = order.distanceKm.toFixed(1);
+  const earning = addMoney(order.driverEarningsMad, order.tipMad);
+  const distanceStr = formatExact(order.distanceKm);
   await Notifications.scheduleNotificationAsync({
     content: {
       title: "🏍️ Nouvelle course !",
-      body: `${order.restaurantName}\n${earning} DH · ${distanceStr} km · ~${order.etaMinutes} min`,
+      body: `${order.restaurantName}\n${formatMad(earning)} DH · ${distanceStr} km · ~${order.etaMinutes} min`,
       sound: true,
       color: "#E91E8C",
       badge: 1,
