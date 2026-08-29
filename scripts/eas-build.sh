@@ -44,13 +44,15 @@ if [ ! -d "$APP_DIR" ]; then
 fi
 
 # Use the Jatek robot token (jatekplatforms-team) for all builds.
-# EXPO_TOKEN_JATEK must be set as a Replit secret.
-if [ -z "${EXPO_TOKEN_JATEK:-}" ]; then
-  echo "[eas-build] ERROR: EXPO_TOKEN_JATEK secret is not set."
-  echo "            Add it in Replit Secrets → EXPO_TOKEN_JATEK"
+# Prefer the project-specific secret, while accepting the standard EXPO_TOKEN
+# name for existing Replit environments.
+EAS_TOKEN="${EXPO_TOKEN_JATEK:-${EXPO_TOKEN:-}}"
+if [ -z "$EAS_TOKEN" ]; then
+  echo "[eas-build] ERROR: EXPO_TOKEN_JATEK or EXPO_TOKEN secret is not set."
+  echo "            Add one of them in Replit Secrets."
   exit 1
 fi
-export EXPO_TOKEN="$EXPO_TOKEN_JATEK"
+export EXPO_TOKEN="$EAS_TOKEN"
 
 # Locate the EAS CLI — prefer app-local, fall back to sibling workspace.
 EAS_BIN=""
