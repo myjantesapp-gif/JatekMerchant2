@@ -7,7 +7,11 @@ description: EAS build quirks for the jatek-mobile pnpm monorepo workspace — c
 
 1. **Use static `app.json`** — the managed Android build flow requires static Expo configuration; dynamic config files can break cloud builds.
 
-2. **Pin pnpm 10+ for EAS AND disable frozen-lockfile** — root `package.json` must have `"packageManager": "pnpm@10.x"` (EAS reads it) AND every build profile env in BOTH eas.json files must have `PNPM_VERSION` + BOTH `"npm_config_frozen_lockfile": "false"` AND `"pnpm_config_frozen_lockfile": "false"`. EAS Cloud sets `CI=true` which makes pnpm auto-enable `--frozen-lockfile`; combined with the 69 `catalog:` specifiers in the lockfile this causes the build to fail even with the correct pnpm version.
+2. **Pin pnpm with EAS's native build-profile field** — every build profile must set `"pnpm": "10.26.1"` (and `"node": "20"`). `PNPM_VERSION` inside `env` does not select the package manager used by EAS's dependency-install step. Keep the root `packageManager` field aligned. The `npm_config_frozen_lockfile` and `pnpm_config_frozen_lockfile` env settings may remain as compatibility guards, but they do not replace the native `pnpm` field.
+
+**Why:** EAS used an older/default pnpm, rejected the valid lockfile as incompatible, then reported `ERR_PNPM_NO_LOCKFILE` under `--frozen-lockfile`.
+
+**How to apply:** Keep the native `pnpm` and `node` fields synchronized across root, Client, and Driver EAS profiles whenever the workspace package-manager version changes.
 
 2b. **Two eas.json files exist** — a repo-root `eas.json` (with `cli.appRoot: artifacts/jatek-mobile`) used by expo.dev GitHub-triggered builds, and `artifacts/jatek-mobile/eas.json` used by local CLI builds. Keep them in sync.
 

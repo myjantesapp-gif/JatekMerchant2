@@ -6,6 +6,8 @@
   },
   "build": {
     "development": {
+      "node": "20",
+      "pnpm": "10.26.1",
       "developmentClient": true,
       "distribution": "internal",
       "cache": {
@@ -27,6 +29,8 @@
       }
     },
     "preview": {
+      "node": "20",
+      "pnpm": "10.26.1",
       "distribution": "internal",
       "channel": "preview",
       "credentialsSource": "remote",
@@ -50,6 +54,8 @@
       }
     },
     "production": {
+      "node": "20",
+      "pnpm": "10.26.1",
       "channel": "production",
       "cache": {
         "key": "gradle-prod-v1",
