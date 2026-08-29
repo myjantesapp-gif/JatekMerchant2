@@ -59,11 +59,16 @@ echo -e "\n── EAS config ──"
 check "eas.json present" test -f eas.json
 check "artifacts/jatek-mobile/eas.json present" test -f artifacts/jatek-mobile/eas.json
 check "static Expo app.json present" test -f artifacts/jatek-mobile/app.json
-check "PNPM_VERSION set in root eas.json" node -e "
+check "pnpm 10.26.1 pinned in every root EAS profile" node -e "
   const e=require('./eas.json');
   const profiles=Object.values(e.build||{});
-  const ok=profiles.some(p=>p.env&&p.env.PNPM_VERSION);
-  process.exit(ok?0:1)
+  process.exit(profiles.length > 0 && profiles.every(p=>p.pnpm==='10.26.1') ? 0 : 1)
+"
+check "pnpm 10.26.1 declared by mobile app" node -e "
+  process.exit(require('./artifacts/jatek-mobile/package.json').packageManager==='pnpm@10.26.1' ? 0 : 1)
+"
+check "pnpm 10.26.1 declared by driver app" node -e "
+  process.exit(require('./artifacts/jatek-driver/package.json').packageManager==='pnpm@10.26.1' ? 0 : 1)
 "
 
 # ── 7. Frozen lockfile check ────────────────────────────────
