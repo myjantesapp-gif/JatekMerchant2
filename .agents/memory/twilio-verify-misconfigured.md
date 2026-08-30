@@ -1,17 +1,16 @@
 ---
 name: Twilio Verify SID misconfigured
-description: The TWILIO_VERIFY_SID secret is set but has an invalid value (doesn't start with "VA"), so Twilio Verify is skipped entirely on every boot.
+description: Twilio Verify requires a VA service SID plus credentials from the same Twilio account.
 ---
 
-## The issue
-`TWILIO_VERIFY_SID` is set in the environment but its value starts with something other than `"VA"` (the startup warning shows `"m9vl…"`). A valid Twilio Verify Service SID always begins with `VA`.
+## The rule
+A valid Twilio Verify setup needs a `TWILIO_VERIFY_SID` beginning with `VA`, an Account SID beginning with `AC`, and either a matching API Key SID/secret pair (`SK…` plus its secret) or the legacy Auth Token. The Verify service and API key must belong to the same Twilio account or subaccount.
 
-**Effect:** Twilio Verify is bypassed at startup. Every WhatsApp OTP falls through to the legacy direct-Twilio + Infobip path, which also fails → users get 502 "Impossible d'envoyer le code".
+**Why:** Correct prefixes only prove the values have the expected shape. Twilio returns HTTP 401/code 20003 when the key-secret pair is wrong, revoked, or paired with a different Account SID; Verify may then return 401/code 70051.
 
 ## Fix required (ops, not code)
-The operator must replace `TWILIO_VERIFY_SID` in Replit Secrets with the correct `VA…` SID from the Twilio console (Verify → Services → the relevant service's SID).
+Regenerate or re-copy the API Key SID and its secret together from the Twilio console, confirm the Account SID is from the same account, and confirm the Verify Service SID is from that account. Do not paste credentials into chat.
 
 ## How to apply
-- On any boot, a startup warning is logged: `[OTP] TWILIO_VERIFY_SID="…" does not start with "VA" — Twilio Verify will be skipped.`
-- The OTP diagnostic endpoint (`GET /api/auth/otp-diagnostic`) now includes `providers.twilioVerify.status` = `"misconfigured"` with a notes array explaining the issue.
-- Code-side this is already handled correctly; no code change needed, only the secret value.
+- Run `artifacts/api-server/scripts/test-twilio-config.mjs` to validate Account and Verify access without sending an OTP.
+- Add `--send-whatsapp +212...` only for an intentional delivery test.

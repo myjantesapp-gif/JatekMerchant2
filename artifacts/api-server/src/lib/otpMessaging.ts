@@ -1,12 +1,13 @@
 // OTP messaging with multi-provider fallback chain.
 //
 // Phone OTP (preferred): Twilio Verify Service
-//   - env: TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_VERIFY_SID
+//   - env: TWILIO_ACCOUNT_SID + (TWILIO_API_KEY + TWILIO_AUTH_KEY
+//     or legacy TWILIO_AUTH_TOKEN) + TWILIO_VERIFY_SID
 //   - Sends WhatsApp OTP via Twilio Verify; Twilio manages code/expiry/rate-limit
 //   - No DB entry needed for phone OTP when Verify is configured
 //
 // Phone OTP (legacy fallback — no Verify SID):
-//   1. Twilio WhatsApp direct  (TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_WA_FROM)
+//   1. Twilio WhatsApp direct  (TWILIO_ACCOUNT_SID + Twilio credentials + TWILIO_WA_FROM)
 //   2. Infobip WhatsApp        (INFOBIP_API_KEY + INFOBIP_BASE_URL + INFOBIP_WA_SENDER)
 //
 // Email: Resend (RESEND_API_KEY + RESEND_FROM_EMAIL)
@@ -39,9 +40,14 @@ export function logProviderConfigWarnings(): void {
       `[OTP] TWILIO_VERIFY_SID="${verifySid.slice(0, 4)}…" does not start with "VA" — Twilio Verify will be skipped.`
     );
   }
+  if ((verifySid || process.env.TWILIO_ACCOUNT_SID) && !getTwilioCredentials()) {
+    console.warn(
+      "[OTP] Twilio credentials are incomplete — set TWILIO_API_KEY + TWILIO_AUTH_KEY (or legacy TWILIO_AUTH_TOKEN)."
+    );
+  }
   const waFrom = process.env.TWILIO_WA_FROM;
   const isProduction = process.env.NODE_ENV === "production" || !!process.env.REPLIT_DEPLOYMENT;
-  if (isProduction && (!waFrom || waFrom === "+14155238886")) {
+  if (isProduction && twilioConfigured() && !verifySid && (!waFrom || waFrom === "+14155238886")) {
     console.warn(
       `[OTP] TWILIO_WA_FROM is the Twilio sandbox number in production — only numbers that have opted in to the sandbox can receive messages.`
     );
@@ -122,20 +128,46 @@ async function sendInfobipWhatsapp(to: string, body: string): Promise<void> {
 // Direct REST API calls — no SDK dependency.
 // Required env vars:
 //   TWILIO_ACCOUNT_SID  → Account SID (AC...)
-//   TWILIO_AUTH_TOKEN   → Auth Token
+//   TWILIO_API_KEY      → API Key SID (SK...) and TWILIO_AUTH_KEY → API Key secret
+//   (or legacy TWILIO_AUTH_TOKEN)
 // Optional:
 //   TWILIO_WA_FROM      → WhatsApp sender (default: Twilio sandbox +14155238886)
 
-function twilioAuthHeader(): string {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID!;
-  const authToken  = process.env.TWILIO_AUTH_TOKEN!;
-  return "Basic " + Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+type TwilioCredentials = {
+  username: string;
+  password: string;
+  mode: "api-key" | "auth-token";
+};
+
+function getTwilioCredentials(): TwilioCredentials | null {
+  const apiKey = process.env.TWILIO_API_KEY;
+  const authKey = process.env.TWILIO_AUTH_KEY;
+  if (apiKey?.startsWith("SK") && authKey) {
+    return { username: apiKey, password: authKey, mode: "api-key" };
+  }
+
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (accountSid && authToken) {
+    return { username: accountSid, password: authToken, mode: "auth-token" };
+  }
+
+  return null;
+}
+
+export function twilioCredentialMode(): TwilioCredentials["mode"] | null {
+  return getTwilioCredentials()?.mode ?? null;
+}
+
+export function twilioAuthHeader(): string {
+  const credentials = getTwilioCredentials();
+  if (!credentials) throw new Error("Twilio API credentials are not configured");
+  return "Basic " + Buffer.from(`${credentials.username}:${credentials.password}`).toString("base64");
 }
 
 function twilioConfigured(): boolean {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken  = process.env.TWILIO_AUTH_TOKEN;
-  return !!(accountSid?.startsWith("AC") && authToken);
+  return !!(accountSid?.startsWith("AC") && getTwilioCredentials());
 }
 
 async function twilioPost(path: string, params: Record<string, string>): Promise<void> {
@@ -204,7 +236,7 @@ function twilioVerifyConfigured(): boolean {
   return !!(
     process.env.TWILIO_VERIFY_SID?.startsWith("VA") &&
     process.env.TWILIO_ACCOUNT_SID?.startsWith("AC") &&
-    process.env.TWILIO_AUTH_TOKEN
+    getTwilioCredentials()
   );
 }
 
@@ -263,7 +295,7 @@ export async function checkTwilioVerify(to: string, code: string): Promise<"appr
   return data?.status === "approved" ? "approved" : "pending";
 }
 
-export { twilioVerifyConfigured };
+export { twilioConfigured, twilioVerifyConfigured };
 
 // ─── Resend (email OTP) ───────────────────────────────────────────────────────
 // RESEND_EMAIL_FROM is accepted as an alias for RESEND_FROM_EMAIL.

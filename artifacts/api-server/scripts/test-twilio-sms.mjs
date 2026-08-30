@@ -6,12 +6,20 @@
 const TO_NUMBER = process.argv[2] || "+212666711202";
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken  = process.env.TWILIO_AUTH_TOKEN;
-const fromNumber = process.env.TWILIO_FROM_NUMBER;
+const apiKey = process.env.TWILIO_API_KEY;
+const authKey = process.env.TWILIO_AUTH_KEY;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const fromNumber = process.env.TWILIO_FROM_NUMBER || process.env.TWILIO_PHONE_NUMBER;
 
 if (!accountSid) { console.error("❌ TWILIO_ACCOUNT_SID not set"); process.exit(1); }
-if (!authToken)  { console.error("❌ TWILIO_AUTH_TOKEN not set");  process.exit(1); }
-if (!fromNumber) { console.error("❌ TWILIO_FROM_NUMBER not set"); process.exit(1); }
+if (!((apiKey && authKey) || (accountSid && authToken))) {
+  console.error("❌ Twilio credentials not set (TWILIO_API_KEY + TWILIO_AUTH_KEY required)");
+  process.exit(1);
+}
+if (!fromNumber) { console.error("❌ TWILIO_FROM_NUMBER or TWILIO_PHONE_NUMBER not set"); process.exit(1); }
+
+const username = apiKey && authKey ? apiKey : accountSid;
+const password = apiKey && authKey ? authKey : authToken;
 
 console.log(`📡 Account SID : ${accountSid.slice(0, 6)}...`);
 console.log(`📞 From        : ${fromNumber}`);
@@ -29,7 +37,7 @@ const res = await fetch(
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: "Basic " + Buffer.from(`${accountSid}:${authToken}`).toString("base64"),
+      Authorization: "Basic " + Buffer.from(`${username}:${password}`).toString("base64"),
     },
     body: body.toString(),
   }

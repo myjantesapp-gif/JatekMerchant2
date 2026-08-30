@@ -17,7 +17,12 @@ import {
 } from "@workspace/db";
 import { eq, inArray, count, sum, gte, ilike, and, or, desc, sql } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
-import { sendOtpMessage } from "../lib/otpMessaging";
+import {
+  sendOtpMessage,
+  twilioConfigured,
+  twilioCredentialMode,
+  twilioVerifyConfigured,
+} from "../lib/otpMessaging";
 import * as tracking from "../lib/trackingService";
 import { closeUserSubscriptions, publish } from "../lib/sse";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
@@ -1651,12 +1656,10 @@ router.get("/backend/otp-health", requireAuth, (_req, res): void => {
   {
     const verifySid  = process.env.TWILIO_VERIFY_SID;
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken  = process.env.TWILIO_AUTH_TOKEN;
-    const waFrom     = process.env.TWILIO_WA_FROM;
     const notes: string[] = [];
     let status: ProviderStatus = "ok";
 
-    if (!verifySid && !accountSid && !authToken) {
+    if (!verifySid && !accountSid && !twilioCredentialMode()) {
       status = "not_configured";
     } else {
       if (!verifySid || !verifySid.startsWith("VA")) {
@@ -1669,13 +1672,9 @@ router.get("/backend/otp-health", requireAuth, (_req, res): void => {
         status = "misconfigured";
         notes.push("TWILIO_ACCOUNT_SID manquant ou invalide (doit commencer par AC)");
       }
-      if (!authToken) {
+      if (!twilioVerifyConfigured()) {
         status = "misconfigured";
-        notes.push("TWILIO_AUTH_TOKEN manquant");
-      }
-      if (isProduction && (!waFrom || waFrom === sandboxNumber)) {
-        if (status === "ok") status = "misconfigured";
-        notes.push("Numéro sandbox Twilio détecté en production — seuls les numéros opt-in reçoivent les messages");
+        notes.push("Credentials Twilio manquants/incomplets : TWILIO_API_KEY + TWILIO_AUTH_KEY (ou TWILIO_AUTH_TOKEN)");
       }
     }
     providers.push({ id: "twilio-verify", name: "Twilio Verify", channel: "whatsapp", role: "primary", status, notes });
@@ -1684,16 +1683,15 @@ router.get("/backend/otp-health", requireAuth, (_req, res): void => {
   // ── Twilio WhatsApp direct (fallback) ───────────────────────────────────────
   {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken  = process.env.TWILIO_AUTH_TOKEN;
     const waFrom     = process.env.TWILIO_WA_FROM;
     const notes: string[] = [];
     let status: ProviderStatus = "ok";
 
-    if (!accountSid && !authToken) {
+    if (!accountSid && !twilioCredentialMode()) {
       status = "not_configured";
     } else {
       if (!accountSid?.startsWith("AC")) { status = "misconfigured"; notes.push("TWILIO_ACCOUNT_SID manquant ou invalide"); }
-      if (!authToken)                     { status = "misconfigured"; notes.push("TWILIO_AUTH_TOKEN manquant"); }
+      if (!twilioConfigured())           { status = "misconfigured"; notes.push("Credentials Twilio manquants/incomplets : TWILIO_API_KEY + TWILIO_AUTH_KEY (ou TWILIO_AUTH_TOKEN)"); }
       if (isProduction && (!waFrom || waFrom === sandboxNumber)) {
         if (status === "ok") status = "misconfigured";
         notes.push("Numéro sandbox en production — définissez TWILIO_WA_FROM avec un numéro WhatsApp Business approuvé");

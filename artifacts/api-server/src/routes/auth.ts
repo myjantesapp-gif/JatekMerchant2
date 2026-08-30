@@ -7,7 +7,8 @@ import { eq, and, gt, desc } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import {
   sendOtpMessage, sendOtpEmail, anyOtpProviderConfigured,
-  sendTwilioVerify, checkTwilioVerify, twilioVerifyConfigured,
+  sendTwilioVerify, checkTwilioVerify, twilioConfigured, twilioCredentialMode,
+  twilioAuthHeader, twilioVerifyConfigured,
   OtpDestinationError, logProviderConfigWarnings,
 } from "../lib/otpMessaging.js";
 import { requireAuth, requireRole, type AuthedRequest } from "../middlewares/auth.js";
@@ -826,57 +827,57 @@ router.get("/auth/otp-diagnostic", requireRole("super_admin"), async (_req, res)
   // ── Twilio ──────────────────────────────────────────────────────────────────
   try {
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
-    const twilioAuthKey = process.env.TWILIO_AUTH_TOKEN || process.env.TWILIO_AUTH_KEY;
-    const twilioApiKeySid = process.env.TWILIO_API_KEY_SID;
-    const twilioApiKeySecret = process.env.TWILIO_API_KEY_SECRET;
+    const twilioApiKey = process.env.TWILIO_API_KEY;
+    const twilioAuthKey = process.env.TWILIO_AUTH_KEY;
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
     const twilioPhone = process.env.TWILIO_FROM_NUMBER || process.env.TWILIO_PHONE_NUMBER;
 
     const twilioConfig = {
-      TWILIO_ACCOUNT_SID: twilioAccountSid ? `${twilioAccountSid.slice(0, 4)}...${twilioAccountSid.slice(-4)}` : "NOT SET",
-      TWILIO_AUTH_KEY: twilioAuthKey ? `${twilioAuthKey.slice(0, 4)}...${twilioAuthKey.slice(-4)}` : "NOT SET",
-      TWILIO_API_KEY_SID: twilioApiKeySid ? `${twilioApiKeySid.slice(0, 4)}...${twilioApiKeySid.slice(-4)}` : "NOT SET",
-      TWILIO_API_KEY_SECRET: twilioApiKeySecret ? `${twilioApiKeySecret.slice(0, 4)}...****` : "NOT SET",
-      TWILIO_FROM_NUMBER: twilioPhone || "NOT SET",
+      accountSidConfigured: !!twilioAccountSid,
+      apiKeyConfigured: !!twilioApiKey,
+      authKeyConfigured: !!twilioAuthKey,
+      legacyAuthTokenConfigured: !!twilioAuthToken,
+      phoneNumberConfigured: !!twilioPhone,
+      credentialMode: twilioCredentialMode(),
     };
-
-    // Determine which auth mode will be used
-    let authMode = "none";
-    if (twilioApiKeySid?.startsWith("SK") && twilioApiKeySecret) {
-      authMode = "API Key (TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET)";
-    } else if (twilioAuthKey?.startsWith("SK") && twilioApiKeySecret) {
-      authMode = "API Key (TWILIO_AUTH_KEY as SK + TWILIO_API_KEY_SECRET)";
-    } else if (twilioAuthKey) {
-      authMode = "Auth Token (TWILIO_AUTH_KEY)";
-    }
 
     // Lightweight test: fetch account info from Twilio REST API
     let twilioApiTest: Record<string, unknown> = {};
-    if (twilioAccountSid && twilioAccountSid.startsWith("AC")) {
+    if (twilioConfigured() && twilioAccountSid?.startsWith("AC")) {
       try {
-        // Try with API Key first if available
-        let testUser = twilioApiKeySid || twilioAuthKey;
-        let testPass = twilioApiKeySid?.startsWith("SK") ? twilioApiKeySecret : twilioAuthKey;
-        if (twilioApiKeySid?.startsWith("SK") && twilioApiKeySecret) {
-          testUser = twilioApiKeySid;
-          testPass = twilioApiKeySecret;
-        }
-        const authHeader = Buffer.from(`${testUser}:${testPass}`).toString("base64");
         const resp = await fetch(
           `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}.json`,
-          { headers: { Authorization: `Basic ${authHeader}` } }
+          { headers: { Authorization: twilioAuthHeader(), Accept: "application/json" } }
         );
         const body = await resp.json() as any;
         if (resp.ok) {
-          twilioApiTest = { status: "OK", accountStatus: body.status, friendlyName: body.friendly_name };
+          twilioApiTest = { status: "OK", accountStatus: body.status };
         } else {
-          twilioApiTest = { status: "FAILED", httpStatus: resp.status, error: body.message || body.detail };
+          twilioApiTest = { status: "FAILED", httpStatus: resp.status, code: body.code, error: body.message || body.detail };
         }
       } catch (e: any) {
         twilioApiTest = { status: "ERROR", message: e?.message };
       }
     }
 
-    results.twilio = { config: twilioConfig, authMode, apiTest: twilioApiTest };
+    let twilioVerifyTest: Record<string, unknown> = {};
+    const verifySid = process.env.TWILIO_VERIFY_SID;
+    if (twilioVerifyConfigured() && verifySid) {
+      try {
+        const resp = await fetch(
+          `https://verify.twilio.com/v2/Services/${verifySid}`,
+          { headers: { Authorization: twilioAuthHeader(), Accept: "application/json" } }
+        );
+        const body = await resp.json() as any;
+        twilioVerifyTest = resp.ok
+          ? { status: "OK", serviceStatus: body.status }
+          : { status: "FAILED", httpStatus: resp.status, code: body.code, error: body.message || body.detail };
+      } catch (e: any) {
+        twilioVerifyTest = { status: "ERROR", message: e?.message };
+      }
+    }
+
+    results.twilio = { config: twilioConfig, apiTest: twilioApiTest, verifyTest: twilioVerifyTest };
   } catch (e: any) {
     results.twilio = { error: e?.message };
   }
@@ -930,35 +931,26 @@ router.get("/auth/otp-diagnostic", requireRole("super_admin"), async (_req, res)
   try {
     const verifySid = process.env.TWILIO_VERIFY_SID;
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken  = process.env.TWILIO_AUTH_TOKEN;
     const waFrom     = process.env.TWILIO_WA_FROM;
-    const isSandbox  = !waFrom || waFrom === "+14155238886";
-    const isProduction = process.env.NODE_ENV === "production" || !!process.env.REPLIT_DEPLOYMENT;
 
     let verifyStatus: "ok" | "misconfigured" | "not_configured";
     const notes: string[] = [];
-    if (!verifySid && !accountSid) {
+    if (!verifySid && !accountSid && !twilioCredentialMode()) {
       verifyStatus = "not_configured";
-    } else if (!verifySid || !verifySid.startsWith("VA") || !accountSid?.startsWith("AC") || !authToken) {
+    } else if (!twilioVerifyConfigured()) {
       verifyStatus = "misconfigured";
       if (!verifySid) notes.push("TWILIO_VERIFY_SID not set");
       else if (!verifySid.startsWith("VA")) notes.push(`TWILIO_VERIFY_SID must start with "VA", got "${verifySid.slice(0, 4)}…"`);
       if (!accountSid?.startsWith("AC")) notes.push("TWILIO_ACCOUNT_SID not set or invalid");
-      if (!authToken) notes.push("TWILIO_AUTH_TOKEN not set");
+      if (!twilioCredentialMode()) notes.push("Twilio credentials not set: TWILIO_API_KEY + TWILIO_AUTH_KEY (or legacy TWILIO_AUTH_TOKEN)");
     } else {
       verifyStatus = "ok";
-    }
-    if (isSandbox && isProduction) {
-      notes.push("Using Twilio sandbox number in production — only opted-in numbers can receive messages");
     }
 
     results.twilioVerify = {
       status: verifyStatus,
-      TWILIO_VERIFY_SID: verifySid
-        ? (verifySid.startsWith("VA") ? `${verifySid.slice(0, 6)}…${verifySid.slice(-4)}` : `${verifySid.slice(0, 4)}… (invalid prefix)`)
-        : "NOT SET",
-      TWILIO_WA_FROM: waFrom ? waFrom : "NOT SET (defaults to sandbox +14155238886)",
-      isSandbox,
+      TWILIO_VERIFY_SID: verifySid ? (verifySid.startsWith("VA") ? "configured" : "invalid format") : "NOT SET",
+      TWILIO_WA_FROM: waFrom ? "configured" : "NOT SET (not required for Verify)",
       ...(notes.length ? { notes } : {}),
     };
   } catch (e: any) {
