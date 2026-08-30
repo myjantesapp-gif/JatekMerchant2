@@ -19,6 +19,12 @@ description: EAS build quirks for the jatek-mobile pnpm monorepo workspace — c
 
 3. **EAS CLI is local to jatek-mobile** — run through `scripts/eas-build.sh`, which forces the Jatek project credentials and project ID, using `node_modules/.bin/eas` from `artifacts/jatek-mobile/`.
 
+2d. **Bare workflow runtime version** — because the project contains native Android code, EAS build profiles cannot use the `runtimeVersion` policy object; `app.json` must contain the explicit runtime string matching the app version.
+
+**Why:** EAS rejects `{ "policy": "appVersion" }` after detecting the native `android` directory, before the cloud build starts.
+
+**How to apply:** Keep the explicit `runtimeVersion` aligned with `expo.version` when changing the app version, and update the runtime policy only if the project returns to a managed workflow.
+
 4. **OTA update command** — `EXPO_TOKEN=$EXPO_TOKEN_JATEK node_modules/.bin/eas update --channel preview --message "..." --non-interactive` — bundles both iOS and Android, uploads to EAS.
 
 5. **Remove `--go` from `expo start`** — the app uses `expo-dev-client`, `react-native-keyboard-controller`, `react-native-worklets`, and `expo-notifications`, all of which are custom native modules incompatible with standard Expo Go. `--go` forces Expo Go mode and breaks the dev server. Use `expo start --tunnel` instead.
