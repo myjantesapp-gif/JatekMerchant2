@@ -166,7 +166,17 @@ async function notifyCustomerStatus(
         const pushPromise = prefs.pushToken.startsWith("ExponentPushToken[")
           ? notifyDrivers([prefs.pushToken], title, body, { orderId, status }, { channelId: "order-status", priority: "high", ttl: 300 })
           : sendFcmPush({ token: prefs.pushToken, title, body, data: pushData, channelId: "order-status" });
-        pushPromise.catch((e) => console.warn("[orders] mobile-push-to-customer failed:", e));
+        pushPromise
+          .then((sent) => {
+            if (!sent) {
+              console.warn("[orders] mobile-push-to-customer rejected", {
+                userId,
+                orderId,
+                provider: prefs.pushToken?.startsWith("ExponentPushToken[") ? "expo" : "fcm",
+              });
+            }
+          })
+          .catch((e) => console.warn("[orders] mobile-push-to-customer failed:", e));
       }
 
       // 4 — Web push (browser)

@@ -29,7 +29,9 @@ type ExpoTicket =
 
 /**
  * Send one or more push messages. `to` may be a single token or an array.
- * Returns true if the request was dispatched (regardless of per-token errors).
+ * Returns true only when the request was accepted and every returned ticket
+ * is successful. Expo can return HTTP 200 while rejecting an individual
+ * recipient, so ticket errors must not be reported as a successful delivery.
  */
 export async function sendExpoPush(messages: PushMessage | PushMessage[]): Promise<boolean> {
   const batch = Array.isArray(messages) ? messages : [messages];
@@ -63,7 +65,11 @@ export async function sendExpoPush(messages: PushMessage | PushMessage[]): Promi
       const json = (await res.json()) as { data: ExpoTicket[] };
       for (const ticket of json.data ?? []) {
         if (ticket.status === "error") {
-          console.warn("[expoPush] ticket error:", ticket.message, ticket.details);
+          ok = false;
+          console.warn("[expoPush] ticket error:", {
+            message: ticket.message,
+            code: ticket.details?.error ?? "UNKNOWN",
+          });
         }
       }
     } catch (err) {
@@ -84,11 +90,11 @@ export async function notifyDrivers(
   body: string,
   data?: Record<string, unknown>,
   opts?: Partial<Omit<PushMessage, "to" | "title" | "body" | "data">>,
-): Promise<void> {
+): Promise<boolean> {
   const valid = tokens.filter(
     (t): t is string => typeof t === "string" && t.startsWith("ExponentPushToken["),
   );
-  if (!valid.length) return;
+  if (!valid.length) return false;
 
   const messages: PushMessage[] = valid.map((token) => ({
     to: token,
@@ -102,5 +108,5 @@ export async function notifyDrivers(
     ...opts,
   }));
 
-  await sendExpoPush(messages);
+  return sendExpoPush(messages);
 }

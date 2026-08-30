@@ -16,3 +16,4 @@
 - [Legacy media compatibility](legacy-media-compatibility.md) — production DB references can lag storage-folder migrations; remap legacy paths on API reads until data is migrated.
 - [Metro pnpm mobile preview](metro-pnpm-preview.md) — avoid the monorepo root; targeted watch folders plus extraNodeModules resolve pnpm packages without exhausting inotify.
 - [YouTube Shorts WebView embeds](youtube-embed-error-153.md) — native WebViews need an explicit YouTube base URL, origin, and referrer policy to avoid player error 153.
+- [Expo Android push credentials](expo-push-fcm-credentials.md) — Expo Push Service needs FCM v1 credentials on the EAS project; google-services.json alone is not enough.
