@@ -128,7 +128,8 @@ async function sendInfobipWhatsapp(to: string, body: string): Promise<void> {
 // Direct REST API calls — no SDK dependency.
 // Required env vars:
 //   TWILIO_ACCOUNT_SID  → Account SID (AC...)
-//   TWILIO_API_KEY      → API Key SID (SK...) and TWILIO_AUTH_KEY → API Key secret
+//   TWILIO_API_KEY      → API Key SID (SK...) and TWILIO_API_SECRET
+//     (preferred) or TWILIO_AUTH_KEY → API Key secret
 //   (or legacy TWILIO_AUTH_TOKEN)
 // Optional:
 //   TWILIO_WA_FROM      → WhatsApp sender (default: Twilio sandbox +14155238886)
@@ -139,15 +140,24 @@ type TwilioCredentials = {
   mode: "api-key" | "auth-token";
 };
 
+function twilioEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value || undefined;
+}
+
+function twilioAccountSid(): string | undefined {
+  return twilioEnv("TWILIO_ACCOUNT_SID");
+}
+
 function getTwilioCredentials(): TwilioCredentials | null {
-  const apiKey = process.env.TWILIO_API_KEY;
-  const authKey = process.env.TWILIO_AUTH_KEY;
-  if (apiKey?.startsWith("SK") && authKey) {
-    return { username: apiKey, password: authKey, mode: "api-key" };
+  const apiKey = twilioEnv("TWILIO_API_KEY");
+  const apiSecret = twilioEnv("TWILIO_API_SECRET") || twilioEnv("TWILIO_AUTH_KEY");
+  if (apiKey?.startsWith("SK") && apiSecret) {
+    return { username: apiKey, password: apiSecret, mode: "api-key" };
   }
 
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const accountSid = twilioAccountSid();
+  const authToken = twilioEnv("TWILIO_AUTH_TOKEN");
   if (accountSid && authToken) {
     return { username: accountSid, password: authToken, mode: "auth-token" };
   }
@@ -166,12 +176,12 @@ export function twilioAuthHeader(): string {
 }
 
 function twilioConfigured(): boolean {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const accountSid = twilioAccountSid();
   return !!(accountSid?.startsWith("AC") && getTwilioCredentials());
 }
 
 async function twilioPost(path: string, params: Record<string, string>): Promise<void> {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID!;
+  const accountSid = twilioAccountSid()!;
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/${path}`;
   const res = await fetch(url, {
     method: "POST",
@@ -192,12 +202,12 @@ async function twilioPost(path: string, params: Record<string, string>): Promise
 }
 
 async function sendTwilioWhatsapp(to: string, body: string): Promise<void> {
-  const rawFrom = process.env.TWILIO_WA_FROM || "+14155238886";
+  const rawFrom = twilioEnv("TWILIO_WA_FROM") || "+14155238886";
   const from    = rawFrom.startsWith("whatsapp:") ? rawFrom : `whatsapp:${rawFrom}`;
   const toWa    = to.startsWith("whatsapp:")     ? to       : `whatsapp:${to}`;
 
   // Inline fetch so we can inspect Twilio's error code and classify destination errors.
-  const accountSid = process.env.TWILIO_ACCOUNT_SID!;
+  const accountSid = twilioAccountSid()!;
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
   const res = await fetch(url, {
     method: "POST",
@@ -234,14 +244,14 @@ async function sendTwilioWhatsapp(to: string, body: string): Promise<void> {
 // rate-limiting and multi-channel delivery. No DB row needed.
 function twilioVerifyConfigured(): boolean {
   return !!(
-    process.env.TWILIO_VERIFY_SID?.startsWith("VA") &&
-    process.env.TWILIO_ACCOUNT_SID?.startsWith("AC") &&
+    twilioEnv("TWILIO_VERIFY_SID")?.startsWith("VA") &&
+    twilioAccountSid()?.startsWith("AC") &&
     getTwilioCredentials()
   );
 }
 
 export async function sendTwilioVerify(to: string, channel: "whatsapp" | "sms" = "whatsapp"): Promise<void> {
-  const sid = process.env.TWILIO_VERIFY_SID!;
+  const sid = twilioEnv("TWILIO_VERIFY_SID")!;
   const url = `https://verify.twilio.com/v2/Services/${sid}/Verifications`;
   const res = await fetch(url, {
     method: "POST",
@@ -273,7 +283,7 @@ export async function sendTwilioVerify(to: string, channel: "whatsapp" | "sms" =
 }
 
 export async function checkTwilioVerify(to: string, code: string): Promise<"approved" | "pending" | "expired"> {
-  const sid = process.env.TWILIO_VERIFY_SID!;
+  const sid = twilioEnv("TWILIO_VERIFY_SID")!;
   const url = `https://verify.twilio.com/v2/Services/${sid}/VerificationChecks`;
   const res = await fetch(url, {
     method: "POST",

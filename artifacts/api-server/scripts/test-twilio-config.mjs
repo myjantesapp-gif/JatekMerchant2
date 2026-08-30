@@ -9,11 +9,16 @@
  * optional flag sends a real OTP and must be used explicitly.
  */
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const verifySid = process.env.TWILIO_VERIFY_SID;
-const apiKey = process.env.TWILIO_API_KEY;
-const authKey = process.env.TWILIO_AUTH_KEY;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
+const env = (name) => {
+  const value = process.env[name]?.trim();
+  return value || undefined;
+};
+
+const accountSid = env("TWILIO_ACCOUNT_SID");
+const verifySid = env("TWILIO_VERIFY_SID");
+const apiKey = env("TWILIO_API_KEY");
+const apiSecret = env("TWILIO_API_SECRET") || env("TWILIO_AUTH_KEY");
+const authToken = env("TWILIO_AUTH_TOKEN");
 
 function fail(message) {
   console.error(`❌ ${message}`);
@@ -27,9 +32,9 @@ if (apiKey && !apiKey.startsWith("SK")) fail("TWILIO_API_KEY invalide (préfixe 
 let username;
 let password;
 let mode;
-if (apiKey && authKey) {
+if (apiKey && apiSecret) {
   username = apiKey;
-  password = authKey;
+  password = apiSecret;
   mode = "API Key";
 } else if (accountSid && authToken) {
   username = accountSid;
