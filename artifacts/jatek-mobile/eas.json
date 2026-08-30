@@ -5,7 +5,7 @@
   },
   "build": {
     "development": {
-      "node": "20",
+      "node": "20.20.0",
       "pnpm": "10.26.1",
       "developmentClient": true,
       "distribution": "internal",
@@ -30,7 +30,7 @@
       }
     },
     "preview": {
-      "node": "20",
+      "node": "20.20.0",
       "pnpm": "10.26.1",
       "distribution": "internal",
       "channel": "preview",
@@ -57,7 +57,7 @@
       }
     },
     "production": {
-      "node": "20",
+      "node": "20.20.0",
       "pnpm": "10.26.1",
       "channel": "production",
       "credentialsSource": "remote",
