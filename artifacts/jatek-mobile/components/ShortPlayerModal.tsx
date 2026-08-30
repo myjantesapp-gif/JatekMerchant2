@@ -34,7 +34,7 @@ function resolveVideoUrl(url: string): string {
 function getYouTubeEmbedUrl(url: string): string | null {
   const videoId = getYouTubeVideoId(url);
   return videoId
-    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&loop=1&playlist=${videoId}&rel=0`
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&loop=1&playlist=${videoId}&rel=0&origin=https%3A%2F%2Fwww.youtube.com&widget_referrer=https%3A%2F%2Fwww.youtube.com%2F`
     : null;
 }
 
@@ -42,7 +42,7 @@ function getVideoHtml(url: string): string {
   const youtubeUrl = getYouTubeEmbedUrl(url);
   if (youtubeUrl) {
     const safeUrl = JSON.stringify(youtubeUrl).replace(/</g, "\\u003c");
-    return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:#000}</style></head><body><iframe src=${safeUrl} allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></body></html>`;
+    return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="referrer" content="strict-origin-when-cross-origin"><style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:#000}</style></head><body><iframe src=${safeUrl} referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></body></html>`;
   }
   const safeUrl = JSON.stringify(resolveVideoUrl(url)).replace(/</g, "\\u003c");
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html,body,video{margin:0;width:100%;height:100%;background:#000;object-fit:cover}video{position:fixed;inset:0}</style></head><body><video id="short-video" autoplay muted loop playsinline controls></video><script>document.getElementById("short-video").src=${safeUrl};</script></body></html>`;
@@ -407,7 +407,10 @@ function ShortVideo({
   return (
     <WebView
       ref={nativeWebViewRef}
-      source={{ html: getVideoHtml(url) }}
+      source={{
+        html: getVideoHtml(url),
+        ...(youtubeUrl ? { baseUrl: "https://www.youtube.com/" } : {}),
+      }}
       style={styles.bg}
       originWhitelist={["*"]}
       scrollEnabled={false}
