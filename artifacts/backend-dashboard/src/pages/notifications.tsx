@@ -22,7 +22,12 @@ const TARGET_OPTIONS: { value: Target; label: string; description: string; icon:
 interface SendResult {
   sent: number;
   failed: number;
+  attempted: number;
   total: number;
+  truncated: boolean;
+  recipients: number;
+  inAppSaved: number;
+  remoteSent: number;
   errors?: string[];
 }
 
@@ -78,7 +83,7 @@ export default function Notifications() {
         <Bell className="h-7 w-7 text-primary" />
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Envoi de messages SMS aux utilisateurs de la plateforme</p>
+         <p className="text-muted-foreground text-sm mt-0.5">Notification dans l'app, push et SMS aux utilisateurs de la plateforme</p>
         </div>
       </div>
 
@@ -131,8 +136,8 @@ export default function Notifications() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Message SMS</CardTitle>
-              <CardDescription>Rédigez votre message. Un SMS standard fait 160 caractères.</CardDescription>
+              <CardTitle>Message</CardTitle>
+              <CardDescription>Le message apparaît dans la boîte de notifications de l'app ; le SMS est envoyé en complément aux numéros disponibles.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Textarea
@@ -159,11 +164,16 @@ export default function Notifications() {
               {result && (
                 <Alert variant={result.failed === 0 ? "default" : "destructive"}>
                   <CheckCircle2 className="h-4 w-4" />
-                  <AlertTitle>
+                    <AlertTitle>
                     {result.failed === 0
-                      ? `${result.sent} message${result.sent > 1 ? "s" : ""} envoyé${result.sent > 1 ? "s" : ""}`
-                      : `${result.sent} envoyé${result.sent > 1 ? "s" : ""}, ${result.failed} échoué${result.failed > 1 ? "s" : ""}`}
+                       ? `${result.inAppSaved} notification${result.inAppSaved > 1 ? "s" : ""} app enregistrée${result.inAppSaved > 1 ? "s" : ""}`
+                       : `${result.inAppSaved} notification${result.inAppSaved > 1 ? "s" : ""} app, ${result.failed} SMS échoué${result.failed > 1 ? "s" : ""}`}
                   </AlertTitle>
+                    <AlertDescription className="mt-1 text-xs">
+                      {result.recipients} destinataire{result.recipients > 1 ? "s" : ""} • {result.remoteSent} push envoyé{result.remoteSent > 1 ? "s" : ""}
+                      {result.attempted > 0 ? ` • ${result.sent} SMS envoyé${result.sent > 1 ? "s" : ""}` : ""}
+                      {result.truncated ? " • Limite de 200 SMS atteinte" : ""}
+                    </AlertDescription>
                   {result.errors && result.errors.length > 0 && (
                     <AlertDescription className="mt-1 text-xs">
                       {result.errors.slice(0, 3).map((e, i) => <div key={i}>{e}</div>)}

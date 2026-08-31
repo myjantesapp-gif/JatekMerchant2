@@ -8,6 +8,7 @@ import { sendExpoPush } from "../lib/expoPush";
 import { sendFcmPush } from "../lib/fcmPush";
 import { sendWebPush } from "../lib/vapid";
 import { notificationsTable } from "@workspace/db";
+import { publish } from "../lib/sse";
 
 const router: IRouter = Router();
 
@@ -36,6 +37,68 @@ const sendNotificationBody = z.object({
 }).refine((value) => Boolean(value.userId || value.userIds?.length), {
   message: "userId or userIds is required",
 });
+
+export type UserNotificationPayload = {
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+};
+
+/**
+ * Persist and deliver a notification to known app users.
+ * The in-app row is the source of truth; remote push is best-effort.
+ */
+export async function dispatchNotificationToUsers(
+  userIds: number[],
+  payload: UserNotificationPayload,
+): Promise<{ recipients: number; inAppSaved: number; remoteSent: number }> {
+  const uniqueIds = Array.from(new Set(userIds));
+  if (uniqueIds.length === 0) return { recipients: 0, inAppSaved: 0, remoteSent: 0 };
+
+  const users = await db.select({ id: usersTable.id })
+    .from(usersTable)
+    .where(inArray(usersTable.id, uniqueIds));
+  const existingIds = users.map((user) => user.id);
+  const prefs = await db.select().from(notificationPrefsTable)
+    .where(inArray(notificationPrefsTable.userId, existingIds));
+  const prefsByUser = new Map(prefs.map((pref) => [pref.userId, pref]));
+  let inAppSaved = 0;
+  let remoteSent = 0;
+
+  for (const userId of existingIds) {
+    await db.insert(notificationsTable).values({
+      userId,
+      type: "admin",
+      title: payload.title,
+      body: payload.body,
+      data: payload.data,
+    });
+    inAppSaved++;
+    publish(`user:${userId}`, "notification", {
+      type: "admin",
+      title: payload.title,
+      body: payload.body,
+      data: payload.data,
+    });
+
+    const pref = prefsByUser.get(userId);
+    if (!pref) continue;
+    if (pref.pushToken?.startsWith("ExponentPushToken[")) {
+      if (await sendExpoPush({ to: pref.pushToken, ...payload, sound: "default", priority: "high" })) remoteSent++;
+    } else if (pref.pushToken) {
+      if (await sendFcmPush({
+        token: pref.pushToken,
+        ...payload,
+        data: Object.fromEntries(Object.entries(payload.data).map(([key, value]) => [key, String(value)])),
+      })) remoteSent++;
+    }
+    if (pref.webPushSub) {
+      await sendWebPush(pref.webPushSub, payload);
+    }
+  }
+
+  return { recipients: existingIds.length, inAppSaved, remoteSent };
+}
 
 router.get("/notification-prefs", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const userId = req.userId!;
@@ -153,38 +216,10 @@ router.post("/notifications/send", requireRole("admin", "super_admin", "manager"
     return;
   }
 
-  const prefs = await db.select().from(notificationPrefsTable)
-    .where(inArray(notificationPrefsTable.userId, existingIds));
-  const prefsByUser = new Map(prefs.map((pref) => [pref.userId, pref]));
   const payload = { title: parsed.data.title, body: parsed.data.body, data: parsed.data.data ?? {} };
-  let remoteSent = 0;
-  let inAppSaved = 0;
+  const delivery = await dispatchNotificationToUsers(existingIds, payload);
 
-  for (const userId of existingIds) {
-    await db.insert(notificationsTable).values({
-      userId,
-      type: "admin",
-      title: payload.title,
-      body: payload.body,
-      data: payload.data,
-    });
-    inAppSaved++;
-
-    const pref = prefsByUser.get(userId);
-    if (!pref) continue;
-    if (pref.pushToken?.startsWith("ExponentPushToken[")) {
-      if (await sendExpoPush({ to: pref.pushToken, ...payload, sound: "default", priority: "high" })) remoteSent++;
-    } else if (pref.pushToken) {
-      if (await sendFcmPush({ token: pref.pushToken, ...payload, data: Object.fromEntries(
-        Object.entries(payload.data).map(([key, value]) => [key, String(value)]),
-      ) })) remoteSent++;
-    }
-    if (pref.webPushSub) {
-      await sendWebPush(pref.webPushSub, payload);
-    }
-  }
-
-  res.json({ success: true, recipients: existingIds.length, inAppSaved, remoteSent });
+  res.json({ success: true, ...delivery });
 });
 
 export default router;

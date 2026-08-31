@@ -23,6 +23,7 @@ import {
   twilioCredentialMode,
   twilioVerifyConfigured,
 } from "../lib/otpMessaging";
+import { dispatchNotificationToUsers } from "./notificationPrefs";
 import * as tracking from "../lib/trackingService";
 import { closeUserSubscriptions, publish } from "../lib/sse";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
@@ -33,6 +34,27 @@ const router: IRouter = Router();
 function parseDecimal(value: unknown): number {
   const parsed = Number(String(value ?? "").trim().replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function categorySlugBase(name: string): string {
+  return name.toLowerCase().normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/^-+|-+$/g, "") || "category";
+}
+
+async function uniqueCategorySlug(name: string, excludeId?: number): Promise<string> {
+  const base = categorySlugBase(name);
+  for (let suffix = 0; suffix < 1000; suffix++) {
+    const slug = suffix === 0 ? base : `${base}-${suffix + 1}`;
+    const [existing] = await db.select({ id: categoriesTable.id })
+      .from(categoriesTable)
+      .where(eq(categoriesTable.slug, slug))
+      .limit(1);
+    if (!existing || existing.id === excludeId) return slug;
+  }
+  throw new Error("Unable to generate a unique category slug");
 }
 
 const JWT_SECRET = process.env.SESSION_SECRET!; // validated at startup by auth middleware
@@ -1055,6 +1077,10 @@ router.delete("/backend/reviews/:id", requireAuth, async (req: AuthedRequest, re
 router.get("/backend/categories", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
+  if (!hasPermission(ctx.role, ctx.permissions, "categories.read")) {
+    res.status(403).json({ error: "Forbidden: categories.read required" });
+    return;
+  }
 
   const all = await db.select().from(categoriesTable).orderBy(categoriesTable.sortOrder, categoriesTable.name);
 
@@ -1072,6 +1098,8 @@ router.get("/backend/categories", requireAuth, async (req: AuthedRequest, res): 
     icon: c.icon,
     accentColor: c.accentColor,
     businessType: (c as any).businessType ?? "restaurant",
+    type: (c as any).type ?? ((c as any).parentId ? "subcategory" : "category"),
+    bannerImageUrl: (c as any).bannerImageUrl ?? null,
     isActive: c.isActive,
     sortOrder: c.sortOrder,
     parentId: (c as any).parentId ?? null,
@@ -1094,12 +1122,16 @@ router.get("/backend/categories", requireAuth, async (req: AuthedRequest, res): 
 
 /**
  * POST /backend/categories
- * Creates a parent or child category. Accepts: name, icon, accentColor, sortOrder, isActive, parentId, businessType.
+ * Creates a parent or child category. Accepts: name, icon, accentColor, sortOrder,
+ * isActive, parentId, businessType, type and bannerImageUrl.
  */
 router.post("/backend/categories", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
-  if (!["super_admin", "admin"].includes(ctx.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!hasPermission(ctx.role, ctx.permissions, "categories.write")) {
+    res.status(403).json({ error: "Forbidden: categories.write required" });
+    return;
+  }
 
   const name = String(req.body?.name || "").trim();
   const icon = String(req.body?.icon || "storefront").trim();
@@ -1108,19 +1140,36 @@ router.post("/backend/categories", requireAuth, async (req: AuthedRequest, res):
   const isActive = req.body?.isActive !== false;
   const parentId = req.body?.parentId ? Number(req.body.parentId) : null;
   const businessType = String(req.body?.businessType || "restaurant").trim();
+  const type = parentId ? "subcategory" : String(req.body?.type || "category").trim();
+  const bannerImageUrl = req.body?.bannerImageUrl
+    ? normalizeStoredMediaPath(String(req.body.bannerImageUrl).trim())
+    : null;
 
   if (!name) { res.status(400).json({ error: "Name required" }); return; }
 
-  const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  if (parentId !== null) {
+    const [parent] = await db.select({ id: categoriesTable.id })
+      .from(categoriesTable)
+      .where(eq(categoriesTable.id, parentId))
+      .limit(1);
+    if (!parent) { res.status(400).json({ error: "Parent category not found" }); return; }
+  }
+
+  const slug = await uniqueCategorySlug(name);
 
   try {
     const [cat] = await db
       .insert(categoriesTable)
-      .values({ name, slug, icon, accentColor, sortOrder, isActive, businessType, ...(parentId ? { parentId } : {}) } as any)
+      .values({
+        name, slug, icon, accentColor, sortOrder, isActive, businessType, type,
+        bannerImageUrl, ...(parentId ? { parentId } : {}),
+      } as any)
       .returning();
     res.status(201).json({
       id: cat.id, name: cat.name, slug: cat.slug, icon: cat.icon,
       accentColor: cat.accentColor, businessType: (cat as any).businessType ?? "restaurant",
+      type: (cat as any).type ?? "category",
+      bannerImageUrl: (cat as any).bannerImageUrl ?? null,
       isActive: cat.isActive, sortOrder: cat.sortOrder, parentId: (cat as any).parentId ?? null, count: 0,
       subCategories: [],
     });
@@ -1137,7 +1186,10 @@ router.post("/backend/categories", requireAuth, async (req: AuthedRequest, res):
 router.patch("/backend/categories/:id", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
-  if (!["super_admin", "admin"].includes(ctx.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!hasPermission(ctx.role, ctx.permissions, "categories.write")) {
+    res.status(403).json({ error: "Forbidden: categories.write required" });
+    return;
+  }
 
   const id = parseInt(String(req.params.id), 10);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -1151,23 +1203,31 @@ router.patch("/backend/categories/:id", requireAuth, async (req: AuthedRequest, 
   const sortOrder = req.body?.sortOrder !== undefined ? Number(req.body.sortOrder) : existing.sortOrder;
   const isActive = req.body?.isActive !== undefined ? Boolean(req.body.isActive) : existing.isActive;
   const businessType = req.body?.businessType !== undefined ? String(req.body.businessType) : (existing as any).businessType ?? "restaurant";
-  const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const type = req.body?.type !== undefined
+    ? String(req.body.type)
+    : (existing as any).type ?? (existing.parentId ? "subcategory" : "category");
+  const bannerImageUrl = req.body?.bannerImageUrl !== undefined
+    ? (req.body.bannerImageUrl ? normalizeStoredMediaPath(String(req.body.bannerImageUrl).trim()) : null)
+    : (existing as any).bannerImageUrl ?? null;
+  const slug = await uniqueCategorySlug(name, id);
 
   try {
     const [updated] = await db
       .update(categoriesTable)
-      .set({ name, slug, icon, accentColor, sortOrder, isActive, businessType } as any)
+      .set({ name, slug, icon, accentColor, sortOrder, isActive, businessType, type, bannerImageUrl } as any)
       .where(eq(categoriesTable.id, id))
       .returning();
 
-    // If the name changed, sync restaurants that used the old name
-    if (name !== existing.name) {
+    // Only parent categories are used as the legacy restaurant.category value.
+    if (!existing.parentId && name !== existing.name) {
       await db.update(restaurantsTable).set({ category: name }).where(eq(restaurantsTable.category, existing.name));
     }
 
     res.json({
       id: updated.id, name: updated.name, slug: updated.slug, icon: updated.icon,
       accentColor: updated.accentColor, businessType: (updated as any).businessType ?? "restaurant",
+      type: (updated as any).type ?? "category",
+      bannerImageUrl: (updated as any).bannerImageUrl ?? null,
       isActive: updated.isActive, sortOrder: updated.sortOrder, parentId: (updated as any).parentId ?? null,
     });
   } catch (e: any) {
@@ -1183,7 +1243,10 @@ router.patch("/backend/categories/:id", requireAuth, async (req: AuthedRequest, 
 router.delete("/backend/categories/:id", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
-  if (!["super_admin", "admin"].includes(ctx.role)) { res.status(403).json({ error: "Forbidden" }); return; }
+  if (!hasPermission(ctx.role, ctx.permissions, "categories.write")) {
+    res.status(403).json({ error: "Forbidden: categories.write required" });
+    return;
+  }
 
   const id = parseInt(String(req.params.id), 10);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -1583,7 +1646,7 @@ router.get("/backend/live-tracking", requireAuth, async (req: AuthedRequest, res
   });
 });
 
-// ---------- Notifications (bulk SMS) ----------
+// ---------- Notifications (in-app + push + SMS) ----------
 router.post("/backend/notifications/send", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
@@ -1594,36 +1657,46 @@ router.post("/backend/notifications/send", requireAuth, async (req: AuthedReques
     res.status(400).json({ error: "message required" }); return;
   }
 
-  let phones: string[] = [];
+  let recipients: Array<{ id: number; phone: string | null }> = [];
 
   if (target === "single") {
     if (!phone) { res.status(400).json({ error: "phone required for single target" }); return; }
-    phones = [String(phone).trim()];
+    const normalizedPhone = String(phone).trim();
+    recipients = await db.select({ id: usersTable.id, phone: usersTable.phone })
+      .from(usersTable)
+      .where(eq(usersTable.phone, normalizedPhone));
   } else if (target === "customers") {
-    const users = await db.select({ phone: usersTable.phone }).from(usersTable)
+    recipients = await db.select({ id: usersTable.id, phone: usersTable.phone }).from(usersTable)
       .where(and(eq(usersTable.role, "customer"), eq(usersTable.isActive, true)));
-    phones = users.map((u) => u.phone).filter(Boolean) as string[];
   } else if (target === "drivers") {
-    const drivers = await db.select({ phone: driversTable.phone }).from(driversTable)
-      .where(eq(driversTable.isAvailable, true));
-    phones = drivers.map((d) => d.phone).filter(Boolean) as string[];
+    recipients = await db.select({ id: usersTable.id, phone: usersTable.phone }).from(usersTable)
+      .where(and(eq(usersTable.role, "driver"), eq(usersTable.isActive, true)));
   } else if (target === "all") {
-    const users = await db.select({ phone: usersTable.phone }).from(usersTable)
+    recipients = await db.select({ id: usersTable.id, phone: usersTable.phone }).from(usersTable)
       .where(and(eq(usersTable.isActive, true), sql`${usersTable.role} in ('customer', 'driver')`));
-    phones = users.map((u) => u.phone).filter(Boolean) as string[];
   } else {
     res.status(400).json({ error: "target must be: single | customers | drivers | all" }); return;
   }
 
-  if (phones.length === 0) {
-    res.json({ sent: 0, failed: 0, message: "No recipients found" }); return;
+  const phones = target === "single"
+    ? [String(phone).trim()]
+    : Array.from(new Set(recipients.map((u) => u.phone).filter(Boolean) as string[]));
+  const delivery = await dispatchNotificationToUsers(
+    recipients.map((recipient) => recipient.id),
+    { title: "Message Jatek", body: message.trim(), data: { source: "admin_broadcast" } },
+  );
+
+  if (recipients.length === 0 && target !== "single") {
+    res.json({ sent: 0, failed: 0, attempted: 0, total: 0, truncated: false, ...delivery });
+    return;
   }
 
   let sent = 0;
   let failed = 0;
   const errors: string[] = [];
+  const smsRecipients = phones.slice(0, 200);
 
-  for (const to of phones.slice(0, 200)) {
+  for (const to of smsRecipients) {
     try {
       await sendOtpMessage(to, message.trim());
       sent++;
@@ -1633,7 +1706,16 @@ router.post("/backend/notifications/send", requireAuth, async (req: AuthedReques
     }
   }
 
-  res.json({ sent, failed, total: phones.length, errors });
+  res.json({
+    success: true,
+    sent,
+    failed,
+    attempted: smsRecipients.length,
+    total: phones.length,
+    truncated: phones.length > smsRecipients.length,
+    errors,
+    ...delivery,
+  });
 });
 
 // ─── OTP provider health (production-safe, no credentials exposed) ───────────

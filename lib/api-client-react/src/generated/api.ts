@@ -33,7 +33,6 @@ import type {
   CartItem,
   Category,
   CategoryBody,
-  CategoryEntry,
   CategoryWithSubs,
   CompleteDriverProfileBody,
   CompleteRestaurantProfileBody,
@@ -1330,9 +1329,9 @@ export const getListBackendCategoriesUrl = () => {
  * JWT required. Backend dashboard RBAC applies by staff role and scoped shop access.
  * @summary List shop/restaurant categories (distinct values from shops)
  */
-export const listBackendCategories = async ( options?: Parameters<typeof customFetch>[1]): Promise<CategoryEntry[]> => {
+export const listBackendCategories = async ( options?: Parameters<typeof customFetch>[1]): Promise<CategoryWithSubs[]> => {
 
-  return customFetch<CategoryEntry[]>(getListBackendCategoriesUrl(),
+  return customFetch<CategoryWithSubs[]>(getListBackendCategoriesUrl(),
   {
     ...options,
     method: 'GET'

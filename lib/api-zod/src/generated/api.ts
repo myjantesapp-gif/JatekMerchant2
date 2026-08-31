@@ -361,8 +361,34 @@ export const VerifyOtpResponse = zod.object({
  * @summary List shop/restaurant categories (distinct values from shops)
  */
 export const ListBackendCategoriesResponseItem = zod.object({
+  "id": zod.number().int(),
   "name": zod.string(),
-  "count": zod.number().int()
+  "slug": zod.string(),
+  "icon": zod.string(),
+  "accentColor": zod.string(),
+  "parentId": zod.number().int().nullish(),
+  "businessType": zod.string(),
+  "type": zod.enum(['category', 'service_shortcut', 'subcategory']).optional(),
+  "bannerImageUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "sortOrder": zod.number().int(),
+  "subCategories": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "icon": zod.string(),
+  "accentColor": zod.string(),
+  "parentId": zod.number().int().nullish(),
+  "businessType": zod.string(),
+  "type": zod.enum(['category', 'service_shortcut', 'subcategory']).optional(),
+  "bannerImageUrl": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "sortOrder": zod.number().int(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})).optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
 })
 export const ListBackendCategoriesResponse = zod.array(ListBackendCategoriesResponseItem)
 

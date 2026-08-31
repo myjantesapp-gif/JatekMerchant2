@@ -558,12 +558,35 @@ router.get("/orders/:id", attachAuth, async (req: AuthedRequest, res, next): Pro
       return;
     }
 
-    // The pickup code is the secret that authorises the driver hand-off.
-    // Only the customer who placed the order (and admins) may see it; the
-    // assigned driver must request it verbally from the customer.
+    // The order itself is private. Do not merely hide the pickup code: that
+    // still exposed addresses, amounts and items to any logged-in customer.
     const isCustomerOwner = req.userId != null && req.userId === order.userId;
-    const isAdmin = req.userRole === "admin";
-    const sanitized = (isCustomerOwner || isAdmin) ? order : { ...order, pickupCode: null };
+    const isStaff = ["admin", "super_admin", "manager"].includes(req.userRole ?? "");
+    let isAssignedDriver = false;
+    let isRestaurantOwner = false;
+
+    if (req.userRole === "driver" && order.driverId) {
+      const [driver] = await db.select({ userId: driversTable.userId })
+        .from(driversTable)
+        .where(eq(driversTable.id, order.driverId))
+        .limit(1);
+      isAssignedDriver = driver?.userId === req.userId;
+    }
+    if (["owner", "restaurant_owner", "restaurant"].includes(req.userRole ?? "")) {
+      const [restaurant] = await db.select({ ownerId: restaurantsTable.ownerId })
+        .from(restaurantsTable)
+        .where(eq(restaurantsTable.id, order.restaurantId))
+        .limit(1);
+      isRestaurantOwner = restaurant?.ownerId === req.userId;
+    }
+
+    if (!isCustomerOwner && !isStaff && !isAssignedDriver && !isRestaurantOwner) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    // The pickup code is only shown to the customer and staff.
+    const sanitized = (isCustomerOwner || isStaff) ? order : { ...order, pickupCode: null };
 
     res.json(sanitized);
   } catch (err) {

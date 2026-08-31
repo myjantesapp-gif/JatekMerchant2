@@ -465,7 +465,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/CategoryEntry"
+                  $ref: "#/components/schemas/CategoryWithSubs"
         "401":
           description: Authentication required
           content:

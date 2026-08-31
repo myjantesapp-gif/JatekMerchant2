@@ -60,6 +60,14 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Annulé",
 };
 
+const STATUS_TRANSITIONS: Record<string, string[]> = {
+  pending: ["accepted", "cancelled"],
+  accepted: ["confirmed", "preparing", "cancelled"],
+  confirmed: ["preparing", "cancelled"],
+  preparing: ["ready", "cancelled"],
+  ready: ["cancelled"],
+};
+
 type ActionModal = "refund" | "cancel" | "gesture" | "chat" | null;
 
 export default function Orders() {
@@ -96,6 +104,17 @@ export default function Orders() {
 
   const handleStatusUpdate = () => {
     if (!selectedOrder || !newStatus) return;
+    const allowed = STATUS_TRANSITIONS[selectedOrder.status] ?? [];
+    if (selectedOrder.driverId || !allowed.includes(newStatus)) {
+      toast({
+        title: "Transition non disponible",
+        description: selectedOrder.driverId
+          ? "Cette commande est pilotée par le livreur via son parcours de livraison."
+          : "Choisissez une étape suivante valide.",
+        variant: "destructive",
+      });
+      return;
+    }
     updateStatus.mutate({ id: selectedOrder.id, data: { status: newStatus as UpdateOrderStatusBodyStatus } }, {
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: getListBackendOrdersQueryKey() });
@@ -308,15 +327,22 @@ export default function Orders() {
                     <Select value={newStatus || selectedOrder.status} onValueChange={setNewStatus}>
                       <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {["pending","accepted","confirmed","preparing","ready","driver_at_restaurant","picked_up","en_route","out_for_delivery","delivered","cancelled"].map((s) => (
+                        {[selectedOrder.status, ...(selectedOrder.driverId ? [] : (STATUS_TRANSITIONS[selectedOrder.status] ?? []))]
+                          .filter((s, index, all) => all.indexOf(s) === index)
+                          .map((s) => (
                           <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button onClick={handleStatusUpdate} disabled={updateStatus.isPending || !newStatus || newStatus === selectedOrder.status}>
+                    <Button onClick={handleStatusUpdate} disabled={updateStatus.isPending || !newStatus || newStatus === selectedOrder.status || !!selectedOrder.driverId}>
                       {updateStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mettre à jour"}
                     </Button>
                   </div>
+                  {selectedOrder.driverId && (
+                    <p className="text-xs text-muted-foreground">
+                      Les étapes de livraison sont modifiées par le livreur. Utilisez l’action d’annulation ci-dessous si nécessaire.
+                    </p>
+                  )}
                 </div>
 
                 {/* Admin actions — hidden for restaurant_owner */}

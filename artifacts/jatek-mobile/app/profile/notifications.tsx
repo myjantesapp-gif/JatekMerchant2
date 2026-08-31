@@ -5,10 +5,10 @@
  */
 import React, { useEffect, useState, useCallback, type ComponentProps } from "react";
 import {
-  View, Text, StyleSheet, Switch, ActivityIndicator, Alert,
+  View, Text, StyleSheet, Switch, ActivityIndicator, Alert, AppState,
   FlatList, TouchableOpacity, RefreshControl, Pressable,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import ProfileScreenLayout from "@/components/ProfileScreenLayout";
 import { useColors } from "@/hooks/useColors";
@@ -19,6 +19,9 @@ import {
   listNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification,
   type AppNotification,
 } from "@/lib/api";
+import { useSSE } from "@/hooks/useSSE";
+import { getApiBase } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const PREFS_ROWS: Array<{ key: keyof NotifPrefs; labelKey: TKey; descKey: TKey }> = [
   { key: "pushOrders",       labelKey: "notif_pref_orders",    descKey: "notif_pref_orders_desc" },
@@ -46,6 +49,7 @@ function NotifIcon({ type }: { type: string }) {
     promo:        { name: "pricetag",       color: colors.turquoise },
     referral:     { name: "gift",           color: "#8B5CF6" },
     chat:         { name: "chatbubble",     color: "#3B82F6" },
+    admin:        { name: "megaphone",     color: colors.primary },
     system:       { name: "notifications",  color: colors.mutedForeground },
   };
   const { name, color } = iconMap[type] ?? iconMap.system;
@@ -124,6 +128,7 @@ function NotificationItem({
 function CenterTab() {
   const colors = useColors();
   const t = useT();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -144,23 +149,63 @@ function CenterTab() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useFocusEffect(useCallback(() => {
+    void load();
+  }, [load]));
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void load();
+    });
+    return () => subscription.remove();
+  }, [load]);
+
+  useSSE({
+    url: `${getApiBase()}/api/events?channels=user:${user?.id ?? 0}`,
+    enabled: !!user?.id,
+    events: {
+      notification: () => { void load(); },
+      order_status: () => { void load(); },
+    },
+  });
 
   const handleRead = useCallback(async (id: number) => {
+    const previous = notifications;
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, readAt: new Date().toISOString() } : n));
-    setUnreadCount((c) => Math.max(0, c - 1));
-    try { await markNotificationRead(id); } catch {}
-  }, []);
+    if (previous.some((n) => n.id === id && !n.readAt)) setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      await markNotificationRead(id);
+    } catch {
+      setNotifications(previous);
+      setUnreadCount(previous.filter((n) => !n.readAt).length);
+      Alert.alert("Erreur", "Impossible de marquer la notification comme lue.");
+    }
+  }, [notifications]);
 
   const handleDelete = useCallback(async (id: number) => {
+    const previous = notifications;
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-    try { await deleteNotification(id); } catch {}
-  }, []);
+    setUnreadCount(previous.filter((n) => !n.readAt && n.id !== id).length);
+    try {
+      await deleteNotification(id);
+    } catch {
+      setNotifications(previous);
+      setUnreadCount(previous.filter((n) => !n.readAt).length);
+      Alert.alert("Erreur", "Impossible de supprimer la notification.");
+    }
+  }, [notifications]);
 
   const handleMarkAllRead = async () => {
+    const previous = notifications;
     setNotifications((prev) => prev.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })));
     setUnreadCount(0);
-    try { await markAllNotificationsRead(); } catch {}
+    try {
+      await markAllNotificationsRead();
+    } catch {
+      setNotifications(previous);
+      setUnreadCount(previous.filter((n) => !n.readAt).length);
+      Alert.alert("Erreur", "Impossible de marquer les notifications comme lues.");
+    }
   };
 
   if (loading) {

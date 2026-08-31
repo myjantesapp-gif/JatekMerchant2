@@ -11,10 +11,15 @@ const router: IRouter = Router();
 // ─────────────────────────────────────────────────────────────
 
 router.get("/categories", async (req, res): Promise<void> => {
-  // Support optional filters: ?type=service_shortcut|category, ?businessType=restaurant, ?parentId=123, ?isActive=true|false
+  // Public clients only receive active categories. Admins use
+  // /backend/categories/all when they need inactive records.
+  // Support optional filters: ?type=service_shortcut|category,
+  // ?businessType=restaurant, ?parentId=123.
   const { type: typeFilter, businessType: btFilter, parentId: parentIdFilter } = req.query as Record<string, string | undefined>;
 
-  const all = await db.select().from(categoriesTable).orderBy(asc(categoriesTable.sortOrder), asc(categoriesTable.name), asc(categoriesTable.id));
+  const all = await db.select().from(categoriesTable)
+    .where(eq(categoriesTable.isActive, true))
+    .orderBy(asc(categoriesTable.sortOrder), asc(categoriesTable.name), asc(categoriesTable.id));
 
   // Apply type / businessType filters
   let filtered = all;
