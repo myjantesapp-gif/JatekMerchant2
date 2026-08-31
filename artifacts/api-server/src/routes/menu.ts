@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, menuItemsTable, restaurantsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, menuItemsTable, menuItemCategoriesTable, restaurantsTable } from "@workspace/db";
+import { eq, and, or, asc, desc, sql } from "drizzle-orm";
 import { requireRole, type AuthedRequest } from "../middlewares/auth";
 import {
   CreateMenuItemBody,
@@ -35,6 +35,25 @@ async function getRestaurantOwnerId(restaurantId: number): Promise<number | null
   return row?.ownerId ?? null;
 }
 
+async function getValidMenuCategory(restaurantId: number, categoryId: unknown, categoryName: unknown) {
+  const parsedId = categoryId === undefined || categoryId === null || categoryId === ""
+    ? null
+    : Number(categoryId);
+  if (parsedId !== null && (!Number.isInteger(parsedId) || parsedId <= 0)) return null;
+  const name = typeof categoryName === "string" ? categoryName.trim() : "";
+  if (parsedId === null && !name) return null;
+  const rows = await db.select().from(menuItemCategoriesTable).where(and(
+    eq(menuItemCategoriesTable.isActive, true),
+    or(
+      eq(menuItemCategoriesTable.restaurantId, restaurantId),
+      // Global categories are available to every restaurant.
+      sql`${menuItemCategoriesTable.restaurantId} IS NULL`,
+    ),
+    parsedId !== null ? eq(menuItemCategoriesTable.id, parsedId) : eq(menuItemCategoriesTable.name, name),
+  ));
+  return rows.find((row) => row.restaurantId === restaurantId) ?? rows.find((row) => row.restaurantId === null) ?? null;
+}
+
 router.get("/restaurants/:restaurantId/menu", async (req, res): Promise<void> => {
   const pathParams = ListMenuItemsParams.safeParse(req.params);
   if (!pathParams.success) {
@@ -51,8 +70,12 @@ router.get("/restaurants/:restaurantId/menu", async (req, res): Promise<void> =>
     conditions.push(eq(menuItemsTable.category, queryParams.data.category));
   }
 
-  const items = await db.select().from(menuItemsTable).where(and(...conditions));
-  res.json(items);
+  const items = await db.select({ item: menuItemsTable })
+    .from(menuItemsTable)
+    .leftJoin(menuItemCategoriesTable, eq(menuItemsTable.menuItemCategoryId, menuItemCategoriesTable.id))
+    .where(and(...conditions))
+    .orderBy(asc(menuItemCategoriesTable.sortOrder), asc(menuItemsTable.category), desc(menuItemsTable.createdAt));
+  res.json(items.map(({ item }) => item));
 });
 
 router.post("/restaurants/:restaurantId/menu", requireRole("admin", "restaurant_owner"), async (req: AuthedRequest, res): Promise<void> => {
@@ -80,8 +103,20 @@ router.post("/restaurants/:restaurantId/menu", requireRole("admin", "restaurant_
     }
   }
 
+  const category = await getValidMenuCategory(
+    pathParams.data.restaurantId,
+    parsed.data.menuItemCategoryId,
+    parsed.data.category,
+  );
+  if (!category) {
+    res.status(400).json({ error: "Invalid or inactive product category for this restaurant" });
+    return;
+  }
+
   const [item] = await db.insert(menuItemsTable).values({
     ...parsed.data,
+    category: category.name,
+    menuItemCategoryId: category.id,
     restaurantId: pathParams.data.restaurantId,
     isAvailable: parsed.data.isAvailable ?? true,
     isPopular: parsed.data.isPopular ?? false,
@@ -131,9 +166,25 @@ router.patch("/menu/:id", requireRole("admin", "restaurant_owner"), async (req: 
     }
   }
 
+  const [existing] = await db.select().from(menuItemsTable).where(eq(menuItemsTable.id, params.data.id)).limit(1);
+  if (!existing) {
+    res.status(404).json({ error: "Menu item not found" });
+    return;
+  }
+  const categoryInputProvided = Object.prototype.hasOwnProperty.call(req.body ?? {}, "category")
+    || Object.prototype.hasOwnProperty.call(req.body ?? {}, "menuItemCategoryId");
+  const category = categoryInputProvided
+    ? await getValidMenuCategory(existing.restaurantId, parsed.data.menuItemCategoryId, parsed.data.category)
+    : null;
+  if (categoryInputProvided && !category) {
+    res.status(400).json({ error: "Invalid or inactive product category for this restaurant" });
+    return;
+  }
+  const updateData = category ? { ...parsed.data, category: category.name, menuItemCategoryId: category.id } : parsed.data;
+
   const [item] = await db
     .update(menuItemsTable)
-    .set(parsed.data)
+    .set(updateData)
     .where(eq(menuItemsTable.id, params.data.id))
     .returning();
 

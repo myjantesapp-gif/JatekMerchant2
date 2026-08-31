@@ -27,14 +27,14 @@ import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { ImageUploadField } from "@/components/ImageUploadField";
 
-const EMPTY = { name: "", description: "", price: "", category: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "" };
+const EMPTY = { name: "", description: "", price: "", category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "" };
 
-type ProductCat = { id: number; restaurantId: number | null; name: string };
+type ProductCat = { id: number; restaurantId: number | null; name: string; isActive: boolean; productCount?: number };
 function useProductCategories(restaurantId: string | number | undefined) {
   return useQuery<ProductCat[]>({
     queryKey: ["/api/backend/menu-categories", String(restaurantId ?? "")],
     queryFn: () => apiFetch(`/api/backend/menu-categories${restaurantId ? `?restaurantId=${restaurantId}` : ""}`),
-    enabled: restaurantId !== undefined,
+    enabled: Boolean(restaurantId),
   });
 }
 
@@ -45,7 +45,7 @@ export default function Products() {
   const { data: shops } = useListBackendShops({});
   const qc = useQueryClient();
   const { toast } = useToast();
-  const isOwner = me?.user.role === "restaurant_owner";
+  const isOwner = me?.user.role === "restaurant_owner" || me?.user.role === "owner";
   const scopedShopIds = me?.scopedShopIds ?? [];
   const visibleShops = isOwner ? (shops || []).filter((s) => scopedShopIds.includes(s.id)) : (shops || []);
 
@@ -83,7 +83,8 @@ export default function Products() {
     name: f.name,
     description: f.description || undefined,
     price: Number(String(f.price).replace(",", ".")),
-    category: f.category,
+     category: f.category || undefined,
+     menuItemCategoryId: f.menuItemCategoryId ? Number(f.menuItemCategoryId) : undefined,
     imageUrl: f.imageUrl || undefined,
     isAvailable: f.isAvailable,
     isPopular: f.isPopular,
@@ -96,6 +97,7 @@ export default function Products() {
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopId) { toast({ title: "Choisissez une boutique", variant: "destructive" }); return; }
+    if (!form.menuItemCategoryId) { toast({ title: "Choisissez une catégorie produit", variant: "destructive" }); return; }
     createMutation.mutate({ restaurantId: Number(shopId), ...buildProductPayload(form) });
   };
 
@@ -103,7 +105,7 @@ export default function Products() {
     setEditing(p);
     setEditForm({
       name: p.name, description: p.description ?? "", price: String(p.price),
-      category: p.category, imageUrl: p.imageUrl ?? "",
+      category: p.category, menuItemCategoryId: p.menuItemCategoryId ? String(p.menuItemCategoryId) : "", imageUrl: p.imageUrl ?? "",
       isAvailable: p.isAvailable, isPopular: p.isPopular,
       allergens: p.allergens ?? "",
       tags: Array.isArray(p.tags) ? p.tags.join(",") : (p.tags ?? ""),
@@ -140,7 +142,14 @@ export default function Products() {
             <DialogHeader><DialogTitle>Créer un produit</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate} className="space-y-3 pt-4">
               <Field label="Boutique">
-                <Select value={shopId} onValueChange={setShopId} disabled={isOwner && scopedShopIds.length === 1}>
+                <Select
+                  value={shopId}
+                  onValueChange={(value) => {
+                    setShopId(value);
+                    setForm((current) => ({ ...current, category: "", menuItemCategoryId: "" }));
+                  }}
+                  disabled={isOwner && scopedShopIds.length === 1}
+                >
                   <SelectTrigger><SelectValue placeholder={isOwner ? "Votre boutique" : "Choisir une boutique"} /></SelectTrigger>
                   <SelectContent>{visibleShops.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                 </Select>
@@ -242,13 +251,17 @@ export default function Products() {
 
 // ─── Product Menu Categories ────────────────────────────────────────────────
 
-type MenuCat = { id: number; restaurantId: number | null; name: string; sortOrder: number; isActive: boolean };
+type MenuCat = { id: number; restaurantId: number | null; name: string; sortOrder: number; isActive: boolean; productCount?: number };
 
 function ProductMenuCategories() {
   const { data: me } = useBackendMe();
   const qc = useQueryClient();
   const { toast } = useToast();
-  const isAdmin = !!me && ["super_admin", "admin", "manager"].includes(me.user.role);
+  const isOwner = me?.user.role === "restaurant_owner" || me?.user.role === "owner";
+  const grants = (me as any)?.permissions ?? [];
+  const canManage = ["super_admin", "admin"].includes(me?.user.role ?? "") || isOwner || grants.some((grant: string) =>
+    grant === "*" || grant === "products.*" || grant === "products.write" || grant === "products.*.own"
+  );
   const { data: shops } = useListBackendShops({});
 
   const { data: productCats, isLoading: pcLoading } = useQuery<MenuCat[]>({
@@ -258,7 +271,7 @@ function ProductMenuCategories() {
 
   const [newCat, setNewCat] = useState({ name: "", restaurantId: "", sortOrder: "0" });
   const [creating, setCreating] = useState(false);
-  const [renaming, setRenaming] = useState<{ id: number; name: string } | null>(null);
+  const [renaming, setRenaming] = useState<{ id: number; name: string; sortOrder: number } | null>(null);
   const [newName, setNewName] = useState("");
   const [deleting, setDeleting] = useState<MenuCat | null>(null);
 
@@ -267,15 +280,15 @@ function ProductMenuCategories() {
   const createMutation = useMutation({
     mutationFn: () => apiFetch("/api/backend/menu-categories", {
       method: "POST",
-      body: JSON.stringify({ name: newCat.name.trim(), restaurantId: newCat.restaurantId ? Number(newCat.restaurantId) : null, sortOrder: Number(newCat.sortOrder) || 0 }),
+       body: JSON.stringify({ name: newCat.name.trim(), restaurantId: newCat.restaurantId ? Number(newCat.restaurantId) : null, sortOrder: Number(newCat.sortOrder) || 0 }),
     }),
     onSuccess: () => { invalidatePC(); setCreating(false); setNewCat({ name: "", restaurantId: "", sortOrder: "0" }); toast({ title: "Catégorie créée" }); },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
   });
 
   const renameMutation = useMutation({
-    mutationFn: ({ id, name }: { id: number; name: string }) =>
-      apiFetch(`/api/backend/menu-categories/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+    mutationFn: ({ id, name, sortOrder }: { id: number; name: string; sortOrder: number }) =>
+      apiFetch(`/api/backend/menu-categories/${id}`, { method: "PATCH", body: JSON.stringify({ name, sortOrder }) }),
     onSuccess: () => { invalidatePC(); setRenaming(null); toast({ title: "Renommée" }); },
     onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
   });
@@ -286,11 +299,23 @@ function ProductMenuCategories() {
     onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
   });
 
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
+      apiFetch(`/api/backend/menu-categories/${id}`, { method: "PATCH", body: JSON.stringify({ isActive }) }),
+    onSuccess: () => { invalidatePC(); toast({ title: "Statut mis à jour" }); },
+    onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
+  });
+
   return (
     <Card className="max-w-3xl">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <h2 className="text-base font-semibold">Catégories de produits</h2>
-        {isAdmin && <Button size="sm" onClick={() => setCreating(true)} className="gap-2"><Plus className="h-4 w-4" />Nouvelle</Button>}
+        {canManage && <Button size="sm" onClick={() => {
+          if (isOwner && !newCat.restaurantId && shops?.[0]) {
+            setNewCat((current) => ({ ...current, restaurantId: String(shops[0].id) }));
+          }
+          setCreating(true);
+        }} className="gap-2"><Plus className="h-4 w-4" />Nouvelle</Button>}
       </CardHeader>
       <CardContent>
         <Table>
@@ -298,15 +323,17 @@ function ProductMenuCategories() {
             <TableRow>
               <TableHead>Nom</TableHead>
               <TableHead className="hidden sm:table-cell">Restaurant</TableHead>
+              <TableHead className="hidden md:table-cell">Produits</TableHead>
               <TableHead className="hidden sm:table-cell">Ordre</TableHead>
-              {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+              <TableHead>Statut</TableHead>
+              {canManage && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {pcLoading ? Array.from({ length: 4 }).map((_, i) => (
-              <TableRow key={i}><TableCell><Skeleton className="h-4 w-32" /></TableCell><TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell><TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-8" /></TableCell>{isAdmin && <TableCell />}</TableRow>
+               <TableRow key={i}><TableCell><Skeleton className="h-4 w-32" /></TableCell><TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell><TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-8" /></TableCell><TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-8" /></TableCell><TableCell /><>{canManage && <TableCell />}</></TableRow>
             )) : productCats?.length === 0 ? (
-              <TableRow><TableCell colSpan={isAdmin ? 4 : 3} className="h-24 text-center text-muted-foreground">Aucune catégorie produit.</TableCell></TableRow>
+               <TableRow><TableCell colSpan={canManage ? 6 : 5} className="h-24 text-center text-muted-foreground">Aucune catégorie produit.</TableCell></TableRow>
             ) : productCats?.map((cat) => (
               <TableRow key={cat.id}>
                 <TableCell className="font-medium">{cat.name}</TableCell>
@@ -315,11 +342,16 @@ function ProductMenuCategories() {
                     ? (shops as any[] | undefined)?.find((s: any) => s.id === cat.restaurantId)?.name ?? `#${cat.restaurantId}`
                     : <Badge variant="secondary">Global</Badge>}
                 </TableCell>
+                 <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{cat.productCount ?? 0}</TableCell>
                 <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{cat.sortOrder}</TableCell>
-                {isAdmin && (
+                 <TableCell>
+                   <Badge variant={cat.isActive ? "default" : "outline"}>{cat.isActive ? "Active" : "Inactive"}</Badge>
+                 </TableCell>
+                 {canManage && (
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => { setRenaming({ id: cat.id, name: cat.name }); setNewName(cat.name); }}><Pencil className="h-4 w-4" /></Button>
+                       <Button variant="ghost" size="sm" onClick={() => toggleMutation.mutate({ id: cat.id, isActive: !cat.isActive })}>{cat.isActive ? "Désactiver" : "Activer"}</Button>
+                       <Button variant="ghost" size="icon" onClick={() => { setRenaming({ id: cat.id, name: cat.name, sortOrder: cat.sortOrder }); setNewName(cat.name); }}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeleting(cat)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </TableCell>
@@ -337,11 +369,11 @@ function ProductMenuCategories() {
             <div className="space-y-1"><Label className="text-xs">Nom *</Label><Input value={newCat.name} onChange={(e) => setNewCat({ ...newCat, name: e.target.value })} required autoFocus /></div>
             <div className="space-y-1">
               <Label className="text-xs">Restaurant (vide = global)</Label>
-              <Select value={newCat.restaurantId || "global"} onValueChange={(v) => setNewCat({ ...newCat, restaurantId: v === "global" ? "" : v })}>
+               <Select value={newCat.restaurantId || "global"} onValueChange={(v) => setNewCat({ ...newCat, restaurantId: v === "global" ? "" : v })}>
                 <SelectTrigger><SelectValue placeholder="Global" /></SelectTrigger>
                 <SelectContent className="z-[200]">
-                  <SelectItem value="global">— Global —</SelectItem>
-                  {(shops as any[] | undefined)?.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                   <SelectItem value="global" disabled={isOwner}>— Global —</SelectItem>
+                   {(shops as any[] | undefined)?.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -354,14 +386,15 @@ function ProductMenuCategories() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!renaming} onOpenChange={(o) => !o && setRenaming(null)}>
+       <Dialog open={!!renaming} onOpenChange={(o) => !o && setRenaming(null)}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Renommer «{renaming?.name}»</DialogTitle></DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); if (renaming && newName.trim()) renameMutation.mutate({ id: renaming.id, name: newName.trim() }); }} className="space-y-4 pt-2">
+           <DialogHeader><DialogTitle>Modifier «{renaming?.name}»</DialogTitle></DialogHeader>
+           <form onSubmit={(e) => { e.preventDefault(); if (renaming && newName.trim()) renameMutation.mutate({ id: renaming.id, name: newName.trim(), sortOrder: renaming.sortOrder }); }} className="space-y-4 pt-2">
             <div className="space-y-1"><Label className="text-xs">Nouveau nom</Label><Input value={newName} onChange={(e) => setNewName(e.target.value)} required /></div>
+             <div className="space-y-1"><Label className="text-xs">Ordre</Label><Input type="number" min="0" value={renaming?.sortOrder ?? 0} onChange={(e) => setRenaming((current) => current ? { ...current, sortOrder: Number(e.target.value) || 0 } : current)} /></div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setRenaming(null)}>Annuler</Button>
-              <Button type="submit" disabled={renameMutation.isPending || !newName.trim() || newName.trim() === renaming?.name}>{renameMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Renommer</Button>
+               <Button type="submit" disabled={renameMutation.isPending || !newName.trim()}>{renameMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Enregistrer</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -396,6 +429,11 @@ const DIET_TAGS = [
 function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: any; restaurantId?: string | number }) {
   const set = (k: string, v: any) => setForm({ ...form, [k]: v });
   const { data: productCats } = useProductCategories(restaurantId);
+  const categoryOptions = (productCats ?? []).filter((category) =>
+    category.isActive || String(category.id) === String(form.menuItemCategoryId),
+  );
+  const hasCategoryOptions = Boolean(restaurantId && categoryOptions.length > 0);
+  const isLegacyCategory = Boolean(form.category && !form.menuItemCategoryId);
   const selectedTags: string[] = form.tags ? form.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
   const toggleTag = (tag: string) => {
     const next = selectedTags.includes(tag)
@@ -408,17 +446,28 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Nom *"><Input required value={form.name} onChange={(e: any) => set("name", e.target.value)} /></Field>
         <Field label="Catégorie *">
-          {productCats && productCats.length > 0 ? (
-            <Select value={form.category} onValueChange={(v) => set("category", v)} required>
+          {hasCategoryOptions ? (
+            <Select
+              value={form.menuItemCategoryId ? String(form.menuItemCategoryId) : ""}
+              onValueChange={(id) => {
+                const selected = productCats?.find((c) => String(c.id) === id);
+                setForm({ ...form, menuItemCategoryId: id, category: selected?.name ?? "" });
+              }}
+              required
+            >
               <SelectTrigger><SelectValue placeholder="Choisir une catégorie" /></SelectTrigger>
               <SelectContent className="z-[200]">
-                {productCats.map((c) => (
-                  <SelectItem key={c.id} value={c.name}>
-                    {c.name}{c.restaurantId !== null ? " ★" : ""}
+                 {categoryOptions.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                     {c.name}{c.restaurantId !== null ? " · boutique" : " · globale"}{!c.isActive ? " · inactive" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          ) : restaurantId && productCats && productCats.length === 0 && !isLegacyCategory ? (
+            <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+              Aucune catégorie active pour cette boutique. Créez-en une dans l’onglet « Catégories menu ».
+            </div>
           ) : (
             <Input required value={form.category} onChange={(e: any) => set("category", e.target.value)} placeholder="Catégorie" />
           )}

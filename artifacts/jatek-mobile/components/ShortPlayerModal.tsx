@@ -45,7 +45,7 @@ function getVideoHtml(url: string): string {
     return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="referrer" content="strict-origin-when-cross-origin"><style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:#000}</style></head><body><iframe src=${safeUrl} referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></body></html>`;
   }
   const safeUrl = JSON.stringify(resolveVideoUrl(url)).replace(/</g, "\\u003c");
-  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html,body,video{margin:0;width:100%;height:100%;background:#000;object-fit:cover}video{position:fixed;inset:0}</style></head><body><video id="short-video" autoplay muted loop playsinline controls></video><script>document.getElementById("short-video").src=${safeUrl};</script></body></html>`;
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html,body,video{margin:0;width:100%;height:100%;background:#000;object-fit:cover}video{position:fixed;inset:0}</style></head><body><video id="short-video" autoplay muted loop playsinline controls></video><script>(function(){var v=document.getElementById("short-video");v.onerror=function(){window.ReactNativeWebView&&window.ReactNativeWebView.postMessage("short-video-error")};v.src=${safeUrl};v.load();})();</script></body></html>`;
 }
 
 function buildSoundScript(soundEnabled: boolean): string {
@@ -115,7 +115,7 @@ export function ShortPlayerModal({ visible, shorts, initialIndex, onClose }: Pro
             renderItem={({ item, index: i }) => (
               <ShortFrame
                 short={item}
-                active={i === index}
+                active={visible && i === index}
                 onOpen={() => goToRestaurant(item.restaurantId)}
                 hasRestaurant={item.restaurantId != null}
                 width={screenWidth}
@@ -357,15 +357,41 @@ function ShortVideo({
     nativeWebViewRef.current?.injectJavaScript(buildSoundScript(soundEnabled));
   }, [soundEnabled, youtubeUrl]);
 
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === "web") {
+        if (youtubeUrl) {
+          webFrameRef.current?.contentWindow?.postMessage(
+            JSON.stringify({ event: "command", func: "stopVideo", args: [] }),
+            "*",
+          );
+        } else if (webVideoRef.current) {
+          webVideoRef.current.pause?.();
+          webVideoRef.current.removeAttribute?.("src");
+          webVideoRef.current.load?.();
+        }
+      } else {
+        nativeWebViewRef.current?.injectJavaScript(
+          "(function(){var v=document.getElementById('short-video');if(v){v.pause();v.removeAttribute('src');v.load();}})();true;",
+        );
+      }
+    };
+  }, [url, youtubeUrl]);
+
   // React Native Web does not support react-native-webview. Use native HTML
   // media elements there so Shorts still autoplay instead of showing a poster
   // placeholder in the web/mobile preview.
   if (Platform.OS === "web") {
     if (videoFailed) {
       return posterUrl ? (
-        <Image source={{ uri: posterUrl }} style={styles.bg} resizeMode="cover" />
+        <View style={styles.bg}>
+          <Image source={{ uri: posterUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <View style={styles.videoFallback}><Ionicons name="alert-circle-outline" size={24} color="#fff" /><Text style={styles.videoFallbackText}>Vidéo indisponible</Text></View>
+        </View>
       ) : (
-        <View style={[styles.bg, { backgroundColor: "#111" }]} />
+        <View style={[styles.bg, { backgroundColor: "#111" }]}>
+          <View style={styles.videoFallback}><Ionicons name="alert-circle-outline" size={24} color="#fff" /><Text style={styles.videoFallbackText}>Vidéo indisponible</Text></View>
+        </View>
       );
     }
 
@@ -375,6 +401,7 @@ function ShortVideo({
         src: youtubeUrl,
         title: "Short vidéo",
         allow: "autoplay; encrypted-media; picture-in-picture",
+        referrerPolicy: "strict-origin-when-cross-origin",
         allowFullScreen: true,
         style: styles.webMedia,
         onError: () => setVideoFailed(true),
@@ -398,9 +425,14 @@ function ShortVideo({
 
   if (videoFailed) {
     return posterUrl ? (
-      <Image source={{ uri: posterUrl }} style={styles.bg} resizeMode="cover" />
+      <View style={styles.bg}>
+        <Image source={{ uri: posterUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <View style={styles.videoFallback}><Ionicons name="alert-circle-outline" size={24} color="#fff" /><Text style={styles.videoFallbackText}>Vidéo indisponible</Text></View>
+      </View>
     ) : (
-      <View style={[styles.bg, { backgroundColor: "#111" }]} />
+      <View style={[styles.bg, { backgroundColor: "#111" }]}>
+        <View style={styles.videoFallback}><Ionicons name="alert-circle-outline" size={24} color="#fff" /><Text style={styles.videoFallbackText}>Vidéo indisponible</Text></View>
+      </View>
     );
   }
 
@@ -419,6 +451,9 @@ function ShortVideo({
       allowsFullscreenVideo
       javaScriptEnabled
       onLoadEnd={() => nativeWebViewRef.current?.injectJavaScript(buildSoundScript(soundEnabled))}
+      onMessage={(event) => {
+        if (event.nativeEvent.data === "short-video-error") setVideoFailed(true);
+      }}
       onError={() => setVideoFailed(true)}
       onHttpError={(event) => {
         if (event.nativeEvent.statusCode >= 400) setVideoFailed(true);
@@ -463,6 +498,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     objectFit: "cover",
   } as any,
+  videoFallback: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.36)",
+  },
+  videoFallbackText: { color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 14 },
   empty: { flex: 1, alignItems: "center", paddingHorizontal: 36, gap: 10 },
   emptyTitle: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 18, textAlign: "center", marginTop: 8 },
   emptyText: { color: "rgba(255,255,255,0.72)", fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center", lineHeight: 20 },

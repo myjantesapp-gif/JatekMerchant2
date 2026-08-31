@@ -36,6 +36,15 @@ function parseDecimal(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function permissionPatternMatches(pattern: string, permission: string): boolean {
+  if (pattern === "*") return true;
+  if (!pattern.includes("*")) return pattern === permission;
+  const escaped = pattern
+    .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*");
+  return new RegExp(`^${escaped}$`).test(permission);
+}
+
 function categorySlugBase(name: string): string {
   return name.toLowerCase().normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -168,7 +177,8 @@ const ROLE_DEFS: { key: RoleKey; label: string; description: string; permissions
 const STAFF_ROLES: RoleKey[] = ["super_admin", "admin", "manager", "restaurant_owner", "owner", "employee", "other"];
 
 function getPermissionsForRole(role: string): string[] {
-  return ROLE_DEFS.find((r) => r.key === role)?.permissions ?? [];
+  const normalizedRole = role === "owner" ? "restaurant_owner" : role;
+  return ROLE_DEFS.find((r) => r.key === normalizedRole)?.permissions ?? [];
 }
 
 /**
@@ -188,10 +198,55 @@ function computeEffectivePermissions(role: string, custom: { inheritedRoles?: st
  */
 function hasPermission(role: string, custom: { inheritedRoles?: string[]; grants?: string[] } | null, perm: string): boolean {
   const effective = computeEffectivePermissions(role, custom);
-  if (effective.includes("*")) return true;
-  if (effective.includes(perm)) return true;
-  const [group] = perm.split(".");
-  return effective.includes(`${group}.*`);
+  return effective.some((grant) => permissionPatternMatches(grant, perm));
+}
+
+function canReadProducts(ctx: { role: string; permissions: { inheritedRoles?: string[]; grants?: string[] } | null }): boolean {
+  return hasPermission(ctx.role, ctx.permissions, "products.read")
+    || hasPermission(ctx.role, ctx.permissions, "products.read.own")
+    || hasPermission(ctx.role, ctx.permissions, "products.read.shop");
+}
+
+function canWriteProducts(ctx: { role: string; permissions: { inheritedRoles?: string[]; grants?: string[] } | null }): boolean {
+  return hasPermission(ctx.role, ctx.permissions, "products.write")
+    || hasPermission(ctx.role, ctx.permissions, "products.write.own");
+}
+
+function canDeleteProducts(ctx: { role: string; permissions: { inheritedRoles?: string[]; grants?: string[] } | null }): boolean {
+  return hasPermission(ctx.role, ctx.permissions, "products.delete")
+    || hasPermission(ctx.role, ctx.permissions, "products.delete.own");
+}
+
+async function findValidMenuCategory(
+  restaurantId: number,
+  categoryId: unknown,
+  categoryName: unknown,
+): Promise<typeof menuItemCategoriesTable.$inferSelect | null> {
+  const parsedId = categoryId === undefined || categoryId === null || categoryId === ""
+    ? null
+    : Number(categoryId);
+  if (parsedId !== null && (!Number.isInteger(parsedId) || parsedId <= 0)) return null;
+
+  const name = typeof categoryName === "string" ? categoryName.trim() : "";
+  const conditions = [
+    eq(menuItemCategoriesTable.isActive, true),
+    or(
+      sql`${menuItemCategoriesTable.restaurantId} IS NULL`,
+      eq(menuItemCategoriesTable.restaurantId, restaurantId),
+    ),
+  ];
+  if (parsedId !== null) conditions.push(eq(menuItemCategoriesTable.id, parsedId));
+  else if (name) conditions.push(eq(menuItemCategoriesTable.name, name));
+  else return null;
+
+  const rows = await db.select().from(menuItemCategoriesTable).where(and(...conditions));
+  return rows.find((row) => row.restaurantId === restaurantId) ?? rows.find((row) => row.restaurantId === null) ?? null;
+}
+
+function validateSortOrder(value: unknown, fallback = 0): number | null {
+  if (value === undefined || value === null || value === "") return fallback;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
 /** Returns the list of shop IDs the user is scoped to, or null = no restriction. */
@@ -390,6 +445,10 @@ router.get("/backend/orders/:id", requireAuth, async (req: AuthedRequest, res): 
 router.get("/backend/products", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
+  if (!canReadProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.read required" });
+    return;
+  }
   const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
   const conds: any[] = [];
   if (scoped !== null) {
@@ -411,19 +470,31 @@ router.get("/backend/products", requireAuth, async (req: AuthedRequest, res): Pr
 router.post("/backend/products", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
+  if (!canWriteProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.write required" });
+    return;
+  }
   try {
     const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
-    const { restaurantId, name, description, price, category, imageUrl, isAvailable, isPopular, allergens, tags, prepTimeMinutes, calories } = req.body || {};
-    if (!restaurantId || !name || price === undefined || !category) {
-      res.status(400).json({ error: "restaurantId, name, price, category requis" }); return;
+    const { restaurantId, name, description, price, category, menuItemCategoryId, imageUrl, isAvailable, isPopular, allergens, tags, prepTimeMinutes, calories } = req.body || {};
+    if (!restaurantId || !name || price === undefined || (!category && !menuItemCategoryId)) {
+      res.status(400).json({ error: "restaurantId, name, price, category ou menuItemCategoryId requis" }); return;
     }
     const rid = Number(restaurantId);
+    if (!Number.isInteger(rid) || rid <= 0) {
+      res.status(400).json({ error: "restaurantId invalide" }); return;
+    }
     if (scoped !== null && !scoped.includes(rid)) {
       res.status(403).json({ error: "Forbidden: not your restaurant" }); return;
     }
+    const productCategory = await findValidMenuCategory(rid, menuItemCategoryId, category);
+    if (!productCategory) {
+      res.status(400).json({ error: "Catégorie produit inexistante, inactive ou non disponible pour cette boutique" }); return;
+    }
     const [item] = await db.insert(menuItemsTable).values({
       restaurantId: rid, name, description: description ?? null, price: parseDecimal(price),
-      category, imageUrl: normalizeStoredMediaPath(imageUrl) ?? null, isAvailable: isAvailable ?? true,
+      category: productCategory.name, menuItemCategoryId: productCategory.id,
+      imageUrl: normalizeStoredMediaPath(imageUrl) ?? null, isAvailable: isAvailable ?? true,
       isPopular: isPopular ?? false, allergens: allergens ?? null,
       tags: Array.isArray(tags) ? tags : (tags ? [tags] : null),
        prepTimeMinutes: prepTimeMinutes ? parseDecimal(prepTimeMinutes) : null,
@@ -436,6 +507,10 @@ router.post("/backend/products", requireAuth, async (req: AuthedRequest, res, ne
 router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
+  if (!canWriteProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.write required" });
+    return;
+  }
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -445,9 +520,32 @@ router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, re
     if (scoped !== null && !scoped.includes(existing.restaurantId)) {
       res.status(403).json({ error: "Forbidden: not your restaurant" }); return;
     }
-    const allowed = ["name", "description", "price", "category", "imageUrl", "isAvailable", "isPopular", "allergens", "tags", "prepTimeMinutes", "calories"];
+    const allowed = ["name", "description", "price", "imageUrl", "isAvailable", "isPopular", "allergens", "tags", "prepTimeMinutes", "calories"];
     const updates: Record<string, unknown> = {};
     for (const k of allowed) if ((req.body || {})[k] !== undefined) updates[k] = req.body[k];
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "category")
+      || Object.prototype.hasOwnProperty.call(req.body || {}, "menuItemCategoryId")) {
+      const requestedCategoryId = req.body?.menuItemCategoryId === undefined
+        ? null
+        : Number(req.body.menuItemCategoryId);
+      const categoryUnchanged = req.body?.category === existing.category
+        && (
+          (existing.menuItemCategoryId !== null && requestedCategoryId === existing.menuItemCategoryId)
+          || (existing.menuItemCategoryId === null && req.body?.menuItemCategoryId == null)
+        );
+      if (!categoryUnchanged) {
+        const productCategory = await findValidMenuCategory(
+          existing.restaurantId,
+          req.body?.menuItemCategoryId,
+          req.body?.category,
+        );
+        if (!productCategory) {
+          res.status(400).json({ error: "Catégorie produit inexistante, inactive ou non disponible pour cette boutique" }); return;
+        }
+        updates.category = productCategory.name;
+        updates.menuItemCategoryId = productCategory.id;
+      }
+    }
     if ("price" in updates) updates.price = parseDecimal(updates.price);
     if ("prepTimeMinutes" in updates) updates.prepTimeMinutes = parseDecimal(updates.prepTimeMinutes);
     if ("calories" in updates) updates.calories = parseDecimal(updates.calories);
@@ -461,6 +559,10 @@ router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, re
 router.delete("/backend/products/:id", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
+  if (!canDeleteProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.delete required" });
+    return;
+  }
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -488,9 +590,16 @@ router.delete("/backend/products/:id", requireAuth, async (req: AuthedRequest, r
 router.get("/backend/menu-categories", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
+  if (!canReadProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.read required" });
+    return;
+  }
 
   const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
   const rid = req.query.restaurantId ? Number(req.query.restaurantId) : null;
+  if (rid !== null && (!Number.isInteger(rid) || rid <= 0)) {
+    res.status(400).json({ error: "restaurantId invalide" }); return;
+  }
 
   // Owner can only query their own restaurant's categories
   if (scoped !== null && rid !== null && !scoped.includes(rid)) {
@@ -502,7 +611,6 @@ router.get("/backend/menu-categories", requireAuth, async (req: AuthedRequest, r
     // Global + restaurant-specific
     rows = await db.select().from(menuItemCategoriesTable)
       .where(and(
-        eq(menuItemCategoriesTable.isActive, true),
         or(
           sql`${menuItemCategoriesTable.restaurantId} IS NULL`,
           eq(menuItemCategoriesTable.restaurantId, rid)
@@ -523,7 +631,17 @@ router.get("/backend/menu-categories", requireAuth, async (req: AuthedRequest, r
       ))
       .orderBy(menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.name, menuItemCategoriesTable.id);
   }
-  res.json(rows);
+  const categoryIds = rows.map((row) => row.id);
+  const usageRows = categoryIds.length > 0
+    ? await db.select({
+      categoryId: menuItemsTable.menuItemCategoryId,
+      cnt: count(),
+    }).from(menuItemsTable)
+      .where(inArray(menuItemsTable.menuItemCategoryId, categoryIds))
+      .groupBy(menuItemsTable.menuItemCategoryId)
+    : [];
+  const usageMap = new Map(usageRows.map((row) => [row.categoryId, Number(row.cnt)]));
+  res.json(rows.map((row) => ({ ...row, productCount: usageMap.get(row.id) ?? 0 })));
 });
 
 /**
@@ -534,6 +652,10 @@ router.get("/backend/menu-categories", requireAuth, async (req: AuthedRequest, r
 router.post("/backend/menu-categories", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
+  if (!canWriteProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.write required" });
+    return;
+  }
   try {
     const { name, restaurantId, sortOrder, isActive } = req.body ?? {};
     if (!name || typeof name !== "string" || !name.trim()) {
@@ -541,6 +663,9 @@ router.post("/backend/menu-categories", requireAuth, async (req: AuthedRequest, 
     }
     const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
     const rid: number | null = restaurantId ? Number(restaurantId) : null;
+    if (rid !== null && (!Number.isInteger(rid) || rid <= 0)) {
+      res.status(400).json({ error: "restaurantId invalide" }); return;
+    }
 
     if (scoped !== null) {
       // Owner must supply a restaurantId that belongs to them
@@ -548,10 +673,26 @@ router.post("/backend/menu-categories", requireAuth, async (req: AuthedRequest, 
       if (!scoped.includes(rid)) { res.status(403).json({ error: "Forbidden: not your restaurant" }); return; }
     }
 
+    const normalizedSortOrder = validateSortOrder(sortOrder);
+    if (normalizedSortOrder === null) {
+      res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" }); return;
+    }
+    const [duplicate] = await db.select({ id: menuItemCategoriesTable.id })
+      .from(menuItemCategoriesTable)
+      .where(and(
+        eq(menuItemCategoriesTable.name, name.trim()),
+        rid === null
+          ? sql`${menuItemCategoriesTable.restaurantId} IS NULL`
+          : eq(menuItemCategoriesTable.restaurantId, rid),
+      ))
+      .limit(1);
+    if (duplicate) {
+      res.status(409).json({ error: "Une catégorie avec ce nom existe déjà pour cette portée" }); return;
+    }
     const [row] = await db.insert(menuItemCategoriesTable).values({
       name: name.trim(),
       restaurantId: rid,
-      sortOrder: sortOrder !== undefined ? Number(sortOrder) : 0,
+      sortOrder: normalizedSortOrder,
       isActive: isActive !== false,
     }).returning();
     res.status(201).json(row);
@@ -565,6 +706,10 @@ router.post("/backend/menu-categories", requireAuth, async (req: AuthedRequest, 
 router.patch("/backend/menu-categories/:id", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
+  if (!canWriteProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.write required" });
+    return;
+  }
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -581,8 +726,38 @@ router.patch("/backend/menu-categories/:id", requireAuth, async (req: AuthedRequ
     const updates: Record<string, unknown> = {};
     const allowed = ["name", "sortOrder", "isActive"];
     for (const k of allowed) if ((req.body ?? {})[k] !== undefined) updates[k] = req.body[k];
+    if ("sortOrder" in updates) {
+      const normalizedSortOrder = validateSortOrder(updates.sortOrder, existing.sortOrder);
+      if (normalizedSortOrder === null) {
+        res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" }); return;
+      }
+      updates.sortOrder = normalizedSortOrder;
+    }
+    if (typeof updates.name === "string" && updates.name.trim()) {
+      const [duplicate] = await db.select({ id: menuItemCategoriesTable.id })
+        .from(menuItemCategoriesTable)
+        .where(and(
+          eq(menuItemCategoriesTable.name, updates.name.trim()),
+          existing.restaurantId === null
+            ? sql`${menuItemCategoriesTable.restaurantId} IS NULL`
+            : eq(menuItemCategoriesTable.restaurantId, existing.restaurantId),
+        ))
+        .limit(1);
+      if (duplicate && duplicate.id !== id) {
+        res.status(409).json({ error: "Une catégorie avec ce nom existe déjà pour cette portée" }); return;
+      }
+      updates.name = updates.name.trim();
+    }
     if (Object.keys(updates).length === 0) { res.status(400).json({ error: "No valid fields" }); return; }
     const [row] = await db.update(menuItemCategoriesTable).set(updates as any).where(eq(menuItemCategoriesTable.id, id)).returning();
+    if (updates.name && updates.name !== existing.name) {
+      await db.update(menuItemsTable)
+        .set({ category: String(updates.name) })
+        .where(or(
+          eq(menuItemsTable.menuItemCategoryId, id),
+          eq(menuItemsTable.category, existing.name),
+        ));
+    }
     res.json(row);
   } catch (err) { next(err); }
 });
@@ -594,6 +769,10 @@ router.patch("/backend/menu-categories/:id", requireAuth, async (req: AuthedRequ
 router.delete("/backend/menu-categories/:id", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
+  if (!canDeleteProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.delete required" });
+    return;
+  }
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -604,6 +783,17 @@ router.delete("/backend/menu-categories/:id", requireAuth, async (req: AuthedReq
     if (scoped !== null) {
       if (existing.restaurantId === null) { res.status(403).json({ error: "Impossible de supprimer une catégorie globale" }); return; }
       if (!scoped.includes(existing.restaurantId)) { res.status(403).json({ error: "Forbidden: not your restaurant" }); return; }
+    }
+
+    const inUse = await db.select({ id: menuItemsTable.id })
+      .from(menuItemsTable)
+      .where(or(
+        eq(menuItemsTable.menuItemCategoryId, id),
+        eq(menuItemsTable.category, existing.name),
+      ));
+    if (inUse.length > 0) {
+      res.status(409).json({ error: `Cette catégorie est utilisée par ${inUse.length} produit(s). Réaffectez-les d'abord ou rendez-la inactive.` });
+      return;
     }
 
     await db.delete(menuItemCategoriesTable).where(eq(menuItemCategoriesTable.id, id));
@@ -1082,7 +1272,7 @@ router.get("/backend/categories", requireAuth, async (req: AuthedRequest, res): 
     return;
   }
 
-  const all = await db.select().from(categoriesTable).orderBy(categoriesTable.sortOrder, categoriesTable.name);
+  const all = await db.select().from(categoriesTable).orderBy(categoriesTable.sortOrder, categoriesTable.name, categoriesTable.id);
 
   // Count restaurant usage per category name
   const usageRows = await db
@@ -1114,6 +1304,7 @@ router.get("/backend/categories", requireAuth, async (req: AuthedRequest, res): 
     ...toShape(p),
     subCategories: children
       .filter((ch) => (ch as any).parentId === p.id)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name) || a.id - b.id)
       .map(toShape),
   }));
 
@@ -1146,6 +1337,9 @@ router.post("/backend/categories", requireAuth, async (req: AuthedRequest, res):
     : null;
 
   if (!name) { res.status(400).json({ error: "Name required" }); return; }
+  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
+    res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" }); return;
+  }
 
   if (parentId !== null) {
     const [parent] = await db.select({ id: categoriesTable.id })
@@ -1200,9 +1394,12 @@ router.patch("/backend/categories/:id", requireAuth, async (req: AuthedRequest, 
   const name = String(req.body?.name || existing.name).trim();
   const icon = String(req.body?.icon ?? existing.icon);
   const accentColor = String(req.body?.accentColor ?? existing.accentColor);
-  const sortOrder = req.body?.sortOrder !== undefined ? Number(req.body.sortOrder) : existing.sortOrder;
+   const sortOrder = req.body?.sortOrder !== undefined ? Number(req.body.sortOrder) : existing.sortOrder;
   const isActive = req.body?.isActive !== undefined ? Boolean(req.body.isActive) : existing.isActive;
-  const businessType = req.body?.businessType !== undefined ? String(req.body.businessType) : (existing as any).businessType ?? "restaurant";
+   if (!Number.isInteger(sortOrder) || sortOrder < 0) {
+     res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" }); return;
+   }
+   const businessType = req.body?.businessType !== undefined ? String(req.body.businessType) : (existing as any).businessType ?? "restaurant";
   const type = req.body?.type !== undefined
     ? String(req.body.type)
     : (existing as any).type ?? (existing.parentId ? "subcategory" : "category");
@@ -1255,7 +1452,10 @@ router.delete("/backend/categories/:id", requireAuth, async (req: AuthedRequest,
   if (!cat) { res.status(404).json({ error: "Catégorie introuvable" }); return; }
 
   // Block if restaurants use this category
-  const inUse = await db.select({ id: restaurantsTable.id }).from(restaurantsTable).where(eq(restaurantsTable.category, cat.name));
+  const inUse = await db.select({ id: restaurantsTable.id }).from(restaurantsTable).where(or(
+    eq(restaurantsTable.category, cat.name),
+    eq(restaurantsTable.subcategoryId, id),
+  ));
   if (inUse.length > 0) {
     res.status(409).json({ error: `Cette catégorie est utilisée par ${inUse.length} restaurant(s). Réaffectez-les d'abord.` });
     return;

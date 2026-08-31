@@ -19,7 +19,7 @@ export function resolveMediaUrl(url?: string | null): string | undefined {
   return `${getApiBaseSafe()}${value.startsWith("/") ? value : `/${value}`}`;
 }
 
-/** Extracts a YouTube video id from watch, Shorts, embed, or short URLs. */
+/** Extracts a YouTube video id from watch, Shorts, embed, live, or short URLs. */
 export function getYouTubeVideoId(url?: string | null): string | null {
   const resolved = resolveMediaUrl(url);
   if (!resolved) return null;
@@ -37,7 +37,7 @@ export function getYouTubeVideoId(url?: string | null): string | null {
       videoId = segments[1] ?? null;
     }
 
-    return videoId && /^[\w-]{6,}$/.test(videoId) ? videoId : null;
+    return videoId && /^[\w-]{11}$/.test(videoId) ? videoId : null;
   } catch {
     return null;
   }

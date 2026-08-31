@@ -95,6 +95,8 @@ export interface MenuItem {
   /** @nullable */
   imageUrl?: string | null;
   category: string;
+  /** @nullable */
+  menuItemCategoryId?: number | null;
   isAvailable: boolean;
   isPopular: boolean;
   createdAt: string;
@@ -353,6 +355,7 @@ export interface CreateMenuItemBody {
   price: number;
   imageUrl?: string;
   category: string;
+  menuItemCategoryId?: number;
   isAvailable?: boolean;
   isPopular?: boolean;
 }
@@ -363,6 +366,7 @@ export interface UpdateMenuItemBody {
   price?: number;
   imageUrl?: string;
   category?: string;
+  menuItemCategoryId?: number;
   isAvailable?: boolean;
   isPopular?: boolean;
 }

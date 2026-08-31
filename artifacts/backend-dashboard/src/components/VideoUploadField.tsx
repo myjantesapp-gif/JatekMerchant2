@@ -13,20 +13,38 @@ type VideoUploadFieldProps = {
   uploadKind?: Extract<MediaUploadKind, "short">;
 };
 
+function normalizeCandidate(url: string): string {
+  const value = url.trim();
+  return /^(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(value) ? `https://${value}` : value;
+}
+
 export function getYouTubeEmbedUrl(url: string): string | null {
   try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase();
+    const parsed = new URL(normalizeCandidate(url));
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
     if (host !== "youtu.be" && host !== "youtube.com" && !host.endsWith(".youtube.com")) return null;
     let videoId = parsed.searchParams.get("v");
-    if (parsed.hostname === "youtu.be") videoId = parsed.pathname.slice(1).split("/")[0] ?? null;
-    if (parsed.pathname.startsWith("/embed/")) videoId = parsed.pathname.split("/")[2] ?? null;
-    if (parsed.pathname.startsWith("/shorts/")) videoId = parsed.pathname.split("/")[2] ?? null;
-    return videoId && /^[\w-]{6,}$/.test(videoId)
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    if (host === "youtu.be") videoId = segments[0] ?? null;
+    if (["embed", "shorts", "live"].includes(segments[0]?.toLowerCase() ?? "")) videoId = segments[1] ?? null;
+    return videoId && /^[\w-]{11}$/.test(videoId)
       ? `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`
       : null;
   } catch {
     return null;
+  }
+}
+
+export function isValidVideoSource(url: string): boolean {
+  const value = url.trim();
+  if (!value) return true;
+  if (getYouTubeEmbedUrl(value)) return true;
+  if (/^(?:\/api\/storage\/objects\/|\/objects\/|uploads\/|\/uploads\/)/.test(value)) return true;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
   }
 }
 
@@ -91,11 +109,16 @@ export function VideoUploadField({
       <div className="flex gap-2">
         <Input
           value={value}
-          onChange={(event) => {
+           onChange={(event) => {
             setError(null);
             clearLocalPreview();
             onValueChange(event.target.value);
           }}
+           onBlur={(event) => {
+             if (event.target.value.trim() && !isValidVideoSource(event.target.value)) {
+               setError("Saisissez une URL YouTube valide ou un chemin vidéo App Storage.");
+             }
+           }}
           placeholder="https://… ou choisissez une vidéo"
           className="min-w-0 flex-1"
         />

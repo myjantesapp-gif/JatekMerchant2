@@ -635,6 +635,7 @@ export const ListBackendProductsResponseItem = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
+  "menuItemCategoryId": zod.number().int().nullish(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -1422,6 +1423,7 @@ export const GetMenuItemResponse = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
+  "menuItemCategoryId": zod.number().int().nullish(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -1442,6 +1444,7 @@ export const UpdateMenuItemBody = zod.object({
   "price": zod.number().optional(),
   "imageUrl": zod.string().optional(),
   "category": zod.string().optional(),
+  "menuItemCategoryId": zod.number().int().optional(),
   "isAvailable": zod.boolean().optional(),
   "isPopular": zod.boolean().optional()
 })
@@ -1454,6 +1457,7 @@ export const UpdateMenuItemResponse = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
+  "menuItemCategoryId": zod.number().int().nullish(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -1487,6 +1491,7 @@ export const GetProductOptionsResponse = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
+  "menuItemCategoryId": zod.number().int().nullish(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -2652,6 +2657,7 @@ export const ListMenuItemsResponseItem = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
+  "menuItemCategoryId": zod.number().int().nullish(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -2673,6 +2679,7 @@ export const CreateMenuItemBody = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().optional(),
   "category": zod.string(),
+  "menuItemCategoryId": zod.number().int().optional(),
   "isAvailable": zod.boolean().optional(),
   "isPopular": zod.boolean().optional()
 })
@@ -2685,6 +2692,7 @@ export const CreateMenuItemResponse = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
+  "menuItemCategoryId": zod.number().int().nullish(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()

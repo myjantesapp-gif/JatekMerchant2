@@ -240,6 +240,36 @@ async function requireAdmin(req: AuthedRequest, res: any): Promise<boolean> {
   return true;
 }
 
+function normalizeShortVideoUrl(raw: unknown): string | null | undefined {
+  if (raw === null || raw === undefined) return raw as null | undefined;
+  if (typeof raw !== "string") return undefined;
+  const value = raw.trim();
+  if (!value) return null;
+  const candidate = /^(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(value)
+    ? `https://${value}`
+    : value;
+
+  try {
+    const parsed = new URL(candidate);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (host === "youtube.com" || host === "youtu.be" || host.endsWith(".youtube.com")) {
+      const segments = parsed.pathname.split("/").filter(Boolean);
+      let videoId = parsed.searchParams.get("v");
+      if (host === "youtu.be") videoId = segments[0] ?? null;
+      if (["embed", "shorts", "live"].includes(segments[0]?.toLowerCase() ?? "")) videoId = segments[1] ?? null;
+      if (!videoId || !/^[\w-]{11}$/.test(videoId)) return undefined;
+      return `https://www.youtube.com/watch?v=${videoId}`;
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    return normalizeStoredMediaPath(value) ?? undefined;
+  } catch {
+    if (/^(?:\/api\/storage\/objects\/|\/objects\/|uploads\/|\/uploads\/)/.test(value)) {
+      return normalizeStoredMediaPath(value) ?? undefined;
+    }
+    return undefined;
+  }
+}
+
 /** GET /backend/categories/all — returns ALL categories (including inactive) for the admin UI. */
 router.get("/backend/categories/all", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   if (!await requireAdmin(req, res)) return;
@@ -266,10 +296,14 @@ router.post("/backend/shorts", requireAuth, async (req: AuthedRequest, res): Pro
   if (!await requireAdmin(req, res)) return;
   const { title, imageUrl, videoUrl, restaurantId, restaurantName, audioCodec, audioBitrate, durationSeconds, isActive, sortOrder } = req.body ?? {};
   if (!title) { res.status(400).json({ error: "title required" }); return; }
+  const normalizedVideoUrl = normalizeShortVideoUrl(videoUrl);
+  if (videoUrl !== undefined && normalizedVideoUrl === undefined) {
+    res.status(400).json({ error: "videoUrl doit être une URL YouTube valide ou une vidéo App Storage" }); return;
+  }
   const [row] = await db.insert(shortsTable).values({
     title,
     imageUrl: normalizeStoredMediaPath(imageUrl) ?? null,
-    videoUrl: normalizeStoredMediaPath(videoUrl) ?? null,
+    videoUrl: normalizedVideoUrl ?? null,
     restaurantId: restaurantId ?? null,
     restaurantName: restaurantName ?? null,
     audioCodec: typeof audioCodec === "string" ? audioCodec.slice(0, 80) : null,
@@ -291,6 +325,13 @@ router.patch("/backend/shorts/:id", requireAuth, async (req: AuthedRequest, res)
   }
   for (const field of ["imageUrl", "videoUrl"] as const) {
     if (field in updates) updates[field] = normalizeStoredMediaPath(updates[field]);
+  }
+  if ("videoUrl" in updates) {
+    const normalizedVideoUrl = normalizeShortVideoUrl(updates.videoUrl);
+    if (normalizedVideoUrl === undefined) {
+      res.status(400).json({ error: "videoUrl doit être une URL YouTube valide ou une vidéo App Storage" }); return;
+    }
+    updates.videoUrl = normalizedVideoUrl;
   }
   const [row] = await db.update(shortsTable).set(updates).where(eq(shortsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }

@@ -61,17 +61,18 @@ function validateStaticBuild({ staticRoot, basePath }) {
   const errors = [];
   const manifests = {};
   let bundleAssetReferences = 0;
+  const resolvedStaticRoot = path.resolve(staticRoot);
 
-  if (!fs.existsSync(staticRoot) || !fs.statSync(staticRoot).isDirectory()) {
+  if (!fs.existsSync(resolvedStaticRoot) || !fs.statSync(resolvedStaticRoot).isDirectory()) {
     return {
       ok: false,
-      errors: [`Static build directory is missing: ${staticRoot}`],
+      errors: [`Static build directory is missing: ${resolvedStaticRoot}`],
       manifests,
     };
   }
 
   for (const platform of PLATFORMS) {
-    const manifestPath = path.join(staticRoot, platform, "manifest.json");
+    const manifestPath = path.join(resolvedStaticRoot, platform, "manifest.json");
 
     if (!fs.existsSync(manifestPath)) {
       errors.push(`Missing ${platform} manifest`);
@@ -91,7 +92,7 @@ function validateStaticBuild({ staticRoot, basePath }) {
     try {
       const launchAsset = pathFromBuildUrl(
         manifest.launchAsset?.url,
-        staticRoot,
+        resolvedStaticRoot,
         basePath,
       );
       launchAssetPath = launchAsset.outputPath;
@@ -121,7 +122,7 @@ function validateStaticBuild({ staticRoot, basePath }) {
       }
 
       try {
-        const output = pathFromBuildUrl(asset.url, staticRoot, basePath);
+        const output = pathFromBuildUrl(asset.url, resolvedStaticRoot, basePath);
         if (!fs.existsSync(output.outputPath) || fs.statSync(output.outputPath).size === 0) {
           errors.push(`${platform} asset ${index} is missing or empty`);
         }
@@ -136,7 +137,7 @@ function validateStaticBuild({ staticRoot, basePath }) {
         bundleAssetReferences += bundleAssetUrls.length;
 
         for (const [index, assetUrl] of bundleAssetUrls.entries()) {
-          const output = pathFromBuildUrl(assetUrl, staticRoot, basePath);
+          const output = pathFromBuildUrl(assetUrl, resolvedStaticRoot, basePath);
           if (!fs.existsSync(output.outputPath) || fs.statSync(output.outputPath).size === 0) {
             errors.push(`${platform} bundle asset ${index} is missing or empty`);
           }

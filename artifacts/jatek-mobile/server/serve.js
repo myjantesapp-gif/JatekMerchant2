@@ -98,9 +98,39 @@ async function proxyEasManifest(platform, incomingHeaders, res) {
 function serveManifest(platform, req, res) {
   const manifestPath = path.join(STATIC_ROOT, platform, "manifest.json");
 
-  // Local static-build exists → serve it directly
+  // Local static-build exists → serve it with URLs bound to the current
+  // preview/deployment host. A committed build can be reused by a new
+  // Replit deployment, so its old absolute Janeway host must never leak into
+  // the manifest returned to Expo.
   if (fs.existsSync(manifestPath)) {
-    const manifest = fs.readFileSync(manifestPath, "utf-8");
+    let manifest;
+    try {
+      manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+    } catch {
+      res.writeHead(503, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "Static manifest is invalid" }));
+      return;
+    }
+    const protocol = req.headers["x-forwarded-proto"] || "https";
+    const host = (req.headers["x-forwarded-host"] || req.headers.host || "localhost").split(",")[0].trim();
+    const origin = `${protocol}://${host}`;
+    const rewriteUrl = (value) => {
+      if (typeof value !== "string" || !value) return value;
+      try {
+        const parsed = new URL(value, origin);
+        return `${origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+      } catch {
+        return value;
+      }
+    };
+    if (manifest.launchAsset?.url) manifest.launchAsset.url = rewriteUrl(manifest.launchAsset.url);
+    if (Array.isArray(manifest.assets)) {
+      manifest.assets = manifest.assets.map((asset) => asset?.url ? { ...asset, url: rewriteUrl(asset.url) } : asset);
+    }
+    const expoClient = manifest.extra?.expoClient;
+    const expoGo = manifest.extra?.expoGo;
+    if (expoClient?.hostUri) expoClient.hostUri = `${host}${basePath}/${platform}`;
+    if (expoGo?.debuggerHost) expoGo.debuggerHost = `${host}${basePath}/${platform}`;
     res.writeHead(200, {
       "content-type": "application/json",
       "expo-protocol-version": "1",
@@ -108,7 +138,7 @@ function serveManifest(platform, req, res) {
       "cache-control": "no-store, no-cache, must-revalidate",
       "pragma": "no-cache",
     });
-    res.end(manifest);
+    res.end(JSON.stringify(manifest));
     return;
   }
 

@@ -17,3 +17,4 @@
 - [Metro pnpm mobile preview](metro-pnpm-preview.md) — avoid the monorepo root; targeted watch folders plus extraNodeModules resolve pnpm packages without exhausting inotify.
 - [YouTube Shorts WebView embeds](youtube-embed-error-153.md) — native WebViews need an explicit YouTube base URL, origin, and referrer policy to avoid player error 153.
 - [Expo Android push credentials](expo-push-fcm-credentials.md) — Expo Push Service needs FCM v1 credentials on the EAS project; google-services.json alone is not enough.
+- [Product category compatibility](product-category-compatibility.md) — keep the stable category ID and legacy category name synchronized for older mobile clients.
