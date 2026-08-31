@@ -66,6 +66,108 @@ async function uniqueCategorySlug(name: string, excludeId?: number): Promise<str
   throw new Error("Unable to generate a unique category slug");
 }
 
+type ShopCategoryResolution =
+  | { ok: true; category: string; businessType: string; subcategoryId: number | null }
+  | { ok: false; error: string };
+
+/**
+ * Resolve the canonical shop category while preserving the legacy text field.
+ * A subcategory ID always wins over client-provided names and business types.
+ * Unknown legacy category text is kept so old records remain editable.
+ */
+async function resolveShopCategory(input: {
+  category?: unknown;
+  businessType?: unknown;
+  subcategoryId?: unknown;
+  requireActive?: boolean;
+}): Promise<ShopCategoryResolution> {
+  const categoryText = typeof input.category === "string" ? input.category.trim() : "";
+  const requestedBusinessType = typeof input.businessType === "string"
+    ? input.businessType.trim()
+    : "";
+  const rawSubcategoryId = input.subcategoryId;
+  const hasSubcategory = rawSubcategoryId !== undefined && rawSubcategoryId !== null && rawSubcategoryId !== "";
+  const subcategoryId = hasSubcategory ? Number(rawSubcategoryId) : null;
+
+  if (subcategoryId !== null && (!Number.isInteger(subcategoryId) || subcategoryId <= 0)) {
+    return { ok: false, error: "subcategoryId invalide" };
+  }
+
+  const matches = categoryText
+    ? await db.select().from(categoriesTable)
+      .where(sql`lower(${categoriesTable.name}) = ${categoryText.toLowerCase()}`)
+    : [];
+
+  if (subcategoryId !== null) {
+    const [subcategory] = await db.select().from(categoriesTable)
+      .where(eq(categoriesTable.id, subcategoryId))
+      .limit(1);
+    if (!subcategory || !subcategory.parentId || subcategory.type !== "subcategory") {
+      return { ok: false, error: "Sous-catégorie invalide" };
+    }
+
+    const [parent] = await db.select().from(categoriesTable)
+      .where(eq(categoriesTable.id, subcategory.parentId))
+      .limit(1);
+    if (!parent || parent.parentId) {
+      return { ok: false, error: "Catégorie parente invalide" };
+    }
+    if (input.requireActive && (!parent.isActive || !subcategory.isActive)) {
+      return { ok: false, error: "La catégorie sélectionnée est inactive" };
+    }
+
+    return {
+      ok: true,
+      category: subcategory.name,
+      businessType: parent.businessType,
+      subcategoryId: subcategory.id,
+    };
+  }
+
+  const parents = matches.filter((row) => !row.parentId);
+  if (parents.length > 1) {
+    return { ok: false, error: "La catégorie de boutique est ambiguë" };
+  }
+  const parent = parents[0];
+  if (parent) {
+    if (input.requireActive && !parent.isActive) {
+      return { ok: false, error: "La catégorie sélectionnée est inactive" };
+    }
+    return {
+      ok: true,
+      category: parent.name,
+      businessType: parent.businessType,
+      subcategoryId: null,
+    };
+  }
+
+  // Backfill an unambiguous legacy child name into the canonical relation.
+  const children = matches.filter((row) => !!row.parentId && row.type === "subcategory");
+  if (children.length === 1) {
+    const child = children[0];
+    const [parentForChild] = await db.select().from(categoriesTable)
+      .where(eq(categoriesTable.id, child.parentId!))
+      .limit(1);
+    if (!parentForChild) return { ok: false, error: "Catégorie parente introuvable" };
+    if (input.requireActive && (!parentForChild.isActive || !child.isActive)) {
+      return { ok: false, error: "La catégorie sélectionnée est inactive" };
+    }
+    return {
+      ok: true,
+      category: child.name,
+      businessType: parentForChild.businessType,
+      subcategoryId: child.id,
+    };
+  }
+
+  return {
+    ok: true,
+    category: categoryText || "Other",
+    businessType: requestedBusinessType || "restaurant",
+    subcategoryId: null,
+  };
+}
+
 const JWT_SECRET = process.env.SESSION_SECRET!; // validated at startup by auth middleware
 
 // ---------- Roles + permissions ----------
@@ -247,6 +349,34 @@ function validateSortOrder(value: unknown, fallback = 0): number | null {
   if (value === undefined || value === null || value === "") return fallback;
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function parseBoolean(value: unknown, fallback: boolean): boolean {
+  if (typeof value === "boolean") return value;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return fallback;
+}
+
+function menuCategoryUsageCondition(category: {
+  id: number;
+  name: string;
+  restaurantId: number | null;
+}) {
+  // Only products without a canonical ID need the legacy name fallback.
+  // This prevents a global category rename/delete from touching an unrelated
+  // private category that happens to share the same display name.
+  const legacyMatch = and(
+    sql`${menuItemsTable.menuItemCategoryId} IS NULL`,
+    eq(menuItemsTable.category, category.name),
+  )!;
+  const categoryMatch = or(
+    eq(menuItemsTable.menuItemCategoryId, category.id),
+    legacyMatch,
+  )!;
+  return category.restaurantId === null
+    ? categoryMatch
+    : and(eq(menuItemsTable.restaurantId, category.restaurantId), categoryMatch);
 }
 
 /** Returns the list of shop IDs the user is scoped to, or null = no restriction. */
@@ -529,10 +659,8 @@ router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, re
         ? null
         : Number(req.body.menuItemCategoryId);
       const categoryUnchanged = req.body?.category === existing.category
-        && (
-          (existing.menuItemCategoryId !== null && requestedCategoryId === existing.menuItemCategoryId)
-          || (existing.menuItemCategoryId === null && req.body?.menuItemCategoryId == null)
-        );
+        && existing.menuItemCategoryId !== null
+        && requestedCategoryId === existing.menuItemCategoryId;
       if (!categoryUnchanged) {
         const productCategory = await findValidMenuCategory(
           existing.restaurantId,
@@ -632,16 +760,14 @@ router.get("/backend/menu-categories", requireAuth, async (req: AuthedRequest, r
       .orderBy(menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.name, menuItemCategoriesTable.id);
   }
   const categoryIds = rows.map((row) => row.id);
-  const usageRows = categoryIds.length > 0
-    ? await db.select({
-      categoryId: menuItemsTable.menuItemCategoryId,
-      cnt: count(),
-    }).from(menuItemsTable)
-      .where(inArray(menuItemsTable.menuItemCategoryId, categoryIds))
-      .groupBy(menuItemsTable.menuItemCategoryId)
-    : [];
-  const usageMap = new Map(usageRows.map((row) => [row.categoryId, Number(row.cnt)]));
-  res.json(rows.map((row) => ({ ...row, productCount: usageMap.get(row.id) ?? 0 })));
+   const usageCounts = await Promise.all(rows.map(async (row) => {
+     const [usage] = await db.select({ cnt: count() })
+       .from(menuItemsTable)
+       .where(menuCategoryUsageCondition(row));
+     return [row.id, Number(usage?.cnt ?? 0)] as const;
+   }));
+   const usageMap = new Map(usageCounts);
+   res.json(rows.map((row) => ({ ...row, productCount: usageMap.get(row.id) ?? 0 })));
 });
 
 /**
@@ -733,7 +859,7 @@ router.patch("/backend/menu-categories/:id", requireAuth, async (req: AuthedRequ
       }
       updates.sortOrder = normalizedSortOrder;
     }
-    if (typeof updates.name === "string" && updates.name.trim()) {
+     if (typeof updates.name === "string" && updates.name.trim()) {
       const [duplicate] = await db.select({ id: menuItemCategoriesTable.id })
         .from(menuItemCategoriesTable)
         .where(and(
@@ -748,15 +874,19 @@ router.patch("/backend/menu-categories/:id", requireAuth, async (req: AuthedRequ
       }
       updates.name = updates.name.trim();
     }
+    if ("isActive" in updates && typeof updates.isActive !== "boolean") {
+      res.status(400).json({ error: "isActive doit être un booléen" }); return;
+    }
     if (Object.keys(updates).length === 0) { res.status(400).json({ error: "No valid fields" }); return; }
-    const [row] = await db.update(menuItemCategoriesTable).set(updates as any).where(eq(menuItemCategoriesTable.id, id)).returning();
+     const [row] = await db.update(menuItemCategoriesTable).set(updates as any).where(eq(menuItemCategoriesTable.id, id)).returning();
     if (updates.name && updates.name !== existing.name) {
       await db.update(menuItemsTable)
         .set({ category: String(updates.name) })
-        .where(or(
-          eq(menuItemsTable.menuItemCategoryId, id),
-          eq(menuItemsTable.category, existing.name),
-        ));
+         .where(menuCategoryUsageCondition({
+           id,
+           name: existing.name,
+           restaurantId: existing.restaurantId,
+         }));
     }
     res.json(row);
   } catch (err) { next(err); }
@@ -785,12 +915,13 @@ router.delete("/backend/menu-categories/:id", requireAuth, async (req: AuthedReq
       if (!scoped.includes(existing.restaurantId)) { res.status(403).json({ error: "Forbidden: not your restaurant" }); return; }
     }
 
-    const inUse = await db.select({ id: menuItemsTable.id })
-      .from(menuItemsTable)
-      .where(or(
-        eq(menuItemsTable.menuItemCategoryId, id),
-        eq(menuItemsTable.category, existing.name),
-      ));
+     const inUse = await db.select({ id: menuItemsTable.id })
+       .from(menuItemsTable)
+       .where(menuCategoryUsageCondition({
+         id,
+         name: existing.name,
+         restaurantId: existing.restaurantId,
+       }));
     if (inUse.length > 0) {
       res.status(409).json({ error: `Cette catégorie est utilisée par ${inUse.length} produit(s). Réaffectez-les d'abord ou rendez-la inactive.` });
       return;
@@ -832,11 +963,18 @@ router.post("/backend/shops", requireAuth, async (req: AuthedRequest, res, next)
   try {
     const { name, description, address, phone, category, imageUrl, logoUrl, coverImageUrl, deliveryTime, deliveryFee, minimumOrder, freeDeliveryThreshold, ownerId, isOpen, businessType, subcategoryId, isFeatured, latitude, longitude, legalName, ice, printerEmail } = req.body || {};
     if (!name || !address) { res.status(400).json({ error: "name et address requis" }); return; }
+    const categoryResolution = await resolveShopCategory({
+      category,
+      businessType,
+      subcategoryId,
+      requireActive: true,
+    });
+    if (!categoryResolution.ok) { res.status(400).json({ error: categoryResolution.error }); return; }
     const defaultLatitude = await getPlatformSettingNumber("defaultLatitude", Number(DEFAULT_PLATFORM_SETTINGS.defaultLatitude));
     const defaultLongitude = await getPlatformSettingNumber("defaultLongitude", Number(DEFAULT_PLATFORM_SETTINGS.defaultLongitude));
     const [shop] = await db.insert(restaurantsTable).values({
       name, description: description ?? null, address,
-      phone: phone ?? null, category: category ?? "restaurant",
+      phone: phone ?? null, category: categoryResolution.category,
       imageUrl: normalizeStoredMediaPath(imageUrl) ?? null,
       logoUrl: normalizeStoredMediaPath(logoUrl) ?? null,
       coverImageUrl: normalizeStoredMediaPath(coverImageUrl) ?? null,
@@ -846,8 +984,8 @@ router.post("/backend/shops", requireAuth, async (req: AuthedRequest, res, next)
       freeDeliveryThreshold: freeDeliveryThreshold !== undefined ? Number(freeDeliveryThreshold) : await getPlatformSettingNumber("freeDeliveryThreshold", Number(DEFAULT_PLATFORM_SETTINGS.freeDeliveryThreshold)),
       ownerId: ownerId ? Number(ownerId) : (ctx.id),
       isOpen: isOpen ?? true,
-      businessType: businessType ?? "restaurant",
-      subcategoryId: subcategoryId ? Number(subcategoryId) : null,
+      businessType: categoryResolution.businessType,
+      subcategoryId: categoryResolution.subcategoryId,
       isFeatured: isFeatured ?? false,
       isVerified: true,
       profileCompletedAt: new Date(),
@@ -872,11 +1010,27 @@ router.patch("/backend/shops/:id", requireAuth, async (req: AuthedRequest, res, 
     if (scoped !== null && !scoped.includes(id)) {
       res.status(403).json({ error: "Forbidden: not your restaurant" }); return;
     }
+    const [existing] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, id)).limit(1);
+    if (!existing) { res.status(404).json({ error: "Not found" }); return; }
     const adminAllowed = ["name", "description", "address", "phone", "category", "imageUrl", "logoUrl", "coverImageUrl", "deliveryTime", "deliveryFee", "minimumOrder", "freeDeliveryThreshold", "isOpen", "ownerId", "isVerified", "businessType", "subcategoryId", "isFeatured", "latitude", "longitude", "legalName", "ice", "printerEmail", "profileCompletedAt"];
     const ownerAllowed = ["name", "description", "address", "phone", "category", "imageUrl", "logoUrl", "coverImageUrl", "deliveryTime", "deliveryFee", "minimumOrder", "isOpen", "businessType", "subcategoryId"];
     const allowed = (ctx.role === "restaurant_owner" || ctx.role === "owner") ? ownerAllowed : adminAllowed;
     const updates: Record<string, unknown> = {};
     for (const k of allowed) if ((req.body || {})[k] !== undefined) updates[k] = req.body[k];
+    const categoryFieldsProvided = ["category", "businessType", "subcategoryId"]
+      .some((field) => Object.prototype.hasOwnProperty.call(req.body || {}, field));
+    if (categoryFieldsProvided) {
+      const categoryResolution = await resolveShopCategory({
+        category: req.body?.category !== undefined ? req.body.category : existing.category,
+        businessType: req.body?.businessType !== undefined ? req.body.businessType : existing.businessType,
+        subcategoryId: req.body?.subcategoryId !== undefined ? req.body.subcategoryId : existing.subcategoryId,
+        requireActive: true,
+      });
+      if (!categoryResolution.ok) { res.status(400).json({ error: categoryResolution.error }); return; }
+      updates.category = categoryResolution.category;
+      updates.businessType = categoryResolution.businessType;
+      updates.subcategoryId = categoryResolution.subcategoryId;
+    }
     for (const field of ["imageUrl", "logoUrl", "coverImageUrl"] as const) {
       if (field in updates) updates[field] = normalizeStoredMediaPath(updates[field]);
     }
@@ -887,7 +1041,6 @@ router.patch("/backend/shops/:id", requireAuth, async (req: AuthedRequest, res, 
     }
     if (Object.keys(updates).length === 0) { res.status(400).json({ error: "No valid fields to update" }); return; }
     const [shop] = await db.update(restaurantsTable).set(updates as any).where(eq(restaurantsTable.id, id)).returning();
-    if (!shop) { res.status(404).json({ error: "Not found" }); return; }
     res.json(shop);
   } catch (err) { next(err); }
 });
@@ -924,7 +1077,7 @@ router.get("/backend/staff", requireAuth, async (req: AuthedRequest, res): Promi
     if (!myShops || myShops.length === 0) { res.json([]); return; }
     rows = await db.select().from(usersTable).where(and(eq(usersTable.role, "employee"), inArray(usersTable.assignedShopId, myShops)));
   } else {
-    rows = await db.select().from(usersTable).where(inArray(usersTable.role, ["super_admin", "admin", "manager", "restaurant_owner", "employee"]));
+    rows = await db.select().from(usersTable).where(inArray(usersTable.role, ["super_admin", "admin", "manager", "restaurant_owner", "owner", "employee"]));
   }
   res.json(rows.map((u) => { const { password, ...s } = u; return s; }));
 });
@@ -1328,10 +1481,12 @@ router.post("/backend/categories", requireAuth, async (req: AuthedRequest, res):
   const icon = String(req.body?.icon || "storefront").trim();
   const accentColor = String(req.body?.accentColor || "#E91E63").trim();
   const sortOrder = Number(req.body?.sortOrder ?? 0);
-  const isActive = req.body?.isActive !== false;
-  const parentId = req.body?.parentId ? Number(req.body.parentId) : null;
-  const businessType = String(req.body?.businessType || "restaurant").trim();
-  const type = parentId ? "subcategory" : String(req.body?.type || "category").trim();
+   const isActive = parseBoolean(req.body?.isActive, true);
+   const parentId = req.body?.parentId !== undefined && req.body?.parentId !== null && req.body?.parentId !== ""
+     ? Number(req.body.parentId)
+     : null;
+  let businessType = String(req.body?.businessType || "restaurant").trim();
+  let type = parentId ? "subcategory" : String(req.body?.type || "category").trim();
   const bannerImageUrl = req.body?.bannerImageUrl
     ? normalizeStoredMediaPath(String(req.body.bannerImageUrl).trim())
     : null;
@@ -1340,13 +1495,26 @@ router.post("/backend/categories", requireAuth, async (req: AuthedRequest, res):
   if (!Number.isInteger(sortOrder) || sortOrder < 0) {
     res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" }); return;
   }
+  if (parentId !== null && (!Number.isInteger(parentId) || parentId <= 0)) {
+    res.status(400).json({ error: "parentId invalide" }); return;
+  }
 
   if (parentId !== null) {
-    const [parent] = await db.select({ id: categoriesTable.id })
+    const [parent] = await db.select()
       .from(categoriesTable)
       .where(eq(categoriesTable.id, parentId))
       .limit(1);
     if (!parent) { res.status(400).json({ error: "Parent category not found" }); return; }
+    if (parent.parentId || !["category", "service_shortcut"].includes(parent.type)) {
+      res.status(400).json({ error: "Une sous-catégorie doit avoir une catégorie principale valide" }); return;
+    }
+    if (!parent.isActive && isActive) {
+      res.status(400).json({ error: "Impossible d'activer une sous-catégorie sous une catégorie inactive" }); return;
+    }
+    businessType = parent.businessType;
+    type = "subcategory";
+  } else if (!["category", "service_shortcut"].includes(type)) {
+    res.status(400).json({ error: "Type de catégorie invalide" }); return;
   }
 
   const slug = await uniqueCategorySlug(name);
@@ -1391,33 +1559,86 @@ router.patch("/backend/categories/:id", requireAuth, async (req: AuthedRequest, 
   const [existing] = await db.select().from(categoriesTable).where(eq(categoriesTable.id, id)).limit(1);
   if (!existing) { res.status(404).json({ error: "Catégorie introuvable" }); return; }
 
-  const name = String(req.body?.name || existing.name).trim();
+   const name = String(req.body?.name ?? existing.name).trim();
+   if (!name) { res.status(400).json({ error: "Name required" }); return; }
   const icon = String(req.body?.icon ?? existing.icon);
   const accentColor = String(req.body?.accentColor ?? existing.accentColor);
    const sortOrder = req.body?.sortOrder !== undefined ? Number(req.body.sortOrder) : existing.sortOrder;
-  const isActive = req.body?.isActive !== undefined ? Boolean(req.body.isActive) : existing.isActive;
+   const isActive = req.body?.isActive !== undefined
+     ? parseBoolean(req.body.isActive, existing.isActive)
+     : existing.isActive;
    if (!Number.isInteger(sortOrder) || sortOrder < 0) {
      res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" }); return;
    }
-   const businessType = req.body?.businessType !== undefined ? String(req.body.businessType) : (existing as any).businessType ?? "restaurant";
-  const type = req.body?.type !== undefined
-    ? String(req.body.type)
-    : (existing as any).type ?? (existing.parentId ? "subcategory" : "category");
+   const parentForExisting = existing.parentId
+     ? (await db.select().from(categoriesTable).where(eq(categoriesTable.id, existing.parentId)).limit(1))[0]
+     : null;
+   if (existing.parentId && !parentForExisting) {
+     res.status(409).json({ error: "Catégorie parente introuvable" }); return;
+   }
+    if (existing.parentId && isActive && parentForExisting && !parentForExisting.isActive) {
+      res.status(400).json({ error: "Impossible d'activer une sous-catégorie sous une catégorie inactive" }); return;
+    }
+   const businessType = parentForExisting
+     ? parentForExisting.businessType
+     : req.body?.businessType !== undefined
+       ? String(req.body.businessType).trim()
+       : (existing as any).businessType ?? "restaurant";
+   const type = existing.parentId
+     ? "subcategory"
+     : req.body?.type !== undefined
+       ? String(req.body.type)
+       : (existing as any).type ?? "category";
+   if (!existing.parentId && !["category", "service_shortcut"].includes(type)) {
+     res.status(400).json({ error: "Type de catégorie invalide" }); return;
+   }
+   if (existing.parentId && !isActive && parentForExisting && parentForExisting.isActive === false) {
+     // Both records being inactive is valid; this branch documents the intentional
+     // compatibility behavior and avoids treating legacy inactive trees as corrupt.
+   }
   const bannerImageUrl = req.body?.bannerImageUrl !== undefined
     ? (req.body.bannerImageUrl ? normalizeStoredMediaPath(String(req.body.bannerImageUrl).trim()) : null)
     : (existing as any).bannerImageUrl ?? null;
-  const slug = await uniqueCategorySlug(name, id);
 
   try {
     const [updated] = await db
       .update(categoriesTable)
-      .set({ name, slug, icon, accentColor, sortOrder, isActive, businessType, type, bannerImageUrl } as any)
+       .set({ name, icon, accentColor, sortOrder, isActive, businessType, type, bannerImageUrl } as any)
       .where(eq(categoriesTable.id, id))
       .returning();
 
-    // Only parent categories are used as the legacy restaurant.category value.
-    if (!existing.parentId && name !== existing.name) {
-      await db.update(restaurantsTable).set({ category: name }).where(eq(restaurantsTable.category, existing.name));
+      // An inactive parent must not leave active children visible in an
+      // administrative tree that the public API cannot expose coherently.
+      if (!existing.parentId && existing.isActive && !isActive) {
+        await db.update(categoriesTable)
+          .set({ isActive: false } as any)
+          .where(eq(categoriesTable.parentId, id));
+      }
+
+     if (name !== existing.name || businessType !== (existing as any).businessType) {
+       if (!existing.parentId) {
+         const children = await db.select({ id: categoriesTable.id })
+           .from(categoriesTable)
+           .where(eq(categoriesTable.parentId, id));
+         await db.update(restaurantsTable)
+           .set({
+             ...(name !== existing.name ? { category: name } : {}),
+             ...(businessType !== (existing as any).businessType ? { businessType } : {}),
+            })
+            .where(eq(restaurantsTable.category, existing.name));
+          if (businessType !== (existing as any).businessType && children.length > 0) {
+            await db.update(restaurantsTable)
+              .set({ businessType })
+              .where(inArray(restaurantsTable.subcategoryId, children.map((child) => child.id)));
+          }
+       } else {
+         await db.update(restaurantsTable)
+           .set({ category: name, businessType })
+           .where(or(
+             eq(restaurantsTable.subcategoryId, id),
+             eq(restaurantsTable.category, existing.name),
+           ));
+       }
     }
 
     res.json({

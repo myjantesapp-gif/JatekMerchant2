@@ -64,6 +64,10 @@ router.get("/categories", async (req, res): Promise<void> => {
  */
 router.get("/menu-categories", async (req, res): Promise<void> => {
   const rid = req.query.restaurantId ? Number(req.query.restaurantId) : null;
+  if (rid !== null && (!Number.isInteger(rid) || rid <= 0)) {
+    res.status(400).json({ error: "restaurantId invalide" });
+    return;
+  }
   const condition = rid !== null
     ? and(
         eq(menuItemCategoriesTable.isActive, true),

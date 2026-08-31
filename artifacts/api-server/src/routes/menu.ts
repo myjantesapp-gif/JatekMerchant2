@@ -69,6 +69,15 @@ router.get("/restaurants/:restaurantId/menu", async (req, res): Promise<void> =>
   if (queryParams.success && queryParams.data.category) {
     conditions.push(eq(menuItemsTable.category, queryParams.data.category));
   }
+  // A product linked to an inactive structured category is hidden from the
+  // public menu. Legacy products without an ID remain readable by name.
+  conditions.push(or(
+    and(
+      sql`${menuItemsTable.menuItemCategoryId} IS NULL`,
+      sql`${menuItemCategoriesTable.id} IS NULL`,
+    ),
+    eq(menuItemCategoriesTable.isActive, true),
+  )!);
 
   const items = await db.select({ item: menuItemsTable })
     .from(menuItemsTable)

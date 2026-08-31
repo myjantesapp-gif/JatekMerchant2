@@ -275,7 +275,12 @@ function ProductMenuCategories() {
   const [newName, setNewName] = useState("");
   const [deleting, setDeleting] = useState<MenuCat | null>(null);
 
-  const invalidatePC = () => qc.invalidateQueries({ queryKey: ["/api/backend/menu-categories"] });
+  const invalidatePC = () => {
+    qc.invalidateQueries({ queryKey: ["/api/backend/menu-categories"] });
+    // Renaming/toggling a category changes product labels/visibility in the
+    // same dashboard session; do not wait for a navigation to refresh them.
+    qc.invalidateQueries({ queryKey: getListBackendProductsQueryKey() });
+  };
 
   const createMutation = useMutation({
     mutationFn: () => apiFetch("/api/backend/menu-categories", {
@@ -464,7 +469,7 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
                 ))}
               </SelectContent>
             </Select>
-          ) : restaurantId && productCats && productCats.length === 0 && !isLegacyCategory ? (
+          ) : restaurantId && productCats && categoryOptions.length === 0 && !isLegacyCategory ? (
             <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
               Aucune catégorie active pour cette boutique. Créez-en une dans l’onglet « Catégories menu ».
             </div>

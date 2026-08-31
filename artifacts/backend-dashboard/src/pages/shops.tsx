@@ -29,7 +29,7 @@ const defaultHours = (): HourRow[] =>
   Array.from({ length: 7 }, (_, i) => ({ dayOfWeek: i, openTime: "09:00", closeTime: "22:00", isClosed: i === 0 }));
 
 // ─── Types for API-fetched categories ────────────────────────────────────────
-type SubCat = { id: number; name: string; slug: string; businessType: string };
+type SubCat = { id: number; name: string; slug: string; businessType: string; parentId?: number | null };
 type CatWithSubs = { id: number; name: string; slug: string; businessType: string; subCategories: SubCat[] };
 
 const EMPTY = {
@@ -53,9 +53,9 @@ export default function Shops() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const isAdmin = me?.user.role === "admin" || me?.user.role === "super_admin";
-  const isOwner = me?.user.role === "restaurant_owner";
+  const isOwner = me?.user.role === "restaurant_owner" || me?.user.role === "owner";
   const ownerCandidates = (staff || []).filter(
-    (u: any) => ["restaurant_owner", "admin", "super_admin"].includes(u.role)
+    (u: any) => ["restaurant_owner", "owner", "admin", "super_admin"].includes(u.role)
   );
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -102,9 +102,10 @@ export default function Shops() {
     description: f.description || undefined,
     address: f.address,
     phone: f.phone || undefined,
-    category: f.category || undefined,
-    businessType: f.businessType || undefined,
-    subcategoryId: f.subcategoryId ? Number(f.subcategoryId) : undefined,
+    category: f.category || null,
+    businessType: f.businessType || null,
+    // null is intentional: an empty selection clears an old subcategory.
+    subcategoryId: f.subcategoryId ? Number(f.subcategoryId) : null,
     imageUrl: f.imageUrl || undefined,
     logoUrl: f.logoUrl || undefined,
     coverImageUrl: f.coverImageUrl || undefined,
@@ -596,11 +597,16 @@ function ShopForm({
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const cats = (allCategories ?? []) as unknown as CatWithSubs[];
 
-  // Find the active parent: prefer explicit parentSlug selection, fall back to
-  // matching an existing shop's category value against any subcategory name.
+  // Find the active parent from the canonical child ID first. Legacy records
+  // may only have a category name, so retain name-based fallbacks as well.
+  const selectedSubcategory = cats
+    .flatMap((category) => category.subCategories ?? [])
+    .find((subcategory) => String(subcategory.id) === String(form.subcategoryId));
   const selectedParent =
     cats.find((c) => c.slug === form.parentSlug) ??
-    cats.find((c) => c.subCategories.some((s) => s.name === form.category));
+    cats.find((c) => c.id === selectedSubcategory?.parentId) ??
+    cats.find((c) => c.name.trim().toLowerCase() === form.category.trim().toLowerCase()) ??
+    cats.find((c) => c.subCategories.some((s) => s.name.trim().toLowerCase() === form.category.trim().toLowerCase()));
   const subcats = selectedParent?.subCategories ?? [];
 
   const set = (k: string, v: any) => setForm({ ...form, [k]: v });
@@ -624,7 +630,13 @@ function ShopForm({
                 return;
               }
               const parent = cats.find((c) => c.slug === v);
-              setForm({ ...form, parentSlug: v, businessType: parent?.businessType ?? "", category: "", subcategoryId: "" });
+              setForm({
+                ...form,
+                parentSlug: v,
+                businessType: parent?.businessType ?? "",
+                category: parent?.name ?? "",
+                subcategoryId: "",
+              });
             }}
           >
             <SelectTrigger><SelectValue placeholder="Choisir une catégorie" /></SelectTrigger>
@@ -639,11 +651,11 @@ function ShopForm({
         {/* 2. Subcategory — its name becomes form.category (what the mobile filters by) */}
         <Field label="Sous-catégorie">
           <Select
-            value={form.category || "__none__"}
+            value={selectedSubcategory ? String(selectedSubcategory.id) : "__none__"}
             onValueChange={(v) => {
               if (v === "__none__") { setForm({ ...form, category: "", subcategoryId: "" }); return; }
-              const sub = subcats.find((s) => s.name === v);
-              setForm({ ...form, category: v, subcategoryId: sub ? String(sub.id) : "" });
+              const sub = subcats.find((s) => String(s.id) === v);
+              setForm({ ...form, category: sub?.name ?? "", subcategoryId: sub ? String(sub.id) : "" });
             }}
             disabled={!selectedParent || subcats.length === 0}
           >
@@ -658,8 +670,8 @@ function ShopForm({
             </SelectTrigger>
             <SelectContent className="z-[200]">
               <SelectItem value="__none__">— Aucune —</SelectItem>
-              {subcats.map((s) => (
-                <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+               {subcats.map((s) => (
+                 <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
