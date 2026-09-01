@@ -146,54 +146,82 @@ async function notifyCustomerStatus(
       .where(eq(notificationPrefsTable.userId, userId))
       .limit(1);
 
-    if (prefs) {
-      if (prefs.language === "en" || prefs.language === "ar") lang = prefs.language;
-      // Build localized strings
-      const { title, body } = langMap[lang](restaurantName);
+    if (prefs?.language === "en" || prefs?.language === "ar") lang = prefs.language;
+    const { title, body } = langMap[lang](restaurantName);
 
-      // 1 — SSE: instant in-app delivery
-      publish(`user:${userId}`, "order_status", { orderId, status, title, body });
+    // 1 — SSE: instant in-app delivery. This must not depend on a
+    // notification-preferences row existing yet.
+    publish(`user:${userId}`, "order_status", { orderId, status, title, body });
 
-      // 2 — DB notification
-      pushNotification(userId, "order_status", title, body, { orderId, status }).catch((e) =>
-        console.warn("[orders] DB notification failed:", e),
-      );
+    // 2 — DB notification: the in-app inbox is also independent of push
+    // permission or token registration.
+    pushNotification(userId, "order_status", title, body, { orderId, status }).catch((e) =>
+      console.warn("[orders] DB notification failed:", e),
+    );
 
-      // 3 — Mobile push (Expo tokens for the published app, FCM for native
-      // clients that register a Firebase token).
-      if (prefs.pushToken && prefs.pushOrders !== false) {
-        const pushData = { orderId: String(orderId), status };
-        const pushPromise = prefs.pushToken.startsWith("ExponentPushToken[")
-          ? notifyDrivers([prefs.pushToken], title, body, { orderId, status }, { channelId: "order-status", priority: "high", ttl: 300 })
-          : sendFcmPush({ token: prefs.pushToken, title, body, data: pushData, channelId: "order-status" });
-        pushPromise
-          .then((sent) => {
-            if (!sent) {
-              console.warn("[orders] mobile-push-to-customer rejected", {
-                userId,
-                orderId,
-                provider: prefs.pushToken?.startsWith("ExponentPushToken[") ? "expo" : "fcm",
-              });
-            }
-          })
-          .catch((e) => console.warn("[orders] mobile-push-to-customer failed:", e));
-      }
-
-      // 4 — Web push (browser)
-      if (prefs.webPushSub && prefs.pushOrders !== false) {
-        sendWebPush(prefs.webPushSub, { title, body, data: { orderId, status } })
-          .catch((e) => console.warn("[orders] web-push-to-customer failed:", e));
-      }
-      return;
+    // 3 — Mobile push (Expo tokens for the published app, FCM for native
+    // clients that register a Firebase token).
+    if (prefs?.pushToken && prefs.pushOrders !== false) {
+      const pushData = { orderId: String(orderId), status };
+      const pushPromise = prefs.pushToken.startsWith("ExponentPushToken[")
+        ? notifyDrivers([prefs.pushToken], title, body, { orderId, status }, { channelId: "order-status", priority: "high", ttl: 300 })
+        : sendFcmPush({ token: prefs.pushToken, title, body, data: pushData, channelId: "order-status" });
+      pushPromise
+        .then((sent) => {
+          if (!sent) {
+            console.warn("[orders] mobile-push-to-customer rejected", {
+              userId,
+              orderId,
+              provider: prefs.pushToken?.startsWith("ExponentPushToken[") ? "expo" : "fcm",
+            });
+          }
+        })
+        .catch((e) => console.warn("[orders] mobile-push-to-customer failed:", e));
     }
+
+    // 4 — Web push (browser)
+    if (prefs?.webPushSub && prefs.pushOrders !== false) {
+      sendWebPush(prefs.webPushSub, { title, body, data: { orderId, status } })
+        .catch((e) => console.warn("[orders] web-push-to-customer failed:", e));
+    }
+    return;
   } catch (err) {
     console.warn("[orders] notifyCustomerStatus prefs fetch failed:", err);
   }
 
-  // Fallback: no prefs row — publish SSE in French, no push
+  // Fallback when the preference lookup itself fails.
   const { title, body } = langMap.fr(restaurantName);
   publish(`user:${userId}`, "order_status", { orderId, status, title, body });
   pushNotification(userId, "order_status", title, body, { orderId, status }).catch(() => {});
+}
+
+async function notifyAssignedDriver(
+  driverId: number,
+  orderId: number,
+  restaurantName: string,
+  deliveryAddress: string,
+  earning: number,
+): Promise<void> {
+  const [driver] = await db
+    .select({ pushToken: driversTable.pushToken })
+    .from(driversTable)
+    .where(eq(driversTable.id, driverId))
+    .limit(1);
+  const token = driver?.pushToken;
+  if (!token) return;
+
+  const title = "🏍️ Course attribuée";
+  const body = `${restaurantName} → ${deliveryAddress}\nGain estimé : ${earning} DH`;
+  const sent = token.startsWith("ExponentPushToken[")
+    ? await notifyDrivers([token], title, body, { orderId, type: "order_assigned" }, { channelId: "incoming-order", priority: "high", ttl: 300 })
+    : await sendFcmPush({
+      token,
+      title,
+      body,
+      data: { orderId: String(orderId), type: "order_assigned" },
+      channelId: "incoming-order",
+    });
+  if (!sent) console.warn("[orders] assignment push rejected", { driverId, orderId });
 }
 
 async function getOrderWithItems(orderId: number) {
@@ -411,6 +439,16 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
   let discountAmount = 0;
   let appliedPromoId: number | null = null;
 
+  // Enforce the same free-delivery threshold shown by the mobile cart. The
+  // client is only a preview; the server must be the source of truth.
+  const freeDeliveryThreshold = Number(
+    restaurant.freeDeliveryThreshold ??
+      await getPlatformSettingNumber("freeDeliveryThreshold", Number(DEFAULT_PLATFORM_SETTINGS.freeDeliveryThreshold)),
+  );
+  if (deliveryFee > 0 && freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold) {
+    deliveryFee = 0;
+  }
+
   // Apply promo code if provided
   if (promoCode) {
     const [promo] = await db
@@ -425,7 +463,6 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
       } else if (promo.type === "fixed") {
         discountAmount = Math.min(subtotal, promo.value);
       } else if (promo.type === "free_delivery") {
-        discountAmount = deliveryFee;
         deliveryFee = 0;
       }
       discountAmount = Math.round(discountAmount * 100) / 100;
@@ -783,9 +820,18 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
     })();
   }
 
-  // When order is assigned to a driver, push to that driver's channel
+  // When order is assigned to a driver, notify both the live channel and the
+  // device. The device push is needed when the driver app is backgrounded or
+  // fully closed.
   if (parsed.data.driverId) {
     publish(`driver_orders:${parsed.data.driverId}`, "order_assigned", { orderId: order.id, order: orderWithItems });
+    notifyAssignedDriver(
+      parsed.data.driverId,
+      order.id,
+      order.restaurantName,
+      order.deliveryAddress,
+      Number(order.driverEarning ?? 0),
+    ).catch((err) => console.warn("[orders] assignment push failed:", err));
   }
 
   // When the driver hits the road, attach the order to their live tracking
@@ -984,6 +1030,16 @@ router.post("/orders/:id/accept-delivery", requireAuth, async (req: AuthedReques
 
   // Customer push + in-app notification
   notifyCustomerStatus(order.userId, "accepted", orderId, order.restaurantName);
+
+  // The driver accepted the order while the app may be backgrounded. Send a
+  // remote confirmation as well as the live event above.
+  notifyAssignedDriver(
+    driverId,
+    order.id,
+    order.restaurantName,
+    order.deliveryAddress,
+    Number(order.driverEarning ?? 0),
+  ).catch((err) => console.warn("[orders] driver acceptance push failed:", err));
 
   // Start tracking the order in the in-memory live state so subsequent driver
   // location pings get fanned out on the order:{id} channel.

@@ -1756,12 +1756,15 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
  * JWT required. Creates an order for the current user.
  * @summary Place a new order
  */
+export const createOrderBodyPromoCodeMax = 64;
+
 export const createOrderBodyPaymentMethodDefault = `cash`;
 
 export const CreateOrderBody = zod.object({
   "restaurantId": zod.number().int(),
   "deliveryAddress": zod.string(),
   "notes": zod.string().optional(),
+  "promoCode": zod.string().min(1).max(createOrderBodyPromoCodeMax).optional(),
   "paymentMethod": zod.enum(['cash', 'card']).default(createOrderBodyPaymentMethodDefault),
   "items": zod.array(zod.object({
   "menuItemId": zod.number().int(),

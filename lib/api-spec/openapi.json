@@ -5850,6 +5850,11 @@
           "notes": {
             "type": "string"
           },
+          "promoCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
           "paymentMethod": {
             "type": "string",
             "enum": [

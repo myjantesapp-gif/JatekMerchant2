@@ -51,7 +51,8 @@ export default function Wallets() {
     staleTime: 60_000,
   });
 
-  const totalRestaurantRevenue = data?.restaurants.reduce((s, r) => s + r.totalRevenue, 0) ?? 0;
+  const totalMerchantEarnings = data?.restaurants.reduce((s, r) => s + r.merchantEarning, 0) ?? 0;
+  const totalJatekCommission = data?.restaurants.reduce((s, r) => s + r.jatekEarning, 0) ?? 0;
   const totalDriverEarnings = data?.drivers.reduce((s, d) => s + d.totalEarnings, 0) ?? 0;
 
   return (
@@ -71,7 +72,8 @@ export default function Wallets() {
           ))
         ) : (
           <>
-            <SummaryCard title="CA restaurants" value={`${totalRestaurantRevenue.toLocaleString("fr-MA")} MAD`} icon={TrendingUp} sub="Commandes livrées" />
+            <SummaryCard title="Revenus restaurants" value={`${totalMerchantEarnings.toLocaleString("fr-MA")} MAD`} icon={TrendingUp} sub="Hors livraison et TVA" />
+            <SummaryCard title="Commission Jatek" value={`${totalJatekCommission.toLocaleString("fr-MA")} MAD`} icon={TrendingUp} sub="Frais de service sur produits" />
             <SummaryCard title="Restaurants" value={String(data?.restaurants.length ?? 0)} icon={Store} sub="Avec des livraisons" />
             <SummaryCard title="Gains livreurs" value={`${totalDriverEarnings.toLocaleString("fr-MA")} MAD`} icon={TrendingUp} sub="Frais de livraison cumulés" />
             <SummaryCard title="Livreurs actifs" value={String(data?.drivers.length ?? 0)} icon={Truck} sub="Avec des livraisons" />
@@ -100,7 +102,8 @@ export default function Wallets() {
                     <TableHead className="text-right">Sous-total</TableHead>
                     <TableHead className="text-right">Frais livraison</TableHead>
                     <TableHead className="text-right">Gain restaurant</TableHead>
-                    <TableHead className="text-right">Total TTC</TableHead>
+                    <TableHead className="text-right">Commission Jatek</TableHead>
+                    <TableHead className="text-right">Total client TTC</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -112,8 +115,8 @@ export default function Wallets() {
                         ))}
                       </TableRow>
                     ))
-                  ) : data?.restaurants.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Aucune donnée.</TableCell></TableRow>
+                    ) : data?.restaurants.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Aucune donnée.</TableCell></TableRow>
                   ) : (
                     data?.restaurants.map((r) => (
                       <TableRow key={r.restaurantId}>
@@ -122,6 +125,7 @@ export default function Wallets() {
                         <TableCell className="text-right text-muted-foreground">{r.grossRevenue.toLocaleString("fr-MA")} MAD</TableCell>
                         <TableCell className="text-right text-muted-foreground">{r.deliveryFees.toLocaleString("fr-MA")} MAD</TableCell>
                         <TableCell className="text-right font-semibold">{r.merchantEarning.toLocaleString("fr-MA", { minimumFractionDigits: 2 })} MAD</TableCell>
+                        <TableCell className="text-right font-semibold text-primary">{r.jatekEarning.toLocaleString("fr-MA", { minimumFractionDigits: 2 })} MAD</TableCell>
                         <TableCell className="text-right font-semibold">{r.totalRevenue.toLocaleString("fr-MA", { minimumFractionDigits: 2 })} MAD</TableCell>
                       </TableRow>
                     ))

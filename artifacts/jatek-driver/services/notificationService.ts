@@ -1,20 +1,28 @@
 import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Platform } from "react-native";
 import type { Order, OrderStatus } from "@/lib/api";
 import { addMoney, formatMad, formatExact } from "@/lib/money";
 
+// Expo Go on SDK 53+ does not ship the native notifications module. Never
+// invoke a Notifications API there; the driver app must still boot normally.
+const pushSupported =
+  Platform.OS !== "web" &&
+  Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+
 // ─── Notification handler (must run before any notification fires) ───
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+if (pushSupported) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 // ─── Android channels ────────────────────────────────────────────────
 
@@ -22,7 +30,7 @@ export const CHANNEL_INCOMING = "incoming-order";
 export const CHANNEL_STATUS = "order-status";
 
 async function createAndroidChannels(): Promise<void> {
-  if (Platform.OS !== "android") return;
+  if (Platform.OS !== "android" || !pushSupported) return;
 
   await Notifications.setNotificationChannelAsync(CHANNEL_INCOMING, {
     name: "Nouvelles courses",
@@ -50,7 +58,7 @@ async function createAndroidChannels(): Promise<void> {
 // ─── Permissions ─────────────────────────────────────────────────────
 
 export async function requestNotificationPermissions(): Promise<boolean> {
-  if (Platform.OS === "web") return false;
+  if (!pushSupported) return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === "granted") return true;
   const { status } = await Notifications.requestPermissionsAsync();
@@ -60,15 +68,14 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 // ─── Expo push token ─────────────────────────────────────────────────
 
 export async function getExpoPushToken(): Promise<string | null> {
-  if (Platform.OS === "web") return null;
+  if (!pushSupported) return null;
   try {
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??
       process.env.EXPO_PUBLIC_PROJECT_ID ??
       Constants.easConfig?.projectId;
-    const token = await Notifications.getExpoPushTokenAsync({
-      projectId,
-    });
+    if (!projectId) return null;
+    const token = await Notifications.getExpoPushTokenAsync({ projectId });
     return token.data;
   } catch (error) {
     console.warn("[notifications] unable to get Expo push token", error);
@@ -94,7 +101,7 @@ export async function setupNotifications(): Promise<void> {
 // Uses CHANNEL_INCOMING (MAX importance, bypassDnd) on Android.
 
 export async function fireNewOrderNotification(order: Order): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (!pushSupported) return;
   const earning = addMoney(order.driverEarningsMad, order.tipMad);
   const distanceStr = formatExact(order.distanceKm);
   await Notifications.scheduleNotificationAsync({
@@ -148,7 +155,7 @@ const STATUS_MESSAGES: Partial<Record<OrderStatus, StepMessage>> = {
 };
 
 export async function fireStatusNotification(status: OrderStatus): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (!pushSupported) return;
   const msg = STATUS_MESSAGES[status];
   if (!msg) return;
   await Notifications.scheduleNotificationAsync({
@@ -171,8 +178,9 @@ export function getOrderIdFromResponse(
   response: Notifications.NotificationResponse,
 ): string | null {
   const data = response.notification.request.content.data as {
-    orderId?: string;
+    orderId?: string | number;
     type?: string;
   };
-  return data?.orderId ?? null;
+  const orderId = Number(data?.orderId);
+  return Number.isInteger(orderId) && orderId > 0 ? String(orderId) : null;
 }

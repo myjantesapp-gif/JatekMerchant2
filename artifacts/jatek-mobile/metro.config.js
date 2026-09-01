@@ -17,6 +17,24 @@ const expoCliRoot = path.dirname(
 const expoMetroRuntimeRoot = path.dirname(
   require.resolve("@expo/metro-runtime/package.json", { paths: [projectRoot] }),
 );
+const expoMetroRoot = path.dirname(
+  require.resolve("@expo/metro/package.json", { paths: [expoCliRoot, projectRoot] }),
+);
+// Metro's web resolver imports this file by absolute path when it creates its
+// empty-module fallback. In the pnpm workspace that runtime is outside the
+// app root, so it must be included in the watched roots as well.
+const metroRuntimeRoot = path.dirname(
+  require.resolve("metro-runtime/package.json", { paths: [expoCliRoot, projectRoot] }),
+);
+const metroRuntimeRoots = fs.readdirSync(
+  path.join(workspaceRoot, "node_modules", ".pnpm"),
+  { withFileTypes: true },
+)
+  .filter((entry) => entry.isDirectory() && entry.name.startsWith("metro-runtime@"))
+  .map((entry) =>
+    path.join(workspaceRoot, "node_modules", ".pnpm", entry.name, "node_modules", "metro-runtime"),
+  )
+  .filter((directory) => fs.existsSync(path.join(directory, "package.json")));
 const expoModulesCoreRoot = path.dirname(
   require.resolve("expo-modules-core/package.json", { paths: [projectRoot] }),
 );
@@ -150,6 +168,9 @@ const dependencyRoots = collectDependencyRoots([
   expoCliRoot,
   expoRouterRoot,
   expoMetroRuntimeRoot,
+  expoMetroRoot,
+  metroRuntimeRoot,
+  ...metroRuntimeRoots,
   expoModulesCoreRoot,
   whatwgFetchRoot,
   babelRuntimeRoot,
@@ -165,6 +186,9 @@ const preferredPackageRoots = [
   expoCliRoot,
   expoRouterRoot,
   expoMetroRuntimeRoot,
+  expoMetroRoot,
+  metroRuntimeRoot,
+  ...metroRuntimeRoots,
   expoModulesCoreRoot,
   whatwgFetchRoot,
   babelRuntimeRoot,

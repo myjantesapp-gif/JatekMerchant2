@@ -82,7 +82,9 @@ export function calculateRefundJatekEarning(input: {
   if (remainingJatekCents === 0 || requestedRefundCents === 0 || commissionableBaseCents === 0) return 0;
   const requestedCommissionableCents = Math.min(
     commissionableBaseCents,
-    cents(input.commissionableRefundAmount ?? input.refundAmount),
+    // When an admin does not provide an allocation, never infer that a
+    // delivery/tax/service-fee refund also reverses product commission.
+    cents(input.commissionableRefundAmount ?? Math.min(input.refundAmount, input.commissionableBase)),
   );
   return mad(Math.min(
     remainingJatekCents,

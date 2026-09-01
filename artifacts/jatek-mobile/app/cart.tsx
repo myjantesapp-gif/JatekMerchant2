@@ -113,6 +113,7 @@ export default function CartScreen() {
         restaurantId: restaurantId!,
         deliveryAddress: address.trim(),
         notes: combinedNotes || undefined,
+        promoCode: appliedCoupon?.code || undefined,
         paymentMethod: paymentMethod ?? "cash",
         items: items.map((i) => ({
           menuItemId: i.menuItemId,

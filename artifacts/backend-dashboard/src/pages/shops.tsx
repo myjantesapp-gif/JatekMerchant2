@@ -727,20 +727,26 @@ function ShopForm({
         </Field>
       </div>
 
-      <Field label="Commission Jatek (0–1)">
-        <Input
-          type="number"
-          min="0"
-          max="1"
-          step="0.01"
-          value={form.commissionRate}
-          onChange={(e) => set("commissionRate", e.target.value)}
-          required
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Exemple : 0,10 = 10 %. Ce taux sera figé dans chaque nouvelle commande.
+      {isAdmin ? (
+        <Field label="Commission Jatek (0–1)">
+          <Input
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+            value={form.commissionRate}
+            onChange={(e) => set("commissionRate", e.target.value)}
+            required
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Exemple : 0,10 = 10 %. Ce taux sera figé dans chaque nouvelle commande.
+          </p>
+        </Field>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          La commission Jatek est définie par l’administration.
         </p>
-      </Field>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Latitude">

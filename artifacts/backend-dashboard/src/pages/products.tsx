@@ -1,4 +1,4 @@
-import { Fragment, useState, useRef } from "react";
+import { Fragment, useState, useRef, useEffect } from "react";
 import {
   useListBackendProducts,
   useListBackendShops,
@@ -52,6 +52,14 @@ export default function Products() {
   const [createOpen, setCreateOpen] = useState(false);
   const [shopId, setShopId] = useState<string>(isOwner && scopedShopIds.length === 1 ? String(scopedShopIds[0]) : "");
   const [form, setForm] = useState(EMPTY);
+
+  // `me` and `shops` arrive asynchronously. Without this synchronization an
+  // owner with one shop keeps the initial empty value forever, so the category
+  // query never starts and the listbox looks broken.
+  useEffect(() => {
+    if (!createOpen || shopId || !isOwner || visibleShops.length !== 1) return;
+    setShopId(String(visibleShops[0].id));
+  }, [createOpen, isOwner, shopId, visibleShops]);
 
   const [editing, setEditing] = useState<any | null>(null);
   const [editForm, setEditForm] = useState(EMPTY);
@@ -477,7 +485,7 @@ const DIET_TAGS = [
 
 function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: any; restaurantId?: string | number }) {
   const set = (k: string, v: any) => setForm({ ...form, [k]: v });
-  const { data: productCats, isLoading: categoriesLoading, isError: categoriesError } = useProductCategories(restaurantId);
+  const { data: productCats, isLoading: categoriesLoading, isError: categoriesError, refetch: refetchCategories } = useProductCategories(restaurantId);
   const categoryOptions = (productCats ?? []).filter((category) =>
     category.isActive || String(category.id) === String(form.menuItemCategoryId),
   );
@@ -530,9 +538,12 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
             </div>
           )}
           {hasRestaurant && categoriesError && (
-            <p className="text-xs text-destructive" role="alert">
-              Impossible de charger les catégories. Vérifiez votre connexion puis réessayez.
-            </p>
+            <div className="flex items-center justify-between gap-2 text-xs text-destructive" role="alert">
+              <span>Impossible de charger les catégories.</span>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => refetchCategories()}>
+                Réessayer
+              </Button>
+            </div>
           )}
           {hasRestaurant && !categoriesLoading && !categoriesError && categoryOptions.length === 0 && (
             <p className="text-xs text-muted-foreground">

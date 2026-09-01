@@ -496,6 +496,11 @@ export interface CreateOrderBody {
   restaurantId: number;
   deliveryAddress: string;
   notes?: string;
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  promoCode?: string;
   paymentMethod?: CreateOrderBodyPaymentMethod;
   items: CreateOrderBodyItemsItem[];
 }
