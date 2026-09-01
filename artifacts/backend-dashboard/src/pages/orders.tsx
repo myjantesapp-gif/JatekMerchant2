@@ -308,7 +308,9 @@ export default function Orders() {
                     <div className="flex justify-between"><span className="text-muted-foreground">Remise</span><span className="text-green-600">-{formatMad(orderDetail.discountAmount)} MAD</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Livraison</span><span>{formatMad(orderDetail.deliveryFee)} MAD</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Frais de service Jatek ({(Number((orderDetail as any).commissionRate ?? 0) * 100).toFixed(2)} %)</span><span>{formatMad((orderDetail as any).serviceFee)} MAD</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">TVA ({(Number((orderDetail as any).vatRate ?? 0) * 100).toFixed(2)} %)</span><span>{formatMad((orderDetail as any).vatAmount)} MAD</span></div>
+                    {Number((orderDetail as any).vatAmount ?? 0) > 0 && (
+                      <div className="flex justify-between"><span className="text-muted-foreground">TVA ({(Number((orderDetail as any).vatRate ?? 0) * 100).toFixed(2)} %)</span><span>{formatMad((orderDetail as any).vatAmount)} MAD</span></div>
+                    )}
                     <div className="flex justify-between border-t pt-1.5 font-semibold"><span>Total</span><span>{formatMad(orderDetail.total)} MAD</span></div>
                     {!isOwner && (
                       <div className="border-t pt-1.5 mt-1.5 text-xs text-muted-foreground space-y-1">

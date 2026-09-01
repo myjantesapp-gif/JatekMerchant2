@@ -413,8 +413,8 @@ export default function RestaurantScreen() {
             onPressCard={() => setSelectedItem(item)}
             onAdd={() => {
               if (!isOpen) return;
-              const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null };
-              addItem(restaurantId, restaurant.name, { cartLineId: String(item.id), menuItemId: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl }, { deliveryFee: pricing.deliveryFee, freeDeliveryThreshold: pricing.freeDeliveryThreshold });
+              const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null; commissionRate?: number | null };
+              addItem(restaurantId, restaurant.name, { cartLineId: String(item.id), menuItemId: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl }, { deliveryFee: pricing.deliveryFee, freeDeliveryThreshold: pricing.freeDeliveryThreshold, commissionRate: pricing.commissionRate });
             }}
           />
         )}
@@ -605,7 +605,7 @@ export default function RestaurantScreen() {
         onClose={() => setSelectedItem(null)}
         onAdd={({ qty, selectedSize, selectedSizeId, selectedExtras, selectedExtraIds, unitPrice, displayName, cartLineId }) => {
           if (!selectedItem || !isOpen) return;
-          const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null };
+          const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null; commissionRate?: number | null };
           // Use addItemWithQty so the cart directly reflects the qty chosen in
           // the modal rather than calling addItem N times (which mishandles
           // items already in the cart and fires N redundant state updates).
@@ -620,7 +620,7 @@ export default function RestaurantScreen() {
             selectedSizePriceAdjustment: selectedSize?.priceAdjustment,
             selectedExtras: selectedExtras.map((e) => e.name),
             selectedExtraIds: selectedExtraIds.length ? selectedExtraIds : undefined,
-          }, qty, { deliveryFee: pricing.deliveryFee, freeDeliveryThreshold: pricing.freeDeliveryThreshold });
+          }, qty, { deliveryFee: pricing.deliveryFee, freeDeliveryThreshold: pricing.freeDeliveryThreshold, commissionRate: pricing.commissionRate });
         }}
       />
     </View>

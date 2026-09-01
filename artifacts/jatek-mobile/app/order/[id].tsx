@@ -501,7 +501,7 @@ export default function OrderDetailScreen() {
               <Text style={[styles.summaryValue, { color: "#16A34A" }]}>−{formatMad((order as any).discountAmount)} MAD</Text>
             </View>
           )}
-          {(order as any).vatAmount != null && (
+          {Number((order as any).vatAmount ?? 0) > 0 && (
             <View style={styles.itemRow}>
               <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>TVA</Text>
               <Text style={[styles.summaryValue, { color: colors.foreground }]}>{formatMad((order as any).vatAmount)} MAD</Text>

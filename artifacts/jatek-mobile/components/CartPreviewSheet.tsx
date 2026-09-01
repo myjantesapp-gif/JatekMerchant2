@@ -82,6 +82,7 @@ export function CartPreviewSheet({ visible, onClose }: Props) {
     itemCount,
     deliveryFee,
     freeDeliveryThreshold,
+    commissionRate,
     updateQuantity,
     clearCart,
     addItem,
@@ -171,8 +172,9 @@ export function CartPreviewSheet({ visible, onClose }: Props) {
     subtotal > 0 && subtotal >= freeDeliveryThreshold ? 0 : deliveryFee;
   const effectiveDeliveryFee = freeDeliveryCoupon ? 0 : baseDeliveryFee;
   const discountedSubtotal = Math.max(0, subtotal - itemsDiscount);
+  const serviceFee = Math.round(discountedSubtotal * commissionRate * 100) / 100;
   const total =
-    subtotal > 0 ? discountedSubtotal + effectiveDeliveryFee : 0;
+    subtotal > 0 ? discountedSubtotal + serviceFee + effectiveDeliveryFee : 0;
   const remainingForFree = Math.max(0, freeDeliveryThreshold - subtotal);
   const progressPct =
     subtotal <= 0
@@ -567,6 +569,12 @@ export function CartPreviewSheet({ visible, onClose }: Props) {
                       ? "Offerte"
                       : `${effectiveDeliveryFee.toFixed(2)} MAD`}
                   </Text>
+                </View>
+                <View style={styles.sumRow}>
+                  <Text style={styles.sumLabel}>
+                    Frais de service JATEK ({(commissionRate * 100).toFixed(1)} %)
+                  </Text>
+                  <Text style={styles.sumVal}>{serviceFee.toFixed(2)} MAD</Text>
                 </View>
                 <View style={[styles.sumRow, styles.totalRow]}>
                   <Text style={styles.totalLabel}>Total</Text>

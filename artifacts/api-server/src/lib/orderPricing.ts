@@ -35,11 +35,13 @@ export function calculateOrderPricing(input: OrderPricingInput) {
   // Promotions reduce the merchant-funded product base. Delivery is never a
   // Jatek commission base, and tips are intentionally not part of this model.
   const commissionableBaseCents = Math.max(0, productsCents - discountCents);
-  const vatRate = Math.min(1, Math.max(0, asNumber(input.vatRate)));
+  // Product prices are already TTC. The commission is displayed as a service
+  // fee, so do not add a second VAT layer to the customer total.
+  const vatRate = 0;
   const commissionRate = Math.min(1, Math.max(0, asNumber(input.commissionRate)));
   const serviceFeeCents = Math.round(commissionableBaseCents * commissionRate);
   const taxableBaseCents = Math.max(0, productsCents - discountCents + deliveryCents + serviceFeeCents);
-  const vatCents = Math.round(taxableBaseCents * vatRate);
+  const vatCents = 0;
   const totalCents = Math.max(0, taxableBaseCents + vatCents);
 
   return {

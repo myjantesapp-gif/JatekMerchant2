@@ -34,14 +34,15 @@ export default function CartScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const t = useT();
-  const { items, restaurantId, restaurantName, updateQuantity, clearCart, subtotal, itemCount, selectedAddress, selectedAddressInZone, deliveryFee, freeDeliveryThreshold, appliedCoupon, itemsDiscount, freeDeliveryCoupon, removeCoupon, notes, setNotes } = useCart();
+  const { items, restaurantId, restaurantName, updateQuantity, clearCart, subtotal, itemCount, selectedAddress, selectedAddressInZone, deliveryFee, freeDeliveryThreshold, commissionRate, appliedCoupon, itemsDiscount, freeDeliveryCoupon, removeCoupon, notes, setNotes } = useCart();
   // Only waive the delivery fee when a threshold is actually configured (> 0)
   // and the subtotal has reached it. When freeDeliveryThreshold is 0 (no
   // threshold set yet / empty cart initial state) the fee is always applied.
   const baseDeliveryFee = freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold ? 0 : deliveryFee;
   const effectiveDeliveryFee = freeDeliveryCoupon ? 0 : baseDeliveryFee;
   const discountedSubtotal = Math.max(0, subtotal - itemsDiscount);
-  const orderTotal = discountedSubtotal + effectiveDeliveryFee;
+  const serviceFee = Math.round(discountedSubtotal * commissionRate * 100) / 100;
+  const orderTotal = discountedSubtotal + serviceFee + effectiveDeliveryFee;
   const { token } = useAuth();
   const createOrder = useCreateOrder();
   const friendly = useFriendlyAlert();
@@ -418,6 +419,10 @@ export default function CartScreen() {
               </Text>
             </View>
           )}
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Frais de service JATEK ({(commissionRate * 100).toFixed(1)} %)</Text>
+            <Text style={[styles.summaryValue, { color: colors.foreground }]}>{formatMad(serviceFee)} MAD</Text>
+          </View>
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t("cart_delivery_fee")}</Text>
             <Text style={[styles.summaryValue, { color: colors.turquoise, fontFamily: "Inter_700Bold" }]}>

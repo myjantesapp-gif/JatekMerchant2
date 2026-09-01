@@ -20,3 +20,4 @@
 - [Product category compatibility](product-category-compatibility.md) — keep the stable category ID and legacy category name synchronized for older mobile clients.
 - [Mobile production dependency completeness](mobile-production-dependencies.md) — production bundles run the Expo mobile build, so native Expo modules imported transitively must be direct mobile workspace dependencies.
 - [App Storage deployment access](app-storage-deployment-access.md) — media 403s can require granting the deployment identity read/write access to the managed App Storage bucket.
+- [Order commission pricing](order-commission-pricing.md) — JATEK service fee is shop-specific and applies to discounted TTC products only; delivery remains separate.

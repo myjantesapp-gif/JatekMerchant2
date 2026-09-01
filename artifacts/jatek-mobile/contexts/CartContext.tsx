@@ -40,6 +40,8 @@ export interface CartItem {
 export interface RestaurantPricing {
   deliveryFee?: number | null;
   freeDeliveryThreshold?: number | null;
+  /** Jatek service-fee rate, stored by the API as a decimal (0.20 = 20%). */
+  commissionRate?: number | null;
 }
 
 export type CouponApplyResult = { ok: true; label: string } | { ok: false; reason: string };
@@ -50,6 +52,7 @@ interface CartContextType {
   restaurantName: string;
   deliveryFee: number;
   freeDeliveryThreshold: number;
+  commissionRate: number;
   addItem: (restaurantId: number, restaurantName: string, item: Omit<CartItem, "quantity">, pricing?: RestaurantPricing) => void;
   /** Like addItem but sets an exact quantity instead of always incrementing by 1.
    *  Use this when the user picks qty > 1 in the detail modal. */
@@ -109,6 +112,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // the empty-cart state; addItem replaces it with the persisted DB values.
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
   const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState<number>(0);
+  const [commissionRate, setCommissionRate] = useState<number>(0.10);
   const [selectedAddress, setSelectedAddressState] = useState<string>("");
   const [selectedAddressInZone, setSelectedAddressInZone] = useState<boolean>(true);
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
@@ -155,6 +159,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
             setRestaurantName(restoredHasItems && typeof s.restaurantName === "string" ? s.restaurantName : "");
             if (typeof s.deliveryFee === "number") setDeliveryFee(s.deliveryFee);
             if (typeof s.freeDeliveryThreshold === "number") setFreeDeliveryThreshold(s.freeDeliveryThreshold);
+            if (typeof s.commissionRate === "number" && s.commissionRate >= 0 && s.commissionRate <= 1) {
+              setCommissionRate(s.commissionRate);
+            }
           } catch (err) {
             console.warn("[Cart] failed to parse persisted cart:", err);
           }
@@ -182,8 +189,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!ready) return;
-    persist(CART_KEY, JSON.stringify({ items, restaurantId, restaurantName, deliveryFee, freeDeliveryThreshold }));
-  }, [items, restaurantId, restaurantName, deliveryFee, freeDeliveryThreshold, ready, persist]);
+    persist(CART_KEY, JSON.stringify({ items, restaurantId, restaurantName, deliveryFee, freeDeliveryThreshold, commissionRate }));
+  }, [items, restaurantId, restaurantName, deliveryFee, freeDeliveryThreshold, commissionRate, ready, persist]);
 
   useEffect(() => {
     if (!ready) return;
@@ -221,6 +228,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!pricing) return;
     if (typeof pricing.deliveryFee === "number") setDeliveryFee(pricing.deliveryFee);
     if (typeof pricing.freeDeliveryThreshold === "number") setFreeDeliveryThreshold(pricing.freeDeliveryThreshold);
+    if (typeof pricing.commissionRate === "number" && pricing.commissionRate >= 0 && pricing.commissionRate <= 1) {
+      setCommissionRate(pricing.commissionRate);
+    }
   }, []);
 
   /** Shared logic for adding/updating an item — increments or sets exact qty. */
@@ -291,6 +301,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setRestaurantName("");
         setDeliveryFee(0);
         setFreeDeliveryThreshold(0);
+        setCommissionRate(0.10);
         couponRequestId.current += 1;
         setAppliedCoupon(null);
         setNotesState("");
@@ -310,6 +321,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems([]); setRestaurantId(null); setRestaurantName("");
     setDeliveryFee(0);
     setFreeDeliveryThreshold(0);
+    setCommissionRate(0.10);
     couponRequestId.current += 1;
     setAppliedCoupon(null);
     setNotesState("");
@@ -381,6 +393,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     restaurantName,
     deliveryFee,
     freeDeliveryThreshold,
+    commissionRate,
     addItem,
     addItemWithQty,
     removeItem,
@@ -401,7 +414,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }), [
     items, restaurantId, restaurantName, deliveryFee, freeDeliveryThreshold,
     addItem, addItemWithQty, removeItem, updateQuantity, clearCart,
-    subtotal, itemCount,
+    subtotal, itemCount, commissionRate,
     selectedAddress, selectedAddressInZone, setSelectedAddress,
     appliedCoupon, discount.itemsDiscount, discount.freeDelivery,
     applyCoupon, removeCoupon, notes, setNotes,

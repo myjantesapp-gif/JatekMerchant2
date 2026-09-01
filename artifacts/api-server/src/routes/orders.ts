@@ -470,7 +470,6 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
     }
   }
 
-  const taxRate = await getPlatformSettingNumber("taxRate", Number(DEFAULT_PLATFORM_SETTINGS.taxRate));
   const commissionRate = Number.isFinite(restaurant.commissionRate)
     ? restaurant.commissionRate
     : await getPlatformSettingNumber("jatekCommissionRate", Number(DEFAULT_PLATFORM_SETTINGS.jatekCommissionRate));
@@ -478,7 +477,9 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
     subtotal,
     deliveryFee,
     discountAmount,
-    vatRate: taxRate,
+    // Product prices are TTC; Jatek's commission is the customer-facing
+    // service fee and no additional VAT is added here.
+    vatRate: 0,
     commissionRate,
     currency: String(DEFAULT_PLATFORM_SETTINGS.currency || "MAD"),
   });
@@ -1385,8 +1386,25 @@ router.post("/orders/:id/reorder", requireAuth, async (req: AuthedRequest, res, 
     return;
   }
 
-  const deliveryFee = restaurant.deliveryFee || 0;
-  const total = subtotal + deliveryFee;
+  let deliveryFee = restaurant.deliveryFee || 0;
+  const freeDeliveryThreshold = Number(
+    restaurant.freeDeliveryThreshold ??
+      await getPlatformSettingNumber("freeDeliveryThreshold", Number(DEFAULT_PLATFORM_SETTINGS.freeDeliveryThreshold)),
+  );
+  if (deliveryFee > 0 && freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold) {
+    deliveryFee = 0;
+  }
+  const commissionRate = Number.isFinite(restaurant.commissionRate)
+    ? restaurant.commissionRate
+    : await getPlatformSettingNumber("jatekCommissionRate", Number(DEFAULT_PLATFORM_SETTINGS.jatekCommissionRate));
+  const pricing = calculateOrderPricing({
+    subtotal,
+    deliveryFee,
+    discountAmount: 0,
+    vatRate: 0,
+    commissionRate,
+    currency: String(DEFAULT_PLATFORM_SETTINGS.currency || "MAD"),
+  });
   const reference = await generateUniqueOrderReference();
 
   const [newOrder] = await db.insert(ordersTable).values({
@@ -1398,7 +1416,17 @@ router.post("/orders/:id/reorder", requireAuth, async (req: AuthedRequest, res, 
     status: "pending",
     subtotal,
     deliveryFee,
-    total,
+    discountAmount: 0,
+    currency: pricing.currency,
+    vatRate: pricing.vatRate,
+    vatAmount: pricing.vatAmount,
+    serviceFee: pricing.serviceFee,
+    commissionRate: pricing.commissionRate,
+    merchantEarning: pricing.merchantEarning,
+    driverEarning: pricing.driverEarning,
+    jatekEarning: pricing.jatekEarning,
+    pricingVersion: pricing.pricingVersion,
+    total: pricing.total,
     deliveryAddress: order.deliveryAddress,
     notes: order.notes,
     estimatedDeliveryTime: restaurant.deliveryTime || 30,
@@ -1410,7 +1438,7 @@ router.post("/orders/:id/reorder", requireAuth, async (req: AuthedRequest, res, 
     newOrderItems.map((i) => ({ ...i, orderId: newOrder.id }))
   );
 
-  const pointsEarned = Math.floor(total / 10);
+  const pointsEarned = Math.floor(pricing.total / 10);
   if (pointsEarned > 0) {
     await db.update(usersTable).set({
       loyaltyPoints: (user?.loyaltyPoints || 0) + pointsEarned,
