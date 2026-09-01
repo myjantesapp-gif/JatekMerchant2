@@ -19,6 +19,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { listFavorites, addFavorite, removeFavorite, geocodeAddress } from "@/lib/api";
 import { useT } from "@/contexts/LanguageContext";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { apiFetch } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const SIDE = 16;
@@ -89,23 +91,41 @@ export default function RestaurantScreen() {
     isError: menuError,
     refetch: refetchMenu,
   } = useListMenuItems(restaurantId);
+  const { data: productCategories } = useQuery<Array<{ id: number; name: string; sortOrder: number }>>({
+    queryKey: ["/api/menu-categories", restaurantId],
+    queryFn: () => apiFetch(`/api/menu-categories?restaurantId=${restaurantId}`),
+    enabled: Number.isInteger(restaurantId) && restaurantId > 0,
+  });
 
   useEffect(() => {
     if (!infoModalOpen || restaurantCoords || !restaurant) return;
     geocodeAddress(restaurant.address).then((pos) => { if (pos) setRestaurantCoords(pos); }).catch(() => {});
   }, [infoModalOpen, restaurant, restaurantCoords]);
 
-  const categories = useMemo(
-    () => ["Tous", ...Array.from(new Set((menuItems ?? []).map((m: any) => m.category).filter(Boolean) as string[]))],
-    [menuItems]
-  );
+  const categories = useMemo(() => {
+    const fromApi = (productCategories ?? []).map((category) => ({
+      id: String(category.id),
+      name: category.name,
+    }));
+    if (fromApi.length > 0) return [{ id: "Tous", name: "Tous" }, ...fromApi];
+    return [
+      { id: "Tous", name: "Tous" },
+      ...Array.from(new Set((menuItems ?? []).map((m: any) => m.category).filter(Boolean) as string[]))
+        .map((name) => ({ id: name, name })),
+    ];
+  }, [menuItems, productCategories]);
   const filtered = useMemo(
     () => (menuItems ?? []).filter((m: any) => {
-      const matchesCategory = activeCategory === "Tous" || m.category === activeCategory;
+      const selectedCategory = categories.find((category) => category.id === activeCategory);
+      const matchesCategory = activeCategory === "Tous"
+        || (selectedCategory && (
+          String(m.menuItemCategoryId ?? "") === selectedCategory.id
+          || (!m.menuItemCategoryId && m.category === selectedCategory.name)
+        ));
       const q = searchQuery.trim().toLowerCase();
       return matchesCategory && (!q || `${m.name ?? ""} ${m.description ?? ""}`.toLowerCase().includes(q));
     }),
-    [menuItems, activeCategory, searchQuery]
+    [menuItems, activeCategory, searchQuery, categories]
   );
 
   // The grid line has no size/extra selection. Do not sum variant lines here:
@@ -323,12 +343,12 @@ export default function RestaurantScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.catRow}
         >
-          {categories.map((cat) => {
-            const active = activeCategory === cat;
+            {categories.map((cat) => {
+            const active = activeCategory === cat.id;
             return (
               <TouchableOpacity
-                key={cat}
-                onPress={() => setActiveCategory(cat)}
+                key={cat.id}
+                onPress={() => setActiveCategory(cat.id)}
                 style={[styles.catChip, active && { borderBottomColor: colors.primary }]}
                 activeOpacity={0.85}
               >
@@ -337,7 +357,7 @@ export default function RestaurantScreen() {
                   { color: active ? colors.foreground : colors.mutedForeground },
                   active && { fontFamily: "Inter_700Bold" },
                 ]}>
-                  {cat}
+                  {cat.name}
                 </Text>
               </TouchableOpacity>
             );
@@ -349,7 +369,9 @@ export default function RestaurantScreen() {
       {filtered.length > 0 && (
         <View style={styles.sectionTitleWrap}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            {activeCategory === "Tous" ? "Nos produits" : activeCategory}
+            {activeCategory === "Tous"
+              ? "Nos produits"
+              : categories.find((category) => category.id === activeCategory)?.name ?? activeCategory}
           </Text>
           <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
             {filtered.length} {filtered.length > 1 ? "articles" : "article"}

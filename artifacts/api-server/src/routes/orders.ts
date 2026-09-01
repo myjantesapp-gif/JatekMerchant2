@@ -434,7 +434,9 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
   }
 
   const taxRate = await getPlatformSettingNumber("taxRate", Number(DEFAULT_PLATFORM_SETTINGS.taxRate));
-  const commissionRate = await getPlatformSettingNumber("jatekCommissionRate", Number(DEFAULT_PLATFORM_SETTINGS.jatekCommissionRate));
+  const commissionRate = Number.isFinite(restaurant.commissionRate)
+    ? restaurant.commissionRate
+    : await getPlatformSettingNumber("jatekCommissionRate", Number(DEFAULT_PLATFORM_SETTINGS.jatekCommissionRate));
   const pricing = calculateOrderPricing({
     subtotal,
     deliveryFee,
@@ -765,8 +767,9 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
           .from(driversTable)
           .where(eq(driversTable.isAvailable, true));
         const tokens = onlineDrivers.map((d) => d.pushToken);
-        const commissionRate = await getPlatformSettingNumber("driverCommissionRate", Number(DEFAULT_PLATFORM_SETTINGS.driverCommissionRate));
-        const earning = Math.round(order.total * commissionRate * 10) / 10;
+        // Driver remuneration is a separate order snapshot. Never derive it
+        // from the customer's total or from Jatek's shop commission.
+        const earning = order.driverEarning;
         await notifyDrivers(
           tokens,
           "🏍️ Nouvelle course disponible !",

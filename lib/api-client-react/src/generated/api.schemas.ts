@@ -301,6 +301,12 @@ export interface Restaurant {
   profileCompletedAt?: string | null;
   /** Defaulted by the API when not stored on the restaurant row. */
   freeDeliveryThreshold?: number;
+  /**
+     * Jatek commission rate for this shop, stored as a decimal.
+     * @minimum 0
+     * @maximum 1
+     */
+  commissionRate?: number;
 }
 
 export interface CreateRestaurantBody {
@@ -318,6 +324,12 @@ export interface CreateRestaurantBody {
   deliveryTime?: number;
   deliveryFee?: number;
   minimumOrder?: number;
+  /**
+     * Jatek commission rate for this shop, stored as a decimal.
+     * @minimum 0
+     * @maximum 1
+     */
+  commissionRate?: number;
 }
 
 export interface UpdateRestaurantBody {
@@ -336,6 +348,12 @@ export interface UpdateRestaurantBody {
   deliveryTime?: number;
   deliveryFee?: number;
   minimumOrder?: number;
+  /**
+     * Jatek commission rate for this shop, stored as a decimal.
+     * @minimum 0
+     * @maximum 1
+     */
+  commissionRate?: number;
   isVerified?: boolean;
 }
 
@@ -347,6 +365,16 @@ export interface RestaurantStats {
   averageRating?: number | null;
   totalReviews: number;
   pendingOrders: number;
+}
+
+export interface MenuItemCategory {
+  id: number;
+  /** @nullable */
+  restaurantId?: number | null;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface CreateMenuItemBody {
@@ -426,6 +454,10 @@ export interface Order {
   merchantEarning: number;
   driverEarning: number;
   jatekEarning: number;
+  /** Cumulative customer refunds in MAD. */
+  refundedAmount?: number;
+  /** Jatek commission reversed by customer refunds in MAD. */
+  refundedJatekEarning?: number;
   pricingVersion: string;
   total: number;
   deliveryAddress: string;
@@ -1240,6 +1272,10 @@ export interface ShortBody {
   isActive?: boolean;
   sortOrder?: number;
 }
+
+export type ListMenuCategoriesParams = {
+restaurantId?: number;
+};
 
 export type ListBackendCustomersParams = {
 search?: string;

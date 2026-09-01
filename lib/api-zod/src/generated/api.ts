@@ -9,6 +9,24 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary List active product categories visible to customers
+ */
+export const ListMenuCategoriesQueryParams = zod.object({
+  "restaurantId": zod.coerce.number().int().optional()
+})
+
+export const ListMenuCategoriesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "restaurantId": zod.number().int().nullish(),
+  "name": zod.string(),
+  "sortOrder": zod.number().int(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListMenuCategoriesResponse = zod.array(ListMenuCategoriesResponseItem)
+
+
+/**
  * @summary List current user's addresses
  */
 export const ListAddressesResponseItem = zod.object({
@@ -103,6 +121,8 @@ export const GetRecentOrdersResponseItem = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -593,6 +613,8 @@ export const ListBackendOrdersResponseItem = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -685,6 +707,11 @@ export const ListBackendShopsQueryParams = zod.object({
   "search": zod.coerce.string().optional()
 })
 
+export const listBackendShopsResponseCommissionRateMin = 0;
+export const listBackendShopsResponseCommissionRateMax = 1;
+
+
+
 export const ListBackendShopsResponseItem = zod.object({
   "id": zod.number().int(),
   "ownerId": zod.number().int(),
@@ -710,9 +737,33 @@ export const ListBackendShopsResponseItem = zod.object({
   "ice": zod.string().nullish(),
   "printerEmail": zod.string().nullish(),
   "profileCompletedAt": zod.coerce.date().nullish(),
-  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.')
+  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.'),
+  "commissionRate": zod.number().min(listBackendShopsResponseCommissionRateMin).max(listBackendShopsResponseCommissionRateMax).optional().describe('Jatek commission rate for this shop, stored as a decimal.')
 })
 export const ListBackendShopsResponse = zod.array(ListBackendShopsResponseItem)
+
+
+/**
+ * @summary List products assigned to a product category
+ */
+export const ListBackendMenuCategoryProductsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListBackendMenuCategoryProductsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "price": zod.number(),
+  "imageUrl": zod.string().nullish(),
+  "category": zod.string(),
+  "menuItemCategoryId": zod.number().int().nullish(),
+  "isAvailable": zod.boolean(),
+  "isPopular": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListBackendMenuCategoryProductsResponse = zod.array(ListBackendMenuCategoryProductsResponseItem)
 
 
 /**
@@ -1187,6 +1238,11 @@ export const SubscribeEventsResponse = zod.unknown()
 /**
  * @summary List favorite restaurants for current user
  */
+export const listFavoritesResponseRestaurantCommissionRateMin = 0;
+export const listFavoritesResponseRestaurantCommissionRateMax = 1;
+
+
+
 export const ListFavoritesResponseItem = zod.object({
   "id": zod.number().int(),
   "restaurantId": zod.number().int(),
@@ -1216,7 +1272,8 @@ export const ListFavoritesResponseItem = zod.object({
   "ice": zod.string().nullish(),
   "printerEmail": zod.string().nullish(),
   "profileCompletedAt": zod.coerce.date().nullish(),
-  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.')
+  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.'),
+  "commissionRate": zod.number().min(listFavoritesResponseRestaurantCommissionRateMin).max(listFavoritesResponseRestaurantCommissionRateMax).optional().describe('Jatek commission rate for this shop, stored as a decimal.')
 }).optional()
 })
 export const ListFavoritesResponse = zod.array(ListFavoritesResponseItem)
@@ -1300,6 +1357,8 @@ export const ExportMyDataResponse = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -1667,6 +1726,8 @@ export const ListOrdersResponseItem = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -1731,6 +1792,8 @@ export const CreateOrderResponse = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -1782,6 +1845,8 @@ export const GetOrderResponse = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -1837,6 +1902,8 @@ export const AcceptOrderDeliveryResponse = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -1895,6 +1962,8 @@ export const ConfirmOrderDeliveryResponse = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -1981,6 +2050,8 @@ export const UpdateOrderStatusResponse = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -2037,6 +2108,8 @@ export const UpdateOrderStepResponse = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -2084,6 +2157,8 @@ export const GetActiveOrdersResponseItem = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -2132,6 +2207,8 @@ export const GetAvailableOrdersResponseItem = zod.object({
   "merchantEarning": zod.number(),
   "driverEarning": zod.number(),
   "jatekEarning": zod.number(),
+  "refundedAmount": zod.number().optional().describe('Cumulative customer refunds in MAD.'),
+  "refundedJatekEarning": zod.number().optional().describe('Jatek commission reversed by customer refunds in MAD.'),
   "pricingVersion": zod.string(),
   "total": zod.number(),
   "deliveryAddress": zod.string(),
@@ -2377,6 +2454,11 @@ export const ListRestaurantsQueryParams = zod.object({
   "ownerId": zod.coerce.number().int().optional()
 })
 
+export const listRestaurantsResponseCommissionRateMin = 0;
+export const listRestaurantsResponseCommissionRateMax = 1;
+
+
+
 export const ListRestaurantsResponseItem = zod.object({
   "id": zod.number().int(),
   "ownerId": zod.number().int(),
@@ -2402,7 +2484,8 @@ export const ListRestaurantsResponseItem = zod.object({
   "ice": zod.string().nullish(),
   "printerEmail": zod.string().nullish(),
   "profileCompletedAt": zod.coerce.date().nullish(),
-  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.')
+  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.'),
+  "commissionRate": zod.number().min(listRestaurantsResponseCommissionRateMin).max(listRestaurantsResponseCommissionRateMax).optional().describe('Jatek commission rate for this shop, stored as a decimal.')
 })
 export const ListRestaurantsResponse = zod.array(ListRestaurantsResponseItem)
 
@@ -2411,6 +2494,11 @@ export const ListRestaurantsResponse = zod.array(ListRestaurantsResponseItem)
  * RBAC: admin only.
  * @summary Create a restaurant
  */
+export const createRestaurantBodyCommissionRateMin = 0;
+export const createRestaurantBodyCommissionRateMax = 1;
+
+
+
 export const CreateRestaurantBody = zod.object({
   "name": zod.string(),
   "description": zod.string().optional(),
@@ -2424,8 +2512,14 @@ export const CreateRestaurantBody = zod.object({
   "isLocal": zod.boolean().optional(),
   "deliveryTime": zod.number().int().optional(),
   "deliveryFee": zod.number().optional(),
-  "minimumOrder": zod.number().optional()
+  "minimumOrder": zod.number().optional(),
+  "commissionRate": zod.number().min(createRestaurantBodyCommissionRateMin).max(createRestaurantBodyCommissionRateMax).optional().describe('Jatek commission rate for this shop, stored as a decimal.')
 })
+
+export const createRestaurantResponseCommissionRateMin = 0;
+export const createRestaurantResponseCommissionRateMax = 1;
+
+
 
 export const CreateRestaurantResponse = zod.object({
   "id": zod.number().int(),
@@ -2452,7 +2546,8 @@ export const CreateRestaurantResponse = zod.object({
   "ice": zod.string().nullish(),
   "printerEmail": zod.string().nullish(),
   "profileCompletedAt": zod.coerce.date().nullish(),
-  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.')
+  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.'),
+  "commissionRate": zod.number().min(createRestaurantResponseCommissionRateMin).max(createRestaurantResponseCommissionRateMax).optional().describe('Jatek commission rate for this shop, stored as a decimal.')
 })
 
 
@@ -2462,6 +2557,11 @@ export const CreateRestaurantResponse = zod.object({
 export const GetRestaurantParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+export const getRestaurantResponseCommissionRateMin = 0;
+export const getRestaurantResponseCommissionRateMax = 1;
+
+
 
 export const GetRestaurantResponse = zod.object({
   "id": zod.number().int(),
@@ -2488,7 +2588,8 @@ export const GetRestaurantResponse = zod.object({
   "ice": zod.string().nullish(),
   "printerEmail": zod.string().nullish(),
   "profileCompletedAt": zod.coerce.date().nullish(),
-  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.')
+  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.'),
+  "commissionRate": zod.number().min(getRestaurantResponseCommissionRateMin).max(getRestaurantResponseCommissionRateMax).optional().describe('Jatek commission rate for this shop, stored as a decimal.')
 })
 
 
@@ -2499,6 +2600,11 @@ export const GetRestaurantResponse = zod.object({
 export const UpdateRestaurantParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+export const updateRestaurantBodyCommissionRateMin = 0;
+export const updateRestaurantBodyCommissionRateMax = 1;
+
+
 
 export const UpdateRestaurantBody = zod.object({
   "name": zod.string().optional(),
@@ -2515,8 +2621,14 @@ export const UpdateRestaurantBody = zod.object({
   "deliveryTime": zod.number().int().optional(),
   "deliveryFee": zod.number().optional(),
   "minimumOrder": zod.number().optional(),
+  "commissionRate": zod.number().min(updateRestaurantBodyCommissionRateMin).max(updateRestaurantBodyCommissionRateMax).optional().describe('Jatek commission rate for this shop, stored as a decimal.'),
   "isVerified": zod.boolean().optional()
 })
+
+export const updateRestaurantResponseCommissionRateMin = 0;
+export const updateRestaurantResponseCommissionRateMax = 1;
+
+
 
 export const UpdateRestaurantResponse = zod.object({
   "id": zod.number().int(),
@@ -2543,7 +2655,8 @@ export const UpdateRestaurantResponse = zod.object({
   "ice": zod.string().nullish(),
   "printerEmail": zod.string().nullish(),
   "profileCompletedAt": zod.coerce.date().nullish(),
-  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.')
+  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.'),
+  "commissionRate": zod.number().min(updateRestaurantResponseCommissionRateMin).max(updateRestaurantResponseCommissionRateMax).optional().describe('Jatek commission rate for this shop, stored as a decimal.')
 })
 
 
@@ -2592,6 +2705,11 @@ export const CompleteRestaurantProfileBody = zod.object({
   "printerEmail": zod.string().email().nullish()
 })
 
+export const completeRestaurantProfileResponseCommissionRateMin = 0;
+export const completeRestaurantProfileResponseCommissionRateMax = 1;
+
+
+
 export const CompleteRestaurantProfileResponse = zod.object({
   "id": zod.number().int(),
   "ownerId": zod.number().int(),
@@ -2617,7 +2735,8 @@ export const CompleteRestaurantProfileResponse = zod.object({
   "ice": zod.string().nullish(),
   "printerEmail": zod.string().nullish(),
   "profileCompletedAt": zod.coerce.date().nullish(),
-  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.')
+  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.'),
+  "commissionRate": zod.number().min(completeRestaurantProfileResponseCommissionRateMin).max(completeRestaurantProfileResponseCommissionRateMax).optional().describe('Jatek commission rate for this shop, stored as a decimal.')
 })
 
 
@@ -2702,6 +2821,11 @@ export const CreateMenuItemResponse = zod.object({
 /**
  * @summary Get featured/top restaurants
  */
+export const getFeaturedRestaurantsResponseCommissionRateMin = 0;
+export const getFeaturedRestaurantsResponseCommissionRateMax = 1;
+
+
+
 export const GetFeaturedRestaurantsResponseItem = zod.object({
   "id": zod.number().int(),
   "ownerId": zod.number().int(),
@@ -2727,7 +2851,8 @@ export const GetFeaturedRestaurantsResponseItem = zod.object({
   "ice": zod.string().nullish(),
   "printerEmail": zod.string().nullish(),
   "profileCompletedAt": zod.coerce.date().nullish(),
-  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.')
+  "freeDeliveryThreshold": zod.number().optional().describe('Defaulted by the API when not stored on the restaurant row.'),
+  "commissionRate": zod.number().min(getFeaturedRestaurantsResponseCommissionRateMin).max(getFeaturedRestaurantsResponseCommissionRateMax).optional().describe('Jatek commission rate for this shop, stored as a decimal.')
 })
 export const GetFeaturedRestaurantsResponse = zod.array(GetFeaturedRestaurantsResponseItem)
 

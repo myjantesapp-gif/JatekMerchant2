@@ -70,6 +70,7 @@ import type {
   ListBackendReviewsParams,
   ListBackendShopsParams,
   ListDriversParams,
+  ListMenuCategoriesParams,
   ListMenuItemsParams,
   ListOrdersParams,
   ListQuotesParams,
@@ -78,6 +79,7 @@ import type {
   ListUsersParams,
   LoginBody,
   MenuItem,
+  MenuItemCategory,
   NotificationPrefs,
   Order,
   PasswordResetRequestResponse,
@@ -155,6 +157,90 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListMenuCategoriesUrl = (params?: ListMenuCategoriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/menu-categories?${stringifiedParams}` : `/api/menu-categories`
+}
+
+/**
+ * @summary List active product categories visible to customers
+ */
+export const listMenuCategories = async (params?: ListMenuCategoriesParams, options?: Parameters<typeof customFetch>[1]): Promise<MenuItemCategory[]> => {
+
+  return customFetch<MenuItemCategory[]>(getListMenuCategoriesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMenuCategoriesQueryKey = (params?: ListMenuCategoriesParams,) => {
+    return [
+    `/api/menu-categories`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMenuCategoriesQueryOptions = <TData = Awaited<ReturnType<typeof listMenuCategories>>, TError = ErrorType<void>>(params?: ListMenuCategoriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMenuCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMenuCategoriesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMenuCategories>>> = ({ signal }) => listMenuCategories(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMenuCategories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMenuCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listMenuCategories>>>
+export type ListMenuCategoriesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List active product categories visible to customers
+ */
+
+export function useListMenuCategories<TData = Awaited<ReturnType<typeof listMenuCategories>>, TError = ErrorType<void>>(
+ params?: ListMenuCategoriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMenuCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMenuCategoriesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListAddressesUrl = () => {
 
@@ -2269,6 +2355,83 @@ export function useListBackendShops<TData = Awaited<ReturnType<typeof listBacken
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListBackendShopsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListBackendMenuCategoryProductsUrl = (id: number,) => {
+
+
+
+
+  return `/api/backend/menu-categories/${id}/products`
+}
+
+/**
+ * @summary List products assigned to a product category
+ */
+export const listBackendMenuCategoryProducts = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<MenuItem[]> => {
+
+  return customFetch<MenuItem[]>(getListBackendMenuCategoryProductsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBackendMenuCategoryProductsQueryKey = (id: number,) => {
+    return [
+    `/api/backend/menu-categories/${id}/products`
+    ] as const;
+    }
+
+
+export const getListBackendMenuCategoryProductsQueryOptions = <TData = Awaited<ReturnType<typeof listBackendMenuCategoryProducts>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBackendMenuCategoryProducts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBackendMenuCategoryProductsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBackendMenuCategoryProducts>>> = ({ signal }) => listBackendMenuCategoryProducts(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBackendMenuCategoryProducts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBackendMenuCategoryProductsQueryResult = NonNullable<Awaited<ReturnType<typeof listBackendMenuCategoryProducts>>>
+export type ListBackendMenuCategoryProductsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List products assigned to a product category
+ */
+
+export function useListBackendMenuCategoryProducts<TData = Awaited<ReturnType<typeof listBackendMenuCategoryProducts>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBackendMenuCategoryProducts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBackendMenuCategoryProductsQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

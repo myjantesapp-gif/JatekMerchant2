@@ -12,7 +12,6 @@ import {
   ListDriversQueryParams,
 } from "@workspace/api-zod";
 import { notifyDrivers } from "../lib/expoPush";
-import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
 
 const router: IRouter = Router();
 
@@ -365,17 +364,15 @@ router.get("/drivers/:id/earnings", requireAuth, async (req: AuthedRequest, res)
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const deliveredOrders = await db
-    .select({ total: ordersTable.total, createdAt: ordersTable.createdAt })
+    .select({ driverEarning: ordersTable.driverEarning, createdAt: ordersTable.createdAt })
     .from(ordersTable)
     .where(and(eq(ordersTable.driverId, driverId), eq(ordersTable.status, "delivered")));
-
-  const driverCommission = await getPlatformSettingNumber("driverCommissionRate", Number(DEFAULT_PLATFORM_SETTINGS.driverCommissionRate));
 
   let today = 0, thisWeek = 0, thisMonth = 0, completedToday = 0, completedThisWeek = 0, completedThisMonth = 0;
 
   for (const order of deliveredOrders) {
     const orderDate = new Date(order.createdAt);
-    const earning = order.total * driverCommission;
+    const earning = order.driverEarning;
 
     if (orderDate >= startOfDay) {
       today += earning;

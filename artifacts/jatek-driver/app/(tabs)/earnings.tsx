@@ -62,7 +62,7 @@ export default function EarningsScreen() {
       <View style={[styles.infoBox, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
         <Feather name="info" size={16} color={colors.info} />
         <Text style={[styles.infoText, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>
-          Les gains correspondent à votre commission (15%) sur chaque livraison, plus les pourboires clients.
+          Les gains correspondent à la rémunération de livraison indiquée pour chaque course, plus les pourboires clients.
         </Text>
       </View>
     </ScrollView>

@@ -30,6 +30,7 @@ import { closeUserSubscriptions, publish } from "../lib/sse";
 import * as tracking from "../lib/trackingService";
 import { normalizeStoredMediaPath } from "../lib/objectStorage";
 import { migrateLegacyMedia } from "../scripts/migrate-media-storage";
+import { calculateRefundJatekEarning } from "../lib/orderPricing";
 
 const router: IRouter = Router();
 const execAsync = promisify(exec);
@@ -269,22 +270,42 @@ router.post("/backend/orders/:id/refund", requireAuth, async (req: AuthedRequest
     const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId)).limit(1);
     if (!order) { res.status(404).json({ error: "Commande introuvable" }); return; }
 
-    const refundAmount = Math.min(Number(amount), order.total);
-
-    await db.update(usersTable).set({
-      walletBalance: sql`${usersTable.walletBalance} + ${refundAmount}`,
-    }).where(eq(usersTable.id, order.userId));
-
+    const remainingRefundable = Math.max(0, Number(order.total) - Number(order.refundedAmount ?? 0));
+    const refundAmount = Math.min(Number(amount), remainingRefundable);
+    if (refundAmount <= 0) { res.status(400).json({ error: "Cette commande a déjà été entièrement remboursée" }); return; }
     const [adminUser] = await db.select({ name: usersTable.name, email: usersTable.email })
       .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
 
-    await db.insert(refundsTable).values({
-      orderId, userId: order.userId,
-      amount: refundAmount, reason,
-      type: "wallet_credit",
-      adminId: req.userId!,
-      adminName: adminUser?.name ?? null,
-      notes: notes ?? null,
+    const commissionableBase = Math.max(0, Number(order.subtotal) - Number(order.discountAmount ?? 0));
+    const requestedCommissionableAmount = Number(req.body.commissionableAmount);
+    const refundedJatekEarning = calculateRefundJatekEarning({
+      orderTotal: order.total,
+      commissionableBase,
+      originalJatekEarning: order.jatekEarning,
+      alreadyRefundedAmount: order.refundedAmount ?? 0,
+      alreadyRefundedJatekEarning: order.refundedJatekEarning ?? 0,
+      refundAmount,
+      commissionableRefundAmount: Number.isFinite(requestedCommissionableAmount)
+        ? Math.max(0, requestedCommissionableAmount)
+        : undefined,
+    });
+
+    await db.transaction(async (tx) => {
+      await tx.update(usersTable).set({
+        walletBalance: sql`${usersTable.walletBalance} + ${refundAmount}`,
+      }).where(eq(usersTable.id, order.userId));
+      await tx.insert(refundsTable).values({
+        orderId, userId: order.userId,
+        amount: refundAmount, reason,
+        type: "wallet_credit",
+        adminId: req.userId!,
+        adminName: adminUser?.name ?? null,
+        notes: notes ?? null,
+      });
+      await tx.update(ordersTable).set({
+        refundedAmount: Number(order.refundedAmount ?? 0) + refundAmount,
+        refundedJatekEarning: Number(order.refundedJatekEarning ?? 0) + refundedJatekEarning,
+      }).where(eq(ordersTable.id, orderId));
     });
 
     await logActivity({ userId: req.userId, userEmail: adminUser?.email, userName: adminUser?.name, action: "refund", entity: "order", entityId: orderId, details: { amount: refundAmount, reason }, ip: req.ip });
@@ -348,10 +369,29 @@ router.patch("/backend/orders/:id/cancel", requireAuth, async (req: AuthedReques
     publish(`restaurant:${order.restaurantId}`, "order_status", { orderId, status: "cancelled" });
     publish("admin_tracking", "order_status", { orderId, status: "cancelled", driverId: order.driverId });
 
-    if (refundToWallet) {
-      await db.update(usersTable).set({
-        walletBalance: sql`${usersTable.walletBalance} + ${order.total}`,
-      }).where(eq(usersTable.id, order.userId));
+     if (refundToWallet) {
+       const refundAmount = Math.max(0, Number(order.total) - Number(order.refundedAmount ?? 0));
+       const commissionableBase = Math.max(0, Number(order.subtotal) - Number(order.discountAmount ?? 0));
+       const refundedJatekEarning = calculateRefundJatekEarning({
+         orderTotal: order.total,
+         commissionableBase,
+         originalJatekEarning: order.jatekEarning,
+         alreadyRefundedAmount: order.refundedAmount ?? 0,
+         alreadyRefundedJatekEarning: order.refundedJatekEarning ?? 0,
+         refundAmount,
+         commissionableRefundAmount: commissionableBase,
+       });
+       await db.transaction(async (tx) => {
+         if (refundAmount > 0) {
+           await tx.update(usersTable).set({
+             walletBalance: sql`${usersTable.walletBalance} + ${refundAmount}`,
+           }).where(eq(usersTable.id, order.userId));
+           await tx.update(ordersTable).set({
+             refundedAmount: Number(order.refundedAmount ?? 0) + refundAmount,
+             refundedJatekEarning: Number(order.refundedJatekEarning ?? 0) + refundedJatekEarning,
+           }).where(eq(ordersTable.id, orderId));
+         }
+       });
     }
 
     const [adminUser] = await db.select({ name: usersTable.name, email: usersTable.email })

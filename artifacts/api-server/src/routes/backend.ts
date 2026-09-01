@@ -184,6 +184,7 @@ export const ALL_PERMISSION_KEYS: { key: string; label: string; group: string }[
   { key: "orders.update_status", label: "Changer le statut", group: "Commandes" },
   { key: "shops.read", label: "Lire les boutiques", group: "Boutiques" },
   { key: "shops.write", label: "Créer/éditer boutiques", group: "Boutiques" },
+  { key: "shops.commission.write", label: "Configurer les commissions boutiques", group: "Boutiques" },
   { key: "shops.delete", label: "Supprimer boutiques", group: "Boutiques" },
   { key: "products.read", label: "Lire les produits", group: "Produits" },
   { key: "products.write", label: "Créer/éditer produits", group: "Produits" },
@@ -317,6 +318,12 @@ function canWriteProducts(ctx: { role: string; permissions: { inheritedRoles?: s
 function canDeleteProducts(ctx: { role: string; permissions: { inheritedRoles?: string[]; grants?: string[] } | null }): boolean {
   return hasPermission(ctx.role, ctx.permissions, "products.delete")
     || hasPermission(ctx.role, ctx.permissions, "products.delete.own");
+}
+
+function parseCommissionRate(value: unknown, fallback?: number): number | null {
+  if (value === undefined || value === null || value === "") return fallback ?? null;
+  const parsed = Number(String(value).trim().replace(",", "."));
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : null;
 }
 
 async function findValidMenuCategory(
@@ -487,12 +494,15 @@ router.get("/backend/dashboard", requireAuth, async (req: AuthedRequest, res): P
   const [deliveryRow] = await db.select({ s: sum(ordersTable.driverEarning) }).from(ordersTable).where(deliveredWhere);
   const [taxRow] = await db.select({ s: sum(ordersTable.vatAmount) }).from(ordersTable).where(deliveredWhere);
   const [merchantRow] = await db.select({ s: sum(ordersTable.merchantEarning) }).from(ordersTable).where(deliveredWhere);
-  const [jatekRow] = await db.select({ s: sum(ordersTable.jatekEarning) }).from(ordersTable).where(deliveredWhere);
+   const [jatekRow] = await db.select({
+     s: sum(ordersTable.jatekEarning),
+     refunded: sum(ordersTable.refundedJatekEarning),
+   }).from(ordersTable).where(deliveredWhere);
   const totalEarned = Number(earnedRow?.s || 0);
   const deliveryEarning = Number(deliveryRow?.s || 0);
   const totalOrderTax = Number(taxRow?.s || 0);
   const merchantEarning = Number(merchantRow?.s || 0);
-  const jatekEarning = Number(jatekRow?.s || 0);
+   const jatekEarning = Math.max(0, Number(jatekRow?.s || 0) - Number(jatekRow?.refunded || 0));
 
   // Orders chart by day for the requested range
   const days = range === "week" ? 7 : range === "year" ? 12 : 30;
@@ -771,6 +781,43 @@ router.get("/backend/menu-categories", requireAuth, async (req: AuthedRequest, r
 });
 
 /**
+ * GET /backend/menu-categories/:id/products — the reverse category relation.
+ * Legacy products are included when their structured category id is missing.
+ */
+router.get("/backend/menu-categories/:id/products", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
+  const ctx = await requireBackendUser(req, res);
+  if (!ctx) return;
+  if (!canReadProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.read required" });
+    return;
+  }
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [category] = await db.select().from(menuItemCategoriesTable)
+    .where(eq(menuItemCategoriesTable.id, id)).limit(1);
+  if (!category) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
+  if (category.restaurantId !== null && scoped !== null && !scoped.includes(category.restaurantId)) {
+    res.status(403).json({ error: "Forbidden: not your restaurant" });
+    return;
+  }
+  const conditions: any[] = [menuCategoryUsageCondition(category)];
+  if (scoped !== null) {
+    conditions.push(scoped.length ? inArray(menuItemsTable.restaurantId, scoped) : sql`false`);
+  }
+  const products = await db.select().from(menuItemsTable)
+    .where(and(...conditions))
+    .orderBy(menuItemsTable.name, menuItemsTable.id);
+  res.json(products);
+});
+
+/**
  * POST /backend/menu-categories
  * Admin: can create global (restaurantId omitted/null) or restaurant-specific.
  * Owner: must supply their own restaurantId; cannot create global.
@@ -961,7 +1008,7 @@ router.post("/backend/shops", requireAuth, async (req: AuthedRequest, res, next)
   if (!ctx) return;
   if (!["super_admin", "admin"].includes(ctx.role)) { res.status(403).json({ error: "Forbidden" }); return; }
   try {
-    const { name, description, address, phone, category, imageUrl, logoUrl, coverImageUrl, deliveryTime, deliveryFee, minimumOrder, freeDeliveryThreshold, ownerId, isOpen, businessType, subcategoryId, isFeatured, latitude, longitude, legalName, ice, printerEmail } = req.body || {};
+    const { name, description, address, phone, category, imageUrl, logoUrl, coverImageUrl, deliveryTime, deliveryFee, minimumOrder, freeDeliveryThreshold, ownerId, isOpen, businessType, subcategoryId, isFeatured, latitude, longitude, legalName, ice, printerEmail, commissionRate } = req.body || {};
     if (!name || !address) { res.status(400).json({ error: "name et address requis" }); return; }
     const categoryResolution = await resolveShopCategory({
       category,
@@ -972,6 +1019,11 @@ router.post("/backend/shops", requireAuth, async (req: AuthedRequest, res, next)
     if (!categoryResolution.ok) { res.status(400).json({ error: categoryResolution.error }); return; }
     const defaultLatitude = await getPlatformSettingNumber("defaultLatitude", Number(DEFAULT_PLATFORM_SETTINGS.defaultLatitude));
     const defaultLongitude = await getPlatformSettingNumber("defaultLongitude", Number(DEFAULT_PLATFORM_SETTINGS.defaultLongitude));
+    const resolvedCommissionRate = parseCommissionRate(
+      commissionRate,
+      await getPlatformSettingNumber("jatekCommissionRate", Number(DEFAULT_PLATFORM_SETTINGS.jatekCommissionRate)),
+    );
+    if (resolvedCommissionRate === null) { res.status(400).json({ error: "commissionRate doit être compris entre 0 et 1" }); return; }
     const [shop] = await db.insert(restaurantsTable).values({
       name, description: description ?? null, address,
       phone: phone ?? null, category: categoryResolution.category,
@@ -982,6 +1034,7 @@ router.post("/backend/shops", requireAuth, async (req: AuthedRequest, res, next)
       deliveryFee: deliveryFee !== undefined && deliveryFee !== null && deliveryFee !== "" ? Number(deliveryFee) : null,
       minimumOrder: minimumOrder !== undefined && minimumOrder !== null && minimumOrder !== "" ? Number(minimumOrder) : null,
       freeDeliveryThreshold: freeDeliveryThreshold !== undefined ? Number(freeDeliveryThreshold) : await getPlatformSettingNumber("freeDeliveryThreshold", Number(DEFAULT_PLATFORM_SETTINGS.freeDeliveryThreshold)),
+      commissionRate: resolvedCommissionRate,
       ownerId: ownerId ? Number(ownerId) : (ctx.id),
       isOpen: isOpen ?? true,
       businessType: categoryResolution.businessType,
@@ -1012,11 +1065,20 @@ router.patch("/backend/shops/:id", requireAuth, async (req: AuthedRequest, res, 
     }
     const [existing] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, id)).limit(1);
     if (!existing) { res.status(404).json({ error: "Not found" }); return; }
-    const adminAllowed = ["name", "description", "address", "phone", "category", "imageUrl", "logoUrl", "coverImageUrl", "deliveryTime", "deliveryFee", "minimumOrder", "freeDeliveryThreshold", "isOpen", "ownerId", "isVerified", "businessType", "subcategoryId", "isFeatured", "latitude", "longitude", "legalName", "ice", "printerEmail", "profileCompletedAt"];
-    const ownerAllowed = ["name", "description", "address", "phone", "category", "imageUrl", "logoUrl", "coverImageUrl", "deliveryTime", "deliveryFee", "minimumOrder", "isOpen", "businessType", "subcategoryId"];
+    const adminAllowed = ["name", "description", "address", "phone", "category", "imageUrl", "logoUrl", "coverImageUrl", "deliveryTime", "deliveryFee", "minimumOrder", "freeDeliveryThreshold", "commissionRate", "isOpen", "ownerId", "isVerified", "businessType", "subcategoryId", "isFeatured", "latitude", "longitude", "legalName", "ice", "printerEmail", "profileCompletedAt"];
+    const ownerAllowed = ["name", "description", "address", "phone", "category", "imageUrl", "logoUrl", "coverImageUrl", "deliveryTime", "deliveryFee", "minimumOrder", "commissionRate", "isOpen", "businessType", "subcategoryId"];
     const allowed = (ctx.role === "restaurant_owner" || ctx.role === "owner") ? ownerAllowed : adminAllowed;
     const updates: Record<string, unknown> = {};
     for (const k of allowed) if ((req.body || {})[k] !== undefined) updates[k] = req.body[k];
+    if ("commissionRate" in updates) {
+      if (!["admin", "super_admin", "restaurant_owner", "owner"].includes(ctx.role)) {
+        res.status(403).json({ error: "Seuls les admins ou le commerçant de la boutique peuvent modifier la commission" });
+        return;
+      }
+      const rate = parseCommissionRate(updates.commissionRate);
+      if (rate === null) { res.status(400).json({ error: "commissionRate doit être compris entre 0 et 1" }); return; }
+      updates.commissionRate = rate;
+    }
     const categoryFieldsProvided = ["category", "businessType", "subcategoryId"]
       .some((field) => Object.prototype.hasOwnProperty.call(req.body || {}, field));
     if (categoryFieldsProvided) {

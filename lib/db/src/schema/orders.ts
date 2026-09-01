@@ -24,6 +24,9 @@ export const ordersTable = pgTable("orders", {
   merchantEarning: real("merchant_earning").notNull().default(0),
   driverEarning: real("driver_earning").notNull().default(0),
   jatekEarning: real("jatek_earning").notNull().default(0),
+  /** Cumulative customer refunds and the corresponding Jatek commission reversal. */
+  refundedAmount: real("refunded_amount").notNull().default(0),
+  refundedJatekEarning: real("refunded_jatek_earning").notNull().default(0),
   pricingVersion: text("pricing_version").notNull().default("legacy"),
   total: real("total").notNull(),
   deliveryAddress: text("delivery_address").notNull(),

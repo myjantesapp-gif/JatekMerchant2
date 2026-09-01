@@ -152,6 +152,9 @@ async function jsonFetch<T = any>(path: string, init?: RequestInit & { timeoutMs
   }
 }
 
+/** Public alias for lightweight endpoints that are not in the generated client. */
+export const apiFetch = jsonFetch;
+
 /** Lazily-resolved API base URL — call at request time, not at import time. */
 export function getApiBase(): string { return resolvedApiBase(); }
 

@@ -40,6 +40,7 @@ const EMPTY = {
   subcategoryId: "",   // legacy DB ref — kept for compatibility
   imageUrl: "", logoUrl: "", coverImageUrl: "",
   deliveryTime: "", deliveryFee: "", minimumOrder: "",
+  commissionRate: "0.10",
   latitude: "34.6814", longitude: "-1.9078",
   legalName: "", ice: "",
   isOpen: true, ownerId: "", isFeatured: false, isVerified: false, profileCompleted: false,
@@ -112,6 +113,7 @@ export default function Shops() {
     deliveryTime: f.deliveryTime ? Number(f.deliveryTime) : undefined,
     deliveryFee: f.deliveryFee ? Number(f.deliveryFee) : undefined,
     minimumOrder: f.minimumOrder ? Number(f.minimumOrder) : undefined,
+    commissionRate: f.commissionRate === "" ? undefined : Number(String(f.commissionRate).replace(",", ".")),
     latitude: f.latitude ? Number(f.latitude) : undefined,
     longitude: f.longitude ? Number(f.longitude) : undefined,
     legalName: f.legalName || undefined,
@@ -176,6 +178,7 @@ export default function Shops() {
       deliveryTime: String(s.deliveryTime ?? ""),
       deliveryFee: String(s.deliveryFee ?? ""),
       minimumOrder: String(s.minimumOrder ?? ""),
+       commissionRate: String(s.commissionRate ?? "0.10"),
       isOpen: !!s.isOpen,
       ownerId: s.ownerId ? String(s.ownerId) : "",
       isFeatured: !!(s as any).isFeatured,
@@ -723,6 +726,21 @@ function ShopForm({
           <Input type="number" value={form.minimumOrder} onChange={(e) => set("minimumOrder", e.target.value)} />
         </Field>
       </div>
+
+      <Field label="Commission Jatek (0–1)">
+        <Input
+          type="number"
+          min="0"
+          max="1"
+          step="0.01"
+          value={form.commissionRate}
+          onChange={(e) => set("commissionRate", e.target.value)}
+          required
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Exemple : 0,10 = 10 %. Ce taux sera figé dans chaque nouvelle commande.
+        </p>
+      </Field>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Latitude">

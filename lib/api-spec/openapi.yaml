@@ -54,6 +54,28 @@ tags:
   - name: notifications
     description: Push notification registration and delivery
 paths:
+  /menu-categories:
+    get:
+      operationId: listMenuCategories
+      tags:
+        - content
+      summary: List active product categories visible to customers
+      parameters:
+        - name: restaurantId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Active global and restaurant product categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MenuItemCategory"
+        "400":
+          description: Invalid restaurant id
   /addresses:
     get:
       operationId: listAddresses
@@ -848,6 +870,35 @@ paths:
       security:
         - bearerAuth: []
       description: JWT required. Backend dashboard RBAC applies by staff role and scoped shop access.
+  /backend/menu-categories/{id}/products:
+    get:
+      operationId: listBackendMenuCategoryProducts
+      tags:
+        - backend
+      summary: List products assigned to a product category
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Products assigned to the category
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MenuItem"
+        "401":
+          description: Authentication required
+        "403":
+          description: Forbidden by backend dashboard RBAC
+        "404":
+          description: Category not found
   /backend/staff:
     get:
       operationId: listBackendStaff
@@ -3909,6 +3960,11 @@ components:
         freeDeliveryThreshold:
           type: number
           description: Defaulted by the API when not stored on the restaurant row.
+        commissionRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Jatek commission rate for this shop, stored as a decimal.
       required:
         - id
         - ownerId
@@ -3952,6 +4008,11 @@ components:
           type: number
         minimumOrder:
           type: number
+        commissionRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Jatek commission rate for this shop, stored as a decimal.
       required:
         - name
         - address
@@ -3989,6 +4050,11 @@ components:
           type: number
         minimumOrder:
           type: number
+        commissionRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Jatek commission rate for this shop, stored as a decimal.
         isVerified:
           type: boolean
     RestaurantStats:
@@ -4054,6 +4120,30 @@ components:
         - category
         - isAvailable
         - isPopular
+        - createdAt
+    MenuItemCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+        restaurantId:
+          type:
+            - integer
+            - "null"
+        name:
+          type: string
+        sortOrder:
+          type: integer
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - sortOrder
+        - isActive
         - createdAt
     MenuItemSize:
       type: object
@@ -4219,6 +4309,12 @@ components:
           type: number
         jatekEarning:
           type: number
+        refundedAmount:
+          type: number
+          description: Cumulative customer refunds in MAD.
+        refundedJatekEarning:
+          type: number
+          description: Jatek commission reversed by customer refunds in MAD.
         pricingVersion:
           type: string
         total:

@@ -20,6 +20,8 @@ export const restaurantsTable = pgTable("restaurants", {
   deliveryFee: real("delivery_fee"),
   minimumOrder: real("minimum_order"),
   freeDeliveryThreshold: real("free_delivery_threshold").notNull().default(150),
+  /** Jatek commission rate for this shop, stored as a decimal between 0 and 1. */
+  commissionRate: real("commission_rate").notNull().default(0.10),
   rating: real("rating"),
   reviewCount: integer("review_count").notNull().default(0),
   isVerified: boolean("is_verified").notNull().default(false),

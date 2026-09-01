@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { Fragment, useState, useRef } from "react";
 import {
   useListBackendProducts,
   useListBackendShops,
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, Pencil, Trash2, Loader2, Settings2, Tags, Package, FileUp, Download, AlertCircle } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Loader2, Settings2, Tags, Package, FileUp, Download, AlertCircle, ChevronDown, ChevronRight } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -274,6 +274,12 @@ function ProductMenuCategories() {
   const [renaming, setRenaming] = useState<{ id: number; name: string; sortOrder: number } | null>(null);
   const [newName, setNewName] = useState("");
   const [deleting, setDeleting] = useState<MenuCat | null>(null);
+  const [expandedCategoryId, setExpandedCategoryId] = useState<number | null>(null);
+  const { data: expandedProducts, isLoading: expandedProductsLoading } = useQuery<any[]>({
+    queryKey: ["/api/backend/menu-categories", expandedCategoryId, "products"],
+    queryFn: () => apiFetch(`/api/backend/menu-categories/${expandedCategoryId}/products`),
+    enabled: expandedCategoryId !== null,
+  });
 
   const invalidatePC = () => {
     qc.invalidateQueries({ queryKey: ["/api/backend/menu-categories"] });
@@ -339,9 +345,23 @@ function ProductMenuCategories() {
                <TableRow key={i}><TableCell><Skeleton className="h-4 w-32" /></TableCell><TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell><TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-8" /></TableCell><TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-8" /></TableCell><TableCell /><>{canManage && <TableCell />}</></TableRow>
             )) : productCats?.length === 0 ? (
                <TableRow><TableCell colSpan={canManage ? 6 : 5} className="h-24 text-center text-muted-foreground">Aucune catégorie produit.</TableCell></TableRow>
-            ) : productCats?.map((cat) => (
-              <TableRow key={cat.id}>
-                <TableCell className="font-medium">{cat.name}</TableCell>
+               ) : productCats?.map((cat) => (
+               <Fragment key={cat.id}>
+               <TableRow>
+                 <TableCell className="font-medium">
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     className="h-8 px-1.5 -ml-1.5 gap-1.5 font-medium"
+                     onClick={() => setExpandedCategoryId((current) => current === cat.id ? null : cat.id)}
+                     aria-expanded={expandedCategoryId === cat.id}
+                   >
+                     {expandedCategoryId === cat.id
+                       ? <ChevronDown className="h-4 w-4" />
+                       : <ChevronRight className="h-4 w-4" />}
+                     {cat.name}
+                   </Button>
+                 </TableCell>
                 <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
                   {cat.restaurantId
                     ? (shops as any[] | undefined)?.find((s: any) => s.id === cat.restaurantId)?.name ?? `#${cat.restaurantId}`
@@ -362,6 +382,26 @@ function ProductMenuCategories() {
                   </TableCell>
                 )}
               </TableRow>
+               {expandedCategoryId === cat.id && (
+                 <TableRow key={`${cat.id}-products`} className="bg-muted/30">
+                   <TableCell colSpan={canManage ? 6 : 5} className="py-3">
+                     {expandedProductsLoading ? (
+                       <div className="text-sm text-muted-foreground">Chargement des produits…</div>
+                     ) : expandedProducts?.length ? (
+                       <div className="flex flex-wrap gap-2">
+                         {expandedProducts.map((product) => (
+                           <Badge key={product.id} variant="outline">
+                             {product.name} · {Number(product.price).toFixed(2)} MAD
+                           </Badge>
+                         ))}
+                       </div>
+                     ) : (
+                       <span className="text-sm text-muted-foreground">Aucun produit dans cette catégorie.</span>
+                     )}
+                   </TableCell>
+                 </TableRow>
+               )}
+               </Fragment>
             ))}
           </TableBody>
         </Table>

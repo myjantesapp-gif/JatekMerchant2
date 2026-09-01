@@ -314,7 +314,10 @@ export default function Orders() {
                       <div className="border-t pt-1.5 mt-1.5 text-xs text-muted-foreground space-y-1">
                         <div className="flex justify-between"><span>Gain restaurant</span><span>{formatMad((orderDetail as any).merchantEarning)} MAD</span></div>
                         <div className="flex justify-between"><span>Gain livreur</span><span>{formatMad((orderDetail as any).driverEarning)} MAD</span></div>
-                        <div className="flex justify-between"><span>Gain Jatek</span><span>{formatMad((orderDetail as any).jatekEarning)} MAD</span></div>
+                         <div className="flex justify-between"><span>Gain Jatek net</span><span>{formatMad(Number((orderDetail as any).jatekEarning) - Number((orderDetail as any).refundedJatekEarning ?? 0))} MAD</span></div>
+                         {Number((orderDetail as any).refundedAmount ?? 0) > 0 && (
+                           <div className="flex justify-between text-amber-600"><span>Remboursements</span><span>-{formatMad((orderDetail as any).refundedAmount)} MAD</span></div>
+                         )}
                       </div>
                     )}
                   </div>
