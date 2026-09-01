@@ -218,23 +218,29 @@ packages = ["eas-cli", "unzipNLS", "gir-rs"]
   [userenv]
 
   [userenv.shared]
-VAPID_PUBLIC_KEY = "BKdEq8KVX9EuyJ4hlkeOTiXCgfwLyff2DorTnKQIgJY3YuDamX2kliSO9pyG5dvFILYz3ymzdZVxntjZhaUph0I"
-VAPID_SUBJECT = "mailto:admin@jatek.ma"
-TWILIO_FROM_NUMBER = "+15072600620"
-INFOBIP_BASE_URL = "w4kgd8.api.infobip.com"
-VAPID_PRIVATE_KEY = "CepGJ21FnGHCxtMSTn9uujjKuGVRWT7guRY2-iDTBlQ"
-EXPO_PUBLIC_OWNER = "jatekplatforms-team"
-EXPO_PUBLIC_PROJECT_ID = "d30cddea-9dd6-42aa-8339-80d86b9ad76e"
-EXPO_PUBLIC_SLUG = "jatekclient"
 
   [userenv.development]
   EXPO_PUBLIC_DOMAIN = "ma.jatek.app"
 TWILIO_VERIFY_SID = "VA48870bcbd6ed8274d1bd988d730059db"
+TWILIO_FROM_NUMBER = "+15072600620"
+INFOBIP_BASE_URL = "w4kgd8.api.infobip.com"
+EXPO_PUBLIC_SLUG = "jatekclient"
+EXPO_PUBLIC_PROJECT_ID = "d30cddea-9dd6-42aa-8339-80d86b9ad76e"
+VAPID_PRIVATE_KEY = "CepGJ21FnGHCxtMSTn9uujjKuGVRWT7guRY2-iDTBlQ"
+VAPID_PUBLIC_KEY = "BKdEq8KVX9EuyJ4hlkeOTiXCgfwLyff2DorTnKQIgJY3YuDamX2kliSO9pyG5dvFILYz3ymzdZVxntjZhaUph0I"
+VAPID_SUBJECT = "mailto:admin@jatek.ma"
 
   [userenv.production]
   EXPO_PUBLIC_DOMAIN = "ma.jatek.app"
 ALLOWED_ORIGINS = "https://c242aedf-c2ef-40b5-8095-e3992aa34a14-00-1y412fgtbqgy8.kirk.replit.dev,https://ma.jatek.app"
 TWILIO_VERIFY_SID = "VA48870bcbd6ed8274d1bd988d730059db"
+TWILIO_FROM_NUMBER = "+15072600620"
+INFOBIP_BASE_URL = "w4kgd8.api.infobip.com"
+EXPO_PUBLIC_SLUG = "jatekclient"
+EXPO_PUBLIC_PROJECT_ID = "d30cddea-9dd6-42aa-8339-80d86b9ad76e"
+VAPID_PRIVATE_KEY = "CepGJ21FnGHCxtMSTn9uujjKuGVRWT7guRY2-iDTBlQ"
+VAPID_PUBLIC_KEY = "BKdEq8KVX9EuyJ4hlkeOTiXCgfwLyff2DorTnKQIgJY3YuDamX2kliSO9pyG5dvFILYz3ymzdZVxntjZhaUph0I"
+VAPID_SUBJECT = "mailto:admin@jatek.ma"
 
   [objectStorage]
-defaultBucketID = "replit-objstore-8602645c-046d-4e5e-b8e5-6c81ac620f70"
+defaultBucketID = "replit-objstore-4d552e7f-5275-491d-bcf0-2a88ae31fb35"

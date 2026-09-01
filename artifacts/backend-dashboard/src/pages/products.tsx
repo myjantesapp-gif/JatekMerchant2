@@ -117,6 +117,10 @@ export default function Products() {
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
+    if (!editForm.menuItemCategoryId) {
+      toast({ title: "Choisissez une catégorie produit", variant: "destructive" });
+      return;
+    }
     updateMutation.mutate({ id: editing.id, data: buildProductPayload(editForm) });
   };
 
@@ -473,12 +477,11 @@ const DIET_TAGS = [
 
 function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: any; restaurantId?: string | number }) {
   const set = (k: string, v: any) => setForm({ ...form, [k]: v });
-  const { data: productCats } = useProductCategories(restaurantId);
+  const { data: productCats, isLoading: categoriesLoading, isError: categoriesError } = useProductCategories(restaurantId);
   const categoryOptions = (productCats ?? []).filter((category) =>
     category.isActive || String(category.id) === String(form.menuItemCategoryId),
   );
-  const hasCategoryOptions = Boolean(restaurantId && categoryOptions.length > 0);
-  const isLegacyCategory = Boolean(form.category && !form.menuItemCategoryId);
+  const hasRestaurant = Boolean(restaurantId);
   const selectedTags: string[] = form.tags ? form.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
   const toggleTag = (tag: string) => {
     const next = selectedTags.includes(tag)
@@ -491,16 +494,28 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Nom *"><Input required value={form.name} onChange={(e: any) => set("name", e.target.value)} /></Field>
         <Field label="Catégorie *">
-          {hasCategoryOptions ? (
+          {hasRestaurant ? (
             <Select
               value={form.menuItemCategoryId ? String(form.menuItemCategoryId) : ""}
               onValueChange={(id) => {
                 const selected = productCats?.find((c) => String(c.id) === id);
                 setForm({ ...form, menuItemCategoryId: id, category: selected?.name ?? "" });
               }}
-              required
+              disabled={categoriesLoading || categoriesError || categoryOptions.length === 0}
             >
-              <SelectTrigger><SelectValue placeholder="Choisir une catégorie" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    categoriesLoading
+                      ? "Chargement des catégories…"
+                      : categoriesError
+                        ? "Catégories indisponibles"
+                        : categoryOptions.length === 0
+                          ? "Aucune catégorie active"
+                          : "Choisir une catégorie"
+                  }
+                />
+              </SelectTrigger>
               <SelectContent className="z-[200]">
                  {categoryOptions.map((c) => (
                   <SelectItem key={c.id} value={String(c.id)}>
@@ -509,12 +524,20 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
                 ))}
               </SelectContent>
             </Select>
-          ) : restaurantId && productCats && categoryOptions.length === 0 && !isLegacyCategory ? (
-            <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-              Aucune catégorie active pour cette boutique. Créez-en une dans l’onglet « Catégories menu ».
-            </div>
           ) : (
-            <Input required value={form.category} onChange={(e: any) => set("category", e.target.value)} placeholder="Catégorie" />
+            <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+              Sélectionnez d’abord une boutique pour charger ses catégories menu.
+            </div>
+          )}
+          {hasRestaurant && categoriesError && (
+            <p className="text-xs text-destructive" role="alert">
+              Impossible de charger les catégories. Vérifiez votre connexion puis réessayez.
+            </p>
+          )}
+          {hasRestaurant && !categoriesLoading && !categoriesError && categoryOptions.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Aucune catégorie active pour cette boutique. Créez-en une dans l’onglet « Catégories menu ».
+            </p>
           )}
         </Field>
         <Field label="Prix (DH) *"><Input required type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" step="0.01" value={form.price} onChange={(e: any) => set("price", e.target.value)} /></Field>

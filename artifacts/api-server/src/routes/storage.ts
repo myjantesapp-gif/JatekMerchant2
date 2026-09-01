@@ -125,10 +125,12 @@ function sendUploadStorageError(
       storageOperation: error.operation,
       providerMessage: error.providerMessage,
     }, `Error uploading ${mediaLabel}`);
-    res.status(500).json({
+    res.status(error.statusCode === 403 ? 503 : 500).json({
       error: `Échec du téléversement de ${mediaLabel} : ${error.message}`,
       code: error.code,
-      cause: error.message,
+      cause: error.code === "STORAGE_PERMISSION_DENIED"
+        ? "Le déploiement n’a pas accès en écriture au bucket App Storage configuré."
+        : error.message,
       operation: error.operation,
     });
     return;
@@ -298,7 +300,15 @@ router.get("/storage/public-objects/*filePath", async (req: AuthedRequest, res: 
     }
   } catch (error) {
     req.log.error({ err: error }, "Error serving public object");
-    res.status(500).json({ error: "Failed to serve public object" });
+    if (error instanceof ObjectStorageError) {
+      res.status(error.statusCode === 403 ? 503 : 500).json({
+        error: error.message,
+        code: error.code,
+        operation: error.operation,
+      });
+      return;
+    }
+    res.status(500).json({ error: "Failed to serve public object", code: "STORAGE_UNAVAILABLE" });
   }
 });
 
@@ -335,7 +345,15 @@ router.get("/storage/objects/*path", async (req: AuthedRequest, res: Response) =
       return;
     }
     req.log.error({ err: error }, "Error serving object");
-    res.status(500).json({ error: "Failed to serve object" });
+    if (error instanceof ObjectStorageError) {
+      res.status(error.statusCode === 403 ? 503 : 500).json({
+        error: error.message,
+        code: error.code,
+        operation: error.operation,
+      });
+      return;
+    }
+    res.status(500).json({ error: "Failed to serve object", code: "STORAGE_UNAVAILABLE" });
   }
 });
 

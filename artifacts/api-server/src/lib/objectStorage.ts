@@ -213,10 +213,11 @@ function toObjectStorageError(operation: string, error: unknown): ObjectStorageE
   const providerMessage = providerErrorMessage(error);
   const statusCode = providerStatusCode(error) ?? statusFromProviderMessage(providerMessage);
   if (statusCode === 403) {
+    const action = operation === "upload" ? "écriture" : "lecture";
     return new ObjectStorageError(
       operation,
       "STORAGE_PERMISSION_DENIED",
-      `App Storage a refusé l’écriture (${statusCode}). Vérifiez que le bucket géré est accessible en écriture par ce déploiement.`,
+      `App Storage a refusé la ${action} (${statusCode}). Vérifiez que le bucket géré est accessible à ce déploiement.`,
       providerMessage,
       statusCode,
     );
