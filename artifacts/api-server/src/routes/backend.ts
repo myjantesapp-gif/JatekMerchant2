@@ -1066,9 +1066,9 @@ router.patch("/backend/shops/:id", requireAuth, async (req: AuthedRequest, res, 
     const [existing] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, id)).limit(1);
     if (!existing) { res.status(404).json({ error: "Not found" }); return; }
     const adminAllowed = ["name", "description", "address", "phone", "category", "imageUrl", "logoUrl", "coverImageUrl", "deliveryTime", "deliveryFee", "minimumOrder", "freeDeliveryThreshold", "commissionRate", "isOpen", "ownerId", "isVerified", "businessType", "subcategoryId", "isFeatured", "latitude", "longitude", "legalName", "ice", "printerEmail", "profileCompletedAt"];
-    // Commercial terms are platform-controlled. A shop owner can update
-    // operations and profile data, but cannot change Jatek's commission.
-    const ownerAllowed = ["name", "description", "address", "phone", "category", "imageUrl", "logoUrl", "coverImageUrl", "deliveryTime", "deliveryFee", "minimumOrder", "isOpen", "businessType", "subcategoryId"];
+    // A shop owner can update their own commercial terms and operations;
+    // platform staff retain access to all shops and administrative fields.
+    const ownerAllowed = ["name", "description", "address", "phone", "category", "imageUrl", "logoUrl", "coverImageUrl", "deliveryTime", "deliveryFee", "minimumOrder", "commissionRate", "isOpen", "businessType", "subcategoryId"];
     const allowed = (ctx.role === "restaurant_owner" || ctx.role === "owner") ? ownerAllowed : adminAllowed;
     const updates: Record<string, unknown> = {};
     for (const k of allowed) if ((req.body || {})[k] !== undefined) updates[k] = req.body[k];

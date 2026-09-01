@@ -5,6 +5,7 @@ import {
   shortsTable,
   restaurantsTable,
   menuItemsTable,
+  menuItemCategoriesTable,
 } from "./schema";
 
 async function seedCategories() {
@@ -82,6 +83,36 @@ async function seedShorts() {
   ]);
 
   console.log("✅ Shorts seeded");
+}
+
+async function ensureMenuItemCategories(names: string[]) {
+  const normalizedNames = [...new Set(names.map((name) => name.trim()).filter(Boolean))];
+  if (normalizedNames.length === 0) return new Map<string, number>();
+
+  const existing = await db.select({
+    id: menuItemCategoriesTable.id,
+    name: menuItemCategoriesTable.name,
+    restaurantId: menuItemCategoriesTable.restaurantId,
+  }).from(menuItemCategoriesTable);
+  const existingGlobalNames = new Set(
+    existing.filter((category) => category.restaurantId === null).map((category) => category.name),
+  );
+  const missing = normalizedNames
+    .filter((name) => !existingGlobalNames.has(name))
+    .map((name, index) => ({ name, sortOrder: index, isActive: true, restaurantId: null }));
+
+  if (missing.length > 0) {
+    await db.insert(menuItemCategoriesTable).values(missing);
+  }
+
+  const rows = await db.select({
+    id: menuItemCategoriesTable.id,
+    name: menuItemCategoriesTable.name,
+    restaurantId: menuItemCategoriesTable.restaurantId,
+  }).from(menuItemCategoriesTable);
+  return new Map(
+    rows.filter((category) => category.restaurantId === null).map((category) => [category.name, category.id]),
+  );
 }
 
 async function seedRestaurants() {
@@ -412,7 +443,13 @@ async function seedMenuItems(restaurantIds: number[]) {
     { restaurantId: restaurantIds[9], name: "Thé Menthe Verveine", description: "Infusion menthe fraîche et verveine d'Oujda, servie en théière traditionnelle", price: 15, category: "Boissons", imageUrl: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&q=80", isAvailable: true, isPopular: false, tags: ["vegan", "gluten_free"], prepTimeMinutes: 5, calories: 50 },
   ];
 
-  await db.insert(menuItemsTable).values(items);
+  const categoryIds = await ensureMenuItemCategories(items.map((item) => item.category));
+  await db.insert(menuItemsTable).values(
+    items.map((item) => ({
+      ...item,
+      menuItemCategoryId: categoryIds.get(item.category) ?? null,
+    })),
+  );
   console.log(`✅ ${items.length} menu items seeded (70 items across 10 Oujda restaurants)`);
 }
 

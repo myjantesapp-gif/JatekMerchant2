@@ -332,6 +332,21 @@ async function main() {
 
     if (!restaurant) throw new Error("Restaurant insert returned no row");
 
+    const categoryNames = [...new Set(products.map(({ category }) => category.trim()).filter(Boolean))];
+    const insertedCategories = await tx
+      .insert(menuItemCategoriesTable)
+      .values(categoryNames.map((name, sortOrder) => ({
+        name,
+        restaurantId: null,
+        sortOrder,
+        isActive: true,
+      })))
+      .returning({
+        id: menuItemCategoriesTable.id,
+        name: menuItemCategoriesTable.name,
+      });
+    const categoryIds = new Map(insertedCategories.map((category) => [category.name, category.id]));
+
     const menuRows = products.map(({ category, product }, index) => ({
       restaurantId: restaurant.id,
       name: product.name.trim(),
@@ -341,6 +356,7 @@ async function main() {
         ? productImageUrls.get(product.image) ?? null
         : productImageUrls.get(product.name) ?? null,
       category,
+      menuItemCategoryId: categoryIds.get(category) ?? null,
       isAvailable: product.available !== false,
       isPopular: index < 8,
       prepTimeMinutes: null,

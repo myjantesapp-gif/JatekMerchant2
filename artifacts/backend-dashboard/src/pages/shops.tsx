@@ -48,6 +48,15 @@ const EMPTY = {
   isOpen: true, ownerId: "", isFeatured: false, isVerified: false, profileCompleted: false,
 };
 
+function formatCommissionRate(value: unknown): string {
+  const rate = Number(value);
+  if (!Number.isFinite(rate) || rate < 0) return "—";
+  // Stored values are decimals (0.20 = 20%). Keep this tolerant of any
+  // legacy percentage values that may still exist in older records.
+  const percent = rate <= 1 ? rate * 100 : rate;
+  return `${percent.toFixed(1)} %`;
+}
+
 export default function Shops() {
   const [search, setSearch] = useState("");
   const { data: me } = useBackendMe();
@@ -265,6 +274,10 @@ export default function Shops() {
                           <span>{myShop.phone}</span>
                         </div>
                       )}
+                      <div className="flex items-center gap-1.5 font-medium text-foreground">
+                        <span>Frais de service JATEK :</span>
+                        <span>{formatCommissionRate(myShop.commissionRate)}</span>
+                      </div>
                     </div>
                     {/* Rating */}
                     {myShop.rating !== null && myShop.rating !== undefined && (
@@ -368,7 +381,7 @@ export default function Shops() {
               form={editForm} setForm={setEditForm}
               onSubmit={handleUpdate} pending={updateMutation.isPending}
               submitLabel="Enregistrer"
-              ownerCandidates={ownerCandidates} isAdmin={isAdmin}
+              ownerCandidates={ownerCandidates} isAdmin={isAdmin} canEditCommission={isAdmin || isOwner}
               extra={
                 <div className="flex items-center gap-2">
                   <Switch
@@ -402,7 +415,7 @@ export default function Shops() {
               <ShopForm
                 form={form} setForm={setForm} onSubmit={handleCreate}
                 pending={createMutation.isPending} submitLabel="Créer"
-                ownerCandidates={ownerCandidates} isAdmin={isAdmin}
+                ownerCandidates={ownerCandidates} isAdmin={isAdmin} canEditCommission={isAdmin}
               />
             </DialogContent>
           </Dialog>
@@ -423,6 +436,7 @@ export default function Shops() {
                 <TableRow>
                   <TableHead className="pl-4">Boutique</TableHead>
                   <TableHead className="hidden sm:table-cell">Catégorie</TableHead>
+                  <TableHead className="hidden sm:table-cell">Frais JATEK</TableHead>
                   <TableHead className="hidden md:table-cell">Contact</TableHead>
                   <TableHead className="hidden md:table-cell">Note</TableHead>
                   <TableHead className="hidden lg:table-cell">Vedette</TableHead>
@@ -445,7 +459,7 @@ export default function Shops() {
                   : shops?.length === 0
                     ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                          <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                             Aucune boutique.
                           </TableCell>
                         </TableRow>
@@ -470,6 +484,10 @@ export default function Shops() {
                             </div>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell"><Badge variant="outline">{shop.category}</Badge></TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <div className="font-semibold text-sm">{formatCommissionRate(shop.commissionRate)}</div>
+                            <div className="text-xs text-muted-foreground">frais de service</div>
+                          </TableCell>
                           <TableCell className="hidden md:table-cell">
                             <div className="text-sm text-muted-foreground flex items-center">
                               <Phone className="h-3 w-3 mr-1" />{shop.phone || "N/A"}
@@ -573,7 +591,7 @@ export default function Shops() {
               form={editForm} setForm={setEditForm}
               onSubmit={handleUpdate} pending={updateMutation.isPending}
               submitLabel="Enregistrer"
-              ownerCandidates={ownerCandidates} isAdmin={isAdmin}
+              ownerCandidates={ownerCandidates} isAdmin={isAdmin} canEditCommission={isAdmin || isOwner}
               extra={
                 <div className="flex items-center gap-2">
                   <Switch checked={editForm.isOpen} onCheckedChange={(v) => setEditForm({ ...editForm, isOpen: v })} id="isOpen-switch-admin" />
@@ -592,6 +610,7 @@ export default function Shops() {
 
 function ShopForm({
   form, setForm, onSubmit, pending, submitLabel, extra, ownerCandidates, isAdmin,
+  canEditCommission = isAdmin,
 }: {
   form: typeof EMPTY;
   setForm: (f: typeof EMPTY) => void;
@@ -601,6 +620,7 @@ function ShopForm({
   extra?: React.ReactNode;
   ownerCandidates: any[];
   isAdmin: boolean;
+  canEditCommission?: boolean;
 }) {
   const { data: allCategories } = useListBackendCategories();
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -734,7 +754,7 @@ function ShopForm({
         </Field>
       </div>
 
-      {isAdmin ? (
+      {canEditCommission ? (
          <Field label="Commission JATEK / frais de service (%)">
           <Input
             type="number"
@@ -752,7 +772,7 @@ function ShopForm({
         </Field>
       ) : (
         <p className="text-xs text-muted-foreground">
-          La commission Jatek est définie par l’administration.
+          Le taux de frais de service JATEK est défini par l’administration ou le propriétaire de la boutique.
         </p>
       )}
 

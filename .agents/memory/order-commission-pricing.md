@@ -7,4 +7,4 @@ JATEK's fee is a restaurant-specific percentage applied to the product subtotal 
 
 **Why:** The business example defines a 20% fee on 50 MAD of products as 10 MAD, with a 15 MAD delivery charge and a 75 MAD customer total. Applying tax again or including delivery in the base overcharges the customer.
 
-**How to apply:** Store the restaurant rate as a decimal (0.20), display/edit it as a percentage (20%), snapshot the rate and fee on each order, and keep merchant, driver, JATEK, and customer amounts separate in reports.
+**How to apply:** Store the restaurant rate as a decimal (0.20), display/edit it as a percentage (20%), and show it on every shop record. Admins may edit any shop; owners may edit only their own. Snapshot the rate and fee on each order, and keep merchant, driver, JATEK, and customer amounts separate in reports.

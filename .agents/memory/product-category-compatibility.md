@@ -7,4 +7,4 @@ The canonical product category is the stable `menuItemCategoryId`, but every pro
 
 **Why:** Existing mobile and production data can still depend on category names, while dashboard edits need a scoped, rename-safe relationship.
 
-**How to apply:** Validate IDs against active global or shop-scoped categories, synchronize names on category rename, and do not delete categories that are still referenced by products.
+**How to apply:** Validate IDs against active global or shop-scoped categories, synchronize names on category rename, and do not delete categories that are still referenced by products. Seed/import routines must create the structured categories before inserting products and backfill IDs for legacy rows.
