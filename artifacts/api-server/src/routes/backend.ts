@@ -1385,15 +1385,62 @@ router.delete("/backend/drivers/:id", requireAuth, async (req: AuthedRequest, re
   const id = Number(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const [driver] = await db.select().from(driversTable).where(eq(driversTable.id, id)).limit(1);
-  if (!driver) { res.status(404).json({ error: "Driver not found" }); return; }
+  // Lock the driver while checking order history. Orders intentionally keep
+  // their driver ID as an immutable operational/history snapshot, so deleting
+  // a referenced driver would create a dangling assignment and break tracking.
+  const deletion = await db.transaction(async (tx) => {
+    const [driver] = await tx
+      .select()
+      .from(driversTable)
+      .where(eq(driversTable.id, id))
+      .limit(1)
+      .for("update");
+    if (!driver) return { kind: "missing" as const };
 
-  // Delete both records in a transaction to prevent orphaned data
-  await db.transaction(async (tx) => {
+    const [orderSummary] = await tx
+      .select({
+        orderCount: count(ordersTable.id),
+        activeOrderCount: sql<number>`COUNT(*) FILTER (WHERE ${inArray(ordersTable.status, [
+          "pending",
+          "accepted",
+          "confirmed",
+          "preparing",
+          "ready",
+          "driver_at_restaurant",
+          "picked_up",
+          "en_route",
+          "out_for_delivery",
+        ])})`,
+      })
+      .from(ordersTable)
+      .where(eq(ordersTable.driverId, id));
+
+    const orderCount = Number(orderSummary?.orderCount ?? 0);
+    const activeOrderCount = Number(orderSummary?.activeOrderCount ?? 0);
+    if (orderCount > 0) {
+      return { kind: "has_orders" as const, orderCount, activeOrderCount };
+    }
+
     await tx.delete(driversTable).where(eq(driversTable.id, id));
     await tx.delete(usersTable).where(eq(usersTable.id, driver.userId));
+    return { kind: "deleted" as const, userId: driver.userId };
   });
-  closeUserSubscriptions(driver.userId);
+
+  if (deletion.kind === "missing") {
+    res.status(404).json({ error: "Driver not found" });
+    return;
+  }
+  if (deletion.kind === "has_orders") {
+    res.status(409).json({
+      error: "Ce chauffeur possède un historique de commandes. Désactivez son compte au lieu de le supprimer.",
+      code: "DRIVER_HAS_ORDER_HISTORY",
+      orderCount: deletion.orderCount,
+      activeOrderCount: deletion.activeOrderCount,
+    });
+    return;
+  }
+
+  closeUserSubscriptions(deletion.userId);
 
   res.status(204).end();
 });
