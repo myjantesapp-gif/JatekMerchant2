@@ -22,3 +22,4 @@
 - [App Storage deployment access](app-storage-deployment-access.md) — media 403s can require granting the deployment identity read/write access to the managed App Storage bucket.
 - [Order commission pricing](order-commission-pricing.md) — JATEK service fee is shop-specific and applies to discounted TTC products only; delivery remains separate.
 - [Mobile refresh fan-out](mobile-refresh-fanout.md) — multi-source mobile refreshes should settle each feed independently so one optional failure does not block the screen.
+- [Native category sticky headers](native-category-sticky.md) — use an explicit overlay for sticky category bars around nested horizontal ScrollViews.
