@@ -108,6 +108,16 @@ test("restaurant catalog sections retain category labels and collect uncategoriz
   );
 });
 
+test("restaurant category navigation stays sticky and tracks visible sections", () => {
+  const code = source("app/restaurant/[id].tsx");
+
+  assert.match(code, /stickyHeaderIndices=\{categories\.length > 1 \? \[1\] : undefined\}/);
+  assert.match(code, /onScroll=\{handleMenuScroll\}/);
+  assert.match(code, /scrollEventThrottle=\{16\}/);
+  assert.match(code, /sectionOffsetsRef/);
+  assert.match(code, /setActiveCategory\(\(current\)/);
+});
+
 test("category search matches both establishment name and category", () => {
   const restaurants = [
     { id: 1, name: "Chez Lina", category: "Pâtisserie" },

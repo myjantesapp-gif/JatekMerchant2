@@ -4,6 +4,7 @@ import {
   Image, ActivityIndicator, Platform, ScrollView, Animated, Pressable, Dimensions, Modal, Linking,
   Share, TextInput,
   RefreshControl,
+  NativeScrollEvent, NativeSyntheticEvent,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Haptics from "expo-haptics";
@@ -31,6 +32,7 @@ const SIDE = 16;
 const COL_GAP = 12;
 const COL_W = (SCREEN_W - SIDE * 2 - COL_GAP) / 2;
 const HERO_H = 240;
+const CATEGORY_STICKY_HEIGHT = 54;
 const GOOGLE_KEY = (process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY ?? "").trim();
 
 function buildRestaurantMapHtml(lat: number, lng: number, name: string): string {
@@ -58,6 +60,7 @@ export default function RestaurantScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const restaurantId = parseInt(id, 10);
   const [activeCategory, setActiveCategory] = useState("Tous");
+  const [selectedCategory, setSelectedCategory] = useState("Tous");
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -68,6 +71,10 @@ export default function RestaurantScreen() {
   const { token } = useAuth();
   const [isFav, setIsFav] = useState(false);
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const menuScrollRef = useRef<ScrollView>(null);
+  const categoryScrollRef = useRef<ScrollView>(null);
+  const sectionOffsetsRef = useRef<Record<string, number>>({});
+  const categoryOffsetsRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (!token || !restaurantId) return;
@@ -123,15 +130,49 @@ export default function RestaurantScreen() {
   const filtered = useMemo(() => {
     return filterAndSortMenuItems(menuItems ?? [], {
       categories,
-      activeCategory,
+      activeCategory: selectedCategory,
       searchQuery,
       sortMode,
     });
-  }, [menuItems, activeCategory, searchQuery, categories, sortMode]);
+  }, [menuItems, selectedCategory, searchQuery, categories, sortMode]);
 
   const sections = useMemo(() => {
-    return groupMenuSections(categories, filtered, activeCategory);
-  }, [activeCategory, categories, filtered]);
+    return groupMenuSections(categories, filtered, selectedCategory);
+  }, [selectedCategory, categories, filtered]);
+
+  useEffect(() => {
+    sectionOffsetsRef.current = {};
+    if (selectedCategory === "Tous") setActiveCategory("Tous");
+  }, [sections, selectedCategory]);
+
+  useEffect(() => {
+    const x = categoryOffsetsRef.current[activeCategory];
+    if (x != null) {
+      categoryScrollRef.current?.scrollTo({ x: Math.max(0, x - SIDE), animated: true });
+    }
+  }, [activeCategory]);
+
+  const handleMenuScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (selectedCategory !== "Tous" || sections.length === 0) return;
+
+    const scrollY = event.nativeEvent.contentOffset.y;
+    const firstSectionY = sectionOffsetsRef.current[sections[0].id];
+    if (firstSectionY == null) return;
+
+    const sectionMarkerY = scrollY + CATEGORY_STICKY_HEIGHT + 12;
+    let nextCategory = "Tous";
+    if (scrollY >= Math.max(0, firstSectionY - CATEGORY_STICKY_HEIGHT - 12)) {
+      for (const section of sections) {
+        const sectionY = sectionOffsetsRef.current[section.id];
+        if (sectionY == null || sectionY > sectionMarkerY) break;
+        if (categories.some((category) => category.id === section.id)) {
+          nextCategory = section.id;
+        }
+      }
+    }
+
+    setActiveCategory((current) => (current === nextCategory ? current : nextCategory));
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -356,35 +397,6 @@ export default function RestaurantScreen() {
         </View>
       )}
 
-      {/* Category tabs */}
-      {categories.length > 1 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.catRow}
-        >
-            {categories.map((cat) => {
-            const active = activeCategory === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() => setActiveCategory(cat.id)}
-                style={[styles.catChip, active && { borderBottomColor: colors.primary }]}
-                activeOpacity={0.85}
-              >
-                <Text style={[
-                  styles.catText,
-                  { color: active ? colors.foreground : colors.mutedForeground },
-                  active && { fontFamily: "Inter_700Bold" },
-                ]}>
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      )}
-
       {filtered.length > 0 && (
         <View style={styles.catalogToolbar}>
           <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
@@ -424,13 +436,61 @@ export default function RestaurantScreen() {
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       <ScrollView
+        ref={menuScrollRef}
         showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={categories.length > 1 ? [1] : undefined}
+        onScroll={handleMenuScroll}
+        scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{
           paddingBottom: insets.bottom + (itemCount > 0 || isServices ? 110 : 24) + (Platform.OS === "web" ? 34 : 0),
         }}
       >
         {Header}
+        <View style={categories.length > 1 ? [styles.stickyCategoryBar, { backgroundColor: colors.background, borderBottomColor: colors.border }] : styles.emptyCategoryBar}>
+          {categories.length > 1 ? (
+            <ScrollView
+              ref={categoryScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.catRow}
+            >
+              {categories.map((cat) => {
+                const active = selectedCategory === "Tous"
+                  ? activeCategory === cat.id
+                  : selectedCategory === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onLayout={(event) => {
+                      categoryOffsetsRef.current[cat.id] = event.nativeEvent.layout.x;
+                    }}
+                    onPress={() => {
+                      setSelectedCategory(cat.id);
+                      setActiveCategory(cat.id);
+                      if (cat.id === "Tous") {
+                        menuScrollRef.current?.scrollTo({ y: 0, animated: true });
+                      }
+                    }}
+                    style={[styles.catChip, active && { borderBottomColor: colors.primary }]}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`Filtrer par ${cat.name}`}
+                  >
+                    <Text style={[
+                      styles.catText,
+                      { color: active ? colors.foreground : colors.mutedForeground },
+                      active && { fontFamily: "Inter_700Bold" },
+                    ]}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+        </View>
         {filtered.length === 0 && !mLoading && !menuError ? (
           <View style={styles.emptyWrap}>
             <Ionicons name="basket-outline" size={48} color={colors.mutedForeground} />
@@ -438,7 +498,13 @@ export default function RestaurantScreen() {
           </View>
         ) : (
           sections.map((section) => (
-            <View key={section.id} style={styles.menuSection}>
+            <View
+              key={section.id}
+              style={styles.menuSection}
+              onLayout={(event) => {
+                sectionOffsetsRef.current[section.id] = event.nativeEvent.layout.y;
+              }}
+            >
               <View style={styles.sectionTitleWrap}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{section.name}</Text>
                 <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
@@ -794,6 +860,17 @@ const styles = StyleSheet.create({
   warningText: { fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
 
   // Category tabs (underline)
+  stickyCategoryBar: {
+    height: CATEGORY_STICKY_HEIGHT,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    zIndex: 2,
+  },
+  emptyCategoryBar: { height: 0 },
   catRow: { paddingHorizontal: SIDE, paddingTop: 18, gap: 18, alignItems: "center" },
   catChip: {
     paddingVertical: 8,
