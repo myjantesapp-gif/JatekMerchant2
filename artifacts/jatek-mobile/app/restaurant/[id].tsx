@@ -33,6 +33,7 @@ const COL_GAP = 12;
 const COL_W = (SCREEN_W - SIDE * 2 - COL_GAP) / 2;
 const HERO_H = 240;
 const CATEGORY_STICKY_HEIGHT = 54;
+const CATEGORY_OVERLAY_TOP_GAP = 8;
 const GOOGLE_KEY = (process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY ?? "").trim();
 
 function buildRestaurantMapHtml(lat: number, lng: number, name: string): string {
@@ -65,7 +66,6 @@ export default function RestaurantScreen() {
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortMode, setSortMode] = useState<"recommended" | "priceAsc" | "priceDesc">("recommended");
   const [refreshing, setRefreshing] = useState(false);
   const { items: cartItems, addItem, addItemWithQty, updateQuantity, restaurantId: cartRestaurantId, itemCount } = useCart();
   const { token } = useAuth();
@@ -135,9 +135,9 @@ export default function RestaurantScreen() {
       categories,
       activeCategory: selectedCategory,
       searchQuery,
-      sortMode,
+      sortMode: "recommended",
     });
-  }, [menuItems, selectedCategory, searchQuery, categories, sortMode]);
+  }, [menuItems, selectedCategory, searchQuery, categories]);
 
   const sections = useMemo(() => {
     return groupMenuSections(categories, filtered, selectedCategory);
@@ -160,7 +160,10 @@ export default function RestaurantScreen() {
     const scrollY = event.nativeEvent.contentOffset.y;
     const categoryBarY = categoryBarOffsetRef.current;
     if (categories.length > 1 && categoryBarY != null) {
-      const nextPinned = scrollY >= Math.max(0, categoryBarY - insets.top);
+      const nextPinned = scrollY >= Math.max(
+        0,
+        categoryBarY - insets.top - CATEGORY_OVERLAY_TOP_GAP,
+      );
       setCategoryPinned((current) => (current === nextPinned ? current : nextPinned));
     }
 
@@ -211,10 +214,9 @@ export default function RestaurantScreen() {
                 onPress={() => {
                   setSelectedCategory(cat.id);
                   setActiveCategory(cat.id);
-                  if (cat.id === "Tous") {
-                    menuScrollRef.current?.scrollTo({ y: 0, animated: true });
-                  }
+                  menuScrollRef.current?.scrollTo({ y: 0, animated: true });
                 }}
+                testID={`restaurant-category-${cat.id}`}
                 style={[styles.catChip, active && { borderBottomColor: colors.primary }]}
                 activeOpacity={0.85}
                 accessibilityRole="button"
@@ -464,21 +466,6 @@ export default function RestaurantScreen() {
           <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
             {filtered.length} {filtered.length > 1 ? "articles" : "article"}
           </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortRow}>
-            {([
-              ["recommended", "Recommandés"],
-              ["priceAsc", "Prix croissant"],
-              ["priceDesc", "Prix décroissant"],
-            ] as const).map(([value, label]) => (
-              <TouchableOpacity
-                key={value}
-                onPress={() => setSortMode(value)}
-                style={[styles.sortChip, { borderColor: colors.border }, sortMode === value && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-              >
-                <Text style={[styles.sortText, { color: sortMode === value ? "#fff" : colors.mutedForeground }]}>{label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
         </View>
       )}
 
@@ -554,7 +541,7 @@ export default function RestaurantScreen() {
       {categoryPinned && categories.length > 1 && (
         <View
           pointerEvents="box-none"
-          style={[styles.categoryOverlay, { top: insets.top }]}
+          style={[styles.categoryOverlay, { top: insets.top + CATEGORY_OVERLAY_TOP_GAP }]}
         >
           {renderCategoryBar(true)}
         </View>
@@ -917,9 +904,6 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   sectionSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   catalogToolbar: { paddingTop: 12, paddingBottom: 2, gap: 6 },
-  sortRow: { paddingHorizontal: SIDE, gap: 8 },
-  sortChip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6 },
-  sortText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
   // Grid
   colWrap: { paddingHorizontal: SIDE, gap: COL_GAP },

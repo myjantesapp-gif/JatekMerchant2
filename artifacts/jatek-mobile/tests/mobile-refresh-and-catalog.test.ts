@@ -78,7 +78,7 @@ test("restaurant search and category filters work together", () => {
   );
 });
 
-test("restaurant exposes all three product sort modes and keeps recommended order", () => {
+test("catalog helper supports all sort modes and keeps recommended order", () => {
   const options = { categories, activeCategory: "Tous", searchQuery: "" };
 
   assert.deepEqual(
@@ -93,6 +93,16 @@ test("restaurant exposes all three product sort modes and keeps recommended orde
     filterAndSortMenuItems(menuItems, { ...options, sortMode: "priceDesc" }).map((item) => item.id),
     [1, 3, 4, 2],
   );
+});
+
+test("restaurant page uses recommended order without exposing sort controls", () => {
+  const code = source("app/restaurant/[id].tsx");
+
+  assert.match(code, /sortMode: "recommended"/);
+  assert.doesNotMatch(code, /Recommandés/);
+  assert.doesNotMatch(code, /Prix croissant/);
+  assert.doesNotMatch(code, /Prix décroissant/);
+  assert.doesNotMatch(code, /sortChip/);
 });
 
 test("restaurant catalog sections retain category labels and collect uncategorized products", () => {
@@ -118,6 +128,10 @@ test("restaurant category navigation stays sticky and tracks visible sections", 
   assert.match(code, /scrollEventThrottle=\{16\}/);
   assert.match(code, /sectionOffsetsRef/);
   assert.match(code, /setActiveCategory\(\(current\)/);
+  assert.match(code, /CATEGORY_OVERLAY_TOP_GAP/);
+  assert.match(code, /categoryBarY - insets\.top - CATEGORY_OVERLAY_TOP_GAP/);
+  assert.match(code, /menuScrollRef\.current\?\.scrollTo\(\{ y: 0, animated: true \}\)/);
+  assert.match(code, /testID=\{`restaurant-category-\$\{cat\.id\}`\}/);
 });
 
 test("category search matches both establishment name and category", () => {
