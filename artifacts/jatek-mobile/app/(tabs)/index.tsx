@@ -41,6 +41,8 @@ import { CartPreviewSheet } from "@/components/CartPreviewSheet";
 import { SideMenu } from "@/components/SideMenu";
 import { JatekScrollingBanner } from "@/components/JatekScrollingBanner";
 import { RefreshButton } from "@/components/RefreshButton";
+import { refreshAll } from "@/lib/mobileRefresh";
+import { rotateItems } from "@/lib/catalogUtils";
 
 function trackBannerClick(restaurantId: number) {
   try {
@@ -345,22 +347,19 @@ export default function HomeScreen() {
   // Shorts are 100% managed from the admin dashboard (Shorts CRUD).
   const shorts = useMemo(() => shortsData ?? [], [shortsData]);
   const orderedRestaurants = useMemo(() => {
-    const source = restaurants ?? [];
-    if (source.length < 2) return source;
-    const offset = rotationSeed % source.length;
-    return [...source.slice(offset), ...source.slice(0, offset)];
+    return rotateItems(restaurants ?? [], rotationSeed);
   }, [restaurants, rotationSeed]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     setRotationSeed((seed) => seed + 1);
     try {
-      await Promise.allSettled([
-        refetchRestaurants(),
-        refetchFeatured(),
-        refetchCategories(),
-        refetchAds(),
-        refetchShorts(),
+      await refreshAll([
+        refetchRestaurants,
+        refetchFeatured,
+        refetchCategories,
+        refetchAds,
+        refetchShorts,
       ]);
     } finally {
       setRefreshing(false);

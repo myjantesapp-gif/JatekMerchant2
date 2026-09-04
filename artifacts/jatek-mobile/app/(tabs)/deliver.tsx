@@ -50,6 +50,7 @@ import {
 } from "@/lib/api";
 import { PickupCodeModal } from "@/components/PickupCodeModal";
 import { formatMad } from "@/lib/money";
+import { refreshAll } from "@/lib/mobileRefresh";
 
 function haptic(type: "light" | "medium" | "success" | "warning" | "error" = "light") {
   if (Platform.OS === "web") return;
@@ -79,9 +80,14 @@ export default function DeliverScreen() {
   const [driverLoading, setDriverLoading] = useState(true);
 
   const loadMyDriver = useCallback(async () => {
-    const d = await fetchDriverMe();
-    setMyDriver(d);
-    setDriverLoading(false);
+    try {
+      const d = await fetchDriverMe();
+      setMyDriver(d);
+    } catch {
+      setMyDriver(null);
+    } finally {
+      setDriverLoading(false);
+    }
   }, []);
 
   useEffect(() => { loadMyDriver(); }, [loadMyDriver]);
@@ -360,8 +366,11 @@ export default function DeliverScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     haptic("light");
-    await Promise.all([loadAvailable(), refetchMyOrders(), loadMyDriver()]);
-    setRefreshing(false);
+    try {
+      await refreshAll([loadAvailable, refetchMyOrders, loadMyDriver]);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const openNavigation = (address: string) => {

@@ -19,6 +19,7 @@ import { WaveEdge } from "@/components/WaveEdge";
 import { LinearGradient } from "expo-linear-gradient";
 import { ACTIVE_ORDER_STATUSES } from "@/lib/orderStatus";
 import { RefreshButton } from "@/components/RefreshButton";
+import { sortOrdersByCreatedAt } from "@/lib/catalogUtils";
 
 const PINK = "#E91E8C";
 const PINK_LIGHT = "#FF5FAD";
@@ -52,9 +53,7 @@ export default function OrdersScreen() {
     }
   );
 
-  const sorted = [...(orders ?? [])].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const sorted = sortOrdersByCreatedAt(orders ?? [], "desc");
   const filtered = sorted.filter((o) => {
     if (filter === "all") return true;
     if (filter === "active") return ACTIVE_ORDER_STATUSES.has(o.status ?? "");

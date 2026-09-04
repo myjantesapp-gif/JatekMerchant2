@@ -33,6 +33,8 @@ import { useSSE } from "@/hooks/useSSE";
 import { authenticatedFetch, getApiBase } from "@/lib/api";
 import { formatMad } from "@/lib/money";
 import { RefreshButton } from "@/components/RefreshButton";
+import { refreshAll } from "@/lib/mobileRefresh";
+import { sortOrdersByCreatedAt } from "@/lib/catalogUtils";
 
 function haptic(type: "light" | "medium" | "success" | "warning" | "error" = "light") {
   if (Platform.OS === "web") return;
@@ -447,8 +449,11 @@ export default function ManageScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refetchOrders(), refetchRestaurants()]);
-    setRefreshing(false);
+    try {
+      await refreshAll([refetchOrders, refetchRestaurants]);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const updateOrderStep = useUpdateOrderStep();
@@ -611,8 +616,7 @@ export default function ManageScreen() {
                 <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Tirez vers le bas pour actualiser.</Text>
               </View>
             ) : (
-              activeOrders
-                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+              sortOrdersByCreatedAt(activeOrders, "asc")
                 .map(order => (
                   <OrderRow
                     key={order.id}

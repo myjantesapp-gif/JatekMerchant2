@@ -22,6 +22,8 @@ import { getApiBaseSafe } from "@/lib/apiBase";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { formatMad } from "@/lib/money";
 import { RefreshButton } from "@/components/RefreshButton";
+import { refreshAll } from "@/lib/mobileRefresh";
+import { filterRestaurantsBySearch } from "@/lib/catalogUtils";
 
 function trackBannerClick(restaurantId: number) {
   try {
@@ -274,12 +276,7 @@ export default function CategoryScreen() {
   const isLoading = categoriesLoading || (categoryResolved && restaurantsLoading);
 
   const filtered = useMemo(() => {
-    if (!restaurants) return [];
-    if (!search.trim()) return restaurants;
-    const q = search.toLowerCase();
-    return restaurants.filter((r: Restaurant) =>
-      r.name.toLowerCase().includes(q) || (r.category ?? "").toLowerCase().includes(q),
-    );
+    return filterRestaurantsBySearch(restaurants ?? [], search);
   }, [restaurants, search]);
 
   // VIP / promo partners — featured restaurants matching current category's businessType
@@ -296,7 +293,7 @@ export default function CategoryScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.allSettled([refetchCategories(), refetchRestaurants(), refetchFeatured()]);
+      await refreshAll([refetchCategories, refetchRestaurants, refetchFeatured]);
     } finally {
       setRefreshing(false);
     }

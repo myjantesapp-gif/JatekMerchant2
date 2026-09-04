@@ -23,6 +23,8 @@ import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { apiFetch } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshButton } from "@/components/RefreshButton";
+import { refreshAll } from "@/lib/mobileRefresh";
+import { filterAndSortMenuItems, groupMenuSections } from "@/lib/catalogUtils";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const SIDE = 16;
@@ -119,48 +121,26 @@ export default function RestaurantScreen() {
     ];
   }, [menuItems, productCategories]);
   const filtered = useMemo(() => {
-    const matching = (menuItems ?? []).filter((m: any) => {
-      const selectedCategory = categories.find((category) => category.id === activeCategory);
-      const matchesCategory = activeCategory === "Tous"
-        || (selectedCategory && (
-          String(m.menuItemCategoryId ?? "") === selectedCategory.id
-          || (!m.menuItemCategoryId && m.category === selectedCategory.name)
-        ));
-      const q = searchQuery.trim().toLowerCase();
-      return matchesCategory && (!q || `${m.name ?? ""} ${m.description ?? ""}`.toLowerCase().includes(q));
+    return filterAndSortMenuItems(menuItems ?? [], {
+      categories,
+      activeCategory,
+      searchQuery,
+      sortMode,
     });
-    if (sortMode === "priceAsc") return [...matching].sort((a: any, b: any) => Number(a.price) - Number(b.price));
-    if (sortMode === "priceDesc") return [...matching].sort((a: any, b: any) => Number(b.price) - Number(a.price));
-    return matching;
   }, [menuItems, activeCategory, searchQuery, categories, sortMode]);
 
   const sections = useMemo(() => {
-    const visibleCategories = activeCategory === "Tous"
-      ? categories.filter((category) => category.id !== "Tous")
-      : categories.filter((category) => category.id === activeCategory);
-    const grouped = visibleCategories
-      .map((category) => ({
-        ...category,
-        items: filtered.filter((item: any) =>
-          String(item.menuItemCategoryId ?? "") === category.id
-          || (!item.menuItemCategoryId && item.category === category.name),
-        ),
-      }))
-      .filter((section) => section.items.length > 0);
-    const assignedIds = new Set(grouped.flatMap((section) => section.items.map((item: any) => item.id)));
-    const uncategorized = filtered.filter((item: any) => !assignedIds.has(item.id));
-    if (uncategorized.length > 0) grouped.push({ id: "other", name: "Autres", items: uncategorized });
-    return activeCategory === "Tous" ? grouped : grouped.length > 0 ? grouped : [{ id: activeCategory, name: activeCategory, items: filtered }];
+    return groupMenuSections(categories, filtered, activeCategory);
   }, [activeCategory, categories, filtered]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.allSettled([
-        refetchRestaurant(),
-        refetchRestaurantHeader(),
-        refetchMenu(),
-        refetchProductCategories(),
+      await refreshAll([
+        refetchRestaurant,
+        refetchRestaurantHeader,
+        refetchMenu,
+        refetchProductCategories,
       ]);
     } finally {
       setRefreshing(false);
