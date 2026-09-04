@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
-  StyleSheet, Text, View, FlatList, TouchableOpacity,
+  StyleSheet, Text, View, TouchableOpacity,
   Image, ActivityIndicator, Platform, ScrollView, Animated, Pressable, Dimensions, Modal, Linking,
   Share, TextInput,
+  RefreshControl,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Haptics from "expo-haptics";
@@ -21,6 +22,7 @@ import { useT } from "@/contexts/LanguageContext";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { apiFetch } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { RefreshButton } from "@/components/RefreshButton";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const SIDE = 16;
@@ -58,6 +60,8 @@ export default function RestaurantScreen() {
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<"recommended" | "priceAsc" | "priceDesc">("recommended");
+  const [refreshing, setRefreshing] = useState(false);
   const { items: cartItems, addItem, addItemWithQty, updateQuantity, restaurantId: cartRestaurantId, itemCount } = useCart();
   const { token } = useAuth();
   const [isFav, setIsFav] = useState(false);
@@ -84,14 +88,14 @@ export default function RestaurantScreen() {
     isError: restaurantError,
     refetch: refetchRestaurant,
   } = useGetRestaurant(restaurantId);
-  const { data: restaurantHeader } = useGetRestaurantHeader(restaurantId);
+  const { data: restaurantHeader, refetch: refetchRestaurantHeader } = useGetRestaurantHeader(restaurantId);
   const {
     data: menuItems,
     isLoading: mLoading,
     isError: menuError,
     refetch: refetchMenu,
   } = useListMenuItems(restaurantId);
-  const { data: productCategories } = useQuery<Array<{ id: number; name: string; sortOrder: number }>>({
+  const { data: productCategories, refetch: refetchProductCategories } = useQuery<Array<{ id: number; name: string; sortOrder: number }>>({
     queryKey: ["/api/menu-categories", restaurantId],
     queryFn: () => apiFetch(`/api/menu-categories?restaurantId=${restaurantId}`),
     enabled: Number.isInteger(restaurantId) && restaurantId > 0,
@@ -114,8 +118,8 @@ export default function RestaurantScreen() {
         .map((name) => ({ id: name, name })),
     ];
   }, [menuItems, productCategories]);
-  const filtered = useMemo(
-    () => (menuItems ?? []).filter((m: any) => {
+  const filtered = useMemo(() => {
+    const matching = (menuItems ?? []).filter((m: any) => {
       const selectedCategory = categories.find((category) => category.id === activeCategory);
       const matchesCategory = activeCategory === "Tous"
         || (selectedCategory && (
@@ -124,9 +128,44 @@ export default function RestaurantScreen() {
         ));
       const q = searchQuery.trim().toLowerCase();
       return matchesCategory && (!q || `${m.name ?? ""} ${m.description ?? ""}`.toLowerCase().includes(q));
-    }),
-    [menuItems, activeCategory, searchQuery, categories]
-  );
+    });
+    if (sortMode === "priceAsc") return [...matching].sort((a: any, b: any) => Number(a.price) - Number(b.price));
+    if (sortMode === "priceDesc") return [...matching].sort((a: any, b: any) => Number(b.price) - Number(a.price));
+    return matching;
+  }, [menuItems, activeCategory, searchQuery, categories, sortMode]);
+
+  const sections = useMemo(() => {
+    const visibleCategories = activeCategory === "Tous"
+      ? categories.filter((category) => category.id !== "Tous")
+      : categories.filter((category) => category.id === activeCategory);
+    const grouped = visibleCategories
+      .map((category) => ({
+        ...category,
+        items: filtered.filter((item: any) =>
+          String(item.menuItemCategoryId ?? "") === category.id
+          || (!item.menuItemCategoryId && item.category === category.name),
+        ),
+      }))
+      .filter((section) => section.items.length > 0);
+    const assignedIds = new Set(grouped.flatMap((section) => section.items.map((item: any) => item.id)));
+    const uncategorized = filtered.filter((item: any) => !assignedIds.has(item.id));
+    if (uncategorized.length > 0) grouped.push({ id: "other", name: "Autres", items: uncategorized });
+    return activeCategory === "Tous" ? grouped : grouped.length > 0 ? grouped : [{ id: activeCategory, name: activeCategory, items: filtered }];
+  }, [activeCategory, categories, filtered]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.allSettled([
+        refetchRestaurant(),
+        refetchRestaurantHeader(),
+        refetchMenu(),
+        refetchProductCategories(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // The grid line has no size/extra selection. Do not sum variant lines here:
   // that makes a card appear to represent a different quantity than the
@@ -187,6 +226,7 @@ export default function RestaurantScreen() {
             <Ionicons name="arrow-back" size={20} color={colors.foreground} />
           </TouchableOpacity>
           <View style={styles.heroTopRight}>
+            <RefreshButton onPress={onRefresh} refreshing={refreshing} color={colors.foreground} accessibilityLabel="Actualiser le restaurant" />
             <TouchableOpacity onPress={toggleFav} style={styles.roundBtn} activeOpacity={0.85}>
               <Ionicons name={isFav ? "heart" : "heart-outline"} size={20} color={isFav ? colors.primary : colors.foreground} />
             </TouchableOpacity>
@@ -365,17 +405,26 @@ export default function RestaurantScreen() {
         </ScrollView>
       )}
 
-      {/* Section title */}
       {filtered.length > 0 && (
-        <View style={styles.sectionTitleWrap}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            {activeCategory === "Tous"
-              ? "Nos produits"
-              : categories.find((category) => category.id === activeCategory)?.name ?? activeCategory}
-          </Text>
+        <View style={styles.catalogToolbar}>
           <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
             {filtered.length} {filtered.length > 1 ? "articles" : "article"}
           </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortRow}>
+            {([
+              ["recommended", "Recommandés"],
+              ["priceAsc", "Prix croissant"],
+              ["priceDesc", "Prix décroissant"],
+            ] as const).map(([value, label]) => (
+              <TouchableOpacity
+                key={value}
+                onPress={() => setSortMode(value)}
+                style={[styles.sortChip, { borderColor: colors.border }, sortMode === value && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              >
+                <Text style={[styles.sortText, { color: sortMode === value ? "#fff" : colors.mutedForeground }]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       )}
 
@@ -394,39 +443,49 @@ export default function RestaurantScreen() {
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => String(item.id)}
-        numColumns={2}
+      <ScrollView
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{
           paddingBottom: insets.bottom + (itemCount > 0 || isServices ? 110 : 24) + (Platform.OS === "web" ? 34 : 0),
         }}
-        columnWrapperStyle={styles.colWrap}
-        ListHeaderComponent={Header}
-        renderItem={({ item }) => (
-          <MenuItemGridCard
-            item={item}
-            quantity={getQty(item.id)}
-            width={COL_W}
-            restaurantOpen={isOpen}
-            onPressCard={() => setSelectedItem(item)}
-            onAdd={() => {
-              if (!isOpen) return;
-              const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null; commissionRate?: number | null };
-              addItem(restaurantId, restaurant.name, { cartLineId: String(item.id), menuItemId: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl }, { deliveryFee: pricing.deliveryFee, freeDeliveryThreshold: pricing.freeDeliveryThreshold, commissionRate: pricing.commissionRate });
-            }}
-          />
-        )}
-         ListEmptyComponent={!mLoading && !menuError ? (
+      >
+        {Header}
+        {filtered.length === 0 && !mLoading && !menuError ? (
           <View style={styles.emptyWrap}>
             <Ionicons name="basket-outline" size={48} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTxt, { color: colors.mutedForeground }]}>
-              Aucun produit pour le moment
-            </Text>
+            <Text style={[styles.emptyTxt, { color: colors.mutedForeground }]}>Aucun produit pour le moment</Text>
           </View>
-        ) : null}
-      />
+        ) : (
+          sections.map((section) => (
+            <View key={section.id} style={styles.menuSection}>
+              <View style={styles.sectionTitleWrap}>
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{section.name}</Text>
+                <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+                  {section.items.length} {section.items.length > 1 ? "articles" : "article"}
+                </Text>
+              </View>
+              <View style={styles.menuGrid}>
+                {section.items.map((item: any) => (
+                  <MenuItemGridCard
+                    key={item.id}
+                    item={item}
+                    quantity={getQty(item.id)}
+                    width={COL_W}
+                    restaurantOpen={isOpen}
+                    onPressCard={() => setSelectedItem(item)}
+                    onAdd={() => {
+                      if (!isOpen) return;
+                      const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null; commissionRate?: number | null };
+                      addItem(restaurantId, restaurant.name, { cartLineId: String(item.id), menuItemId: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl }, { deliveryFee: pricing.deliveryFee, freeDeliveryThreshold: pricing.freeDeliveryThreshold, commissionRate: pricing.commissionRate });
+                    }}
+                  />
+                ))}
+              </View>
+            </View>
+          ))
+        )}
+      </ScrollView>
 
       {/* Quote CTA — service merchants */}
       {isServices && (
@@ -766,9 +825,15 @@ const styles = StyleSheet.create({
   sectionTitleWrap: { paddingHorizontal: SIDE, paddingTop: 16, paddingBottom: 6 },
   sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   sectionSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  catalogToolbar: { paddingTop: 12, paddingBottom: 2, gap: 6 },
+  sortRow: { paddingHorizontal: SIDE, gap: 8 },
+  sortChip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6 },
+  sortText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
   // Grid
   colWrap: { paddingHorizontal: SIDE, gap: COL_GAP },
+  menuSection: { marginTop: 2 },
+  menuGrid: { flexDirection: "row", flexWrap: "wrap", gap: COL_GAP, paddingHorizontal: SIDE },
 
   emptyWrap: { alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 10 },
   emptyTxt: { fontSize: 14, fontFamily: "Inter_500Medium" },

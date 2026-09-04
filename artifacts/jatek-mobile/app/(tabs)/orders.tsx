@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Platform,
   TouchableOpacity,
+  RefreshControl,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WaveEdge } from "@/components/WaveEdge";
 import { LinearGradient } from "expo-linear-gradient";
 import { ACTIVE_ORDER_STATUSES } from "@/lib/orderStatus";
+import { RefreshButton } from "@/components/RefreshButton";
 
 const PINK = "#E91E8C";
 const PINK_LIGHT = "#FF5FAD";
@@ -36,6 +38,7 @@ export default function OrdersScreen() {
   const { user, token } = useAuth();
   const webTopPad = Platform.OS === "web" ? 67 : 0;
   const [filter, setFilter] = useState<Filter>("all");
+  const [refreshing, setRefreshing] = useState(false);
 
   const ordersParams = user ? { userId: user.id } : undefined;
   const { data: orders, isLoading, isError, refetch } = useListOrders(
@@ -58,6 +61,11 @@ export default function OrdersScreen() {
     return !ACTIVE_ORDER_STATUSES.has(o.status ?? "");
   });
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
+
   return (
     <View style={styles.flex}>
       {/* ── Gradient header — style Talabat ── */}
@@ -69,7 +77,10 @@ export default function OrdersScreen() {
           end={{ x: 0, y: 1 }}
           style={[styles.headerBg, { paddingTop: insets.top + 14 + webTopPad }]}
         >
-          <Text style={styles.headerTitle}>Mes commandes</Text>
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.headerTitle}>Mes commandes</Text>
+            <RefreshButton onPress={onRefresh} refreshing={refreshing} color="#fff" accessibilityLabel="Actualiser les commandes" />
+          </View>
 
           {/* Filter pills */}
           <View style={styles.filterRow}>
@@ -144,8 +155,8 @@ export default function OrdersScreen() {
             { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 90) },
           ]}
           showsVerticalScrollIndicator={false}
-          onRefresh={refetch}
-          refreshing={isLoading}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
           ListEmptyComponent={
             <View style={styles.center}>
               <Ionicons name="bag-outline" size={52} color="#D1D5DB" />
@@ -188,6 +199,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginBottom: 12,
   },
+  headerTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
 
   // Filters
   filterRow: { flexDirection: "row", gap: 8, flexWrap: "nowrap" },

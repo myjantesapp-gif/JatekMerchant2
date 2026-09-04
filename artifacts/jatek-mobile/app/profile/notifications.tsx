@@ -22,6 +22,7 @@ import {
 import { useSSE } from "@/hooks/useSSE";
 import { getApiBase } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { RefreshButton } from "@/components/RefreshButton";
 
 const PREFS_ROWS: Array<{ key: keyof NotifPrefs; labelKey: TKey; descKey: TKey }> = [
   { key: "pushOrders",       labelKey: "notif_pref_orders",    descKey: "notif_pref_orders_desc" },
@@ -125,7 +126,7 @@ function NotificationItem({
   );
 }
 
-function CenterTab() {
+function CenterTab({ refreshSignal = 0 }: { refreshSignal?: number }) {
   const colors = useColors();
   const t = useT();
   const { user } = useAuth();
@@ -152,6 +153,10 @@ function CenterTab() {
   useFocusEffect(useCallback(() => {
     void load();
   }, [load]));
+
+  useEffect(() => {
+    if (refreshSignal > 0) void load(true);
+  }, [refreshSignal, load]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
@@ -317,9 +322,13 @@ export default function NotificationsScreen() {
   const colors = useColors();
   const t = useT();
   const [tab, setTab] = useState<"center" | "prefs">("center");
+  const [refreshSignal, setRefreshSignal] = useState(0);
 
   return (
-    <ProfileScreenLayout title={t("notif_center_title")}>
+    <ProfileScreenLayout
+      title={t("notif_center_title")}
+      headerRight={tab === "center" ? <RefreshButton onPress={() => setRefreshSignal((value) => value + 1)} color={colors.primary} accessibilityLabel="Actualiser les notifications" /> : undefined}
+    >
       {/* Tab bar */}
       <View style={[styles.tabBar, { borderBottomColor: colors.border }]}>
         {(["center", "prefs"] as const).map((key) => {
@@ -340,7 +349,7 @@ export default function NotificationsScreen() {
       </View>
 
       <View style={{ flex: 1 }}>
-        {tab === "center" ? <CenterTab /> : <PrefsTab />}
+        {tab === "center" ? <CenterTab refreshSignal={refreshSignal} /> : <PrefsTab />}
       </View>
     </ProfileScreenLayout>
   );

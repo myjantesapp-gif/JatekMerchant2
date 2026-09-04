@@ -18,6 +18,7 @@ import type { Restaurant } from "@workspace/api-client-react";
 import { listFavorites, removeFavorite } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { RefreshButton } from "@/components/RefreshButton";
 
 const STAR_YELLOW = "#FFC107";
 const TURQUOISE = "#22D3EE";
@@ -160,7 +161,11 @@ export default function FavoritesScreen() {
   const isReady = !loading;
 
   return (
-    <ProfileScreenLayout title="Mes favoris" scroll={false}>
+    <ProfileScreenLayout
+      title="Mes favoris"
+      scroll={false}
+      headerRight={<RefreshButton onPress={onRefresh} refreshing={refreshing} color={colors.primary} accessibilityLabel="Actualiser les favoris" />}
+    >
       {!token ? (
         <View style={styles.center}>
           <Ionicons name="lock-closed-outline" size={56} color={colors.mutedForeground} />

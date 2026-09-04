@@ -11,6 +11,7 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
+  RefreshControl,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,6 +21,7 @@ import { useListRestaurants, useGetFeaturedRestaurants, useListCategories, type 
 import { getApiBaseSafe } from "@/lib/apiBase";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { formatMad } from "@/lib/money";
+import { RefreshButton } from "@/components/RefreshButton";
 
 function trackBannerClick(restaurantId: number) {
   try {
@@ -204,6 +206,7 @@ export default function CategoryScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
   const [activeSubId, setActiveSubId] = useState("all");
+  const [refreshing, setRefreshing] = useState(false);
 
   // Reset subcategory selection when navigating between categories.
   React.useEffect(() => {
@@ -212,7 +215,7 @@ export default function CategoryScreen() {
 
   // Categories are 100% managed from the admin dashboard (ma.jatek.app/admin).
   // The API returns parents with their subCategories nested.
-  const { data: apiCategories, isLoading: categoriesLoading } = useListCategories();
+  const { data: apiCategories, isLoading: categoriesLoading, refetch: refetchCategories } = useListCategories();
   const parent = useMemo(
     () =>
       (apiCategories ?? []).find(
@@ -260,7 +263,7 @@ export default function CategoryScreen() {
   // Only query restaurants once the backend category is resolved — never with
   // a guessed/fallback business type.
   const categoryResolved = !!parent;
-  const { data: restaurants, isLoading: restaurantsLoading } = useListRestaurants(
+  const { data: restaurants, isLoading: restaurantsLoading, refetch: refetchRestaurants } = useListRestaurants(
     {
       businessType: config.businessType,
       category: apiCategory,
@@ -280,7 +283,7 @@ export default function CategoryScreen() {
   }, [restaurants, search]);
 
   // VIP / promo partners — featured restaurants matching current category's businessType
-  const { data: featuredAll } = useGetFeaturedRestaurants();
+  const { data: featuredAll, refetch: refetchFeatured } = useGetFeaturedRestaurants();
   const vipPartners = useMemo(() => {
     const all = featuredAll ?? [];
     const matching = all.filter((r) => r.businessType === config.businessType);
@@ -289,6 +292,15 @@ export default function CategoryScreen() {
 
   const goRestaurant = (id: number) =>
     router.push({ pathname: "/restaurant/[id]", params: { id: String(id) } });
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.allSettled([refetchCategories(), refetchRestaurants(), refetchFeatured()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <View style={[styles.root]}>
@@ -303,6 +315,7 @@ export default function CategoryScreen() {
             <Ionicons name="arrow-back" size={22} color={TEXT_DARK} />
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
+          <RefreshButton onPress={onRefresh} refreshing={refreshing} color={TEXT_DARK} accessibilityLabel="Actualiser la catégorie" />
         </View>
         <View style={styles.bannerTitleWrap}>
           <Text style={[styles.bannerTitle, { color: TEXT_DARK }]}>{config.label}</Text>
@@ -319,6 +332,7 @@ export default function CategoryScreen() {
         contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 24 }]}
         columnWrapperStyle={{ gap: 12 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={config.color} />}
         ListHeaderComponent={
           <>
             {/* ─── Search bar ─── */}

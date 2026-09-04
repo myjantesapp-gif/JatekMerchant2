@@ -5,6 +5,7 @@ import ProfileScreenLayout from "@/components/ProfileScreenLayout";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { listReviews, deleteReview } from "@/lib/api";
+import { RefreshButton } from "@/components/RefreshButton";
 
 function Stars({ n, color }: { n: number; color: string }) {
   return (
@@ -51,7 +52,11 @@ export default function ReviewsScreen() {
   };
 
   return (
-    <ProfileScreenLayout title="Mes avis" scroll={false}>
+    <ProfileScreenLayout
+      title="Mes avis"
+      scroll={false}
+      headerRight={<RefreshButton onPress={() => { setRefreshing(true); load(); }} refreshing={refreshing} color={colors.primary} accessibilityLabel="Actualiser les avis" />}
+    >
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
       ) : items.length === 0 ? (

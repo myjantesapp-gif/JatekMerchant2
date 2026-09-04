@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ProfileScreenLayout from "@/components/ProfileScreenLayout";
 import { useColors } from "@/hooks/useColors";
 import { listMyOrders } from "@/lib/api";
+import { RefreshButton } from "@/components/RefreshButton";
 
 export default function ReorderScreen() {
   const colors = useColors();
@@ -32,7 +33,11 @@ export default function ReorderScreen() {
   };
 
   return (
-    <ProfileScreenLayout title="Recommander" scroll={false}>
+    <ProfileScreenLayout
+      title="Recommander"
+      scroll={false}
+      headerRight={<RefreshButton onPress={() => { setRefreshing(true); load(); }} refreshing={refreshing} color={colors.primary} accessibilityLabel="Actualiser les commandes" />}
+    >
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
       ) : orders.length === 0 ? (

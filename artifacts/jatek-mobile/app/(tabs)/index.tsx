@@ -9,6 +9,7 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
+  RefreshControl,
   Platform,
   Dimensions,
   Linking,
@@ -36,10 +37,10 @@ import { formatMad } from "@/lib/money";
 import { WaveEdge } from "@/components/WaveEdge";
 import { ShortPlayerModal } from "@/components/ShortPlayerModal";
 import { AddressQuickPicker } from "@/components/AddressQuickPicker";
-import { JatekOffersPanel } from "@/components/JatekOffersPanel";
 import { CartPreviewSheet } from "@/components/CartPreviewSheet";
 import { SideMenu } from "@/components/SideMenu";
 import { JatekScrollingBanner } from "@/components/JatekScrollingBanner";
+import { RefreshButton } from "@/components/RefreshButton";
 
 function trackBannerClick(restaurantId: number) {
   try {
@@ -76,24 +77,6 @@ const GRID_CARD_W = (SCREEN_W - GRID_SIDE * 2 - GRID_GAP) / 2;
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────────────────────────────────────
-
-function PromoBanner({ ad, onPress }: { ad: Ad; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [s.promoBanner, pressed && { opacity: 0.9 }]}>
-      <View style={s.promoBannerLeft}>
-        <View style={s.promoTagBadge}>
-          <Text style={s.promoTagTxt}>{ad.badge || "CODE PROMO"}</Text>
-        </View>
-        <Text style={s.promoMinusClean} numberOfLines={1}>{ad.title}</Text>
-        {!!ad.subtitle && <Text style={s.promoCodeClean} numberOfLines={1}>{ad.subtitle}</Text>}
-      </View>
-      <View style={s.promoBrandWrap}>
-        <Text style={s.promoBrandClean} numberOfLines={1}>Jatek</Text>
-        <Ionicons name="arrow-forward-circle" size={28} color={PINK} />
-      </View>
-    </Pressable>
-  );
-}
 
 function LoadRetry({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
@@ -292,6 +275,8 @@ export default function HomeScreen() {
   const [initialShort, setInitialShort] = useState(0);
   const [cartSheetVisible, setCartSheetVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [rotationSeed, setRotationSeed] = useState(() => Math.floor(Date.now() / 86_400_000));
 
   const params = useMemo<ListRestaurantsParams>(() => {
     const p: ListRestaurantsParams = { businessType: activeBusinessType };
@@ -307,9 +292,9 @@ export default function HomeScreen() {
     isError: restaurantsError,
     refetch: refetchRestaurants,
   } = useListRestaurants(params);
-  const { data: featuredPartners } = useGetFeaturedRestaurants();
-  const { data: apiCategories, isLoading: categoriesLoading } = useListCategories();
-  const { data: ads } = useAds();
+  const { data: featuredPartners, refetch: refetchFeatured } = useGetFeaturedRestaurants();
+  const { data: apiCategories, isLoading: categoriesLoading, refetch: refetchCategories } = useListCategories();
+  const { data: ads, refetch: refetchAds } = useAds();
   const {
     data: shortsData,
     isLoading: shortsLoading,
@@ -319,8 +304,6 @@ export default function HomeScreen() {
 
   // Ads managed from the admin dashboard (Bannières page).
   const vipAds = useMemo(() => (ads ?? []).filter((a) => a.type === "vip_banner" || a.type === "hero"), [ads]);
-  const promoAds = useMemo(() => (ads ?? []).filter((a) => a.type === "promo_banner"), [ads]);
-
   // Ad taps: internal path → router.push, absolute URL → system browser.
   const openAdLink = (ad: Ad) => {
     const url = ad.linkUrl?.trim();
@@ -361,6 +344,28 @@ export default function HomeScreen() {
   }, [apiCategories]);
   // Shorts are 100% managed from the admin dashboard (Shorts CRUD).
   const shorts = useMemo(() => shortsData ?? [], [shortsData]);
+  const orderedRestaurants = useMemo(() => {
+    const source = restaurants ?? [];
+    if (source.length < 2) return source;
+    const offset = rotationSeed % source.length;
+    return [...source.slice(offset), ...source.slice(0, offset)];
+  }, [restaurants, rotationSeed]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    setRotationSeed((seed) => seed + 1);
+    try {
+      await Promise.allSettled([
+        refetchRestaurants(),
+        refetchFeatured(),
+        refetchCategories(),
+        refetchAds(),
+        refetchShorts(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const goRestaurant = (id: number) =>
     router.push({ pathname: "/restaurant/[id]", params: { id: String(id) } });
@@ -383,8 +388,7 @@ export default function HomeScreen() {
   // Tab bar leaves ~84pt of empty space at the bottom — pad accordingly.
   // Real rendered tab bar height — keeps the floating bar glued to its top edge
   // on every device (handles bottom safe-area / home indicator automatically).
-  const tabBarHeight = useBottomTabBarHeight();
-  const tabBarPad = tabBarHeight;
+  const tabBarPad = useBottomTabBarHeight();
 
   return (
     <View style={s.root}>
@@ -393,6 +397,7 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: tabBarPad + 72 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PINK} />}
       >
         {/* ─── Pink header with wavy bottom edge ─── */}
         <View style={s.headerWrap}>
@@ -419,6 +424,7 @@ export default function HomeScreen() {
 
               {/* right actions */}
               <View style={s.headerActions}>
+                <RefreshButton onPress={onRefresh} refreshing={refreshing} color="#fff" accessibilityLabel="Actualiser l'accueil" />
                 <TouchableOpacity
                   activeOpacity={0.85}
                   style={s.iconBtn}
@@ -584,15 +590,6 @@ export default function HomeScreen() {
           )}
         </Animated.ScrollView>
 
-        {/* ─── Promo banner (admin-managed, type=promo_banner) ─── */}
-        {promoAds.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(380).duration(500).springify()} style={{ paddingHorizontal: 16, marginTop: 18 }}>
-            <PromoBanner
-              ad={promoAds[0]}
-              onPress={() => promoAds[0].linkUrl ? openAdLink(promoAds[0]) : router.push("/profile/coupons" as any)}
-            />
-          </Animated.View>
-        )}
         <JatekScrollingBanner />
 
         {/* ─── Découvrir en vidéo ─── */}
@@ -621,10 +618,6 @@ export default function HomeScreen() {
                 {/* play icon centered */}
                 <View style={s.videoPlayWrap}>
                   <Ionicons name="play-circle" size={30} color="rgba(255,255,255,0.92)" />
-                </View>
-                {/* title pinned to bottom */}
-                <View style={s.videoBottom}>
-                  <Text style={s.videoTitle} numberOfLines={2}>{short.title}</Text>
                 </View>
               </Pressable>
             ))}
@@ -656,7 +649,7 @@ export default function HomeScreen() {
             nestedScrollEnabled
             contentContainerStyle={s.horizontalRow}
           >
-            {(restaurants ?? []).slice(0, 6).map((r, i) => (
+            {orderedRestaurants.slice(0, 6).map((r, i) => (
               <RestaurantTile
                 key={r.id}
                 restaurant={r}
@@ -672,16 +665,6 @@ export default function HomeScreen() {
           </Animated.ScrollView>
         )}
 
-        {/* ─── Big promotional banner (lower position — second admin ad if any) ─── */}
-        {promoAds.length > 1 && (
-          <Animated.View entering={FadeInDown.delay(680).duration(500).springify()} style={{ paddingHorizontal: 16, marginTop: 18 }}>
-            <PromoBanner
-              ad={promoAds[1]}
-              onPress={() => promoAds[1].linkUrl ? openAdLink(promoAds[1]) : router.push("/profile/coupons" as any)}
-            />
-          </Animated.View>
-        )}
-
         {/* ─── Tous les Restaurants (2-column grid) ─── */}
         <Animated.View entering={FadeInDown.delay(740).duration(550).springify()} style={s.gridSection}>
           <Text style={s.gridSectionTitle}>{currentLabel}</Text>
@@ -691,7 +674,7 @@ export default function HomeScreen() {
             <LoadRetry message="Impossible de charger les restaurants." onRetry={() => refetchRestaurants()} />
           ) : (
             <View style={s.grid}>
-              {(restaurants ?? []).map((r, i) => (
+              {orderedRestaurants.map((r, i) => (
                 <Animated.View
                   key={r.id}
                   entering={FadeInDown.delay(800 + i * 60).duration(420).springify()}
@@ -710,7 +693,6 @@ export default function HomeScreen() {
         </Animated.View>
       </ScrollView>
       <AddressQuickPicker visible={addressPickerOpen} onClose={() => setAddressPickerOpen(false)} />
-      <JatekOffersPanel tabBarHeight={tabBarHeight} />
       <CartPreviewSheet visible={cartSheetVisible} onClose={() => setCartSheetVisible(false)} />
       <ShortPlayerModal
         visible={shortsVisible}

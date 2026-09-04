@@ -32,6 +32,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSSE } from "@/hooks/useSSE";
 import { authenticatedFetch, getApiBase } from "@/lib/api";
 import { formatMad } from "@/lib/money";
+import { RefreshButton } from "@/components/RefreshButton";
 
 function haptic(type: "light" | "medium" | "success" | "warning" | "error" = "light") {
   if (Platform.OS === "web") return;
@@ -517,6 +518,7 @@ export default function ManageScreen() {
           >
             <Ionicons name="settings-outline" size={20} color={colors.foreground} />
           </TouchableOpacity>
+          <RefreshButton onPress={onRefresh} refreshing={refreshing} color={colors.foreground} accessibilityLabel="Actualiser l'espace restaurant" />
         </View>
 
         {/* Section tabs */}

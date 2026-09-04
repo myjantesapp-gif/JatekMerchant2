@@ -238,7 +238,7 @@ function ShortFrame({
         <ShortPoster short={short} />
       )}
       <LinearGradient
-        colors={["rgba(0,0,0,0.45)", "transparent", "rgba(0,0,0,0.85)"]}
+        colors={["rgba(0,0,0,0.35)", "transparent", "rgba(0,0,0,0.35)"]}
         locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -289,29 +289,18 @@ function ShortFrame({
         </Pressable>
       </View>
 
-      {/* Bottom info */}
-      <View style={[styles.bottomInfo, { bottom: bottomInset + 24 }]}>
-        <View style={styles.handleRow}>
-          <View style={styles.handleAvatar}>
-            <Text style={styles.handleAvatarText}>{(short.restaurantName ?? short.title ?? "J").charAt(0).toUpperCase()}</Text>
-          </View>
-          <Text style={styles.handleText}>@{(short.restaurantName ?? "jatek").toLowerCase().replace(/\s+/g, "")}</Text>
-          <View style={styles.followPill}>
-            <Text style={styles.followText}>Suivre</Text>
-          </View>
-        </View>
-        <Text style={styles.caption} numberOfLines={2}>
-          {`Découvre ${short.title} 🍽️ — saveurs uniques, livraison rapide !`}
-        </Text>
-
-        {hasRestaurant && (
-          <Pressable onPress={onOpen} style={styles.openCta}>
-            <Ionicons name="restaurant" size={16} color="#fff" />
-            <Text style={styles.openCtaText}>Voir le menu</Text>
-            <Ionicons name="arrow-forward" size={16} color="#fff" />
-          </Pressable>
-        )}
-      </View>
+      {hasRestaurant && (
+        <Pressable
+          onPress={onOpen}
+          style={[styles.openCta, { bottom: bottomInset + 24 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Voir le menu du restaurant"
+        >
+          <Ionicons name="restaurant" size={16} color="#fff" />
+          <Text style={styles.openCtaText}>Voir le menu</Text>
+          <Ionicons name="arrow-forward" size={16} color="#fff" />
+        </Pressable>
+      )}
     </View>
   );
 }

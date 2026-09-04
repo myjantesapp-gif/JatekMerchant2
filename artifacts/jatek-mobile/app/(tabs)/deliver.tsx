@@ -26,6 +26,7 @@ import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInDown, Layout } from "react-native-reanimated";
 import { router } from "expo-router";
+import { RefreshButton } from "@/components/RefreshButton";
 
 import {
   useUpdateDriver,
@@ -425,7 +426,10 @@ export default function DeliverScreen() {
             <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Driver dashboard</Text>
             <Text style={[styles.title, { color: colors.foreground }]}>{user.name}</Text>
           </View>
-          <View style={[styles.dotPulse, { backgroundColor: isOnline ? "#22C55E" : colors.mutedForeground }]} />
+          <View style={styles.driverHeaderActions}>
+            <RefreshButton onPress={onRefresh} refreshing={refreshing} color={colors.foreground} accessibilityLabel="Refresh driver dashboard" />
+            <View style={[styles.dotPulse, { backgroundColor: isOnline ? "#22C55E" : colors.mutedForeground }]} />
+          </View>
         </View>
 
         {/* Profile completion gate */}
@@ -732,6 +736,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: "center", justifyContent: "center" },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 12 },
+  driverHeaderActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   greeting: { fontSize: 12, fontFamily: "Inter_500Medium" },
   title: { fontSize: 22, fontFamily: "Inter_700Bold" },
   dotPulse: { width: 12, height: 12, borderRadius: 6 },
