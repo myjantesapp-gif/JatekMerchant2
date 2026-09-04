@@ -18,6 +18,7 @@ import { PromotionsCarousel } from "@/components/PromotionsCarousel";
 import { useAuth } from "@/context/AuthContext";
 import { useOnline } from "@/context/OnlineContext";
 import { useColors } from "@/hooks/useColors";
+import { useSSE } from "@/hooks/useSSE";
 import { getEarnings, listAvailableOrders, type Order } from "@/lib/api";
 import { addMoney, formatExact, formatMad } from "@/lib/money";
 import { fireNewOrderNotification } from "@/services/notificationService";
@@ -43,6 +44,22 @@ export default function HomeScreen() {
     queryFn: listAvailableOrders,
     enabled: isOnline,
     refetchInterval: isOnline ? 12_000 : false,
+  });
+
+  useSSE({
+    channels: `available_orders${user?.driver?.id ? `,driver_orders:${user.driver.id}` : ""}`,
+    enabled: isOnline && !!user?.driver?.id,
+    events: {
+      order_ready: () => {
+        void available.refetch();
+      },
+      order_assigned: () => {
+        void available.refetch();
+      },
+      order_status: () => {
+        void available.refetch();
+      },
+    },
   });
 
   useEffect(() => {

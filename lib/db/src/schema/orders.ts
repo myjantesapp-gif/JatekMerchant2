@@ -37,6 +37,10 @@ export const ordersTable = pgTable("orders", {
   /** 4-digit numeric code shown to the customer at order acceptance; the driver
    *  must enter or scan it to confirm hand-off (a la Uber Eats / Glovo). */
   pickupCode: text("pickup_code"),
+  /** Delivery code validity window. Null is kept for legacy orders created before this field. */
+  pickupCodeExpiresAt: timestamp("pickup_code_expires_at", { withTimezone: true }),
+  /** Set atomically when the driver successfully confirms the hand-off. */
+  pickupCodeUsedAt: timestamp("pickup_code_used_at", { withTimezone: true }),
   /** "asap" (default) or "scheduled" */
   deliveryType: text("delivery_type").notNull().default("asap"),
   /** When deliveryType="scheduled", the requested delivery timestamp. */

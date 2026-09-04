@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { listMyOrders, type Order, type OrderStatus } from "@/lib/api";
+import { getErrorMessage, listMyOrders, type Order, type OrderStatus } from "@/lib/api";
 import { addMoney, formatMad } from "@/lib/money";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -51,7 +51,7 @@ export default function CoursesScreen() {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("Toutes");
 
-  const { data = [], isRefetching, refetch } = useQuery({
+  const { data = [], isRefetching, isError, error, refetch } = useQuery({
     queryKey: ["my-orders"],
     queryFn: listMyOrders,
     refetchInterval: 30_000,
@@ -86,8 +86,18 @@ export default function CoursesScreen() {
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Feather name="package" size={36} color={colors.mutedForeground} />
-            <Text style={[styles.emptyText, { color: colors.mutedForeground, fontFamily: "Inter_500Medium" }]}>Aucune course à afficher.</Text>
+            <Feather name={isError ? "wifi-off" : "package"} size={36} color={colors.mutedForeground} />
+            <Text style={[styles.emptyText, { color: colors.mutedForeground, fontFamily: "Inter_500Medium" }]}>
+              {isError ? getErrorMessage(error, "Impossible de charger vos courses.") : "Aucune course à afficher."}
+            </Text>
+            {isError && (
+              <Pressable
+                onPress={() => void refetch()}
+                style={[styles.retryButton, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
+              >
+                <Text style={{ color: colors.primaryForeground, fontFamily: "Inter_700Bold" }}>Réessayer</Text>
+              </Pressable>
+            )}
           </View>
         }
       />
@@ -140,4 +150,5 @@ const styles = StyleSheet.create({
   address: { flex: 1, fontSize: 13 },
   empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
   emptyText: { fontSize: 14 },
+  retryButton: { paddingHorizontal: 18, paddingVertical: 10 },
 });

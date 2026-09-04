@@ -17,7 +17,7 @@ import {
   promoCodeUsagesTable,
   referralsTable,
 } from "@workspace/db";
-import { eq, and, inArray, isNull, sql } from "drizzle-orm";
+import { eq, and, inArray, isNull, or, sql } from "drizzle-orm";
 import { requireAuth, attachAuth, type AuthedRequest } from "../middlewares/auth";
 import {
   CreateOrderBody,
@@ -34,6 +34,13 @@ import { sendFcmPush } from "../lib/fcmPush";
 import { sendWebPush } from "../lib/vapid";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
 import { calculateOrderPricing } from "../lib/orderPricing";
+import {
+  DELIVERY_CODE_TTL_MS,
+  classifyDriverAcceptance,
+  isDeliveryCodeFormatValid,
+  isValidDriverTransition,
+  validateDeliveryCodeAttempt,
+} from "../lib/driverOrderFlow";
 
 const router: IRouter = Router();
 
@@ -679,7 +686,7 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
       res.status(403).json({ error: "Only the assigned driver can update this order" });
       return;
     }
-    if (!isValidStatusTransition(existing.status, parsed.data.status)) {
+    if (!isValidDriverTransition(existing.status, parsed.data.status)) {
       res.status(409).json({ error: "Cette étape ne correspond pas à l'état actuel de la course." });
       return;
     }
@@ -755,6 +762,9 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
 
     if (!existing.kitchenCode) updateData.kitchenCode = generateKitchenCode();
     if (!existing.pickupCode) updateData.pickupCode = generatePickupCode();
+    if (!existing.pickupCodeExpiresAt) {
+      updateData.pickupCodeExpiresAt = new Date(Date.now() + DELIVERY_CODE_TTL_MS);
+    }
   }
 
   const [order] = await db
@@ -962,9 +972,16 @@ router.post("/orders/:id/accept-delivery", requireAuth, async (req: AuthedReques
       ))
       .limit(1);
     if (activeOrder) {
-      return activeOrder.id === orderId
-        ? { order: activeOrder, activeOrderId: null, alreadyAccepted: true }
-        : { order: null, activeOrderId: activeOrder.id, alreadyAccepted: false };
+      const acceptanceDecision = classifyDriverAcceptance(activeOrder, orderId);
+      if (acceptanceDecision === "driver_has_active_order") {
+        return { order: null, activeOrderId: activeOrder.id, alreadyAccepted: false };
+      }
+      // An admin-assigned order is reserved for this driver while it is still
+      // "assigned"; this request is what advances it to "accepted". For all
+      // later delivery states, a retry is safely idempotent.
+      if (acceptanceDecision === "already_accepted") {
+        return { order: activeOrder, activeOrderId: null, alreadyAccepted: true };
+      }
     }
 
     const [order] = await tx
@@ -973,7 +990,7 @@ router.post("/orders/:id/accept-delivery", requireAuth, async (req: AuthedReques
       .where(and(
         eq(ordersTable.id, orderId),
         inArray(ordersTable.status, ["ready", "assigned"]),
-        isNull(ordersTable.driverId),
+        or(isNull(ordersTable.driverId), eq(ordersTable.driverId, driverId)),
       ))
       .returning();
     return { order: order ?? null, activeOrderId: null, alreadyAccepted: false };
@@ -1026,6 +1043,7 @@ router.post("/orders/:id/accept-delivery", requireAuth, async (req: AuthedReques
 
   // Notify customer + restaurant + admin tracking dashboard.
   publish(`order:${orderId}`, "order_status", { orderId, status: "accepted", driverName: driver.name, order: orderWithItems });
+  publish("available_orders", "order_status", { orderId, status: "accepted" });
   publish(`restaurant:${order.restaurantId}`, "order_status", { orderId, status: "accepted", driverName: driver.name });
   publish("admin_tracking", "order_status", { orderId, status: "accepted", driverId, driverName: driver.name });
 
@@ -1062,18 +1080,13 @@ router.post("/orders/:id/confirm-delivery", requireAuth, async (req: AuthedReque
   if (isNaN(orderId)) { res.status(400).json({ error: "Invalid order id" }); return; }
 
   const code = typeof req.body?.pickupCode === "string" ? req.body.pickupCode.trim() : "";
-  if (!/^\d{4}$/.test(code)) {
-    res.status(400).json({ error: "pickupCode must be a 4-digit string" });
+  if (!isDeliveryCodeFormatValid(code)) {
+    res.status(400).json({ error: "Le code de livraison doit contenir exactement 4 chiffres.", code: "INVALID_PICKUP_CODE_FORMAT" });
     return;
   }
 
   const [existing] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId)).limit(1);
   if (!existing) { res.status(404).json({ error: "Order not found" }); return; }
-  if (existing.status !== "out_for_delivery" && existing.status !== "delivered") {
-    res.status(409).json({ error: "La course doit être arrivée chez le client avant confirmation." });
-    return;
-  }
-
   // Authorization
   if (req.userRole !== "admin" && req.userRole !== "super_admin") {
     if (!existing.driverId) {
@@ -1087,19 +1100,25 @@ router.post("/orders/:id/confirm-delivery", requireAuth, async (req: AuthedReque
     }
   }
 
-  if (!existing.pickupCode || existing.pickupCode !== code) {
-    res.status(400).json({ error: "Incorrect pickup code", code: "INVALID_PICKUP_CODE" });
+  const codeAttempt = validateDeliveryCodeAttempt({
+    status: existing.status,
+    pickupCode: existing.pickupCode,
+    pickupCodeUsedAt: existing.pickupCodeUsedAt,
+    pickupCodeExpiresAt: existing.pickupCodeExpiresAt,
+    enteredCode: code,
+  });
+  if (!codeAttempt.ok) {
+    res.status(codeAttempt.status).json({ error: codeAttempt.message, code: codeAttempt.code });
     return;
   }
-  if (existing.status === "delivered") {
-    res.json(await getOrderWithItems(existing.id));
-    return;
-  }
-
   const [order] = await db
     .update(ordersTable)
-    .set({ status: "delivered" })
-    .where(and(eq(ordersTable.id, orderId), eq(ordersTable.status, "out_for_delivery")))
+    .set({ status: "delivered", pickupCodeUsedAt: new Date() })
+    .where(and(
+      eq(ordersTable.id, orderId),
+      eq(ordersTable.status, "out_for_delivery"),
+      isNull(ordersTable.pickupCodeUsedAt),
+    ))
     .returning();
   if (!order) {
     res.status(409).json({ error: "Cette course a déjà été mise à jour. Actualisez l'écran." });

@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { normalizeDeliveryCode, isDeliveryCodeValid } from "@/lib/deliveryCode";
 
 interface Props {
   visible: boolean;
@@ -46,7 +47,7 @@ export function DeliveryCodeModal({ visible, loading, onCancel, onSubmit }: Prop
           <TextInput
             ref={inputRef}
             value={code}
-            onChangeText={(t) => setCode(t.replace(/\D/g, "").slice(0, 4))}
+            onChangeText={(t) => setCode(normalizeDeliveryCode(t))}
             keyboardType="number-pad"
             maxLength={4}
             placeholder="_ _ _ _"
@@ -67,8 +68,9 @@ export function DeliveryCodeModal({ visible, loading, onCancel, onSubmit }: Prop
               <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>Annuler</Text>
             </Pressable>
             <Pressable
+              testID="confirm-delivery-code"
               onPress={() => onSubmit(code)}
-              disabled={loading || code.length !== 4}
+              disabled={loading || !isDeliveryCodeValid(code)}
               style={({ pressed }) => [styles.confirm, {
                 backgroundColor: code.length === 4 ? colors.primary : colors.muted,
                 borderRadius: colors.radius,

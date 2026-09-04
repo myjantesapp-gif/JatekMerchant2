@@ -173,6 +173,7 @@ export default function OrderDetailScreen() {
       qc.setQueryData(["order", id], updated);
       qc.invalidateQueries({ queryKey: ["my-orders"] });
       qc.invalidateQueries({ queryKey: ["earnings"] });
+      qc.invalidateQueries({ queryKey: ["available-orders"] });
       await endTracking();
       setCodeModalVisible(false);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

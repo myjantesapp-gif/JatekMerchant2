@@ -1,5 +1,6 @@
 import { clearTokenIfMatches, getToken } from "./auth";
 import { getApiTarget, getBaseUrl } from "./apiTarget";
+import { isDeliveryCodeValid } from "./deliveryCode";
 
 export type ApiError = { status: number; message: string; data?: unknown };
 
@@ -535,13 +536,9 @@ export async function listAvailableOrders(): Promise<Order[]> {
 }
 
 export async function listMyOrders(): Promise<Order[]> {
-  try {
-    const driverId = await resolveDriverId();
-    const list = await request<BackendOrder[]>(`/orders?driverId=${driverId}`);
-    return list.map(mapOrder);
-  } catch {
-    return [];
-  }
+  const driverId = await resolveDriverId();
+  const list = await request<BackendOrder[]>(`/orders?driverId=${encodeURIComponent(driverId)}`);
+  return list.map(mapOrder);
 }
 
 export async function getOrder(id: string): Promise<Order> {
@@ -614,6 +611,9 @@ export async function markArrivedDropoff(id: string): Promise<Order> {
 }
 
 export async function markDelivered(id: string, deliveryCode: string): Promise<Order> {
+  if (!isDeliveryCodeValid(deliveryCode)) {
+    throw { status: 400, message: "Le code de livraison doit contenir exactement 4 chiffres." } as ApiError;
+  }
   try {
     const order = await request<BackendOrder>(`/orders/${id}/confirm-delivery`, {
       method: "POST",
@@ -623,11 +623,15 @@ export async function markDelivered(id: string, deliveryCode: string): Promise<O
   } catch (error) {
     // The hand-off may have committed just before a network response was lost.
     // Fetching the authoritative order prevents leaving its GPS tracking live.
-    try {
-      const order = await getOrder(id);
-      if (order.status === "delivered") return order;
-    } catch {
-      // Preserve the original confirmation failure.
+    const status = (error as Partial<ApiError>).status;
+    const shouldReconcile = typeof status !== "number" || status === 408 || status >= 500;
+    if (shouldReconcile) {
+      try {
+        const order = await getOrder(id);
+        if (order.status === "delivered") return order;
+      } catch {
+        // Preserve the original confirmation failure.
+      }
     }
     throw error;
   }

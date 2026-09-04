@@ -406,9 +406,15 @@ Finalise la livraison via le code de remise client (4 chiffres).
 **Erreurs**
 | Code | Signification |
 |------|--------------|
-| 400 | Code incorrect ou format invalide |
+| 400 | Code incorrect ou format invalide (`INVALID_PICKUP_CODE`) |
 | 403 | Pas le driver assigné |
 | 404 | Commande introuvable |
+| 409 | Livraison déjà confirmée (`DELIVERY_CODE_ALREADY_USED`) ou commande pas encore `out_for_delivery` |
+| 410 | Code expiré (`DELIVERY_CODE_EXPIRED`) |
+
+Le code est valable pendant 24 heures à partir de l'acceptation de la commande.
+Sa consommation et le passage à `delivered` sont atomiques : une nouvelle
+tentative, même avec le bon code, est refusée après la première confirmation.
 
 ---
 
