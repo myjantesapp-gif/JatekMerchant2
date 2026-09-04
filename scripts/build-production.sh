@@ -6,27 +6,31 @@ echo "  Jatek — Production Build"
 echo "========================================"
 
 echo ""
-echo "[1/6] Type-check API server…"
+echo "[1/7] Build shared database type declarations…"
+pnpm --filter @workspace/db run build
+
+echo ""
+echo "[2/7] Type-check API server…"
 pnpm --filter @workspace/api-server exec tsc -p tsconfig.json --noEmit
 
 echo ""
-echo "[2/6] Build API server (TypeScript → ESM)…"
+echo "[3/7] Build API server (TypeScript → ESM)…"
 pnpm --filter @workspace/api-server run build
 
 echo ""
-echo "[3/6] Build landing page (SPA → dist/public)…"
+echo "[4/7] Build landing page (SPA → dist/public)…"
 BASE_PATH=/ pnpm --filter @workspace/jatek-landing run build
 
 echo ""
-echo "[4/6] Build backend-dashboard (SPA → dist/public)…"
+echo "[5/7] Build backend-dashboard (SPA → dist/public)…"
 BASE_PATH=/admin/ pnpm --filter @workspace/backend-dashboard run build
 
 echo ""
-echo "[5/6] Build mobile static preview (Expo manifests, bundles, and assets)…"
+echo "[6/7] Build mobile static preview (Expo manifests, bundles, and assets)…"
 BASE_PATH=/mobile/ pnpm --filter @workspace/jatek-mobile run build
 
 echo ""
-echo "[6/6] Smoke-test production routes and mobile delivery contract…"
+echo "[7/7] Smoke-test production routes and mobile delivery contract…"
 bash "$(dirname "$0")/smoke-production.sh"
 bash "$(dirname "$0")/smoke-mobile-preview.sh"
 
