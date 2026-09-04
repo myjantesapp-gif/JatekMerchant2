@@ -71,8 +71,11 @@ export default function RestaurantScreen() {
   const { token } = useAuth();
   const [isFav, setIsFav] = useState(false);
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [categoryPinned, setCategoryPinned] = useState(false);
   const menuScrollRef = useRef<ScrollView>(null);
   const categoryScrollRef = useRef<ScrollView>(null);
+  const floatingCategoryScrollRef = useRef<ScrollView>(null);
+  const categoryBarOffsetRef = useRef<number | null>(null);
   const sectionOffsetsRef = useRef<Record<string, number>>({});
   const categoryOffsetsRef = useRef<Record<string, number>>({});
 
@@ -149,30 +152,89 @@ export default function RestaurantScreen() {
     const x = categoryOffsetsRef.current[activeCategory];
     if (x != null) {
       categoryScrollRef.current?.scrollTo({ x: Math.max(0, x - SIDE), animated: true });
+      floatingCategoryScrollRef.current?.scrollTo({ x: Math.max(0, x - SIDE), animated: true });
     }
   }, [activeCategory]);
 
   const handleMenuScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const scrollY = event.nativeEvent.contentOffset.y;
+    const categoryBarY = categoryBarOffsetRef.current;
+    if (categories.length > 1 && categoryBarY != null) {
+      const nextPinned = scrollY >= Math.max(0, categoryBarY - insets.top);
+      setCategoryPinned((current) => (current === nextPinned ? current : nextPinned));
+    }
+
     if (selectedCategory !== "Tous" || sections.length === 0) return;
 
-    const scrollY = event.nativeEvent.contentOffset.y;
     const firstSectionY = sectionOffsetsRef.current[sections[0].id];
     if (firstSectionY == null) return;
 
     const sectionMarkerY = scrollY + CATEGORY_STICKY_HEIGHT + 12;
     let nextCategory = "Tous";
-    if (scrollY >= Math.max(0, firstSectionY - CATEGORY_STICKY_HEIGHT - 12)) {
-      for (const section of sections) {
-        const sectionY = sectionOffsetsRef.current[section.id];
-        if (sectionY == null || sectionY > sectionMarkerY) break;
-        if (categories.some((category) => category.id === section.id)) {
-          nextCategory = section.id;
-        }
+    for (const section of sections) {
+      const sectionY = sectionOffsetsRef.current[section.id];
+      if (sectionY == null || sectionY > sectionMarkerY) break;
+      if (categories.some((category) => category.id === section.id)) {
+        nextCategory = section.id;
       }
     }
 
     setActiveCategory((current) => (current === nextCategory ? current : nextCategory));
   };
+
+  const renderCategoryBar = (floating = false) => (
+    <View
+      onLayout={!floating ? (event) => {
+        categoryBarOffsetRef.current = event.nativeEvent.layout.y;
+      } : undefined}
+      style={categories.length > 1
+        ? [styles.stickyCategoryBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]
+        : styles.emptyCategoryBar}
+    >
+      {categories.length > 1 ? (
+        <ScrollView
+          ref={floating ? floatingCategoryScrollRef : categoryScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.catRow}
+        >
+          {categories.map((cat) => {
+            const active = selectedCategory === "Tous"
+              ? activeCategory === cat.id
+              : selectedCategory === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                onLayout={(event) => {
+                  categoryOffsetsRef.current[cat.id] = event.nativeEvent.layout.x;
+                }}
+                onPress={() => {
+                  setSelectedCategory(cat.id);
+                  setActiveCategory(cat.id);
+                  if (cat.id === "Tous") {
+                    menuScrollRef.current?.scrollTo({ y: 0, animated: true });
+                  }
+                }}
+                style={[styles.catChip, active && { borderBottomColor: colors.primary }]}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`Filtrer par ${cat.name}`}
+              >
+                <Text style={[
+                  styles.catText,
+                  { color: active ? colors.foreground : colors.mutedForeground },
+                  active && { fontFamily: "Inter_700Bold" },
+                ]}>
+                  {cat.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+    </View>
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -438,7 +500,6 @@ export default function RestaurantScreen() {
       <ScrollView
         ref={menuScrollRef}
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={categories.length > 1 ? [1] : undefined}
         onScroll={handleMenuScroll}
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
@@ -447,50 +508,7 @@ export default function RestaurantScreen() {
         }}
       >
         {Header}
-        <View style={categories.length > 1 ? [styles.stickyCategoryBar, { backgroundColor: colors.background, borderBottomColor: colors.border }] : styles.emptyCategoryBar}>
-          {categories.length > 1 ? (
-            <ScrollView
-              ref={categoryScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.catRow}
-            >
-              {categories.map((cat) => {
-                const active = selectedCategory === "Tous"
-                  ? activeCategory === cat.id
-                  : selectedCategory === cat.id;
-                return (
-                  <TouchableOpacity
-                    key={cat.id}
-                    onLayout={(event) => {
-                      categoryOffsetsRef.current[cat.id] = event.nativeEvent.layout.x;
-                    }}
-                    onPress={() => {
-                      setSelectedCategory(cat.id);
-                      setActiveCategory(cat.id);
-                      if (cat.id === "Tous") {
-                        menuScrollRef.current?.scrollTo({ y: 0, animated: true });
-                      }
-                    }}
-                    style={[styles.catChip, active && { borderBottomColor: colors.primary }]}
-                    activeOpacity={0.85}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    accessibilityLabel={`Filtrer par ${cat.name}`}
-                  >
-                    <Text style={[
-                      styles.catText,
-                      { color: active ? colors.foreground : colors.mutedForeground },
-                      active && { fontFamily: "Inter_700Bold" },
-                    ]}>
-                      {cat.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          ) : null}
-        </View>
+        {renderCategoryBar()}
         {filtered.length === 0 && !mLoading && !menuError ? (
           <View style={styles.emptyWrap}>
             <Ionicons name="basket-outline" size={48} color={colors.mutedForeground} />
@@ -532,6 +550,15 @@ export default function RestaurantScreen() {
           ))
         )}
       </ScrollView>
+
+      {categoryPinned && categories.length > 1 && (
+        <View
+          pointerEvents="box-none"
+          style={[styles.categoryOverlay, { top: insets.top }]}
+        >
+          {renderCategoryBar(true)}
+        </View>
+      )}
 
       {/* Quote CTA — service merchants */}
       {isServices && (
@@ -871,6 +898,13 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   emptyCategoryBar: { height: 0 },
+  categoryOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    elevation: 20,
+  },
   catRow: { paddingHorizontal: SIDE, paddingTop: 18, gap: 18, alignItems: "center" },
   catChip: {
     paddingVertical: 8,
