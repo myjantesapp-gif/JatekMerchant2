@@ -11,6 +11,16 @@ export type MenuItemLike = {
 
 export type MenuSortMode = "recommended" | "priceAsc" | "priceDesc";
 
+function matchesMenuCategory(item: MenuItemLike, category: MenuCategory): boolean {
+  const itemCategoryName = String(item.category ?? "").trim().toLowerCase();
+  const categoryName = category.name.trim().toLowerCase();
+
+  return (
+    String(item.menuItemCategoryId ?? "") === category.id ||
+    (itemCategoryName.length > 0 && itemCategoryName === categoryName)
+  );
+}
+
 export function rotateItems<T>(items: readonly T[], seed: number): T[] {
   if (items.length < 2) return [...items];
   const offset = ((seed % items.length) + items.length) % items.length;
@@ -33,8 +43,7 @@ export function filterAndSortMenuItems<T extends MenuItemLike>(
     const matchesCategory =
       activeCategory === "Tous" ||
       (!!selectedCategory &&
-        (String(item.menuItemCategoryId ?? "") === selectedCategory.id ||
-          (!item.menuItemCategoryId && item.category === selectedCategory.name)));
+        matchesMenuCategory(item, selectedCategory));
     const searchableText = `${item.name ?? ""} ${item.description ?? ""}`.toLowerCase();
     return matchesCategory && (!query || searchableText.includes(query));
   });
@@ -60,11 +69,7 @@ export function groupMenuSections<T extends MenuItemLike>(
   const grouped = visibleCategories
     .map((category) => ({
       ...category,
-      items: items.filter(
-        (item) =>
-          String(item.menuItemCategoryId ?? "") === category.id ||
-          (!item.menuItemCategoryId && item.category === category.name),
-      ),
+      items: items.filter((item) => matchesMenuCategory(item, category)),
     }))
     .filter((section) => section.items.length > 0);
 

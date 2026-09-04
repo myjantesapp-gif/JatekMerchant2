@@ -325,9 +325,16 @@ const styles = StyleSheet.create({
   handleWrap: { alignItems: "center", paddingTop: 8, paddingBottom: 4 },
   handle: { width: 44, height: 4, borderRadius: 2 },
 
-  imageWrap: { width: "100%", height: 240, position: "relative" },
-  image: { width: "100%", height: "100%" },
-  imagePh: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
+  imageWrap: {
+    width: "100%",
+    height: 240,
+    position: "relative",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  image: { width: "100%", height: "100%", backgroundColor: "#F8FAFC" },
+  imagePh: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC" },
   closeBtn: {
     position: "absolute",
     top: 18,

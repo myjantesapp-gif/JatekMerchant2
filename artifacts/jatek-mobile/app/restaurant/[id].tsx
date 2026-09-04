@@ -191,7 +191,11 @@ export default function RestaurantScreen() {
         categoryBarOffsetRef.current = event.nativeEvent.layout.y;
       } : undefined}
       style={categories.length > 1
-        ? [styles.stickyCategoryBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]
+        ? [
+          styles.stickyCategoryBar,
+          !floating && styles.categoryBarInFlow,
+          { backgroundColor: colors.background, borderBottomColor: colors.border },
+        ]
         : styles.emptyCategoryBar}
     >
       {categories.length > 1 ? (
@@ -206,7 +210,7 @@ export default function RestaurantScreen() {
               ? activeCategory === cat.id
               : selectedCategory === cat.id;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={cat.id}
                 onLayout={(event) => {
                   categoryOffsetsRef.current[cat.id] = event.nativeEvent.layout.x;
@@ -217,8 +221,14 @@ export default function RestaurantScreen() {
                   menuScrollRef.current?.scrollTo({ y: 0, animated: true });
                 }}
                 testID={`restaurant-category-${cat.id}`}
-                style={[styles.catChip, active && { borderBottomColor: colors.primary }]}
-                activeOpacity={0.85}
+                style={({ pressed }) => [
+                  styles.catChip,
+                  {
+                    borderColor: active ? colors.primary : colors.border,
+                    backgroundColor: active ? `${colors.primary}14` : "transparent",
+                  },
+                  pressed && styles.catChipPressed,
+                ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={`Filtrer par ${cat.name}`}
@@ -230,7 +240,7 @@ export default function RestaurantScreen() {
                 ]}>
                   {cat.name}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </ScrollView>
@@ -884,6 +894,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     zIndex: 2,
   },
+  categoryBarInFlow: { marginTop: 10 },
   emptyCategoryBar: { height: 0 },
   categoryOverlay: {
     position: "absolute",
@@ -892,12 +903,16 @@ const styles = StyleSheet.create({
     zIndex: 20,
     elevation: 20,
   },
-  catRow: { paddingHorizontal: SIDE, paddingTop: 18, gap: 18, alignItems: "center" },
+  catRow: { paddingHorizontal: SIDE, paddingTop: 10, gap: 10, alignItems: "center" },
   catChip: {
-    paddingVertical: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
+    minHeight: 34,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderRadius: 17,
+    justifyContent: "center",
   },
+  catChipPressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
   catText: { fontSize: 14, fontFamily: "Inter_500Medium" },
 
   sectionTitleWrap: { paddingHorizontal: SIDE, paddingTop: 16, paddingBottom: 6 },
