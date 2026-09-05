@@ -129,9 +129,23 @@ test("restaurant category navigation stays sticky and tracks visible sections", 
   assert.match(code, /sectionOffsetsRef/);
   assert.match(code, /setActiveCategory\(\(current\)/);
   assert.match(code, /CATEGORY_OVERLAY_TOP_GAP/);
-  assert.match(code, /categoryBarY - insets\.top - CATEGORY_OVERLAY_TOP_GAP/);
+  assert.match(code, /\(categoryBarY \?\? HERO_H\) - insets\.top - CATEGORY_OVERLAY_TOP_GAP/);
   assert.match(code, /menuScrollRef\.current\?\.scrollTo\(\{ y: 0, animated: true \}\)/);
   assert.match(code, /testID=\{`restaurant-category-\$\{cat\.id\}`\}/);
+});
+
+test("restaurant page keeps the safe-area header and renders a clean list", () => {
+  const page = source("app/restaurant/[id].tsx");
+  const listCard = source("components/MenuItemCard.tsx");
+
+  assert.match(page, /const \[headerPinned, setHeaderPinned\]/);
+  assert.match(page, /renderPinnedHeader/);
+  assert.match(page, /paddingTop: insets\.top/);
+  assert.match(page, /<MenuItemCard/);
+  assert.doesNotMatch(page, /<MenuItemGridCard/);
+  assert.doesNotMatch(page, /section\.items\.length.*articles/);
+  assert.match(listCard, /item\.description/);
+  assert.match(listCard, /textDecorationLine: "line-through"/);
 });
 
 test("category search matches both establishment name and category", () => {
