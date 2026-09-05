@@ -16,6 +16,9 @@ interface MenuItemCardProps {
     name: string;
     description?: string | null;
     price: number;
+    originalPrice?: number | null;
+    compareAtPrice?: number | null;
+    oldPrice?: number | null;
     imageUrl?: string | null;
     isAvailable?: boolean | null;
   };
@@ -23,17 +26,19 @@ interface MenuItemCardProps {
   onAdd: () => void;
   onRemove: () => void;
   onPressCard?: () => void;
+  restaurantOpen?: boolean;
 }
 
 const INK = "#0A1B3D";
 
-export function MenuItemCard({ item, quantity, onAdd, onRemove, onPressCard }: MenuItemCardProps) {
+export function MenuItemCard({ item, quantity, onAdd, onRemove, onPressCard, restaurantOpen = true }: MenuItemCardProps) {
   const colors = useColors();
   const cardScale = useRef(new Animated.Value(1)).current;
   const plusScale = useRef(new Animated.Value(1)).current;
 
   const handleAdd = (e?: any) => {
     e?.stopPropagation?.();
+    if (!restaurantOpen) return;
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Animated.sequence([
       Animated.spring(plusScale, { toValue: 1.35, useNativeDriver: true, friction: 3 }),
@@ -48,6 +53,8 @@ export function MenuItemCard({ item, quantity, onAdd, onRemove, onPressCard }: M
   };
 
   if (item.isAvailable === false) return null;
+  const oldPrice = item.originalPrice ?? item.compareAtPrice ?? item.oldPrice ?? null;
+  const hasDiscount = oldPrice != null && oldPrice > item.price;
 
   const onPressIn = () => {
     Animated.spring(cardScale, { toValue: 0.98, useNativeDriver: true, friction: 6 }).start();
@@ -61,7 +68,12 @@ export function MenuItemCard({ item, quantity, onAdd, onRemove, onPressCard }: M
       <Animated.View
         style={[
           styles.card,
-          { backgroundColor: colors.card, transform: [{ scale: cardScale }] },
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            transform: [{ scale: cardScale }],
+            opacity: restaurantOpen ? 1 : 0.58,
+          },
         ]}
       >
         <View style={styles.content}>
@@ -76,6 +88,11 @@ export function MenuItemCard({ item, quantity, onAdd, onRemove, onPressCard }: M
             ) : null}
             <View style={styles.priceRow}>
               <Text style={[styles.price, { color: colors.primary }]}>{formatMad(item.price)} MAD</Text>
+              {hasDiscount && oldPrice != null ? (
+                <Text style={[styles.oldPrice, { color: colors.mutedForeground }]}>
+                  {formatMad(oldPrice)} MAD
+                </Text>
+              ) : null}
               {quantity > 0 ? (
                 <View style={[styles.qtyPill, { backgroundColor: colors.primary }]}>
                   <Text style={styles.qtyPillText}>×{quantity}</Text>
@@ -94,7 +111,11 @@ export function MenuItemCard({ item, quantity, onAdd, onRemove, onPressCard }: M
             )}
 
             {/* Floating "+" / quantity controls overlapping image bottom-right */}
-            {quantity > 0 ? (
+            {!restaurantOpen ? (
+              <View style={[styles.closedFab, { backgroundColor: colors.muted, borderColor: colors.card }]}>
+                <Ionicons name="lock-closed-outline" size={15} color={colors.mutedForeground} />
+              </View>
+            ) : quantity > 0 ? (
               <View style={styles.qtyControls}>
                 <TouchableOpacity onPress={handleRemove} style={[styles.qtyBtn, styles.qtyBtnMinus]} hitSlop={6}>
                   <Ionicons name="remove" size={16} color={colors.primary} />
@@ -137,11 +158,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 12,
     overflow: "visible",
+    borderWidth: 1,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
   content: {
     flexDirection: "row",
@@ -166,9 +188,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
-  price: {
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
+  price: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  oldPrice: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    textDecorationLine: "line-through",
   },
   qtyPill: {
     paddingHorizontal: 8,
@@ -208,6 +232,17 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
+  },
+  closedFab: {
+    position: "absolute",
+    bottom: -8,
+    right: -8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   plusFabHit: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
 

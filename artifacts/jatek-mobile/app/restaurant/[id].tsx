@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  Image, ActivityIndicator, Platform, ScrollView, Animated, Pressable, Dimensions, Modal, Linking,
+  Image, ActivityIndicator, Platform, ScrollView, Animated, Pressable, Modal, Linking,
   Share, TextInput,
   RefreshControl,
   NativeScrollEvent, NativeSyntheticEvent,
@@ -14,7 +14,7 @@ import { useGetRestaurant, useGetRestaurantHeader, useListMenuItems } from "@wor
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { MenuItemGridCard } from "@/components/MenuItemGridCard";
+import { MenuItemCard } from "@/components/MenuItemCard";
 import { MenuItemDetailModal } from "@/components/MenuItemDetailModal";
 import type { MenuItemSize, MenuItemExtra } from "@/lib/api";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,13 +27,11 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { refreshAll } from "@/lib/mobileRefresh";
 import { filterAndSortMenuItems, groupMenuSections } from "@/lib/catalogUtils";
 
-const { width: SCREEN_W } = Dimensions.get("window");
 const SIDE = 16;
-const COL_GAP = 12;
-const COL_W = (SCREEN_W - SIDE * 2 - COL_GAP) / 2;
 const HERO_H = 240;
 const CATEGORY_STICKY_HEIGHT = 54;
 const CATEGORY_OVERLAY_TOP_GAP = 8;
+const COMPACT_HEADER_HEIGHT = 56;
 const GOOGLE_KEY = (process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY ?? "").trim();
 
 function buildRestaurantMapHtml(lat: number, lng: number, name: string): string {
@@ -72,6 +70,7 @@ export default function RestaurantScreen() {
   const [isFav, setIsFav] = useState(false);
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [categoryPinned, setCategoryPinned] = useState(false);
+  const [headerPinned, setHeaderPinned] = useState(false);
   const menuScrollRef = useRef<ScrollView>(null);
   const categoryScrollRef = useRef<ScrollView>(null);
   const floatingCategoryScrollRef = useRef<ScrollView>(null);
@@ -159,12 +158,18 @@ export default function RestaurantScreen() {
   const handleMenuScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollY = event.nativeEvent.contentOffset.y;
     const categoryBarY = categoryBarOffsetRef.current;
+    const pinThreshold = Math.max(
+      0,
+      (categoryBarY ?? HERO_H) - insets.top - CATEGORY_OVERLAY_TOP_GAP,
+    );
+    const nextHeaderPinned = scrollY >= pinThreshold;
+    setHeaderPinned((current) => (current === nextHeaderPinned ? current : nextHeaderPinned));
+
     if (categories.length > 1 && categoryBarY != null) {
-      const nextPinned = scrollY >= Math.max(
-        0,
-        categoryBarY - insets.top - CATEGORY_OVERLAY_TOP_GAP,
-      );
+      const nextPinned = scrollY >= pinThreshold;
       setCategoryPinned((current) => (current === nextPinned ? current : nextPinned));
+    } else {
+      setCategoryPinned(false);
     }
 
     if (selectedCategory !== "Tous" || sections.length === 0) return;
@@ -248,6 +253,62 @@ export default function RestaurantScreen() {
     </View>
   );
 
+  const renderPinnedHeader = () => (
+    <View
+      style={[
+        styles.pinnedHeader,
+        {
+          top: insets.top,
+          height: COMPACT_HEADER_HEIGHT,
+          backgroundColor: colors.background,
+          borderBottomColor: colors.border,
+        },
+      ]}
+    >
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.pinnedIconButton}
+        hitSlop={8}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel="Retour"
+      >
+        <Ionicons name="arrow-back" size={21} color={colors.foreground} />
+      </TouchableOpacity>
+      <Text style={[styles.pinnedHeaderTitle, { color: colors.foreground }]} numberOfLines={1}>
+        {restaurant?.name}
+      </Text>
+      <View style={styles.pinnedHeaderActions}>
+        <TouchableOpacity
+          onPress={() => {
+            setSearchOpen((open) => !open);
+            if (searchOpen) setSearchQuery("");
+          }}
+          style={styles.pinnedIconButton}
+          hitSlop={8}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Rechercher dans le menu"
+        >
+          <Ionicons name="search-outline" size={21} color={colors.foreground} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {
+            const url = `https://ma.jatek.app/restaurant/${restaurantId}`;
+            Share.share({ title: restaurant?.name, message: `${restaurant?.name} — ${url}`, url }).catch(() => {});
+          }}
+          style={styles.pinnedIconButton}
+          hitSlop={8}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Partager le restaurant"
+        >
+          <Ionicons name="share-outline" size={21} color={colors.foreground} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   const onRefresh = async () => {
     setRefreshing(true);
     try {
@@ -316,7 +377,7 @@ export default function RestaurantScreen() {
         )}
 
         {/* Floating round controls */}
-        <View style={[styles.heroTop, { top: insets.top + 8 }]}>
+        <View style={[styles.heroTop, { top: 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.roundBtn} activeOpacity={0.85}>
             <Ionicons name="arrow-back" size={20} color={colors.foreground} />
           </TouchableOpacity>
@@ -471,14 +532,6 @@ export default function RestaurantScreen() {
         </View>
       )}
 
-      {filtered.length > 0 && (
-        <View style={styles.catalogToolbar}>
-          <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-            {filtered.length} {filtered.length > 1 ? "articles" : "article"}
-          </Text>
-        </View>
-      )}
-
       {mLoading && <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />}
       {menuError && (
         <View style={styles.menuError}>
@@ -501,6 +554,7 @@ export default function RestaurantScreen() {
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{
+          paddingTop: insets.top,
           paddingBottom: insets.bottom + (itemCount > 0 || isServices ? 110 : 24) + (Platform.OS === "web" ? 34 : 0),
         }}
       >
@@ -522,19 +576,16 @@ export default function RestaurantScreen() {
             >
               <View style={styles.sectionTitleWrap}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{section.name}</Text>
-                <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-                  {section.items.length} {section.items.length > 1 ? "articles" : "article"}
-                </Text>
               </View>
-              <View style={styles.menuGrid}>
+              <View style={styles.menuList}>
                 {section.items.map((item: any) => (
-                  <MenuItemGridCard
+                  <MenuItemCard
                     key={item.id}
                     item={item}
                     quantity={getQty(item.id)}
-                    width={COL_W}
                     restaurantOpen={isOpen}
                     onPressCard={() => setSelectedItem(item)}
+                    onRemove={() => updateQuantity(String(item.id), getQty(item.id) - 1)}
                     onAdd={() => {
                       if (!isOpen) return;
                       const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null; commissionRate?: number | null };
@@ -551,11 +602,18 @@ export default function RestaurantScreen() {
       {categoryPinned && categories.length > 1 && (
         <View
           pointerEvents="box-none"
-          style={[styles.categoryOverlay, { top: insets.top + CATEGORY_OVERLAY_TOP_GAP }]}
+          style={[
+            styles.categoryOverlay,
+            {
+              top: insets.top + (headerPinned ? COMPACT_HEADER_HEIGHT : CATEGORY_OVERLAY_TOP_GAP),
+            },
+          ]}
         >
           {renderCategoryBar(true)}
         </View>
       )}
+
+      {headerPinned && renderPinnedHeader()}
 
       {/* Quote CTA — service merchants */}
       {isServices && (
@@ -809,6 +867,34 @@ const styles = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
   },
   heroTopRight: { flexDirection: "row", gap: 10 },
+  pinnedHeader: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SIDE,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    zIndex: 30,
+    elevation: 30,
+  },
+  pinnedIconButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinnedHeaderTitle: {
+    flex: 1,
+    marginHorizontal: 8,
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+  },
+  pinnedHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
   roundBtn: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: "rgba(255,255,255,0.95)",
@@ -917,13 +1003,10 @@ const styles = StyleSheet.create({
 
   sectionTitleWrap: { paddingHorizontal: SIDE, paddingTop: 16, paddingBottom: 6 },
   sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  sectionSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  catalogToolbar: { paddingTop: 12, paddingBottom: 2, gap: 6 },
 
-  // Grid
-  colWrap: { paddingHorizontal: SIDE, gap: COL_GAP },
+  // Menu list
   menuSection: { marginTop: 2 },
-  menuGrid: { flexDirection: "row", flexWrap: "wrap", gap: COL_GAP, paddingHorizontal: SIDE },
+  menuList: { paddingHorizontal: SIDE },
 
   emptyWrap: { alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 10 },
   emptyTxt: { fontSize: 14, fontFamily: "Inter_500Medium" },
