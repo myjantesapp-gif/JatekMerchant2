@@ -148,14 +148,16 @@ test("restaurant page keeps the safe-area header and renders a clean list", () =
   assert.match(listCard, /textDecorationLine: "line-through"/);
 });
 
-test("home shorts use the reference two-column framed cards", () => {
+test("home shorts use two-column magenta framed cards without labels", () => {
   const page = source("app/(tabs)/index.tsx");
 
   assert.match(page, /const SHORT_CARD_W/);
+  assert.match(page, /const SHORT_BORDER = PINK/);
+  assert.match(page, /borderWidth: 2/);
   assert.match(page, /borderColor: SHORT_BORDER/);
   assert.match(page, /shortAvatarRing/);
   assert.match(page, /restaurantAvatarById/);
-  assert.match(page, /shortNameLabel/);
+  assert.doesNotMatch(page, /shortNameLabel/);
   assert.doesNotMatch(page, /<Ionicons name="play-circle"/);
 });
 

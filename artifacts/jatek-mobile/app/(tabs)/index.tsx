@@ -67,7 +67,7 @@ const BG = "#FFFFFF";
 const STAR = "#E91E63";
 const NEW_GREEN = "#7BE36A";
 const CARD_BORDER = "#F0F0F0";
-const SHORT_BORDER = "#C91432";
+const SHORT_BORDER = PINK;
 
 // Shop categories (3×2 grid below the header)
 const CAT_TINT = "#F2EDD0"; // light yellow-olive — shared tile background
@@ -149,7 +149,6 @@ function ShortThumbnail({
           name={short.restaurantName ?? short.title ?? "Jatek"}
           imageUrl={avatarUrl}
         />
-        <Text style={s.shortNameLabel}>{short.restaurantName ?? short.title ?? "Jatek"}</Text>
       </View>
     );
   }
@@ -162,12 +161,10 @@ function ShortThumbnail({
         resizeMode="cover"
         onError={() => setSourceIndex((current) => current + 1)}
       />
-      <View style={s.shortBottomShade} pointerEvents="none" />
       <ShortAvatar
         name={short.restaurantName ?? short.title ?? "Jatek"}
         imageUrl={avatarUrl}
       />
-      <Text style={s.shortNameLabel}>{short.restaurantName ?? short.title ?? "Jatek"}</Text>
     </>
   );
 }
@@ -1104,7 +1101,7 @@ const s = StyleSheet.create({
     height: SHORT_CARD_H,
     borderRadius: 28,
     backgroundColor: "#202020",
-    borderWidth: 4,
+    borderWidth: 2,
     borderColor: SHORT_BORDER,
     overflow: "hidden",
     position: "relative",
@@ -1119,14 +1116,6 @@ const s = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#111827",
   },
-  shortBottomShade: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 110,
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
   shortAvatarRing: {
     position: "absolute",
     top: 12,
@@ -1134,7 +1123,7 @@ const s = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 31,
-    borderWidth: 4,
+    borderWidth: 2,
     borderColor: SHORT_BORDER,
     backgroundColor: "#FFFFFF",
     overflow: "hidden",
@@ -1149,16 +1138,6 @@ const s = StyleSheet.create({
     color: SHORT_BORDER,
     fontFamily: "Inter_700Bold",
     fontSize: 18,
-  },
-  shortNameLabel: {
-    position: "absolute",
-    left: 14,
-    right: 10,
-    bottom: 14,
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 20,
-    lineHeight: 24,
   },
   videoScrim: {
     ...StyleSheet.absoluteFillObject,
