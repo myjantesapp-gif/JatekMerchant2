@@ -1255,6 +1255,8 @@ export interface Short {
   /** @nullable */
   restaurantName?: string | null;
   /** @nullable */
+  restaurantLogoUrl?: string | null;
+  /** @nullable */
   audioCodec?: string | null;
   /** @nullable */
   audioBitrate?: number | null;

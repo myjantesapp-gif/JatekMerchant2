@@ -673,7 +673,10 @@ export default function HomeScreen() {
               <Pressable key={short.id} onPress={() => openShort(i)} style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}>
                 <ShortThumbnail
                   short={short}
-                  avatarUrl={short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null}
+                  avatarUrl={
+                    short.restaurantLogoUrl
+                    ?? (short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null)
+                  }
                 />
               </Pressable>
             ))}

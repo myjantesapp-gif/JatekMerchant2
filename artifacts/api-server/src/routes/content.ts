@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, categoriesTable, menuItemCategoriesTable, adsTable, shortsTable } from "@workspace/db";
+import { db, categoriesTable, menuItemCategoriesTable, adsTable, shortsTable, restaurantsTable } from "@workspace/db";
 import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectStorage";
-import { eq, asc, and, or, sql } from "drizzle-orm";
+import { eq, asc, and, or, sql, inArray } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -115,11 +115,12 @@ function decodeShortCursor(value: unknown): { sortOrder: number; id: number } | 
   }
 }
 
-function serializeShort(row: typeof shortsTable.$inferSelect) {
+function serializeShort(row: typeof shortsTable.$inferSelect, restaurantLogoUrl?: string | null) {
   return {
     ...row,
     imageUrl: resolveLegacyMediaPath(row.imageUrl, "images"),
     videoUrl: resolveLegacyMediaPath(row.videoUrl, "shorts"),
+    restaurantLogoUrl: resolveLegacyMediaPath(restaurantLogoUrl, "logos"),
     audio: {
       codec: row.audioCodec,
       bitrate: row.audioBitrate,
@@ -214,7 +215,22 @@ router.get("/shorts", async (req, res): Promise<void> => {
   const rows = await listShortRows(condition, hasPagination ? requestedLimit + 1 : requestedLimit);
 
   const hasMore = hasPagination && rows.length > requestedLimit;
-  const page = (hasMore ? rows.slice(0, requestedLimit) : rows).map(serializeShort);
+  const pageRows = hasMore ? rows.slice(0, requestedLimit) : rows;
+  const restaurantIds = [...new Set(
+    pageRows
+      .map((row) => row.restaurantId)
+      .filter((id): id is number => id !== null),
+  )];
+  const restaurantLogos = restaurantIds.length > 0
+    ? await db
+      .select({ id: restaurantsTable.id, logoUrl: restaurantsTable.logoUrl })
+      .from(restaurantsTable)
+      .where(inArray(restaurantsTable.id, restaurantIds))
+    : [];
+  const restaurantLogoById = new Map(restaurantLogos.map((restaurant) => [restaurant.id, restaurant.logoUrl]));
+  const page = pageRows.map((row) =>
+    serializeShort(row, row.restaurantId === null ? null : restaurantLogoById.get(row.restaurantId)),
+  );
   const last = page.at(-1);
   const nextCursor = hasMore && last ? encodeShortCursor(last.sortOrder, last.id) : null;
 

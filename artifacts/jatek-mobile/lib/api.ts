@@ -447,6 +447,7 @@ export interface Short {
   videoUrl?: string | null;
   restaurantId?: number | null;
   restaurantName?: string | null;
+  restaurantLogoUrl?: string | null;
   isActive: boolean;
   sortOrder: number;
 }
