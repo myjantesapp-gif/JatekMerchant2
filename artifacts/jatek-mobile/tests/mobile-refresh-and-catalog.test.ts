@@ -148,6 +148,17 @@ test("restaurant page keeps the safe-area header and renders a clean list", () =
   assert.match(listCard, /textDecorationLine: "line-through"/);
 });
 
+test("home shorts use the reference two-column framed cards", () => {
+  const page = source("app/(tabs)/index.tsx");
+
+  assert.match(page, /const SHORT_CARD_W/);
+  assert.match(page, /borderColor: SHORT_BORDER/);
+  assert.match(page, /shortAvatarRing/);
+  assert.match(page, /restaurantAvatarById/);
+  assert.match(page, /shortNameLabel/);
+  assert.doesNotMatch(page, /<Ionicons name="play-circle"/);
+});
+
 test("category search matches both establishment name and category", () => {
   const restaurants = [
     { id: 1, name: "Chez Lina", category: "Pâtisserie" },

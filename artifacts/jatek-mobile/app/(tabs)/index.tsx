@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -67,6 +67,7 @@ const BG = "#FFFFFF";
 const STAR = "#E91E63";
 const NEW_GREEN = "#7BE36A";
 const CARD_BORDER = "#F0F0F0";
+const SHORT_BORDER = "#C91432";
 
 // Shop categories (3×2 grid below the header)
 const CAT_TINT = "#F2EDD0"; // light yellow-olive — shared tile background
@@ -75,6 +76,10 @@ const { width: SCREEN_W } = Dimensions.get("window");
 const GRID_GAP = 12;
 const GRID_SIDE = 16;
 const GRID_CARD_W = (SCREEN_W - GRID_SIDE * 2 - GRID_GAP) / 2;
+const SHORT_GAP = 10;
+const SHORT_SIDE = 16;
+const SHORT_CARD_W = (SCREEN_W - SHORT_SIDE * 2 - SHORT_GAP) / 2;
+const SHORT_CARD_H = Math.round(SHORT_CARD_W * 1.64);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -92,7 +97,42 @@ function LoadRetry({ message, onRetry }: { message: string; onRetry: () => void 
   );
 }
 
-function ShortThumbnail({ short }: { short: { id: number; imageUrl?: string | null; videoUrl?: string | null } }) {
+function ShortAvatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "J";
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [imageUrl]);
+
+  return (
+    <View style={s.shortAvatarRing}>
+      {imageUrl && !imageFailed ? (
+        <Image
+          source={{ uri: resolveMediaUrl(imageUrl) ?? imageUrl }}
+          style={s.shortAvatarImage}
+          resizeMode="cover"
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <Text style={s.shortAvatarInitials}>{initials}</Text>
+      )}
+    </View>
+  );
+}
+
+function ShortThumbnail({
+  short,
+  avatarUrl,
+}: {
+  short: { id: number; title?: string | null; restaurantName?: string | null; imageUrl?: string | null; videoUrl?: string | null };
+  avatarUrl?: string | null;
+}) {
   const [sourceIndex, setSourceIndex] = useState(0);
   const sources = useMemo(
     () => [resolveMediaUrl(short.imageUrl), getYouTubeThumbnailUrl(short.videoUrl)]
@@ -105,17 +145,30 @@ function ShortThumbnail({ short }: { short: { id: number; imageUrl?: string | nu
     return (
       <View style={[s.videoImg, s.videoImgPlaceholder]}>
         <Ionicons name="videocam-outline" size={30} color="rgba(255,255,255,0.7)" />
+        <ShortAvatar
+          name={short.restaurantName ?? short.title ?? "Jatek"}
+          imageUrl={avatarUrl}
+        />
+        <Text style={s.shortNameLabel}>{short.restaurantName ?? short.title ?? "Jatek"}</Text>
       </View>
     );
   }
 
   return (
-    <Image
-      source={{ uri: source }}
-      style={s.videoImg}
-      resizeMode="cover"
-      onError={() => setSourceIndex((current) => current + 1)}
-    />
+    <>
+      <Image
+        source={{ uri: source }}
+        style={s.videoImg}
+        resizeMode="cover"
+        onError={() => setSourceIndex((current) => current + 1)}
+      />
+      <View style={s.shortBottomShade} pointerEvents="none" />
+      <ShortAvatar
+        name={short.restaurantName ?? short.title ?? "Jatek"}
+        imageUrl={avatarUrl}
+      />
+      <Text style={s.shortNameLabel}>{short.restaurantName ?? short.title ?? "Jatek"}</Text>
+    </>
   );
 }
 
@@ -346,6 +399,15 @@ export default function HomeScreen() {
   }, [apiCategories]);
   // Shorts are 100% managed from the admin dashboard (Shorts CRUD).
   const shorts = useMemo(() => shortsData ?? [], [shortsData]);
+  const restaurantAvatarById = useMemo(
+    () => new Map(
+      (featuredPartners ?? []).map((restaurant) => [
+        restaurant.id,
+        restaurant.imageUrl ?? restaurant.coverImageUrl ?? null,
+      ]),
+    ),
+    [featuredPartners],
+  );
   const orderedRestaurants = useMemo(() => {
     return rotateItems(restaurants ?? [], rotationSeed);
   }, [restaurants, rotationSeed]);
@@ -612,12 +674,10 @@ export default function HomeScreen() {
           >
             {shorts.map((short, i) => (
               <Pressable key={short.id} onPress={() => openShort(i)} style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}>
-                <ShortThumbnail short={short} />
-                <View style={s.videoScrim} />
-                {/* play icon centered */}
-                <View style={s.videoPlayWrap}>
-                  <Ionicons name="play-circle" size={30} color="rgba(255,255,255,0.92)" />
-                </View>
+                <ShortThumbnail
+                  short={short}
+                  avatarUrl={short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null}
+                />
               </Pressable>
             ))}
             {shorts.length === 0 && (
@@ -1036,14 +1096,16 @@ const s = StyleSheet.create({
   // ── Videos ──
   videosRow: {
     paddingHorizontal: 16,
-    gap: 10,
+    gap: SHORT_GAP,
     paddingBottom: 4,
   },
   videoCard: {
-    width: 120,
-    height: 170,
-    borderRadius: 16,
-    backgroundColor: "#1A1A2E",
+    width: SHORT_CARD_W,
+    height: SHORT_CARD_H,
+    borderRadius: 28,
+    backgroundColor: "#202020",
+    borderWidth: 4,
+    borderColor: SHORT_BORDER,
     overflow: "hidden",
     position: "relative",
   },
@@ -1056,6 +1118,47 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#111827",
+  },
+  shortBottomShade: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 110,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  shortAvatarRing: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    borderWidth: 4,
+    borderColor: SHORT_BORDER,
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shortAvatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  shortAvatarInitials: {
+    color: SHORT_BORDER,
+    fontFamily: "Inter_700Bold",
+    fontSize: 18,
+  },
+  shortNameLabel: {
+    position: "absolute",
+    left: 14,
+    right: 10,
+    bottom: 14,
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    fontSize: 20,
+    lineHeight: 24,
   },
   videoScrim: {
     ...StyleSheet.absoluteFillObject,
