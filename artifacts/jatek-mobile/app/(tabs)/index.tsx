@@ -78,7 +78,8 @@ const GRID_SIDE = 16;
 const GRID_CARD_W = (SCREEN_W - GRID_SIDE * 2 - GRID_GAP) / 2;
 const SHORT_GAP = 10;
 const SHORT_SIDE = 16;
-const SHORT_CARD_W = (SCREEN_W - SHORT_SIDE * 2 - SHORT_GAP) / 2;
+const SHORT_COLUMNS = 3;
+const SHORT_CARD_W = (SCREEN_W - SHORT_SIDE * 2 - SHORT_GAP * (SHORT_COLUMNS - 1)) / SHORT_COLUMNS;
 const SHORT_CARD_H = Math.round(SHORT_CARD_W * 1.64);
 
 // ─────────────────────────────────────────────────────────────────────────────

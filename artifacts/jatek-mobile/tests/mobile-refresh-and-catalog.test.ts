@@ -149,7 +149,7 @@ test("restaurant page keeps the safe-area header and renders a two-column produc
   assert.match(gridCard, /aspectRatio: 1/);
 });
 
-test("home Shorts render as a two-column vertical grid", () => {
+test("home Shorts render as a three-column vertical grid", () => {
   const page = source("app/(tabs)/index.tsx");
   const shortsSection = page.slice(
     page.indexOf("/* ─── Découvrir en vidéo ─── */"),
@@ -159,9 +159,11 @@ test("home Shorts render as a two-column vertical grid", () => {
   assert.match(shortsSection, /<Animated\.View[\s\S]*style=\{s\.videosGrid\}/);
   assert.doesNotMatch(shortsSection, /\bhorizontal\b/);
   assert.match(page, /videosGrid:\s*\{[\s\S]*flexDirection: "row"[\s\S]*flexWrap: "wrap"/);
+  assert.match(page, /const SHORT_COLUMNS = 3/);
+  assert.match(page, /SHORT_GAP \* \(SHORT_COLUMNS - 1\)/);
 });
 
-test("home shorts use two-column magenta framed cards without labels", () => {
+test("home shorts use three-column magenta framed cards without labels", () => {
   const page = source("app/(tabs)/index.tsx");
 
   assert.match(page, /const SHORT_CARD_W/);
