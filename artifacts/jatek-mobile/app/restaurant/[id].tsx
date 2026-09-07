@@ -5,6 +5,7 @@ import {
   Share, TextInput,
   RefreshControl,
   NativeScrollEvent, NativeSyntheticEvent,
+  useWindowDimensions,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Haptics from "expo-haptics";
@@ -14,7 +15,7 @@ import { useGetRestaurant, useGetRestaurantHeader, useListMenuItems } from "@wor
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { MenuItemCard } from "@/components/MenuItemCard";
+import { MenuItemGridCard } from "@/components/MenuItemGridCard";
 import { MenuItemDetailModal } from "@/components/MenuItemDetailModal";
 import type { MenuItemSize, MenuItemExtra } from "@/lib/api";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +29,7 @@ import { refreshAll } from "@/lib/mobileRefresh";
 import { filterAndSortMenuItems, groupMenuSections } from "@/lib/catalogUtils";
 
 const SIDE = 16;
+const MENU_GRID_GAP = 12;
 const HERO_H = 240;
 const CATEGORY_STICKY_HEIGHT = 54;
 const CATEGORY_OVERLAY_TOP_GAP = 8;
@@ -55,9 +57,11 @@ L.marker([${lat},${lng}],{icon:icon}).addTo(map).bindPopup('${safeName}');
 export default function RestaurantScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { width: viewportWidth } = useWindowDimensions();
   const t = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const restaurantId = parseInt(id, 10);
+  const menuCardWidth = Math.max(140, (viewportWidth - SIDE * 2 - MENU_GRID_GAP) / 2);
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [selectedCategory, setSelectedCategory] = useState("Tous");
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
@@ -577,15 +581,15 @@ export default function RestaurantScreen() {
               <View style={styles.sectionTitleWrap}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{section.name}</Text>
               </View>
-              <View style={styles.menuList}>
+               <View style={styles.menuList}>
                 {section.items.map((item: any) => (
-                  <MenuItemCard
+                   <MenuItemGridCard
                     key={item.id}
                     item={item}
+                     width={menuCardWidth}
                     quantity={getQty(item.id)}
                     restaurantOpen={isOpen}
                     onPressCard={() => setSelectedItem(item)}
-                    onRemove={() => updateQuantity(String(item.id), getQty(item.id) - 1)}
                     onAdd={() => {
                       if (!isOpen) return;
                       const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null; commissionRate?: number | null };
@@ -1006,7 +1010,14 @@ const styles = StyleSheet.create({
 
   // Menu list
   menuSection: { marginTop: 2 },
-  menuList: { paddingHorizontal: SIDE },
+  menuList: {
+    paddingHorizontal: SIDE,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    columnGap: MENU_GRID_GAP,
+    rowGap: 2,
+    alignItems: "flex-start",
+  },
 
   emptyWrap: { alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 10 },
   emptyTxt: { fontSize: 14, fontFamily: "Inter_500Medium" },

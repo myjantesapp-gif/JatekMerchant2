@@ -1123,9 +1123,9 @@ const s = StyleSheet.create({
     position: "absolute",
     top: 12,
     left: 12,
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 2,
     borderColor: SHORT_BORDER,
     backgroundColor: "#FFFFFF",
@@ -1140,7 +1140,7 @@ const s = StyleSheet.create({
   shortAvatarInitials: {
     color: SHORT_BORDER,
     fontFamily: "Inter_700Bold",
-    fontSize: 18,
+    fontSize: 22,
   },
   videoScrim: {
     ...StyleSheet.absoluteFillObject,
