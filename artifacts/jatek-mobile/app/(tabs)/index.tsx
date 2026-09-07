@@ -116,7 +116,7 @@ function ShortAvatar({ name, imageUrl }: { name: string; imageUrl?: string | nul
         <Image
           source={{ uri: resolveMediaUrl(imageUrl) ?? imageUrl }}
           style={s.shortAvatarImage}
-          resizeMode="cover"
+          resizeMode="contain"
           onError={() => setImageFailed(true)}
         />
       ) : (
