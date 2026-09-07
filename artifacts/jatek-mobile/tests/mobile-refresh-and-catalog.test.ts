@@ -169,6 +169,7 @@ test("home shorts use two-column magenta framed cards without labels", () => {
   assert.match(page, /borderWidth: 2/);
   assert.match(page, /borderColor: SHORT_BORDER/);
   assert.match(page, /shortAvatarRing/);
+  assert.match(page, /shortAvatarImageFrame/);
   assert.match(page, /restaurantAvatarById/);
   assert.match(page, /short\.restaurantLogoUrl/);
   assert.match(page, /shortAvatarImage[\s\S]*resizeMode="contain"/);

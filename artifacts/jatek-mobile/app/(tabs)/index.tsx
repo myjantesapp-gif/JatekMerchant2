@@ -113,12 +113,14 @@ function ShortAvatar({ name, imageUrl }: { name: string; imageUrl?: string | nul
   return (
     <View style={s.shortAvatarRing}>
       {imageUrl && !imageFailed ? (
-        <Image
-          source={{ uri: resolveMediaUrl(imageUrl) ?? imageUrl }}
-          style={s.shortAvatarImage}
-          resizeMode="contain"
-          onError={() => setImageFailed(true)}
-        />
+        <View style={s.shortAvatarImageFrame}>
+          <Image
+            source={{ uri: resolveMediaUrl(imageUrl) ?? imageUrl }}
+            style={s.shortAvatarImage}
+            resizeMode="contain"
+            onError={() => setImageFailed(true)}
+          />
+        </View>
       ) : (
         <Text style={s.shortAvatarInitials}>{initials}</Text>
       )}
@@ -1129,7 +1131,19 @@ const s = StyleSheet.create({
     borderWidth: 2,
     borderColor: SHORT_BORDER,
     backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shortAvatarImageFrame: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    bottom: 5,
+    left: 5,
+    borderRadius: 28,
+    backgroundColor: "#FFFFFF",
     overflow: "hidden",
+    padding: 6,
     alignItems: "center",
     justifyContent: "center",
   },
