@@ -148,6 +148,18 @@ test("restaurant page keeps the safe-area header and renders a clean list", () =
   assert.match(listCard, /textDecorationLine: "line-through"/);
 });
 
+test("home Shorts render as a two-column vertical grid", () => {
+  const page = source("app/(tabs)/index.tsx");
+  const shortsSection = page.slice(
+    page.indexOf("/* ─── Découvrir en vidéo ─── */"),
+    page.indexOf("/* ─── Pres de chez vous"),
+  );
+
+  assert.match(shortsSection, /<Animated\.View[\s\S]*style=\{s\.videosGrid\}/);
+  assert.doesNotMatch(shortsSection, /\bhorizontal\b/);
+  assert.match(page, /videosGrid:\s*\{[\s\S]*flexDirection: "row"[\s\S]*flexWrap: "wrap"/);
+});
+
 test("home shorts use two-column magenta framed cards without labels", () => {
   const page = source("app/(tabs)/index.tsx");
 

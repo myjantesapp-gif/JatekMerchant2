@@ -662,12 +662,9 @@ export default function HomeScreen() {
         ) : shortsError ? (
           <LoadRetry message="Impossible de charger les vidéos." onRetry={() => refetchShorts()} />
         ) : (
-          <Animated.ScrollView
+          <Animated.View
             entering={FadeInDown.delay(500).duration(550).springify()}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            nestedScrollEnabled
-            contentContainerStyle={s.videosRow}
+            style={s.videosGrid}
           >
             {shorts.map((short, i) => (
               <Pressable key={short.id} onPress={() => openShort(i)} style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}>
@@ -683,7 +680,7 @@ export default function HomeScreen() {
             {shorts.length === 0 && (
               <Text style={s.emptyTxt}>Aucune vidéo disponible pour le moment</Text>
             )}
-          </Animated.ScrollView>
+          </Animated.View>
         )}
 
         {/* ─── Pres de chez vous (horizontal scroll) ─── */}
@@ -1094,9 +1091,12 @@ const s = StyleSheet.create({
   },
 
   // ── Videos ──
-  videosRow: {
+  videosGrid: {
     paddingHorizontal: 16,
-    gap: SHORT_GAP,
+    columnGap: SHORT_GAP,
+    rowGap: SHORT_GAP,
+    flexDirection: "row",
+    flexWrap: "wrap",
     paddingBottom: 4,
   },
   videoCard: {
