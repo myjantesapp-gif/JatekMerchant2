@@ -111,7 +111,7 @@ bash scripts/eas-update.sh driver production "Describe what changed"
 ```
 
 Both apps point to `https://ma.jatek.app` in `preview` and `production` profiles.
-EAS projectId for customer app: `d30cddea-9dd6-42aa-8339-80d86b9ad76e`
+EAS project for customer app: `@jatekapp/jatek` (`73e947fb-0a5a-4064-aafe-c856e231c9d4`)
 EAS projectId for driver app:   `135003c2-4828-403d-8176-068364215286`
 
 ## Gotchas

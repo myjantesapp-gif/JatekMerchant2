@@ -304,7 +304,9 @@ bash scripts/eas-build.sh mobile production android
 ### Configuration
 
 - **Backend** : `https://ma.jatek.app` (jamais `localhost` en production)
-- **EAS Project ID** : `d30cddea-9dd6-42aa-8339-80d86b9ad76e`
+- **Compte Expo** : `jatekapp`
+- **Slug Expo** : `jatek`
+- **EAS Project ID** : `73e947fb-0a5a-4064-aafe-c856e231c9d4`
 - **Variables** : `EXPO_PUBLIC_DOMAIN` doit pointer vers `ma.jatek.app`
 
 ---

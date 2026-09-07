@@ -15,7 +15,7 @@ description: EAS build quirks for the jatek-mobile pnpm monorepo workspace — c
 
 2b. **Two eas.json files exist** — a repo-root `eas.json` (with `cli.appRoot: artifacts/jatek-mobile`) used by expo.dev GitHub-triggered builds, and `artifacts/jatek-mobile/eas.json` used by local CLI builds. Keep them in sync.
 
-2c. **Active EAS project = `@jatekplatforms-team/jatekclient`** (ID `d30cddea-9dd6-42aa-8339-80d86b9ad76e`). Use `EXPO_TOKEN_JATEK` (robot `Jatek`, role Admin on `jatekplatforms-team`). Previous project on `straightpath` (used `EXPO_TOKEN_DEV`) is now obsolete.
+2c. **Resolve the active EAS project from the checked-in static app config.** The Jatek client project has moved accounts more than once; never reuse an older owner, slug, project ID, or token from memory.
 
 3. **EAS CLI is local to jatek-mobile** — run through `scripts/eas-build.sh`, which forces the Jatek project credentials and project ID, using `node_modules/.bin/eas` from `artifacts/jatek-mobile/`.
 
@@ -35,12 +35,8 @@ description: EAS build quirks for the jatek-mobile pnpm monorepo workspace — c
 
 8. **Landing page QR deep-link format** — The QR code uses `exp+jatek://expo-development-client/?url=https%3A%2F%2FHOST%2Fmobile%2F` (not `exps://HOST`). The `expsUrl` in `serveLandingPage` must include `basePath`.
 
-9. **Token mapping** (as of last check):
-   - `EXPO_TOKEN` → robot `@myjantesapp-gif`, account `rbe2656s-team`
-   - `EXPO_TOKEN_2` → user `myjantes`, accounts `myjantes`, `myjantess-organization`, `mytoolsapps`, `jatek`
-   - `EXPO_TOKEN_DEV` → robot `@riadov001`, account `straightpath` (old project — no longer used)
-   - `EXPO_TOKEN_JATEK` → robot `Jatek`, account `jatekplatforms-team` ← **use this for all builds**
+9. **Token access must match the configured owner.** `EXPO_TOKEN_JATEK` must belong to a user or robot with build/update access to the active project owner; an unrelated valid Expo token still fails authorization.
 
-**Why:** Account migrated from `straightpath` to `jatekplatforms-team` with new project ID and slug. New keystore generated in the cloud by EAS on first build.
+**Why:** Builds have failed both from stale project-ID linkage and from tokens authenticated to an account without access to the configured owner.
 
-**How to apply:** Any time you touch `app.json`, `eas.json`, `serve.js`, or run `eas build`/`eas update` commands.
+**How to apply:** Any time you touch `app.json`, `eas.json`, `serve.js`, or run `eas build`/`eas update`, verify owner/slug/project ID alignment first, then securely replace the project token when the owner changes.

@@ -1,12 +1,12 @@
 {
   "expo": {
     "name": "Jatek",
-    "slug": "jatekclient",
-    "owner": "jatekplatforms-team",
+    "slug": "jatek",
+    "owner": "jatekapp",
     "version": "1.0.0",
     "extra": {
       "eas": {
-        "projectId": "d30cddea-9dd6-42aa-8339-80d86b9ad76e"
+        "projectId": "73e947fb-0a5a-4064-aafe-c856e231c9d4"
       }
     },
     "android": {
@@ -20,7 +20,7 @@
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/d30cddea-9dd6-42aa-8339-80d86b9ad76e"
+      "url": "https://u.expo.dev/73e947fb-0a5a-4064-aafe-c856e231c9d4"
     },
     "runtimeVersion": {
       "policy": "appVersion"

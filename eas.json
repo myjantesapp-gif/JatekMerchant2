@@ -16,9 +16,9 @@
       },
       "env": {
         "PNPM_VERSION": "10.26.1",
-        "EXPO_PUBLIC_PROJECT_ID": "d30cddea-9dd6-42aa-8339-80d86b9ad76e",
-        "EXPO_OWNER": "jatekplatforms-team",
-        "EXPO_SLUG": "jatekclient",
+        "EXPO_PUBLIC_PROJECT_ID": "73e947fb-0a5a-4064-aafe-c856e231c9d4",
+        "EXPO_OWNER": "jatekapp",
+        "EXPO_SLUG": "jatek",
         "npm_config_frozen_lockfile": "false",
         "pnpm_config_frozen_lockfile": "false",
         "NODE_VERSION": "20"
@@ -41,10 +41,10 @@
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "ma.jatek.app",
-        "EXPO_PUBLIC_PROJECT_ID": "d30cddea-9dd6-42aa-8339-80d86b9ad76e",
+        "EXPO_PUBLIC_PROJECT_ID": "73e947fb-0a5a-4064-aafe-c856e231c9d4",
         "PNPM_VERSION": "10.26.1",
-        "EXPO_OWNER": "jatekplatforms-team",
-        "EXPO_SLUG": "jatekclient",
+        "EXPO_OWNER": "jatekapp",
+        "EXPO_SLUG": "jatek",
         "npm_config_frozen_lockfile": "false",
         "pnpm_config_frozen_lockfile": "false",
         "NODE_VERSION": "20"
@@ -65,10 +65,10 @@
       "env": {
         "EXPO_PUBLIC_DOMAIN": "ma.jatek.app",
         "EXPO_PUBLIC_API_URL": "https://ma.jatek.app",
-        "EXPO_PUBLIC_PROJECT_ID": "d30cddea-9dd6-42aa-8339-80d86b9ad76e",
+        "EXPO_PUBLIC_PROJECT_ID": "73e947fb-0a5a-4064-aafe-c856e231c9d4",
         "PNPM_VERSION": "10.26.1",
-        "EXPO_OWNER": "jatekplatforms-team",
-        "EXPO_SLUG": "jatekclient",
+        "EXPO_OWNER": "jatekapp",
+        "EXPO_SLUG": "jatek",
         "npm_config_frozen_lockfile": "false",
         "pnpm_config_frozen_lockfile": "false",
         "NODE_VERSION": "20"

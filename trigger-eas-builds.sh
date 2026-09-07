@@ -42,7 +42,7 @@ echo "✅ eas.json configuré à la racine."
 
 # 2. Configuration projectId EAS pour Jatek Client
 if [ -f "artifacts/jatek-mobile/app.json" ]; then
-  npx jq '.expo.extra.eas.projectId = "d30cddea-9dd6-42aa-8339-80d86b9ad76e"' artifacts/jatek-mobile/app.json > artifacts/jatek-mobile/app.json.tmp && mv artifacts/jatek-mobile/app.json.tmp artifacts/jatek-mobile/app.json
+  npx jq '.expo.extra.eas.projectId = "73e947fb-0a5a-4064-aafe-c856e231c9d4"' artifacts/jatek-mobile/app.json > artifacts/jatek-mobile/app.json.tmp && mv artifacts/jatek-mobile/app.json.tmp artifacts/jatek-mobile/app.json
   echo "✅ app.json mis à jour pour jatek-mobile (Client)."
 fi
 

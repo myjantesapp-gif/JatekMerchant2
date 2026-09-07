@@ -27,10 +27,12 @@ case "$APP" in
   mobile)
     APP_DIR="$ROOT_DIR/artifacts/jatek-mobile"
     APP_LABEL="Jatek (customer)"
+    APP_OWNER="jatekapp"
     ;;
   driver)
     APP_DIR="$ROOT_DIR/artifacts/jatek-driver"
     APP_LABEL="Jatek Driver"
+    APP_OWNER="jatekplatforms-team"
     ;;
   *)
     echo "Usage: $0 <mobile|driver> <development|preview|production> [android|ios|all]"
@@ -43,7 +45,7 @@ if [ ! -d "$APP_DIR" ]; then
   exit 1
 fi
 
-# Use the Jatek robot token (jatekplatforms-team) for all builds.
+# Use the project-specific Jatek token for builds.
 # Prefer the project-specific secret, while accepting the standard EXPO_TOKEN
 # name for existing Replit environments.
 EAS_TOKEN="${EXPO_TOKEN_JATEK:-${EXPO_TOKEN:-}}"
@@ -68,7 +70,7 @@ fi
 echo "[eas-build] Building $APP_LABEL — profile: $PROFILE, platform: $PLATFORM"
 echo "[eas-build] Directory: $APP_DIR"
 echo "[eas-build] EAS binary: $EAS_BIN"
-echo "[eas-build] EAS account: jatekplatforms-team"
+echo "[eas-build] EAS account: $APP_OWNER"
 echo ""
 
 cd "$APP_DIR"

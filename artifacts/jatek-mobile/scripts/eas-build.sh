@@ -13,9 +13,9 @@
 set -e
 
 export EXPO_TOKEN="${EXPO_TOKEN_JATEK:-$EXPO_TOKEN}"
-export EXPO_OWNER="jatekplatforms-team"
-export EXPO_SLUG="jatekclient"
-export EXPO_PUBLIC_PROJECT_ID="d30cddea-9dd6-42aa-8339-80d86b9ad76e"
+export EXPO_OWNER="jatekapp"
+export EXPO_SLUG="jatek"
+export EXPO_PUBLIC_PROJECT_ID="73e947fb-0a5a-4064-aafe-c856e231c9d4"
 
 echo "👤 Owner : $EXPO_OWNER"
 echo "📦 Slug  : $EXPO_SLUG"
