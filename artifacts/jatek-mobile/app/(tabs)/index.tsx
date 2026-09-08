@@ -694,7 +694,7 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
-        {/* ─── Près de chez vous (all commerce types) ─── */}
+        {/* ─── Pres de chez vous (all commerce types) ─── */}
         <Animated.View entering={FadeInDown.delay(560).duration(500).springify()}>
           <SectionHeader
             title="Près de chez vous"
