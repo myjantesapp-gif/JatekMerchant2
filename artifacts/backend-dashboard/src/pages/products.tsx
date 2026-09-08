@@ -27,7 +27,7 @@ import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { ImageUploadField } from "@/components/ImageUploadField";
 
-const EMPTY = { name: "", description: "", price: "", category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "" };
+const EMPTY = { name: "", description: "", price: "", category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "", sortOrder: "0" };
 
 type ProductCat = { id: number; restaurantId: number | null; name: string; isActive: boolean; productCount?: number };
 function useProductCategories(restaurantId: string | number | undefined) {
@@ -40,8 +40,9 @@ function useProductCategories(restaurantId: string | number | undefined) {
 
 export default function Products() {
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("custom");
   const { data: me } = useBackendMe();
-  const { data: products, isLoading } = useListBackendProducts({ search: search || undefined });
+  const { data: products, isLoading } = useListBackendProducts({ search: search || undefined, sort: sortBy } as any);
   const { data: shops } = useListBackendShops({});
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -100,6 +101,7 @@ export default function Products() {
     tags: f.tags || undefined,
     prepTimeMinutes: f.prepTimeMinutes ? Number(f.prepTimeMinutes) : undefined,
     calories: f.calories ? Number(f.calories) : undefined,
+     sortOrder: Number(f.sortOrder) || 0,
   });
 
   const handleCreate = (e: React.FormEvent) => {
@@ -119,6 +121,7 @@ export default function Products() {
       tags: Array.isArray(p.tags) ? p.tags.join(",") : (p.tags ?? ""),
       prepTimeMinutes: p.prepTimeMinutes ? String(p.prepTimeMinutes) : "",
       calories: p.calories ? String(p.calories) : "",
+       sortOrder: String(p.sortOrder ?? 0),
     });
   };
 
@@ -181,9 +184,20 @@ export default function Products() {
         <TabsContent value="produits" className="pt-4">
       <Card>
         <CardHeader className="pb-4">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Rechercher..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Rechercher..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Trier par" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="custom">Ordre personnalisé</SelectItem>
+                <SelectItem value="name">Nom</SelectItem>
+                <SelectItem value="price">Prix</SelectItem>
+                <SelectItem value="createdAt">Date de création</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -552,6 +566,9 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
           )}
         </Field>
         <Field label="Prix (DH) *"><Input required type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" step="0.01" value={form.price} onChange={(e: any) => set("price", e.target.value)} /></Field>
+        <Field label="Ordre personnalisé">
+          <Input type="number" step="1" value={form.sortOrder} onChange={(e: any) => set("sortOrder", e.target.value)} />
+        </Field>
         <ImageUploadField
           label="Image"
           value={form.imageUrl}

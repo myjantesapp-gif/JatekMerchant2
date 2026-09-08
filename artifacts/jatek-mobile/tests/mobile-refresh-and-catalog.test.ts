@@ -207,7 +207,6 @@ test("order sorting is stable for the source array and supports both feed direct
 
 const refreshableScreens = [
   "app/category/[slug].tsx",
-  "app/restaurant/[id].tsx",
   "app/(tabs)/orders.tsx",
   "app/(tabs)/manage.tsx",
   "app/(tabs)/deliver.tsx",
@@ -224,6 +223,13 @@ for (const screen of refreshableScreens) {
     assert.match(code, /const onRefresh = async/);
   });
 }
+
+test("restaurant header keeps pull-to-refresh but has no refresh icon", () => {
+  const code = source("app/restaurant/[id].tsx");
+  assert.match(code, /RefreshControl/);
+  assert.match(code, /const onRefresh = async/);
+  assert.doesNotMatch(code, /RefreshButton/);
+});
 
 test("home keeps pull-to-refresh without a header refresh button", () => {
   const code = source("app/(tabs)/index.tsx");

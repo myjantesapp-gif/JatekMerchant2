@@ -602,7 +602,16 @@ router.get("/backend/products", requireAuth, async (req: AuthedRequest, res): Pr
     conds.push(ilike(menuItemsTable.name, `%${req.query.search}%`));
   }
   const where = conds.length ? and(...conds) : undefined;
-  const rows = await db.select().from(menuItemsTable).where(where).orderBy(desc(menuItemsTable.createdAt)).limit(200);
+  const requestedSort = typeof req.query.sort === "string" ? req.query.sort : "custom";
+  const sort = ["custom", "name", "price", "createdAt"].includes(requestedSort) ? requestedSort : "custom";
+  const orderBy = sort === "name"
+    ? [menuItemsTable.name, menuItemsTable.id]
+    : sort === "price"
+      ? [menuItemsTable.price, menuItemsTable.name, menuItemsTable.id]
+      : sort === "createdAt"
+        ? [desc(menuItemsTable.createdAt), desc(menuItemsTable.id)]
+        : [menuItemsTable.sortOrder, menuItemsTable.name, menuItemsTable.id];
+  const rows = await db.select().from(menuItemsTable).where(where).orderBy(...orderBy).limit(200);
   res.json(rows);
 });
 
@@ -616,7 +625,7 @@ router.post("/backend/products", requireAuth, async (req: AuthedRequest, res, ne
   }
   try {
     const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
-    const { restaurantId, name, description, price, category, menuItemCategoryId, imageUrl, isAvailable, isPopular, allergens, tags, prepTimeMinutes, calories } = req.body || {};
+    const { restaurantId, name, description, price, category, menuItemCategoryId, imageUrl, isAvailable, isPopular, allergens, tags, prepTimeMinutes, calories, sortOrder } = req.body || {};
     if (!restaurantId || !name || price === undefined || (!category && !menuItemCategoryId)) {
       res.status(400).json({ error: "restaurantId, name, price, category ou menuItemCategoryId requis" }); return;
     }
@@ -637,6 +646,7 @@ router.post("/backend/products", requireAuth, async (req: AuthedRequest, res, ne
       imageUrl: normalizeStoredMediaPath(imageUrl) ?? null, isAvailable: isAvailable ?? true,
       isPopular: isPopular ?? false, allergens: allergens ?? null,
       tags: Array.isArray(tags) ? tags : (tags ? [tags] : null),
+       sortOrder: Number.isInteger(Number(sortOrder)) ? Number(sortOrder) : 0,
        prepTimeMinutes: prepTimeMinutes ? parseDecimal(prepTimeMinutes) : null,
        calories: calories ? parseDecimal(calories) : null,
     }).returning();
@@ -660,7 +670,7 @@ router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, re
     if (scoped !== null && !scoped.includes(existing.restaurantId)) {
       res.status(403).json({ error: "Forbidden: not your restaurant" }); return;
     }
-    const allowed = ["name", "description", "price", "imageUrl", "isAvailable", "isPopular", "allergens", "tags", "prepTimeMinutes", "calories"];
+    const allowed = ["name", "description", "price", "imageUrl", "isAvailable", "isPopular", "allergens", "tags", "prepTimeMinutes", "calories", "sortOrder"];
     const updates: Record<string, unknown> = {};
     for (const k of allowed) if ((req.body || {})[k] !== undefined) updates[k] = req.body[k];
     if (Object.prototype.hasOwnProperty.call(req.body || {}, "category")
@@ -687,6 +697,14 @@ router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, re
     if ("price" in updates) updates.price = parseDecimal(updates.price);
     if ("prepTimeMinutes" in updates) updates.prepTimeMinutes = parseDecimal(updates.prepTimeMinutes);
     if ("calories" in updates) updates.calories = parseDecimal(updates.calories);
+    if ("sortOrder" in updates) {
+      const nextSortOrder = Number(updates.sortOrder);
+      if (!Number.isInteger(nextSortOrder)) {
+        res.status(400).json({ error: "sortOrder doit être un entier" });
+        return;
+      }
+      updates.sortOrder = nextSortOrder;
+    }
     if ("imageUrl" in updates) updates.imageUrl = normalizeStoredMediaPath(updates.imageUrl);
     const [item] = await db.update(menuItemsTable).set(updates as any).where(eq(menuItemsTable.id, id)).returning();
     if (!item) { res.status(404).json({ error: "Not found" }); return; }

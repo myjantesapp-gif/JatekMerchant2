@@ -646,7 +646,8 @@ export const ListBackendOrdersResponse = zod.array(ListBackendOrdersResponseItem
 export const ListBackendProductsQueryParams = zod.object({
   "status": zod.coerce.string().optional(),
   "shopId": zod.coerce.number().int().optional(),
-  "search": zod.coerce.string().optional()
+  "search": zod.coerce.string().optional(),
+  "sort": zod.coerce.string().optional()
 })
 
 export const ListBackendProductsResponseItem = zod.object({
@@ -658,6 +659,7 @@ export const ListBackendProductsResponseItem = zod.object({
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
+  "sortOrder": zod.number().int(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -1504,6 +1506,7 @@ export const UpdateMenuItemBody = zod.object({
   "imageUrl": zod.string().optional(),
   "category": zod.string().optional(),
   "menuItemCategoryId": zod.number().int().optional(),
+  "sortOrder": zod.number().int().optional(),
   "isAvailable": zod.boolean().optional(),
   "isPopular": zod.boolean().optional()
 })
@@ -2802,6 +2805,7 @@ export const CreateMenuItemBody = zod.object({
   "imageUrl": zod.string().optional(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().optional(),
+  "sortOrder": zod.number().int().optional(),
   "isAvailable": zod.boolean().optional(),
   "isPopular": zod.boolean().optional()
 })

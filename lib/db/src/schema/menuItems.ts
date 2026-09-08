@@ -22,6 +22,8 @@ export const menuItemsTable = pgTable("menu_items", {
   calories: integer("calories"),
   /** FK to menuItemCategoriesTable — optional structured product category. */
   menuItemCategoryId: integer("menu_item_category_id"),
+  /** Dashboard-controlled product position within a restaurant. Lower values appear first. */
+  sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

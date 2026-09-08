@@ -83,7 +83,12 @@ router.get("/restaurants/:restaurantId/menu", async (req, res): Promise<void> =>
     .from(menuItemsTable)
     .leftJoin(menuItemCategoriesTable, eq(menuItemsTable.menuItemCategoryId, menuItemCategoriesTable.id))
     .where(and(...conditions))
-    .orderBy(asc(menuItemCategoriesTable.sortOrder), asc(menuItemsTable.category), desc(menuItemsTable.createdAt));
+    .orderBy(
+      asc(menuItemCategoriesTable.sortOrder),
+      asc(menuItemsTable.sortOrder),
+      asc(menuItemsTable.category),
+      desc(menuItemsTable.createdAt),
+    );
   res.json(items.map(({ item }) => item));
 });
 

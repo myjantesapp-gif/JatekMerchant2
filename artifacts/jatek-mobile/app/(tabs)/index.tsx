@@ -366,19 +366,25 @@ export default function HomeScreen() {
     else Linking.openURL(url).catch(() => {});
   };
 
-  // Derive restaurant category slug dynamically from API so we never hardcode "restauration".
-  const restaurantCategorySlug = useMemo(() => {
+  // Resolve the current activity parent from the API. This keeps the home
+  // feed compatible with restaurants, supermarkets, groceries and shops
+  // instead of assuming that every parent is a restaurant.
+  const activeBusinessCategorySlug = useMemo(() => {
     const cat = (apiCategories ?? []).find(
-      (c: any) => !c.parentId && c.isActive !== false && c.businessType === "restaurant",
+      (c: any) => c.parentId == null && c.isActive !== false && c.businessType === activeBusinessType,
     ) as any;
     return cat?.slug ?? null;
-  }, [apiCategories]);
+  }, [activeBusinessType, apiCategories]);
 
   // Categories are 100% managed from the admin dashboard (ma.jatek.app/admin).
   // "service_shortcut" type → quick-action row; "category" type → Explorer slider.
   // Legacy rows with no type field fall back to "category".
   const serviceShortcuts = useMemo(() => {
-    const parents = (apiCategories ?? []).filter((c: any) => !c.parentId && c.isActive !== false && c.type === "service_shortcut");
+    const parents = (apiCategories ?? []).filter(
+      (c: any) => c.parentId == null && c.isActive !== false
+        && c.type === "service_shortcut"
+        && c.businessType === "services",
+    );
     return parents.map((c: any) => ({
       slug: c.slug,
       label: c.name,
@@ -388,7 +394,13 @@ export default function HomeScreen() {
   }, [apiCategories]);
 
   const shopCategories = useMemo(() => {
-    const parents = (apiCategories ?? []).filter((c: any) => !c.parentId && c.isActive !== false && c.type !== "service_shortcut");
+    // A supermarket/grocery parent must remain visible even if legacy admin
+    // data carries an incorrect shortcut type. Only service-business
+    // shortcuts belong in the quick-action row.
+    const parents = (apiCategories ?? []).filter(
+      (c: any) => c.parentId == null && c.isActive !== false
+        && !(c.type === "service_shortcut" && c.businessType === "services"),
+    );
     return parents.map((c: any) => ({
       slug: c.slug,
       label: c.name,
@@ -688,8 +700,8 @@ export default function HomeScreen() {
         <Animated.View entering={FadeInDown.delay(560).duration(500).springify()}>
           <SectionHeader
             title="Près de chez vous"
-            onMore={() => restaurantCategorySlug
-              ? router.push({ pathname: "/category/[slug]", params: { slug: restaurantCategorySlug } })
+            onMore={() => activeBusinessCategorySlug
+              ? router.push({ pathname: "/category/[slug]", params: { slug: activeBusinessCategorySlug } })
               : undefined
             }
           />

@@ -4105,6 +4105,8 @@ components:
           type:
             - integer
             - "null"
+        sortOrder:
+          type: integer
         isAvailable:
           type: boolean
         isPopular:
@@ -4204,6 +4206,8 @@ components:
           type: string
         menuItemCategoryId:
           type: integer
+        sortOrder:
+          type: integer
         isAvailable:
           type: boolean
         isPopular:
@@ -4226,6 +4230,8 @@ components:
         category:
           type: string
         menuItemCategoryId:
+          type: integer
+        sortOrder:
           type: integer
         isAvailable:
           type: boolean

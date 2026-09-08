@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, categoriesTable, menuItemCategoriesTable, adsTable, shortsTable, restaurantsTable } from "@workspace/db";
+import { db, categoriesTable, menuItemCategoriesTable, menuItemsTable, adsTable, shortsTable, restaurantsTable } from "@workspace/db";
 import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectStorage";
 import { eq, asc, and, or, sql, inArray } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
@@ -81,7 +81,37 @@ router.get("/menu-categories", async (req, res): Promise<void> => {
   const rows = await db.select().from(menuItemCategoriesTable)
     .where(condition)
     .orderBy(asc(menuItemCategoriesTable.sortOrder), asc(menuItemCategoriesTable.name), asc(menuItemCategoriesTable.id));
-  res.json(rows);
+  if (rid === null) {
+    res.json(rows);
+    return;
+  }
+
+  // Global categories are templates, not restaurant-owned categories. Only
+  // expose one when this restaurant actually has a product linked to it.
+  // Keep the legacy name fallback for products created before
+  // menuItemCategoryId was introduced.
+  const globalRows = rows.filter((row) => row.restaurantId === null);
+  const usedProducts = globalRows.length > 0
+    ? await db.select({
+        menuItemCategoryId: menuItemsTable.menuItemCategoryId,
+        category: menuItemsTable.category,
+      }).from(menuItemsTable).where(eq(menuItemsTable.restaurantId, rid))
+    : [];
+  const usedCategoryIds = new Set(
+    usedProducts
+      .map((item) => item.menuItemCategoryId)
+      .filter((id): id is number => id !== null),
+  );
+  const usedLegacyNames = new Set(
+    usedProducts
+      .filter((item) => item.menuItemCategoryId === null)
+      .map((item) => item.category),
+  );
+  res.json(rows.filter((row) =>
+    row.restaurantId !== null
+      || usedCategoryIds.has(row.id)
+      || usedLegacyNames.has(row.name),
+  ));
 });
 
 // ─────────────────────────────────────────────────────────────

@@ -24,7 +24,6 @@ import { useT } from "@/contexts/LanguageContext";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { apiFetch } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { RefreshButton } from "@/components/RefreshButton";
 import { refreshAll } from "@/lib/mobileRefresh";
 import { filterAndSortMenuItems, groupMenuSections } from "@/lib/catalogUtils";
 
@@ -386,7 +385,6 @@ export default function RestaurantScreen() {
             <Ionicons name="arrow-back" size={20} color={colors.foreground} />
           </TouchableOpacity>
           <View style={styles.heroTopRight}>
-            <RefreshButton onPress={onRefresh} refreshing={refreshing} color={colors.foreground} accessibilityLabel="Actualiser le restaurant" />
             <TouchableOpacity onPress={toggleFav} style={styles.roundBtn} activeOpacity={0.85}>
               <Ionicons name={isFav ? "heart" : "heart-outline"} size={20} color={isFav ? colors.primary : colors.foreground} />
             </TouchableOpacity>

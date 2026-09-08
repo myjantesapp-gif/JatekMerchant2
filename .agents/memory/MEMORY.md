@@ -26,3 +26,4 @@
 - [Safe orphan order cleanup](orphan-order-cleanup.md) — audit all loose order references; only repair old empty pending orders, and preserve driver/order history.
 - [Driver delivery OTP lifecycle](driver-delivery-otp-lifecycle.md) — consume delivery codes atomically; reconcile only transient failures, never invalid or reused-code responses.
 - [Deployment shared type declarations](deployment-shared-types.md) — compile workspace declaration packages before dependent production typechecks to avoid stale ignored dist output.
+- [Restaurant menu category visibility](restaurant-menu-category-visibility.md) — global product categories must be scoped to actual restaurant usage, with a legacy-name fallback for old products.

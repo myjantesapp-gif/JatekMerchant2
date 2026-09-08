@@ -97,6 +97,7 @@ export interface MenuItem {
   category: string;
   /** @nullable */
   menuItemCategoryId?: number | null;
+  sortOrder: number;
   isAvailable: boolean;
   isPopular: boolean;
   createdAt: string;
@@ -384,6 +385,7 @@ export interface CreateMenuItemBody {
   imageUrl?: string;
   category: string;
   menuItemCategoryId?: number;
+  sortOrder?: number;
   isAvailable?: boolean;
   isPopular?: boolean;
 }
@@ -395,6 +397,7 @@ export interface UpdateMenuItemBody {
   imageUrl?: string;
   category?: string;
   menuItemCategoryId?: number;
+  sortOrder?: number;
   isAvailable?: boolean;
   isPopular?: boolean;
 }
@@ -1312,6 +1315,7 @@ export type ListBackendProductsParams = {
 status?: string;
 shopId?: number;
 search?: string;
+sort?: string;
 };
 
 export type ListBackendReviewsParams = {
