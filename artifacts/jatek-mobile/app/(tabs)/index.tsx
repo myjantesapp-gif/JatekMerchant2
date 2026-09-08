@@ -23,6 +23,7 @@ import {
   useListRestaurants,
   useGetFeaturedRestaurants,
   useListCategories,
+  useListMenuCategories,
   type Restaurant,
   type ListRestaurantsParams,
 } from "@workspace/api-client-react";
@@ -320,6 +321,7 @@ export default function HomeScreen() {
 
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [activeProductCategory, setActiveProductCategory] = useState<string | null>(null);
   const [activeBusinessType, setActiveBusinessType] = useState("restaurant");
   const [activeLabel, setActiveLabel] = useState("Tous les Restaurants");
 
@@ -333,12 +335,14 @@ export default function HomeScreen() {
   const [rotationSeed, setRotationSeed] = useState(() => Math.floor(Date.now() / 86_400_000));
 
   const params = useMemo<ListRestaurantsParams>(() => {
-    const p: ListRestaurantsParams = { businessType: activeBusinessType };
+    const p: ListRestaurantsParams = {};
+    if (activeBusinessType) p.businessType = activeBusinessType;
     if (activeCat) p.category = activeCat;
+    if (activeProductCategory) p.productCategory = activeProductCategory;
     if (search.trim()) p.search = search.trim();
     if (onlyOpen !== undefined) p.isOpen = onlyOpen;
     return p;
-  }, [activeBusinessType, activeCat, onlyOpen, search]);
+  }, [activeBusinessType, activeCat, activeProductCategory, onlyOpen, search]);
 
   const {
     data: restaurants,
@@ -348,6 +352,11 @@ export default function HomeScreen() {
   } = useListRestaurants(params);
   const { data: featuredPartners, refetch: refetchFeatured } = useGetFeaturedRestaurants();
   const { data: apiCategories, isLoading: categoriesLoading, refetch: refetchCategories } = useListCategories();
+  const {
+    data: productCategories,
+    isLoading: productCategoriesLoading,
+    refetch: refetchProductCategories,
+  } = useListMenuCategories();
   const { data: ads, refetch: refetchAds } = useAds();
   const {
     data: shortsData,
@@ -408,6 +417,18 @@ export default function HomeScreen() {
       accent: c.accentColor || PINK,
     }));
   }, [apiCategories]);
+  const visibleProductCategories = useMemo(() => {
+    const seen = new Set<string>();
+    return (productCategories ?? [])
+      .filter((category: any) => category.isActive !== false && typeof category.name === "string")
+      .filter((category: any) => {
+        const key = category.name.trim().toLocaleLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name));
+  }, [productCategories]);
   // Shorts are 100% managed from the admin dashboard (Shorts CRUD).
   const shorts = useMemo(() => shortsData ?? [], [shortsData]);
   const restaurantAvatarById = useMemo(
@@ -431,6 +452,7 @@ export default function HomeScreen() {
         refetchRestaurants,
         refetchFeatured,
         refetchCategories,
+        refetchProductCategories,
         refetchAds,
         refetchShorts,
       ]);
@@ -448,8 +470,19 @@ export default function HomeScreen() {
   const showRestaurants = () => {
     setActiveBusinessType("restaurant");
     setActiveCat(null);
+    setActiveProductCategory(null);
     setOnlyOpen(undefined);
     setActiveLabel("Tous les Restaurants");
+  };
+
+  const selectProductCategory = (name: string) => {
+    const next = activeProductCategory === name ? null : name;
+    setActiveProductCategory(next);
+    setActiveCat(null);
+    // A product category can belong to any commerce type, so do not keep the
+    // default restaurant-only scope while it is selected.
+    setActiveBusinessType(next ? "" : "restaurant");
+    setActiveLabel(next ? name : "Tous les Restaurants");
   };
 
   const openShort = (index: number) => {
@@ -616,6 +649,62 @@ export default function HomeScreen() {
             </Pressable>
           ))}
         </Animated.ScrollView>
+
+        {/* ─── Product categories from every commerce type ─── */}
+        {(productCategoriesLoading || visibleProductCategories.length > 0) && (
+          <Animated.View
+            entering={FadeInDown.delay(190).duration(500).springify()}
+            style={s.productCategoriesSection}
+          >
+            <View style={s.productCategoriesHeader}>
+              <Text style={s.productCategoriesTitle}>Catégories produits</Text>
+              {activeProductCategory && (
+                <Pressable
+                  onPress={() => selectProductCategory(activeProductCategory)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Réinitialiser la catégorie produit"
+                >
+                  <Text style={s.clearProductCategory}>Réinitialiser</Text>
+                </Pressable>
+              )}
+            </View>
+            {productCategoriesLoading && visibleProductCategories.length === 0 ? (
+              <ActivityIndicator size="small" color={PINK} style={s.productCategoriesLoader} />
+            ) : (
+              <View style={s.productCategoriesGrid}>
+                {visibleProductCategories.map((category: any) => {
+                  const isSelected = activeProductCategory === category.name;
+                  return (
+                    <Pressable
+                      key={category.id ?? category.name}
+                      onPress={() => selectProductCategory(category.name)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      style={({ pressed }) => [
+                        s.productCategoryChip,
+                        isSelected && s.productCategoryChipSelected,
+                        pressed && { opacity: 0.78, transform: [{ scale: 0.97 }] },
+                      ]}
+                    >
+                      <Ionicons
+                        name={isSelected ? "checkmark-circle" : "pricetag-outline"}
+                        size={16}
+                        color={isSelected ? "#fff" : PINK_DEEP}
+                      />
+                      <Text
+                        style={[s.productCategoryChipText, isSelected && s.productCategoryChipTextSelected]}
+                        numberOfLines={1}
+                      >
+                        {category.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </Animated.View>
+        )}
 
         {/* ─── Partenaires VIP & promotions (Talabat-style horizontal slider) ─── */}
         <Animated.View entering={FadeInDown.delay(260).duration(500).springify()} style={s.vipHeaderWrap}>
@@ -894,6 +983,60 @@ const s = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     textAlign: "center",
     lineHeight: 14,
+  },
+  productCategoriesSection: {
+    marginTop: 18,
+    paddingHorizontal: 16,
+  },
+  productCategoriesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  productCategoriesTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: TEXT_DARK,
+  },
+  clearProductCategory: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: PINK_DEEP,
+  },
+  productCategoriesLoader: {
+    alignSelf: "flex-start",
+    marginVertical: 8,
+  },
+  productCategoriesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  productCategoryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    minHeight: 36,
+    maxWidth: "100%",
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    backgroundColor: PINK_SOFT,
+    borderWidth: 1,
+    borderColor: "#FFD0E2",
+  },
+  productCategoryChipSelected: {
+    backgroundColor: PINK,
+    borderColor: PINK,
+  },
+  productCategoryChipText: {
+    flexShrink: 1,
+    color: PINK_DEEP,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  productCategoryChipTextSelected: {
+    color: "#fff",
   },
   // ── Services row ──
   servicesRow: {

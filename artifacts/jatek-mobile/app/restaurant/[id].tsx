@@ -268,8 +268,8 @@ export default function RestaurantScreen() {
         {
           top: insets.top,
           height: COMPACT_HEADER_HEIGHT,
-          backgroundColor: colors.background,
-          borderBottomColor: colors.border,
+          backgroundColor: "#FFFFFF",
+          borderBottomColor: "#E5E7EB",
         },
       ]}
     >
@@ -879,6 +879,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: SIDE,
