@@ -118,6 +118,23 @@ test("restaurant catalog sections retain category labels and collect uncategoriz
   );
 });
 
+test("restaurant category tabs keep legacy menu categories alongside API categories", () => {
+  const page = source("app/restaurant/[id].tsx");
+
+  assert.match(page, /const legacyCategories = Array\.from/);
+  assert.match(page, /new Map\(/);
+  assert.match(page, /knownNames\.has\(name\.toLocaleLowerCase\(\)\)/);
+  assert.match(page, /\.\.\.fromApi, \.\.\.legacyCategories/);
+});
+
+test("restaurant header labels service merchants without calling them restaurants", () => {
+  const page = source("app/restaurant/[id].tsx");
+
+  assert.match(page, /const businessLabel = isServices \? "Marchand" : "Restaurant"/);
+  assert.match(page, /businessLabel\} fermé/);
+  assert.match(page, /briefcase-outline/);
+});
+
 test("restaurant category navigation stays sticky and tracks visible sections", () => {
   const code = source("app/restaurant/[id].tsx");
 

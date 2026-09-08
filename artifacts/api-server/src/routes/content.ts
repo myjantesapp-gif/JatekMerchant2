@@ -105,12 +105,13 @@ router.get("/menu-categories", async (req, res): Promise<void> => {
   const usedLegacyNames = new Set(
     usedProducts
       .filter((item) => item.menuItemCategoryId === null)
-      .map((item) => item.category),
+      .map((item) => item.category?.trim().toLocaleLowerCase())
+      .filter((name): name is string => Boolean(name)),
   );
   res.json(rows.filter((row) =>
     row.restaurantId !== null
       || usedCategoryIds.has(row.id)
-      || usedLegacyNames.has(row.name),
+      || usedLegacyNames.has(row.name.trim().toLocaleLowerCase()),
   ));
 });
 

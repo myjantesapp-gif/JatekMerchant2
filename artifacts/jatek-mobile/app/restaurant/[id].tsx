@@ -123,14 +123,19 @@ export default function RestaurantScreen() {
   const categories = useMemo(() => {
     const fromApi = (productCategories ?? []).map((category) => ({
       id: String(category.id),
-      name: category.name,
+      name: category.name.trim(),
     }));
-    if (fromApi.length > 0) return [{ id: "Tous", name: "Tous" }, ...fromApi];
-    return [
-      { id: "Tous", name: "Tous" },
-      ...Array.from(new Set((menuItems ?? []).map((m: any) => m.category).filter(Boolean) as string[]))
-        .map((name) => ({ id: name, name })),
-    ];
+    const knownNames = new Set(fromApi.map((category) => category.name.trim().toLocaleLowerCase()));
+    const legacyCategories = Array.from(
+      new Map(
+        (menuItems ?? [])
+          .map((item: any) => (typeof item.category === "string" ? item.category.trim() : ""))
+          .filter((name) => name.length > 0 && !knownNames.has(name.toLocaleLowerCase()))
+          .map((name) => [name.toLocaleLowerCase(), name] as const),
+      ).values(),
+    ).map((name) => ({ id: `legacy:${name}`, name }));
+
+    return [{ id: "Tous", name: "Tous" }, ...fromApi, ...legacyCategories];
   }, [menuItems, productCategories]);
   const filtered = useMemo(() => {
     return filterAndSortMenuItems(menuItems ?? [], {
@@ -333,6 +338,7 @@ export default function RestaurantScreen() {
     cartItems.find((i) => i.cartLineId === String(itemId))?.quantity ?? 0;
   const businessType = restaurant?.businessType ?? "restaurant";
   const isServices = businessType === "services";
+  const businessLabel = isServices ? "Marchand" : "Restaurant";
 
   if (rLoading) {
     return (
@@ -375,7 +381,7 @@ export default function RestaurantScreen() {
           <Image source={{ uri: resolveMediaUrl(heroUri) }} style={styles.hero} resizeMode="cover" />
         ) : (
           <View style={[styles.hero, styles.heroPlaceholder, { backgroundColor: colors.muted }]}>
-            <Ionicons name="restaurant" size={48} color={colors.mutedForeground} />
+            <Ionicons name={isServices ? "briefcase-outline" : "restaurant"} size={48} color={colors.mutedForeground} />
           </View>
         )}
 
@@ -495,7 +501,7 @@ export default function RestaurantScreen() {
           <View style={styles.closedBannerInner}>
             <Ionicons name="moon-outline" size={20} color="#fff" />
             <View style={styles.closedBannerText}>
-              <Text style={styles.closedBannerTitle}>Restaurant fermé</Text>
+              <Text style={styles.closedBannerTitle}>{businessLabel} fermé</Text>
               <Text style={styles.closedBannerSub}>
                 Les commandes ne sont pas disponibles pour le moment. Revenez plus tard !
               </Text>
@@ -689,7 +695,7 @@ export default function RestaurantScreen() {
                 <View style={[styles.openDot, { backgroundColor: isOpen ? colors.turquoise : "#9CA3AF" }]} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.infoModalRowLabel, { color: colors.mutedForeground }]}>Statut</Text>
+                  <Text style={[styles.infoModalRowLabel, { color: colors.mutedForeground }]}>Statut du {businessLabel.toLowerCase()}</Text>
                 <Text style={[styles.infoModalRowValue, { color: isOpen ? colors.turquoise : colors.mutedForeground, fontFamily: "Inter_700Bold" }]}>
                   {isOpen ? "Ouvert maintenant" : "Fermé pour le moment"}
                 </Text>
