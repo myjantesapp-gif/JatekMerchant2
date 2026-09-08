@@ -175,6 +175,9 @@ test("home shorts use three-column magenta framed cards without labels", () => {
   assert.match(page, /restaurantAvatarById/);
   assert.match(page, /short\.restaurantLogoUrl/);
   assert.match(page, /shortAvatarImage[\s\S]*resizeMode="contain"/);
+  assert.match(page, /videoCard:\s*\{[\s\S]*borderRadius: 16/);
+  assert.match(page, /shortAvatarRing:\s*\{[\s\S]*width: 54[\s\S]*height: 54/);
+  assert.match(page, /shortAvatarImageFrame:\s*\{[\s\S]*padding: 4/);
   assert.doesNotMatch(page, /shortNameLabel/);
   assert.doesNotMatch(page, /<Ionicons name="play-circle"/);
 });
