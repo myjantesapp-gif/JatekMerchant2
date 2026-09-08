@@ -2457,6 +2457,7 @@ export const ListRestaurantsQueryParams = zod.object({
   "isLocal": zod.coerce.boolean().optional(),
   "isOpen": zod.coerce.boolean().optional(),
   "businessType": zod.coerce.string().optional(),
+  "productCategory": zod.coerce.string().optional(),
   "ownerId": zod.coerce.number().int().optional()
 })
 

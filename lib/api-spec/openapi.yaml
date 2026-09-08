@@ -2592,6 +2592,11 @@ paths:
           in: query
           schema:
             type: string
+        - name: productCategory
+          in: query
+          description: Filters establishments that have at least one product in this category.
+          schema:
+            type: string
         - name: ownerId
           in: query
           schema:

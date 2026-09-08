@@ -1383,6 +1383,7 @@ category?: string;
 isLocal?: boolean;
 isOpen?: boolean;
 businessType?: string;
+productCategory?: string;
 ownerId?: number;
 };
 

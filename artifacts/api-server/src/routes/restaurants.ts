@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, restaurantsTable, ordersTable, reviewsTable } from "@workspace/db";
+import { db, restaurantsTable, ordersTable, reviewsTable, menuItemsTable } from "@workspace/db";
 import { eq, ilike, and, or, avg, count, sum, sql } from "drizzle-orm";
 import {
   CreateRestaurantBody,
@@ -102,6 +102,15 @@ router.get("/restaurants", async (req, res): Promise<void> => {
   }
   if (query.businessType) {
     conditions.push(eq(restaurantsTable.businessType, query.businessType));
+  }
+  if (query.productCategory?.trim()) {
+    const productCategory = query.productCategory.trim().toLocaleLowerCase();
+    conditions.push(sql`EXISTS (
+      SELECT 1
+      FROM ${menuItemsTable} AS product_filter
+      WHERE product_filter.restaurant_id = ${restaurantsTable.id}
+        AND lower(trim(product_filter.category)) = ${productCategory}
+    )` as any);
   }
   if (query.search) {
     const term = `%${query.search}%`;
