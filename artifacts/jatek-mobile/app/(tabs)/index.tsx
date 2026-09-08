@@ -40,7 +40,6 @@ import { AddressQuickPicker } from "@/components/AddressQuickPicker";
 import { CartPreviewSheet } from "@/components/CartPreviewSheet";
 import { SideMenu } from "@/components/SideMenu";
 import { JatekScrollingBanner } from "@/components/JatekScrollingBanner";
-import { RefreshButton } from "@/components/RefreshButton";
 import { refreshAll } from "@/lib/mobileRefresh";
 import { rotateItems } from "@/lib/catalogUtils";
 
@@ -485,7 +484,6 @@ export default function HomeScreen() {
 
               {/* right actions */}
               <View style={s.headerActions}>
-                <RefreshButton onPress={onRefresh} refreshing={refreshing} color="#fff" accessibilityLabel="Actualiser l'accueil" />
                 <TouchableOpacity
                   activeOpacity={0.85}
                   style={s.iconBtn}
@@ -1105,7 +1103,7 @@ const s = StyleSheet.create({
   videoCard: {
     width: SHORT_CARD_W,
     height: SHORT_CARD_H,
-    borderRadius: 16,
+    borderRadius: 8,
     backgroundColor: "#202020",
     borderWidth: 2,
     borderColor: SHORT_BORDER,
@@ -1126,8 +1124,8 @@ const s = StyleSheet.create({
     position: "absolute",
     top: 8,
     left: 8,
-    width: 54,
-    height: 54,
+    width: 44,
+    height: 44,
     borderRadius: 999,
     borderWidth: 2,
     borderColor: SHORT_BORDER,
@@ -1144,7 +1142,7 @@ const s = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "#FFFFFF",
     overflow: "hidden",
-    padding: 4,
+    padding: 3,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1155,7 +1153,7 @@ const s = StyleSheet.create({
   shortAvatarInitials: {
     color: SHORT_BORDER,
     fontFamily: "Inter_700Bold",
-    fontSize: 16,
+    fontSize: 14,
   },
   videoScrim: {
     ...StyleSheet.absoluteFillObject,

@@ -175,9 +175,9 @@ test("home shorts use three-column magenta framed cards without labels", () => {
   assert.match(page, /restaurantAvatarById/);
   assert.match(page, /short\.restaurantLogoUrl/);
   assert.match(page, /shortAvatarImage[\s\S]*resizeMode="contain"/);
-  assert.match(page, /videoCard:\s*\{[\s\S]*borderRadius: 16/);
-  assert.match(page, /shortAvatarRing:\s*\{[\s\S]*width: 54[\s\S]*height: 54/);
-  assert.match(page, /shortAvatarImageFrame:\s*\{[\s\S]*padding: 4/);
+  assert.match(page, /videoCard:\s*\{[\s\S]*borderRadius: 8/);
+  assert.match(page, /shortAvatarRing:\s*\{[\s\S]*width: 44[\s\S]*height: 44/);
+  assert.match(page, /shortAvatarImageFrame:\s*\{[\s\S]*padding: 3/);
   assert.doesNotMatch(page, /shortNameLabel/);
   assert.doesNotMatch(page, /<Ionicons name="play-circle"/);
 });
@@ -206,7 +206,6 @@ test("order sorting is stable for the source array and supports both feed direct
 });
 
 const refreshableScreens = [
-  "app/(tabs)/index.tsx",
   "app/category/[slug].tsx",
   "app/restaurant/[id].tsx",
   "app/(tabs)/orders.tsx",
@@ -225,6 +224,15 @@ for (const screen of refreshableScreens) {
     assert.match(code, /const onRefresh = async/);
   });
 }
+
+test("home keeps pull-to-refresh without a header refresh button", () => {
+  const code = source("app/(tabs)/index.tsx");
+
+  assert.match(code, /RefreshControl/);
+  assert.match(code, /refreshControl=\{\s*<RefreshControl/);
+  assert.match(code, /const onRefresh = async/);
+  assert.doesNotMatch(code, /RefreshButton/);
+});
 
 const profileFeedScreens = [
   "app/profile/favorites.tsx",
