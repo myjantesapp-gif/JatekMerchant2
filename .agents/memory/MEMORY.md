@@ -28,3 +28,4 @@
 - [Deployment shared type declarations](deployment-shared-types.md) — compile workspace declaration packages before dependent production typechecks to avoid stale ignored dist output.
 - [Restaurant menu category visibility](restaurant-menu-category-visibility.md) — global product categories must be scoped to actual restaurant usage, with a legacy-name fallback for old products.
 - [Dashboard component test environment](dashboard-component-test-environment.md) — use Happy DOM for Radix Select interaction tests; jsdom lacks required pointer/focus behavior.
+- [API ESM test bootstrap](api-esm-test-bootstrap.md) — app-level API tests run native ESM; source-relative paths must not rely on CommonJS globals.

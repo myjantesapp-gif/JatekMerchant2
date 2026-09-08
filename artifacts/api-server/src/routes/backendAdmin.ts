@@ -890,7 +890,10 @@ export function startRestaurantAutoCloseScheduler() {
     }
   };
 
-  setInterval(tick, 60_000);
+  const interval = setInterval(tick, 60_000);
+  // The HTTP server itself keeps production alive; do not keep short-lived
+  // scripts and integration tests alive solely because this scheduler exists.
+  interval.unref?.();
   tick(); // run immediately on start
   console.info("[scheduler] restaurant auto-close started");
 }
