@@ -320,8 +320,9 @@ export default function HomeScreen() {
 
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState<string | null>(null);
-  const [activeBusinessType, setActiveBusinessType] = useState("restaurant");
-  const [activeLabel, setActiveLabel] = useState("Tous les Restaurants");
+  // The home feed includes every commerce type, not only restaurants.
+  const [activeBusinessType, setActiveBusinessType] = useState("");
+  const [activeLabel, setActiveLabel] = useState("Tous les commerces");
 
   const [onlyOpen, setOnlyOpen] = useState<boolean | undefined>(undefined);
   const [addressPickerOpen, setAddressPickerOpen] = useState(false);
@@ -372,7 +373,10 @@ export default function HomeScreen() {
   // instead of assuming that every parent is a restaurant.
   const activeBusinessCategorySlug = useMemo(() => {
     const cat = (apiCategories ?? []).find(
-      (c: any) => c.parentId == null && c.isActive !== false && c.businessType === activeBusinessType,
+      (c: any) => activeBusinessType
+        && c.parentId == null
+        && c.isActive !== false
+        && c.businessType === activeBusinessType,
     ) as any;
     return cat?.slug ?? null;
   }, [activeBusinessType, apiCategories]);
@@ -445,13 +449,6 @@ export default function HomeScreen() {
 
   const addressLabel = selectedAddress || "Livraison en 5R22+CVC2";
   const currentLabel = activeLabel;
-
-  const showRestaurants = () => {
-    setActiveBusinessType("restaurant");
-    setActiveCat(null);
-    setOnlyOpen(undefined);
-    setActiveLabel("Tous les Restaurants");
-  };
 
   const openShort = (index: number) => {
     setInitialShort(index);
