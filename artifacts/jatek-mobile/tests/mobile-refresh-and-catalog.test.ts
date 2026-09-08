@@ -257,6 +257,20 @@ test("home keeps pull-to-refresh without a header refresh button", () => {
   assert.doesNotMatch(code, /RefreshButton/);
 });
 
+test("home includes every commerce type instead of defaulting to restaurants", () => {
+  const code = source("app/(tabs)/index.tsx");
+
+  assert.match(code, /const \[activeBusinessType, setActiveBusinessType\] = useState\(""\)/);
+  assert.match(code, /const \[activeLabel, setActiveLabel\] = useState\("Tous les commerces"\)/);
+  assert.match(code, /Aucun commerce à proximité/);
+});
+
+test("app keeps the system status bar opaque and readable", () => {
+  const code = source("app/_layout.tsx");
+
+  assert.match(code, /<StatusBar style="dark" backgroundColor="#FFFFFF" translucent=\{false\}/);
+});
+
 const profileFeedScreens = [
   "app/profile/favorites.tsx",
   "app/profile/reorder.tsx",

@@ -1,4 +1,5 @@
 import { useFonts } from "expo-font";
+import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons, FontAwesome, FontAwesome5 } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
@@ -128,6 +129,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <StatusBar style="dark" backgroundColor="#FFFFFF" translucent={false} />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>

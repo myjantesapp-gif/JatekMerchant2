@@ -694,7 +694,7 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
-        {/* ─── Pres de chez vous (horizontal scroll) ─── */}
+        {/* ─── Près de chez vous (all commerce types) ─── */}
         <Animated.View entering={FadeInDown.delay(560).duration(500).springify()}>
           <SectionHeader
             title="Près de chez vous"
@@ -707,7 +707,7 @@ export default function HomeScreen() {
         {isLoading ? (
           <ActivityIndicator color={PINK} style={{ marginVertical: 18 }} />
         ) : restaurantsError ? (
-          <LoadRetry message="Impossible de charger les restaurants." onRetry={() => refetchRestaurants()} />
+          <LoadRetry message="Impossible de charger les commerces." onRetry={() => refetchRestaurants()} />
         ) : (
           <Animated.ScrollView
             entering={FadeInDown.delay(620).duration(550).springify()}
@@ -727,18 +727,18 @@ export default function HomeScreen() {
               />
             ))}
             {(restaurants ?? []).length === 0 && !isLoading && (
-              <Text style={s.emptyTxt}>Aucun restaurant à proximité</Text>
+              <Text style={s.emptyTxt}>Aucun commerce à proximité</Text>
             )}
           </Animated.ScrollView>
         )}
 
-        {/* ─── Tous les Restaurants (2-column grid) ─── */}
+        {/* ─── Tous les commerces (2-column grid) ─── */}
         <Animated.View entering={FadeInDown.delay(740).duration(550).springify()} style={s.gridSection}>
           <Text style={s.gridSectionTitle}>{currentLabel}</Text>
           {isLoading ? (
             <ActivityIndicator color={PINK} style={{ marginVertical: 24 }} />
           ) : restaurantsError ? (
-            <LoadRetry message="Impossible de charger les restaurants." onRetry={() => refetchRestaurants()} />
+              <LoadRetry message="Impossible de charger les commerces." onRetry={() => refetchRestaurants()} />
           ) : (
             <View style={s.grid}>
               {orderedRestaurants.map((r, i) => (
