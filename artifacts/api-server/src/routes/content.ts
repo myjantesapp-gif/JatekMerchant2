@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, categoriesTable, menuItemCategoriesTable, menuItemsTable, adsTable, shortsTable, restaurantsTable } from "@workspace/db";
 import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectStorage";
+import { filterVisibleRestaurantMenuCategories } from "../lib/menuCategoryVisibility";
 import { eq, asc, and, or, sql, inArray } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 
@@ -97,22 +98,7 @@ router.get("/menu-categories", async (req, res): Promise<void> => {
         category: menuItemsTable.category,
       }).from(menuItemsTable).where(eq(menuItemsTable.restaurantId, rid))
     : [];
-  const usedCategoryIds = new Set(
-    usedProducts
-      .map((item) => item.menuItemCategoryId)
-      .filter((id): id is number => id !== null),
-  );
-  const usedLegacyNames = new Set(
-    usedProducts
-      .filter((item) => item.menuItemCategoryId === null)
-      .map((item) => item.category?.trim().toLocaleLowerCase())
-      .filter((name): name is string => Boolean(name)),
-  );
-  res.json(rows.filter((row) =>
-    row.restaurantId !== null
-      || usedCategoryIds.has(row.id)
-      || usedLegacyNames.has(row.name.trim().toLocaleLowerCase()),
-  ));
+  res.json(filterVisibleRestaurantMenuCategories(rows, usedProducts, rid));
 });
 
 // ─────────────────────────────────────────────────────────────

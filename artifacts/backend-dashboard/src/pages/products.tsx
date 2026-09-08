@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { ImageUploadField } from "@/components/ImageUploadField";
+import { buildProductListParams, isProductSort, type ProductSort } from "@/lib/productListQuery";
 
 const EMPTY = { name: "", description: "", price: "", category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "", sortOrder: "0" };
 
@@ -40,9 +41,9 @@ function useProductCategories(restaurantId: string | number | undefined) {
 
 export default function Products() {
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("custom");
+  const [sortBy, setSortBy] = useState<ProductSort>("custom");
   const { data: me } = useBackendMe();
-  const { data: products, isLoading } = useListBackendProducts({ search: search || undefined, sort: sortBy } as any);
+  const { data: products, isLoading } = useListBackendProducts(buildProductListParams(search, sortBy));
   const { data: shops } = useListBackendShops({});
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -189,7 +190,7 @@ export default function Products() {
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Rechercher..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={sortBy} onValueChange={(value) => { if (isProductSort(value)) setSortBy(value); }}>
               <SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Trier par" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="custom">Ordre personnalisé</SelectItem>

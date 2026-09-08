@@ -12,6 +12,7 @@ import {
   ListMenuItemsParams,
   ListMenuItemsQueryParams,
 } from "@workspace/api-zod";
+import { compareCustomerMenuEntries } from "../lib/productOrdering";
 
 const router: IRouter = Router();
 
@@ -79,7 +80,10 @@ router.get("/restaurants/:restaurantId/menu", async (req, res): Promise<void> =>
     eq(menuItemCategoriesTable.isActive, true),
   )!);
 
-  const items = await db.select({ item: menuItemsTable })
+  const items = await db.select({
+    item: menuItemsTable,
+    categorySortOrder: menuItemCategoriesTable.sortOrder,
+  })
     .from(menuItemsTable)
     .leftJoin(menuItemCategoriesTable, eq(menuItemsTable.menuItemCategoryId, menuItemCategoriesTable.id))
     .where(and(...conditions))
@@ -89,7 +93,11 @@ router.get("/restaurants/:restaurantId/menu", async (req, res): Promise<void> =>
       asc(menuItemsTable.category),
       desc(menuItemsTable.createdAt),
     );
-  res.json(items.map(({ item }) => item));
+  const orderedItems = items.sort((left, right) => compareCustomerMenuEntries(
+    { ...left.item, categorySortOrder: left.categorySortOrder },
+    { ...right.item, categorySortOrder: right.categorySortOrder },
+  ));
+  res.json(orderedItems.map(({ item }) => item));
 });
 
 router.post("/restaurants/:restaurantId/menu", requireRole("admin", "restaurant_owner"), async (req: AuthedRequest, res): Promise<void> => {

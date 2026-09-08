@@ -28,6 +28,7 @@ import * as tracking from "../lib/trackingService";
 import { closeUserSubscriptions, publish } from "../lib/sse";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
 import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectStorage";
+import { getBackendProductsOrderBy, normalizeProductSort } from "../lib/productOrdering";
 
 const router: IRouter = Router();
 
@@ -602,16 +603,10 @@ router.get("/backend/products", requireAuth, async (req: AuthedRequest, res): Pr
     conds.push(ilike(menuItemsTable.name, `%${req.query.search}%`));
   }
   const where = conds.length ? and(...conds) : undefined;
-  const requestedSort = typeof req.query.sort === "string" ? req.query.sort : "custom";
-  const sort = ["custom", "name", "price", "createdAt"].includes(requestedSort) ? requestedSort : "custom";
-  const orderBy = sort === "name"
-    ? [menuItemsTable.name, menuItemsTable.id]
-    : sort === "price"
-      ? [menuItemsTable.price, menuItemsTable.name, menuItemsTable.id]
-      : sort === "createdAt"
-        ? [desc(menuItemsTable.createdAt), desc(menuItemsTable.id)]
-        : [menuItemsTable.sortOrder, menuItemsTable.name, menuItemsTable.id];
-  const rows = await db.select().from(menuItemsTable).where(where).orderBy(...orderBy).limit(200);
+  const sort = normalizeProductSort(req.query.sort);
+  const rows = await db.select().from(menuItemsTable).where(where)
+    .orderBy(...getBackendProductsOrderBy(sort))
+    .limit(200);
   res.json(rows);
 });
 
