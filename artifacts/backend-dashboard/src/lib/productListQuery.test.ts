@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, expect, it } from "vitest";
 
 import {
   buildProductListParams,
@@ -8,22 +7,23 @@ import {
 } from "./productListQuery";
 import { getListBackendProductsUrl } from "@workspace/api-client-react";
 
-test("dashboard sort selections map to the backend products sort query", () => {
-  assert.deepEqual(PRODUCT_SORT_OPTIONS, ["custom", "name", "price", "createdAt"]);
-  for (const sort of PRODUCT_SORT_OPTIONS) {
-    assert.deepEqual(buildProductListParams("", sort), {
-      search: undefined,
-      sort,
+describe("product list query", () => {
+  it("maps dashboard sort selections to the backend products sort query", () => {
+    expect(PRODUCT_SORT_OPTIONS).toEqual(["custom", "name", "price", "createdAt"]);
+    for (const sort of PRODUCT_SORT_OPTIONS) {
+      expect(buildProductListParams("", sort)).toEqual({
+        search: undefined,
+        sort,
+      });
+    }
+    expect(buildProductListParams(" burger ", "price")).toEqual({
+      search: " burger ",
+      sort: "price",
     });
-  }
-  assert.deepEqual(buildProductListParams(" burger ", "price"), {
-    search: " burger ",
-    sort: "price",
+    expect(
+      getListBackendProductsUrl(buildProductListParams(" burger ", "price")),
+    ).toBe("/api/backend/products?search=+burger+&sort=price");
+    expect(isProductSort("createdAt")).toBe(true);
+    expect(isProductSort("unknown")).toBe(false);
   });
-  assert.equal(
-    getListBackendProductsUrl(buildProductListParams(" burger ", "price")),
-    "/api/backend/products?search=+burger+&sort=price",
-  );
-  assert.equal(isProductSort("createdAt"), true);
-  assert.equal(isProductSort("unknown"), false);
 });
