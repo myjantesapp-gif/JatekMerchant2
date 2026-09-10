@@ -643,11 +643,20 @@ export const ListBackendOrdersResponse = zod.array(ListBackendOrdersResponseItem
  * JWT required. Backend dashboard RBAC applies by staff role and scoped shop access.
  * @summary List products (menu items, filtered by role scope)
  */
+
+export const listBackendProductsQueryPageSizeMax = 200;
+
+
+
 export const ListBackendProductsQueryParams = zod.object({
   "status": zod.coerce.string().optional(),
   "shopId": zod.coerce.number().int().optional(),
   "search": zod.coerce.string().optional(),
-  "sort": zod.coerce.string().optional()
+  "category": zod.coerce.string().optional(),
+  "sort": zod.enum(['custom', 'name', 'category', 'price', 'availability', 'shop', 'createdAt']).optional(),
+  "sortDirection": zod.enum(['asc', 'desc']).optional(),
+  "page": zod.coerce.number().int().min(1).optional(),
+  "pageSize": zod.coerce.number().int().min(1).max(listBackendProductsQueryPageSizeMax).optional()
 })
 
 export const ListBackendProductsResponseItem = zod.object({
@@ -659,12 +668,54 @@ export const ListBackendProductsResponseItem = zod.object({
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
-  "sortOrder": zod.number().int(),
+  "sortOrder": zod.number().int().optional(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
 })
 export const ListBackendProductsResponse = zod.array(ListBackendProductsResponseItem)
+
+
+/**
+ * JWT required. Backend dashboard RBAC applies by staff role, scoped shop access, and pagination.
+ * @summary List products with pagination (menu items, filtered by role scope)
+ */
+
+export const listBackendProductsPageQueryPageSizeMax = 200;
+
+
+
+export const ListBackendProductsPageQueryParams = zod.object({
+  "status": zod.coerce.string().optional(),
+  "shopId": zod.coerce.number().int().optional(),
+  "search": zod.coerce.string().optional(),
+  "category": zod.coerce.string().optional(),
+  "sort": zod.enum(['custom', 'name', 'category', 'price', 'availability', 'shop', 'createdAt']).optional(),
+  "sortDirection": zod.enum(['asc', 'desc']).optional(),
+  "page": zod.coerce.number().int().min(1).optional(),
+  "pageSize": zod.coerce.number().int().min(1).max(listBackendProductsPageQueryPageSizeMax).optional()
+})
+
+export const ListBackendProductsPageResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "restaurantId": zod.number().int(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "price": zod.number(),
+  "imageUrl": zod.string().nullish(),
+  "category": zod.string(),
+  "menuItemCategoryId": zod.number().int().nullish(),
+  "sortOrder": zod.number().int().optional(),
+  "isAvailable": zod.boolean(),
+  "isPopular": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})),
+  "total": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "totalPages": zod.number().int()
+})
 
 
 /**
@@ -761,6 +812,7 @@ export const ListBackendMenuCategoryProductsResponseItem = zod.object({
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
+  "sortOrder": zod.number().int().optional(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -1485,6 +1537,7 @@ export const GetMenuItemResponse = zod.object({
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
+  "sortOrder": zod.number().int().optional(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -1520,6 +1573,7 @@ export const UpdateMenuItemResponse = zod.object({
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
+  "sortOrder": zod.number().int().optional(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -1554,6 +1608,7 @@ export const GetProductOptionsResponse = zod.object({
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
+  "sortOrder": zod.number().int().optional(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -2457,7 +2512,7 @@ export const ListRestaurantsQueryParams = zod.object({
   "isLocal": zod.coerce.boolean().optional(),
   "isOpen": zod.coerce.boolean().optional(),
   "businessType": zod.coerce.string().optional(),
-  "productCategory": zod.coerce.string().optional(),
+  "productCategory": zod.coerce.string().optional().describe('Filters establishments that have at least one product in this category.'),
   "ownerId": zod.coerce.number().int().optional()
 })
 
@@ -2784,6 +2839,7 @@ export const ListMenuItemsResponseItem = zod.object({
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
+  "sortOrder": zod.number().int().optional(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -2820,6 +2876,7 @@ export const CreateMenuItemResponse = zod.object({
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
+  "sortOrder": zod.number().int().optional(),
   "isAvailable": zod.boolean(),
   "isPopular": zod.boolean(),
   "createdAt": zod.coerce.date()

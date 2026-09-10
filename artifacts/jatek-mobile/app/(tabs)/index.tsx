@@ -477,7 +477,7 @@ export default function HomeScreen() {
               { paddingTop: insets.top + 12 },
             ]}
           >
-            {/* Top row: menu + Jatek logo + orders + profile */}
+            {/* Top row: menu + orders + profile */}
             <View style={s.headerTopRow}>
               {/* hamburger — opens side menu */}
               <TouchableOpacity
@@ -488,9 +488,6 @@ export default function HomeScreen() {
               >
                 <Ionicons name="menu" size={24} color="#fff" />
               </TouchableOpacity>
-
-              {/* Jatek logo centre */}
-              <Text style={s.headerLogo}>Jatek</Text>
 
               {/* right actions */}
               <View style={s.headerActions}>
@@ -794,15 +791,6 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 14,
-  },
-  headerLogo: {
-    flex: 1,
-    textAlign: "center",
-    color: "#fff",
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
-    fontStyle: "italic",
   },
   headerActions: {
     flexDirection: "row",

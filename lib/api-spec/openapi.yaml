@@ -746,6 +746,31 @@ paths:
           in: query
           schema:
             type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [custom, name, category, price, availability, shop, createdAt]
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
       responses:
         "200":
           description: Products
@@ -770,6 +795,72 @@ paths:
       security:
         - bearerAuth: []
       description: JWT required. Backend dashboard RBAC applies by staff role and scoped shop access.
+  /backend/products/page:
+    get:
+      operationId: listBackendProductsPage
+      tags:
+        - backend
+      summary: List products with pagination (menu items, filtered by role scope)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: shopId
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [custom, name, category, price, availability, shop, createdAt]
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: Paginated products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackendProductPage"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden by backend dashboard RBAC
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+        - bearerAuth: []
+      description: JWT required. Backend dashboard RBAC applies by staff role, scoped shop access, and pagination.
   /backend/reviews:
     get:
       operationId: listBackendReviews
@@ -4128,6 +4219,27 @@ components:
         - isAvailable
         - isPopular
         - createdAt
+    BackendProductPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - items
+        - total
+        - page
+        - pageSize
+        - totalPages
     MenuItemCategory:
       type: object
       properties:

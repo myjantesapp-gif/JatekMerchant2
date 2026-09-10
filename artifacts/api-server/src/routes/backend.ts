@@ -15,7 +15,7 @@ import {
   categoriesTable,
   platformSettingsTable,
 } from "@workspace/db";
-import { eq, inArray, count, sum, gte, ilike, and, or, desc, sql } from "drizzle-orm";
+import { eq, inArray, count, sum, gte, ilike, and, or, asc, desc, sql } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 import {
   sendOtpMessage,
@@ -28,7 +28,7 @@ import * as tracking from "../lib/trackingService";
 import { closeUserSubscriptions, publish } from "../lib/sse";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
 import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectStorage";
-import { getBackendProductsOrderBy, normalizeProductSort } from "../lib/productOrdering";
+import { getBackendProductsOrderBy, normalizeProductSort, normalizeProductSortDirection } from "../lib/productOrdering";
 
 const router: IRouter = Router();
 
@@ -583,6 +583,66 @@ router.get("/backend/orders/:id", requireAuth, async (req: AuthedRequest, res): 
 });
 
 // ---------- Products ----------
+type BackendProductPage = {
+  items: typeof menuItemsTable.$inferSelect[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+function parsePositiveQueryInteger(value: unknown, fallback: number, maximum: number): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, maximum);
+}
+
+async function queryBackendProducts(
+  req: AuthedRequest,
+  ctx: NonNullable<Awaited<ReturnType<typeof requireBackendUser>>>,
+): Promise<BackendProductPage> {
+  const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
+  const page = parsePositiveQueryInteger(req.query.page, 1, 100000);
+  const pageSize = parsePositiveQueryInteger(req.query.pageSize, 200, 200);
+  const conds: any[] = [];
+  if (scoped !== null) {
+    if (scoped.length === 0) return { items: [], total: 0, page, pageSize, totalPages: 0 };
+    conds.push(inArray(menuItemsTable.restaurantId, scoped));
+  }
+  if (req.query.shopId) conds.push(eq(menuItemsTable.restaurantId, Number(req.query.shopId)));
+  if (req.query.status === "available") conds.push(eq(menuItemsTable.isAvailable, true));
+  if (req.query.status === "unavailable") conds.push(eq(menuItemsTable.isAvailable, false));
+  if (req.query.category && typeof req.query.category === "string") {
+    conds.push(eq(menuItemsTable.category, req.query.category));
+  }
+  if (req.query.search && typeof req.query.search === "string") {
+    const search = `%${req.query.search}%`;
+    conds.push(or(ilike(menuItemsTable.name, search), ilike(menuItemsTable.category, search))!);
+  }
+  const where = conds.length ? and(...conds) : undefined;
+  const sort = normalizeProductSort(req.query.sort);
+  const direction = normalizeProductSortDirection(req.query.sortDirection, sort);
+  const [{ total }] = await db.select({ total: count() }).from(menuItemsTable).where(where);
+  const totalCount = Number(total ?? 0);
+  const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / pageSize);
+  const rows = sort === "shop"
+    ? (await db.select().from(menuItemsTable)
+      .leftJoin(restaurantsTable, eq(menuItemsTable.restaurantId, restaurantsTable.id))
+      .where(where)
+      .orderBy(
+        direction === "desc" ? desc(restaurantsTable.name) : asc(restaurantsTable.name),
+        ...getBackendProductsOrderBy(sort, direction).slice(1),
+      )
+      .limit(pageSize)
+      .offset((page - 1) * pageSize))
+      .map(({ menu_items: item }) => item)
+    : await db.select().from(menuItemsTable).where(where)
+      .orderBy(...getBackendProductsOrderBy(sort, direction))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+  return { items: rows, total: totalCount, page, pageSize, totalPages };
+}
+
 router.get("/backend/products", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const ctx = await requireBackendUser(req, res);
   if (!ctx) return;
@@ -590,24 +650,27 @@ router.get("/backend/products", requireAuth, async (req: AuthedRequest, res): Pr
     res.status(403).json({ error: "Forbidden: products.read required" });
     return;
   }
-  const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
-  const conds: any[] = [];
-  if (scoped !== null) {
-    if (scoped.length === 0) { res.json([]); return; }
-    conds.push(inArray(menuItemsTable.restaurantId, scoped));
+  const result = await queryBackendProducts(req, ctx);
+  res.setHeader("X-Total-Count", String(result.total));
+  res.setHeader("X-Page", String(result.page));
+  res.setHeader("X-Page-Size", String(result.pageSize));
+  res.json(result.items);
+});
+
+/**
+ * Paginated form of the legacy array endpoint. The original
+ * GET /backend/products contract remains an array for mobile/older dashboard
+ * callers; new dashboard clients use this envelope so they can render every
+ * result without guessing from the 200-row legacy page.
+ */
+router.get("/backend/products/page", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
+  const ctx = await requireBackendUser(req, res);
+  if (!ctx) return;
+  if (!canReadProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.read required" });
+    return;
   }
-  if (req.query.shopId) conds.push(eq(menuItemsTable.restaurantId, Number(req.query.shopId)));
-  if (req.query.status === "available") conds.push(eq(menuItemsTable.isAvailable, true));
-  if (req.query.status === "unavailable") conds.push(eq(menuItemsTable.isAvailable, false));
-  if (req.query.search && typeof req.query.search === "string") {
-    conds.push(ilike(menuItemsTable.name, `%${req.query.search}%`));
-  }
-  const where = conds.length ? and(...conds) : undefined;
-  const sort = normalizeProductSort(req.query.sort);
-  const rows = await db.select().from(menuItemsTable).where(where)
-    .orderBy(...getBackendProductsOrderBy(sort))
-    .limit(200);
-  res.json(rows);
+  res.json(await queryBackendProducts(req, ctx));
 });
 
 // ---------- Products CRUD ----------

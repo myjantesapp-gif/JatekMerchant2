@@ -97,7 +97,7 @@ export interface MenuItem {
   category: string;
   /** @nullable */
   menuItemCategoryId?: number | null;
-  sortOrder: number;
+  sortOrder?: number;
   isAvailable: boolean;
   isPopular: boolean;
   createdAt: string;
@@ -366,6 +366,14 @@ export interface RestaurantStats {
   averageRating?: number | null;
   totalReviews: number;
   pendingOrders: number;
+}
+
+export interface BackendProductPage {
+  items: MenuItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface MenuItemCategory {
@@ -1315,8 +1323,79 @@ export type ListBackendProductsParams = {
 status?: string;
 shopId?: number;
 search?: string;
-sort?: string;
+category?: string;
+sort?: ListBackendProductsSort;
+sortDirection?: ListBackendProductsSortDirection;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+pageSize?: number;
 };
+
+export type ListBackendProductsSort = typeof ListBackendProductsSort[keyof typeof ListBackendProductsSort];
+
+
+export const ListBackendProductsSort = {
+  custom: 'custom',
+  name: 'name',
+  category: 'category',
+  price: 'price',
+  availability: 'availability',
+  shop: 'shop',
+  createdAt: 'createdAt',
+} as const;
+
+export type ListBackendProductsSortDirection = typeof ListBackendProductsSortDirection[keyof typeof ListBackendProductsSortDirection];
+
+
+export const ListBackendProductsSortDirection = {
+  asc: 'asc',
+  desc: 'desc',
+} as const;
+
+export type ListBackendProductsPageParams = {
+status?: string;
+shopId?: number;
+search?: string;
+category?: string;
+sort?: ListBackendProductsPageSort;
+sortDirection?: ListBackendProductsPageSortDirection;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+pageSize?: number;
+};
+
+export type ListBackendProductsPageSort = typeof ListBackendProductsPageSort[keyof typeof ListBackendProductsPageSort];
+
+
+export const ListBackendProductsPageSort = {
+  custom: 'custom',
+  name: 'name',
+  category: 'category',
+  price: 'price',
+  availability: 'availability',
+  shop: 'shop',
+  createdAt: 'createdAt',
+} as const;
+
+export type ListBackendProductsPageSortDirection = typeof ListBackendProductsPageSortDirection[keyof typeof ListBackendProductsPageSortDirection];
+
+
+export const ListBackendProductsPageSortDirection = {
+  asc: 'asc',
+  desc: 'desc',
+} as const;
 
 export type ListBackendReviewsParams = {
 shopId?: number;
@@ -1383,6 +1462,9 @@ category?: string;
 isLocal?: boolean;
 isOpen?: boolean;
 businessType?: string;
+/**
+ * Filters establishments that have at least one product in this category.
+ */
 productCategory?: string;
 ownerId?: number;
 };

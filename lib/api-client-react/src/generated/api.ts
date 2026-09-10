@@ -30,6 +30,7 @@ import type {
   BackendDashboard,
   BackendDeliveryman,
   BackendMe,
+  BackendProductPage,
   CartItem,
   Category,
   CategoryBody,
@@ -66,6 +67,7 @@ import type {
   ListAdsParams,
   ListBackendCustomersParams,
   ListBackendOrdersParams,
+  ListBackendProductsPageParams,
   ListBackendProductsParams,
   ListBackendReviewsParams,
   ListBackendShopsParams,
@@ -2107,6 +2109,91 @@ export function useListBackendProducts<TData = Awaited<ReturnType<typeof listBac
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListBackendProductsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListBackendProductsPageUrl = (params?: ListBackendProductsPageParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/backend/products/page?${stringifiedParams}` : `/api/backend/products/page`
+}
+
+/**
+ * JWT required. Backend dashboard RBAC applies by staff role, scoped shop access, and pagination.
+ * @summary List products with pagination (menu items, filtered by role scope)
+ */
+export const listBackendProductsPage = async (params?: ListBackendProductsPageParams, options?: Parameters<typeof customFetch>[1]): Promise<BackendProductPage> => {
+
+  return customFetch<BackendProductPage>(getListBackendProductsPageUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBackendProductsPageQueryKey = (params?: ListBackendProductsPageParams,) => {
+    return [
+    `/api/backend/products/page`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListBackendProductsPageQueryOptions = <TData = Awaited<ReturnType<typeof listBackendProductsPage>>, TError = ErrorType<ErrorResponse>>(params?: ListBackendProductsPageParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBackendProductsPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBackendProductsPageQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBackendProductsPage>>> = ({ signal }) => listBackendProductsPage(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBackendProductsPage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBackendProductsPageQueryResult = NonNullable<Awaited<ReturnType<typeof listBackendProductsPage>>>
+export type ListBackendProductsPageQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List products with pagination (menu items, filtered by role scope)
+ */
+
+export function useListBackendProductsPage<TData = Awaited<ReturnType<typeof listBackendProductsPage>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListBackendProductsPageParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBackendProductsPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBackendProductsPageQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

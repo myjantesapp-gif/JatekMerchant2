@@ -91,9 +91,57 @@
     {
       "name": "events",
       "description": "Server-sent event subscriptions"
+    },
+    {
+      "name": "content",
+      "description": "Categories, ads/promos, and shorts content operations"
+    },
+    {
+      "name": "cart",
+      "description": "Authenticated cart operations"
+    },
+    {
+      "name": "notifications",
+      "description": "Push notification registration and delivery"
     }
   ],
   "paths": {
+    "/menu-categories": {
+      "get": {
+        "operationId": "listMenuCategories",
+        "tags": [
+          "content"
+        ],
+        "summary": "List active product categories visible to customers",
+        "parameters": [
+          {
+            "name": "restaurantId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active global and restaurant product categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MenuItemCategory"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid restaurant id"
+          }
+        }
+      }
+    },
     "/addresses": {
       "get": {
         "operationId": "listAddresses",
@@ -773,7 +821,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/CategoryEntry"
+                    "$ref": "#/components/schemas/CategoryWithSubs"
                   }
                 }
               }
@@ -806,6 +854,40 @@
           }
         ],
         "description": "JWT required. Backend dashboard RBAC applies by staff role and scoped shop access."
+      },
+      "post": {
+        "operationId": "createBackendCategory",
+        "tags": [
+          "backend"
+        ],
+        "summary": "Create a category (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/backend/customers": {
@@ -944,7 +1026,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Driver"
+                    "$ref": "#/components/schemas/BackendDeliveryman"
                   }
                 }
               }
@@ -1176,6 +1258,57 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "custom",
+                "name",
+                "category",
+                "price",
+                "availability",
+                "shop",
+                "createdAt"
+              ]
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
           }
         ],
         "responses": {
@@ -1219,6 +1352,127 @@
           }
         ],
         "description": "JWT required. Backend dashboard RBAC applies by staff role and scoped shop access."
+      }
+    },
+    "/backend/products/page": {
+      "get": {
+        "operationId": "listBackendProductsPage",
+        "tags": [
+          "backend"
+        ],
+        "summary": "List products with pagination (menu items, filtered by role scope)",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "shopId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "custom",
+                "name",
+                "category",
+                "price",
+                "availability",
+                "shop",
+                "createdAt"
+              ]
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackendProductPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden by backend dashboard RBAC",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "JWT required. Backend dashboard RBAC applies by staff role, scoped shop access, and pagination."
       }
     },
     "/backend/reviews": {
@@ -1387,6 +1641,54 @@
           }
         ],
         "description": "JWT required. Backend dashboard RBAC applies by staff role and scoped shop access."
+      }
+    },
+    "/backend/menu-categories/{id}/products": {
+      "get": {
+        "operationId": "listBackendMenuCategoryProducts",
+        "tags": [
+          "backend"
+        ],
+        "summary": "List products assigned to a product category",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Products assigned to the category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MenuItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden by backend dashboard RBAC"
+          },
+          "404": {
+            "description": "Category not found"
+          }
+        }
       }
     },
     "/backend/staff": {
@@ -2755,6 +3057,40 @@
         "description": "RBAC: admin or owning restaurant_owner."
       }
     },
+    "/products/{id}/options": {
+      "get": {
+        "operationId": "getProductOptions",
+        "tags": [
+          "menu"
+        ],
+        "summary": "Get the available sizes and extras for a product",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product options",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductOptions"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found"
+          }
+        }
+      }
+    },
     "/notification-prefs": {
       "get": {
         "operationId": "getNotificationPrefs",
@@ -2831,6 +3167,176 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/notifications/push-token": {
+      "put": {
+        "operationId": "registerPushToken",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Register the current user's push token",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushTokenBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deletePushToken",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Remove the current user's push token",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/send": {
+      "post": {
+        "operationId": "sendNotification",
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Send an in-app and remote notification",
+        "description": "Staff-only; recipients are always explicit user IDs.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendNotificationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Notification dispatched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendNotificationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Staff role required"
+          }
+        }
+      }
+    },
+    "/cart/items/{id}": {
+      "put": {
+        "operationId": "updateCartItem",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Update a cart item for the current user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCartItemBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Repriced cart item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid item or options"
+          },
+          "404": {
+            "description": "Cart item not found"
+          },
+          "409": {
+            "description": "Product unavailable"
           }
         }
       }
@@ -3333,6 +3839,55 @@
           }
         ],
         "description": "JWT required. Additional role/ownership checks apply when accepting restaurant orders or assigning drivers."
+      }
+    },
+    "/orders/{id}/step": {
+      "patch": {
+        "operationId": "updateOrderStep",
+        "tags": [
+          "orders"
+        ],
+        "summary": "Advance an order through the transition machine",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrderStepBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid or concurrent transition"
+          }
+        }
       }
     },
     "/orders/active": {
@@ -3970,6 +4525,14 @@
             }
           },
           {
+            "name": "productCategory",
+            "in": "query",
+            "description": "Filters establishments that have at least one product in this category.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "ownerId",
             "in": "query",
             "schema": {
@@ -4126,6 +4689,40 @@
           }
         },
         "description": "RBAC: admin only."
+      }
+    },
+    "/restaurants/{id}/header": {
+      "get": {
+        "operationId": "getRestaurantHeader",
+        "tags": [
+          "restaurants"
+        ],
+        "summary": "Resolve a restaurant header image with fallbacks",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Header resolution",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestaurantHeader"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Restaurant not found"
+          }
+        }
       }
     },
     "/restaurants/{id}/complete-profile": {
@@ -5060,6 +5657,462 @@
         ],
         "description": "JWT required. Users can delete themselves; admins can delete any user."
       }
+    },
+    "/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "tags": [
+          "content"
+        ],
+        "summary": "List active categories with sub-categories",
+        "responses": {
+          "200": {
+            "description": "categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryWithSubs"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ads": {
+      "get": {
+        "operationId": "listAds",
+        "tags": [
+          "content"
+        ],
+        "summary": "List active ads/promos",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ads",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Ad"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shorts": {
+      "get": {
+        "operationId": "listShorts",
+        "tags": [
+          "content"
+        ],
+        "summary": "List active shorts",
+        "responses": {
+          "200": {
+            "description": "shorts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Short"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/backend/categories/all": {
+      "get": {
+        "operationId": "listBackendCategoriesAll",
+        "tags": [
+          "backend"
+        ],
+        "summary": "List all categories (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryWithSubs"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/backend/categories/{id}": {
+      "patch": {
+        "operationId": "updateBackendCategory",
+        "tags": [
+          "backend"
+        ],
+        "summary": "Update a category (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteBackendCategory",
+        "tags": [
+          "backend"
+        ],
+        "summary": "Delete a category (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "deleted"
+          }
+        }
+      }
+    },
+    "/backend/ads": {
+      "get": {
+        "operationId": "listBackendAds",
+        "tags": [
+          "backend"
+        ],
+        "summary": "List all ads (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ads",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Ad"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createBackendAd",
+        "tags": [
+          "backend"
+        ],
+        "summary": "Create an ad (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ad"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/backend/ads/{id}": {
+      "patch": {
+        "operationId": "updateBackendAd",
+        "tags": [
+          "backend"
+        ],
+        "summary": "Update an ad (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ad"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteBackendAd",
+        "tags": [
+          "backend"
+        ],
+        "summary": "Delete an ad (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "deleted"
+          }
+        }
+      }
+    },
+    "/backend/shorts": {
+      "get": {
+        "operationId": "listBackendShorts",
+        "tags": [
+          "backend"
+        ],
+        "summary": "List all shorts (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "shorts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Short"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createBackendShort",
+        "tags": [
+          "backend"
+        ],
+        "summary": "Create a short (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Short"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/backend/shorts/{id}": {
+      "patch": {
+        "operationId": "updateBackendShort",
+        "tags": [
+          "backend"
+        ],
+        "summary": "Update a short (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Short"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteBackendShort",
+        "tags": [
+          "backend"
+        ],
+        "summary": "Delete a short (admin)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "deleted"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5084,6 +6137,246 @@
         },
         "required": [
           "error"
+        ]
+      },
+      "RestaurantHeader": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "headerUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "fallbacks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "placeholderUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "id",
+          "headerUrl",
+          "fallbacks",
+          "placeholderUrl"
+        ]
+      },
+      "PushTokenBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 10
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "ios",
+              "android",
+              "web",
+              "fcm"
+            ]
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "PushTokenResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer"
+          },
+          "pushToken": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "SendNotificationBody": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer"
+          },
+          "userIds": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "integer"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ]
+      },
+      "SendNotificationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "recipients": {
+            "type": "integer"
+          },
+          "inAppSaved": {
+            "type": "integer"
+          },
+          "remoteSent": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "success",
+          "recipients",
+          "inAppSaved",
+          "remoteSent"
+        ]
+      },
+      "UpdateCartItemBody": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99
+          },
+          "selectedSizeId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "selectedExtraIds": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "CartItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "cartId": {
+            "type": "integer"
+          },
+          "menuItemId": {
+            "type": "integer"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "selectedSizeId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "selectedExtraIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer"
+            }
+          },
+          "unitPrice": {
+            "type": "number"
+          },
+          "subtotal": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "cartId",
+          "menuItemId",
+          "quantity",
+          "unitPrice",
+          "subtotal"
+        ]
+      },
+      "ProductOptions": {
+        "type": "object",
+        "properties": {
+          "product": {
+            "$ref": "#/components/schemas/MenuItem"
+          },
+          "sizes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MenuItemSize"
+            }
+          },
+          "extras": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MenuItemExtra"
+            }
+          }
+        },
+        "required": [
+          "product",
+          "sizes",
+          "extras"
+        ]
+      },
+      "UpdateOrderStepBody": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "confirmed",
+              "preparing",
+              "ready",
+              "driver_at_restaurant",
+              "picked_up",
+              "en_route",
+              "in_delivery",
+              "delivered",
+              "cancelled"
+            ]
+          },
+          "driverId": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "step"
         ]
       },
       "SuccessResponse": {
@@ -5168,8 +6461,19 @@
           "phone": {
             "type": "string"
           },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
           "name": {
             "type": "string"
+          },
+          "intent": {
+            "type": "string",
+            "enum": [
+              "login",
+              "signup"
+            ]
           },
           "channel": {
             "type": "string",
@@ -5179,10 +6483,7 @@
             ],
             "description": "Delivery channel for the OTP code"
           }
-        },
-        "required": [
-          "phone"
-        ]
+        }
       },
       "SendOtpResponse": {
         "type": "object",
@@ -5192,6 +6493,12 @@
           },
           "message": {
             "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "otpSent": {
+            "type": "boolean"
           },
           "demoOtp": {
             "type": "string"
@@ -5208,18 +6515,31 @@
           "phone": {
             "type": "string"
           },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
           "code": {
             "type": "string"
           },
           "name": {
             "type": "string"
           },
+          "password": {
+            "type": "string"
+          },
+          "intent": {
+            "type": "string",
+            "enum": [
+              "login",
+              "signup"
+            ]
+          },
           "role": {
             "type": "string"
           }
         },
         "required": [
-          "phone",
           "code"
         ]
       },
@@ -5422,6 +6742,12 @@
           "freeDeliveryThreshold": {
             "type": "number",
             "description": "Defaulted by the API when not stored on the restaurant row."
+          },
+          "commissionRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Jatek commission rate for this shop, stored as a decimal."
           }
         },
         "required": [
@@ -5482,6 +6808,12 @@
           },
           "minimumOrder": {
             "type": "number"
+          },
+          "commissionRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Jatek commission rate for this shop, stored as a decimal."
           }
         },
         "required": [
@@ -5537,6 +6869,12 @@
           },
           "minimumOrder": {
             "type": "number"
+          },
+          "commissionRate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Jatek commission rate for this shop, stored as a decimal."
           },
           "isVerified": {
             "type": "boolean"
@@ -5606,6 +6944,15 @@
           "category": {
             "type": "string"
           },
+          "menuItemCategoryId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
           "isAvailable": {
             "type": "boolean"
           },
@@ -5628,6 +6975,132 @@
           "createdAt"
         ]
       },
+      "BackendProductPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MenuItem"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize",
+          "totalPages"
+        ]
+      },
+      "MenuItemCategory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "restaurantId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sortOrder",
+          "isActive",
+          "createdAt"
+        ]
+      },
+      "MenuItemSize": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "menuItemId": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "priceAdjustment": {
+            "type": "number"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "isAvailable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "menuItemId",
+          "name",
+          "priceAdjustment",
+          "sortOrder",
+          "isAvailable"
+        ]
+      },
+      "MenuItemExtra": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "menuItemId": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "isAvailable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "menuItemId",
+          "name",
+          "price",
+          "sortOrder",
+          "isAvailable"
+        ]
+      },
       "CreateMenuItemBody": {
         "type": "object",
         "properties": {
@@ -5645,6 +7118,12 @@
           },
           "category": {
             "type": "string"
+          },
+          "menuItemCategoryId": {
+            "type": "integer"
+          },
+          "sortOrder": {
+            "type": "integer"
           },
           "isAvailable": {
             "type": "boolean"
@@ -5676,6 +7155,12 @@
           },
           "category": {
             "type": "string"
+          },
+          "menuItemCategoryId": {
+            "type": "integer"
+          },
+          "sortOrder": {
+            "type": "integer"
           },
           "isAvailable": {
             "type": "boolean"
@@ -5749,9 +7234,13 @@
             "enum": [
               "pending",
               "accepted",
+              "confirmed",
               "preparing",
               "ready",
+              "driver_at_restaurant",
               "picked_up",
+              "en_route",
+              "out_for_delivery",
               "delivered",
               "cancelled"
             ]
@@ -5761,6 +7250,44 @@
           },
           "deliveryFee": {
             "type": "number"
+          },
+          "discountAmount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "vatRate": {
+            "type": "number"
+          },
+          "vatAmount": {
+            "type": "number"
+          },
+          "serviceFee": {
+            "type": "number"
+          },
+          "commissionRate": {
+            "type": "number"
+          },
+          "merchantEarning": {
+            "type": "number"
+          },
+          "driverEarning": {
+            "type": "number"
+          },
+          "jatekEarning": {
+            "type": "number"
+          },
+          "refundedAmount": {
+            "type": "number",
+            "description": "Cumulative customer refunds in MAD."
+          },
+          "refundedJatekEarning": {
+            "type": "number",
+            "description": "Jatek commission reversed by customer refunds in MAD."
+          },
+          "pricingVersion": {
+            "type": "string"
           },
           "total": {
             "type": "number"
@@ -5830,6 +7357,16 @@
           "status",
           "subtotal",
           "deliveryFee",
+          "discountAmount",
+          "currency",
+          "vatRate",
+          "vatAmount",
+          "serviceFee",
+          "commissionRate",
+          "merchantEarning",
+          "driverEarning",
+          "jatekEarning",
+          "pricingVersion",
           "total",
           "deliveryAddress",
           "items",
@@ -5905,9 +7442,13 @@
             "enum": [
               "pending",
               "accepted",
+              "confirmed",
               "preparing",
               "ready",
+              "driver_at_restaurant",
               "picked_up",
+              "en_route",
+              "out_for_delivery",
               "delivered",
               "cancelled"
             ]
@@ -5943,6 +7484,9 @@
               "string",
               "null"
             ]
+          },
+          "isVerified": {
+            "type": "boolean"
           },
           "isAvailable": {
             "type": "boolean"
@@ -6015,9 +7559,36 @@
           "id",
           "userId",
           "name",
+          "isVerified",
           "isAvailable",
           "totalDeliveries",
           "createdAt"
+        ]
+      },
+      "BackendDeliveryman": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Driver"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "email"
+              },
+              "accountActive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "email",
+              "accountActive"
+            ]
+          }
         ]
       },
       "UpdateDriverBody": {
@@ -6231,6 +7802,8 @@
           "deliveryEarning",
           "totalOrderTax",
           "totalCommission",
+          "merchantEarning",
+          "jatekEarning",
           "ordersChart"
         ],
         "properties": {
@@ -6262,6 +7835,12 @@
             "type": "number"
           },
           "totalCommission": {
+            "type": "number"
+          },
+          "merchantEarning": {
+            "type": "number"
+          },
+          "jatekEarning": {
             "type": "number"
           },
           "ordersChart": {
@@ -7531,6 +9110,452 @@
           "merchantNotes": {
             "type": "string",
             "maxLength": 2000
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "icon",
+          "accentColor",
+          "businessType",
+          "isActive",
+          "sortOrder"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "accentColor": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "businessType": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "category",
+              "service_shortcut",
+              "subcategory"
+            ]
+          },
+          "bannerImageUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CategoryWithSubs": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "icon",
+          "accentColor",
+          "businessType",
+          "isActive",
+          "sortOrder"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "accentColor": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "businessType": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "category",
+              "service_shortcut",
+              "subcategory"
+            ]
+          },
+          "bannerImageUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "subCategories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CategoryBody": {
+        "type": "object",
+        "required": [
+          "name",
+          "slug"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "accentColor": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "businessType": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "category",
+              "service_shortcut",
+              "subcategory"
+            ]
+          },
+          "bannerImageUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        }
+      },
+      "Ad": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "title",
+          "bgColor",
+          "icon",
+          "isActive",
+          "sortOrder"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "badge": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bgColor": {
+            "type": "string"
+          },
+          "accentColor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdBody": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "badge": {
+            "type": "string"
+          },
+          "bgColor": {
+            "type": "string"
+          },
+          "accentColor": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "linkUrl": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        }
+      },
+      "Short": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "isActive",
+          "sortOrder"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "videoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "restaurantId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "restaurantName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "restaurantLogoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "audioCodec": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "audioBitrate": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "durationSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "audio": {
+            "type": "object",
+            "properties": {
+              "codec": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bitrate": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "duration": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          },
+          "stream": {
+            "type": "object",
+            "properties": {
+              "supportsRange": {
+                "type": "boolean"
+              },
+              "contentType": {
+                "type": "string"
+              }
+            }
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ShortBody": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "videoUrl": {
+            "type": "string"
+          },
+          "restaurantId": {
+            "type": "integer"
+          },
+          "restaurantName": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
           }
         }
       }

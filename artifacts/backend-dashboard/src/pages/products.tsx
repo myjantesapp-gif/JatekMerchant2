@@ -1,11 +1,10 @@
-import { Fragment, useState, useRef, useEffect } from "react";
+import { Fragment, useState, useRef, useEffect, useMemo } from "react";
 import {
-  useListBackendProducts,
+  useListBackendProductsPage,
   useListBackendShops,
   useBackendMe,
   getListBackendProductsQueryKey,
-  useListBackendCategories,
-  getListBackendCategoriesQueryKey,
+  getListBackendProductsPageQueryKey,
 } from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -14,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, Pencil, Trash2, Loader2, Settings2, Tags, Package, FileUp, Download, AlertCircle, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Loader2, Settings2, Tags, Package, FileUp, Download, AlertCircle, ChevronDown, ChevronRight, ArrowDown, ArrowUp, ArrowUpDown, X, RefreshCw, GripVertical, Store } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -26,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { ImageUploadField } from "@/components/ImageUploadField";
-import { buildProductListParams, isProductSort, type ProductSort } from "@/lib/productListQuery";
+import { buildProductListParams, isProductSort, type ProductAvailability, type ProductSort } from "@/lib/productListQuery";
 
 const EMPTY = { name: "", description: "", price: "", category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "", sortOrder: "0" };
 
@@ -39,17 +38,154 @@ function useProductCategories(restaurantId: string | number | undefined) {
   });
 }
 
+type ProductTableSort = ProductSort | "category" | "availability" | "shop";
+type SortDirection = "asc" | "desc";
+
+const PRODUCT_TABLE_SORTS: { key: ProductTableSort; label: string }[] = [
+  { key: "name", label: "Nom" },
+  { key: "category", label: "Catégorie" },
+  { key: "price", label: "Prix" },
+  { key: "availability", label: "Disponibilité" },
+  { key: "shop", label: "Boutique" },
+  { key: "custom", label: "Ordre personnalisé" },
+  { key: "createdAt", label: "Date de création" },
+];
+
+function isProductTableSort(value: string): value is ProductTableSort {
+  return isProductSort(value) || value === "category" || value === "availability" || value === "shop";
+}
+
+function compareProductValues(
+  left: any,
+  right: any,
+  sort: ProductTableSort,
+  shopName: (restaurantId: number | null | undefined) => string,
+): number {
+  if (sort === "price") {
+    return Number(left.price ?? 0) - Number(right.price ?? 0);
+  }
+  if (sort === "availability") {
+    return Number(Boolean(left.isAvailable)) - Number(Boolean(right.isAvailable));
+  }
+  if (sort === "category") {
+    return String(left.category ?? "").localeCompare(String(right.category ?? ""), "fr", { sensitivity: "base" });
+  }
+  if (sort === "shop") {
+    return shopName(left.restaurantId).localeCompare(shopName(right.restaurantId), "fr", { sensitivity: "base" });
+  }
+  if (sort === "createdAt") {
+    return new Date(left.createdAt ?? 0).getTime() - new Date(right.createdAt ?? 0).getTime();
+  }
+  if (sort === "custom") {
+    return Number(left.sortOrder ?? 0) - Number(right.sortOrder ?? 0);
+  }
+  return String(left.name ?? "").localeCompare(String(right.name ?? ""), "fr", { sensitivity: "base" });
+}
+
+function SortableProductHeader({
+  sort,
+  activeSort,
+  direction,
+  onSort,
+}: {
+  sort: ProductTableSort;
+  activeSort: ProductTableSort;
+  direction: SortDirection;
+  onSort: (sort: ProductTableSort) => void;
+}) {
+  const label = PRODUCT_TABLE_SORTS.find((option) => option.key === sort)?.label ?? sort;
+  const isActive = activeSort === sort;
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-8 -ml-3 gap-1 px-3 font-semibold"
+      onClick={() => onSort(sort)}
+      aria-label={`Trier par ${label}${isActive ? `, ${direction === "asc" ? "croissant" : "décroissant"}` : ""}`}
+      data-testid={`button-sort-products-${sort}`}
+    >
+      {label}
+      {isActive
+        ? direction === "asc"
+          ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+          : <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+        : <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />}
+    </Button>
+  );
+}
+
 export default function Products() {
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<ProductSort>("custom");
+  const [sortBy, setSortBy] = useState<ProductTableSort>("custom");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [shopFilter, setShopFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | ProductAvailability>("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
   const { data: me } = useBackendMe();
-  const { data: products, isLoading } = useListBackendProducts(buildProductListParams(search, sortBy));
+  const apiSort: ProductSort = isProductSort(sortBy) ? sortBy : "custom";
+  const productQuery = buildProductListParams(search, apiSort, {
+    shopId: shopFilter ? Number(shopFilter) : undefined,
+    status: availabilityFilter === "all" ? undefined : availabilityFilter,
+    category: categoryFilter || undefined,
+    sortDirection,
+    page,
+    pageSize,
+  });
+  const {
+    data: productPage,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useListBackendProductsPage(productQuery);
+  // Keep the page client tolerant of a legacy test/mock response while the
+  // production endpoint returns the typed pagination envelope.
+  const products = Array.isArray(productPage) ? productPage : productPage?.items;
+  const totalCount = Array.isArray(productPage) ? productPage.length : (productPage?.total ?? 0);
+  const totalPages = Array.isArray(productPage)
+    ? Math.max(1, Math.ceil(totalCount / pageSize))
+    : Math.max(1, productPage?.totalPages ?? 1);
   const { data: shops } = useListBackendShops({});
   const qc = useQueryClient();
   const { toast } = useToast();
   const isOwner = me?.user.role === "restaurant_owner" || me?.user.role === "owner";
   const scopedShopIds = me?.scopedShopIds ?? [];
   const visibleShops = isOwner ? (shops || []).filter((s) => scopedShopIds.includes(s.id)) : (shops || []);
+  const { data: productCategories, isLoading: categoriesLoading } = useQuery<ProductCat[]>({
+    queryKey: ["/api/backend/menu-categories"],
+    queryFn: () => apiFetch("/api/backend/menu-categories"),
+  });
+
+  const shopName = (restaurantId: number | null | undefined) =>
+    visibleShops.find((shop) => shop.id === restaurantId)?.name ?? (restaurantId ? `Boutique #${restaurantId}` : "—");
+  const categoryOptions = useMemo(() => {
+    const names = new Set<string>();
+    (Array.isArray(productCategories) ? productCategories : []).forEach((category) => names.add(category.name));
+    (Array.isArray(products) ? products : []).forEach((product) => product.category && names.add(product.category));
+    return Array.from(names).sort((left, right) => left.localeCompare(right, "fr", { sensitivity: "base" }));
+  }, [productCategories, products]);
+  const displayedProducts = useMemo(() => {
+    const filtered = Array.isArray(products) ? products : [];
+    return [...filtered].sort((left, right) => {
+      const result = compareProductValues(left, right, sortBy, shopName);
+      return result === 0
+        ? (sortDirection === "asc" ? 1 : -1) * (Number(left.id) - Number(right.id))
+        : (sortDirection === "asc" ? 1 : -1) * result;
+    });
+  }, [products, shopName, sortBy, sortDirection]);
+  const hasFilters = Boolean(search || shopFilter || categoryFilter || availabilityFilter !== "all");
+  const hasResults = displayedProducts.length > 0;
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, shopFilter, categoryFilter, availabilityFilter, sortBy, sortDirection]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [shopId, setShopId] = useState<string>(isOwner && scopedShopIds.length === 1 ? String(scopedShopIds[0]) : "");
@@ -67,9 +203,17 @@ export default function Products() {
   const [editForm, setEditForm] = useState(EMPTY);
   const [optionsProduct, setOptionsProduct] = useState<any | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [importShopId, setImportShopId] = useState("");
+  const [deleting, setDeleting] = useState<any | null>(null);
+  const [orderDrafts, setOrderDrafts] = useState<Record<number, string>>({});
+  const [orderSavingIds, setOrderSavingIds] = useState<Set<number>>(new Set());
+  const [orderErrors, setOrderErrors] = useState<Record<number, string>>({});
+  const [togglePendingIds, setTogglePendingIds] = useState<Set<number>>(new Set());
+  const orderQueueRef = useRef(Promise.resolve());
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: getListBackendProductsQueryKey() });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: getListBackendProductsQueryKey() });
+    qc.invalidateQueries({ queryKey: getListBackendProductsPageQueryKey() });
+  };
 
   const createMutation = useMutation({
     mutationFn: (payload: any) => apiFetch("/api/backend/products", { method: "POST", body: JSON.stringify(payload) }),
@@ -78,15 +222,79 @@ export default function Products() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => apiFetch(`/api/backend/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-    onSuccess: () => { invalidate(); setEditing(null); toast({ title: "Modifié" }); },
-    onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      apiFetch(`/api/backend/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    onSuccess: () => {
+      invalidate();
+      setEditing(null);
+      toast({ title: "Produit modifié", description: "Les changements sont enregistrés." });
+    },
+    onError: (e: any) => {
+      toast({ title: "Impossible d'enregistrer", description: e?.message ?? "Réessayez.", variant: "destructive" });
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, isAvailable }: { id: number; isAvailable: boolean }) =>
+      apiFetch(`/api/backend/products/${id}`, { method: "PATCH", body: JSON.stringify({ isAvailable }) }),
+    onSuccess: (_result, variables) => {
+      invalidate();
+      setTogglePendingIds((current) => {
+        const next = new Set(current);
+        next.delete(variables.id);
+        return next;
+      });
+      toast({ title: "Disponibilité mise à jour" });
+    },
+    onError: (e: any, variables) => {
+      setTogglePendingIds((current) => {
+        const next = new Set(current);
+        next.delete(variables.id);
+        return next;
+      });
+      toast({ title: "Disponibilité non enregistrée", description: e?.message ?? "Réessayez.", variant: "destructive" });
+    },
+  });
+
+  const orderMutation = useMutation({
+    mutationFn: ({ id, sortOrder }: { id: number; sortOrder: number }) =>
+      apiFetch(`/api/backend/products/${id}`, { method: "PATCH", body: JSON.stringify({ sortOrder }) }),
+    onSuccess: (_result, variables) => {
+      invalidate();
+      setOrderSavingIds((current) => {
+        const next = new Set(current);
+        next.delete(variables.id);
+        return next;
+      });
+      setOrderErrors((current) => {
+        const next = { ...current };
+        delete next[variables.id];
+        return next;
+      });
+      setOrderDrafts((current) => {
+        if (current[variables.id] !== String(variables.sortOrder)) return current;
+        const next = { ...current };
+        delete next[variables.id];
+        return next;
+      });
+      toast({ title: "Ordre enregistré" });
+    },
+    onError: (e: any, variables) => {
+      const message = e?.message ?? "Réessayez.";
+      setOrderSavingIds((current) => {
+        const next = new Set(current);
+        next.delete(variables.id);
+        return next;
+      });
+      setOrderErrors((current) => ({ ...current, [variables.id]: message }));
+      toast({ title: "Ordre non enregistré", description: message, variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiFetch(`/api/backend/products/${id}`, { method: "DELETE" }),
-    onSuccess: () => { invalidate(); toast({ title: "Supprimé" }); },
-    onError: (e: any) => toast({ title: "Erreur", description: e?.message, variant: "destructive" }),
+    onSuccess: () => { invalidate(); setDeleting(null); toast({ title: "Produit supprimé" }); },
+    onError: (e: any) => toast({ title: "Suppression impossible", description: e?.message ?? "Ce produit n'a pas été supprimé.", variant: "destructive" }),
   });
 
   const buildProductPayload = (f: typeof EMPTY) => ({
@@ -137,23 +345,58 @@ export default function Products() {
   };
 
   const handleToggle = (p: any, isAvailable: boolean) => {
-    updateMutation.mutate({ id: p.id, data: { isAvailable } });
+    setTogglePendingIds((current) => new Set(current).add(p.id));
+    toggleMutation.mutate({ id: p.id, isAvailable });
   };
 
-  const handleDelete = (id: number) => {
-    if (!confirm("Supprimer ce produit ?")) return;
-    deleteMutation.mutate(id);
+  const handleSortOrderChange = (product: any, rawValue: string) => {
+    const nextOrder = Number(rawValue);
+    const currentOrder = Number(product.sortOrder ?? 0);
+    if (!rawValue.trim() || !Number.isInteger(nextOrder) || nextOrder < 0) {
+      setOrderDrafts((current) => {
+        return { ...current, [product.id]: rawValue };
+      });
+      setOrderErrors((current) => ({ ...current, [product.id]: "Saisissez un nombre entier positif ou nul." }));
+      toast({ title: "Ordre invalide", description: "Saisissez un nombre entier positif ou nul.", variant: "destructive" });
+      return;
+    }
+    if (nextOrder === currentOrder) {
+      setOrderDrafts((current) => {
+        const next = { ...current };
+        delete next[product.id];
+        return next;
+      });
+      setOrderErrors((current) => {
+        const next = { ...current };
+        delete next[product.id];
+        return next;
+      });
+      return;
+    }
+    setOrderSavingIds((current) => new Set(current).add(product.id));
+    setOrderErrors((current) => {
+      const next = { ...current };
+      delete next[product.id];
+      return next;
+    });
+    const save = orderQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        await orderMutation.mutateAsync({ id: product.id, sortOrder: nextOrder });
+      })
+      .catch(() => undefined);
+    orderQueueRef.current = save;
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Produits</h1>
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => setImportOpen(true)}>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => setImportOpen(true)} data-testid="button-import-products">
           <FileUp className="h-4 w-4" /> Importer CSV/JSON
         </Button>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button className="gap-2"><Plus className="h-4 w-4" /> Nouveau produit</Button></DialogTrigger>
+          <DialogTrigger asChild><Button className="gap-2" data-testid="button-create-product"><Plus className="h-4 w-4" /> Nouveau produit</Button></DialogTrigger>
           <DialogContent className="sm:max-w-lg max-h-[85dvh] overflow-y-auto">
             <DialogHeader><DialogTitle>Créer un produit</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate} className="space-y-3 pt-4">
@@ -183,68 +426,232 @@ export default function Products() {
           <TabsTrigger value="categories" className="gap-1.5 shrink-0"><Tags className="h-4 w-4" />Catégories menu</TabsTrigger>
         </TabsList>
         <TabsContent value="produits" className="pt-4">
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Rechercher..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
-            <Select value={sortBy} onValueChange={(value) => { if (isProductSort(value)) setSortBy(value); }}>
-              <SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Trier par" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="custom">Ordre personnalisé</SelectItem>
-                <SelectItem value="name">Nom</SelectItem>
-                <SelectItem value="price">Prix</SelectItem>
-                <SelectItem value="createdAt">Date de création</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead className="hidden sm:table-cell">Catégorie</TableHead>
-                <TableHead>Prix</TableHead>
-                <TableHead>Disponible</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-12" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                </TableRow>
-              )) : products?.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">Aucun produit.</TableCell></TableRow>
-              ) : products?.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center space-x-3">
-                      {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded-md object-cover" /> : <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center"><span className="text-xs text-muted-foreground">—</span></div>}
-                      <span>{p.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell"><Badge variant="secondary">{p.category}</Badge></TableCell>
-                  <TableCell className="font-semibold">{p.price} DH</TableCell>
-                  <TableCell><Switch checked={p.isAvailable} onCheckedChange={(v) => handleToggle(p, v)} /></TableCell>
-                  <TableCell className="text-right space-x-1">
-                    <Button variant="ghost" size="icon" className="h-10 w-10" title="Options" onClick={() => setOptionsProduct(p)}><Settings2 className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(p.id)}><Trash2 className="h-4 w-4" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+          {isError && (
+            <Alert variant="destructive" className="mb-4" data-testid="status-products-error">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between gap-3">
+                <span>Impossible de charger les produits. {error instanceof Error ? error.message : "Vérifiez votre connexion."}</span>
+                <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={() => refetch()} data-testid="button-retry-products">
+                  <RefreshCw className="h-3.5 w-3.5" /> Réessayer
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          <Card>
+            <CardHeader className="space-y-4 pb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-base font-semibold">Catalogue produits</h2>
+                  <p className="text-xs text-muted-foreground">Modifiez l’ordre personnalisé pour contrôler l’affichage dans l’application.</p>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="status-products-count">
+                  {isLoading ? "Chargement…" : `${displayedProducts.length} produit${displayedProducts.length === 1 ? "" : "s"} affiché${displayedProducts.length === 1 ? "" : "s"} sur ${totalCount}`}
+                  {isFetching && !isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-label="Actualisation en cours" />}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative min-w-[13rem] flex-1 sm:max-w-xs">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher un produit…"
+                    className="pl-8"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    data-testid="input-product-search"
+                  />
+                </div>
+                <Select
+                  value={sortBy}
+                  onValueChange={(value) => {
+                    if (isProductTableSort(value)) {
+                      setSortBy(value);
+                      setSortDirection(value === "createdAt" ? "desc" : "asc");
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full sm:w-48" data-testid="select-product-sort"><SelectValue placeholder="Trier par" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">Ordre personnalisé</SelectItem>
+                    <SelectItem value="name">Nom</SelectItem>
+                    <SelectItem value="category">Catégorie</SelectItem>
+                    <SelectItem value="shop">Boutique</SelectItem>
+                    <SelectItem value="price">Prix</SelectItem>
+                    <SelectItem value="availability">Disponibilité</SelectItem>
+                    <SelectItem value="createdAt">Date de création</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={shopFilter || "all"} onValueChange={(value) => setShopFilter(value === "all" ? "" : value)}>
+                  <SelectTrigger className="w-full sm:w-44" data-testid="select-product-shop"><SelectValue placeholder="Toutes les boutiques" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les boutiques</SelectItem>
+                    {visibleShops.map((shop) => <SelectItem key={shop.id} value={String(shop.id)}>{shop.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={categoryFilter || "all"} onValueChange={(value) => setCategoryFilter(value === "all" ? "" : value)} disabled={categoriesLoading && categoryOptions.length === 0}>
+                  <SelectTrigger className="w-full sm:w-44" data-testid="select-product-category"><SelectValue placeholder="Toutes les catégories" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les catégories</SelectItem>
+                    {categoryOptions.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={availabilityFilter} onValueChange={(value) => { if (value === "all" || value === "available" || value === "unavailable") setAvailabilityFilter(value); }}>
+                  <SelectTrigger className="w-full sm:w-44" data-testid="select-product-availability"><SelectValue placeholder="Tous les statuts" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="available">Disponibles</SelectItem>
+                    <SelectItem value="unavailable">Indisponibles</SelectItem>
+                  </SelectContent>
+                </Select>
+                {hasFilters && (
+                  <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => {
+                    setSearch("");
+                    setShopFilter("");
+                    setCategoryFilter("");
+                    setAvailabilityFilter("all");
+                  }} data-testid="button-clear-product-filters">
+                    <X className="h-3.5 w-3.5" /> Réinitialiser
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead><SortableProductHeader sort="name" activeSort={sortBy} direction={sortDirection} onSort={(nextSort) => {
+                      if (sortBy === nextSort) setSortDirection((current) => current === "asc" ? "desc" : "asc");
+                      else { setSortBy(nextSort); setSortDirection("asc"); }
+                    }} /></TableHead>
+                    <TableHead className="hidden md:table-cell"><SortableProductHeader sort="shop" activeSort={sortBy} direction={sortDirection} onSort={(nextSort) => {
+                      if (sortBy === nextSort) setSortDirection((current) => current === "asc" ? "desc" : "asc");
+                      else { setSortBy(nextSort); setSortDirection("asc"); }
+                    }} /></TableHead>
+                    <TableHead className="hidden sm:table-cell"><SortableProductHeader sort="category" activeSort={sortBy} direction={sortDirection} onSort={(nextSort) => {
+                      if (sortBy === nextSort) setSortDirection((current) => current === "asc" ? "desc" : "asc");
+                      else { setSortBy(nextSort); setSortDirection("asc"); }
+                    }} /></TableHead>
+                    <TableHead><SortableProductHeader sort="custom" activeSort={sortBy} direction={sortDirection} onSort={(nextSort) => {
+                      if (sortBy === nextSort) setSortDirection((current) => current === "asc" ? "desc" : "asc");
+                      else { setSortBy(nextSort); setSortDirection("asc"); }
+                    }} /></TableHead>
+                    <TableHead><SortableProductHeader sort="price" activeSort={sortBy} direction={sortDirection} onSort={(nextSort) => {
+                      if (sortBy === nextSort) setSortDirection((current) => current === "asc" ? "desc" : "asc");
+                      else { setSortBy(nextSort); setSortDirection("asc"); }
+                    }} /></TableHead>
+                    <TableHead><SortableProductHeader sort="availability" activeSort={sortBy} direction={sortDirection} onSort={(nextSort) => {
+                      if (sortBy === nextSort) setSortDirection((current) => current === "asc" ? "desc" : "asc");
+                      else { setSortBy(nextSort); setSortDirection("asc"); }
+                    }} /></TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-10 w-40" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                    </TableRow>
+                  )) : isError ? (
+                    <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Les produits ne sont pas disponibles.</TableCell></TableRow>
+                  ) : totalCount === 0 && !hasFilters ? (
+                    <TableRow><TableCell colSpan={7} className="h-28 text-center">
+                      <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
+                        <Package className="h-8 w-8 opacity-40" />
+                        <span>Aucun produit pour le moment.</span>
+                        <span className="text-xs">Créez votre premier produit avec le bouton « Nouveau produit ».</span>
+                      </div>
+                    </TableCell></TableRow>
+                  ) : !hasResults ? (
+                    <TableRow><TableCell colSpan={7} className="h-28 text-center">
+                      <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
+                        <Search className="h-7 w-7 opacity-40" />
+                        <span>Aucun produit ne correspond à ces filtres.</span>
+                        <Button type="button" variant="link" size="sm" onClick={() => {
+                          setSearch("");
+                          setShopFilter("");
+                          setCategoryFilter("");
+                          setAvailabilityFilter("all");
+                        }} data-testid="button-clear-empty-product-filters">Effacer les filtres</Button>
+                      </div>
+                    </TableCell></TableRow>
+                  ) : displayedProducts.map((p) => (
+                    <TableRow key={p.id} data-testid={`row-product-${p.id}`}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center space-x-3 min-w-[12rem]">
+                          {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded-md object-cover" data-testid={`img-product-${p.id}`} /> : <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center"><span className="text-xs text-muted-foreground">—</span></div>}
+                          <span data-testid={`text-product-name-${p.id}`}>{p.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground"><span className="inline-flex items-center gap-1"><Store className="h-3.5 w-3.5" />{shopName(p.restaurantId)}</span></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Badge variant="secondary">{p.category}</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <GripVertical className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={orderDrafts[p.id] ?? String(p.sortOrder ?? 0)}
+                            onChange={(e) => {
+                              setOrderDrafts((current) => ({ ...current, [p.id]: e.target.value }));
+                              setOrderErrors((current) => {
+                                const next = { ...current };
+                                delete next[p.id];
+                                return next;
+                              });
+                            }}
+                            onBlur={(e) => handleSortOrderChange(p, e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                            disabled={orderSavingIds.has(p.id)}
+                            aria-invalid={Boolean(orderErrors[p.id])}
+                            className={`h-8 w-20 ${orderErrors[p.id] ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                            aria-label={`Ordre personnalisé de ${p.name}`}
+                            data-testid={`input-product-order-${p.id}`}
+                          />
+                          {orderSavingIds.has(p.id) && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="Enregistrement de l’ordre" />}
+                        </div>
+                        {orderErrors[p.id] && <p className="mt-1 max-w-[12rem] text-[11px] text-destructive" role="alert" data-testid={`status-product-order-error-${p.id}`}>{orderErrors[p.id]}</p>}
+                      </TableCell>
+                      <TableCell className="font-semibold whitespace-nowrap">{p.price} DH</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch checked={p.isAvailable} onCheckedChange={(v) => handleToggle(p, v)} disabled={togglePendingIds.has(p.id)} data-testid={`switch-product-availability-${p.id}`} />
+                          <span className="hidden lg:inline text-xs text-muted-foreground">{p.isAvailable ? "Disponible" : "Indisponible"}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-10 w-10" title="Options" onClick={() => setOptionsProduct(p)} aria-label={`Gérer les options de ${p.name}`} data-testid={`button-product-options-${p.id}`}><Settings2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-10 w-10" title="Modifier" onClick={() => openEdit(p)} aria-label={`Modifier ${p.name}`} data-testid={`button-edit-product-${p.id}`}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive hover:bg-destructive/10" title="Supprimer" onClick={() => setDeleting(p)} aria-label={`Supprimer ${p.name}`} data-testid={`button-delete-product-${p.id}`}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+            {totalCount > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-3 text-xs text-muted-foreground" data-testid="pagination-products">
+                <span>
+                  Page {page} sur {totalPages} · {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)} sur {totalCount}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1 || isFetching} data-testid="button-products-previous-page">
+                    Précédente
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages || isFetching} data-testid="button-products-next-page">
+                    Suivante
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
 
         </TabsContent>
         <TabsContent value="categories" className="pt-4">
@@ -263,6 +670,32 @@ export default function Products() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleting} onOpenChange={(open) => { if (!open && !deleteMutation.isPending) setDeleting(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer « {deleting?.name} » ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Un produit utilisé dans une commande ne peut pas être supprimé : rendez-le indisponible à la place.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending} data-testid="button-cancel-delete-product">Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (deleting) deleteMutation.mutate(deleting.id);
+              }}
+              data-testid="button-confirm-delete-product"
+            >
+              {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Supprimer définitivement
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <OptionsDialogWrapper product={optionsProduct} onClose={() => setOptionsProduct(null)} />
       <ImportProductsDialog

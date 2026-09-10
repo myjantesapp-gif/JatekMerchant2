@@ -20,6 +20,9 @@ type Fixture = {
   userId: number;
   restaurantId: number;
   categoryIds: number[];
+  categoryNames: {
+    globalUsed: string;
+  };
   productIds: {
     legacy: number;
     usedHigh: number;
@@ -119,6 +122,9 @@ async function createFixture(): Promise<Fixture> {
     userId: user.id,
     restaurantId: restaurant.id,
     categoryIds: categories.map((category) => category.id),
+    categoryNames: {
+      globalUsed: globalUsed.name,
+    },
     productIds: {
       legacy: productId("Legacy product"),
       usedHigh: productId("Zeta"),
@@ -192,10 +198,28 @@ test("GET /api/backend/products applies every supported sort at the HTTP boundar
       fixture.productIds.private,
       fixture.productIds.usedHigh,
     ],
+    category: [
+      fixture.productIds.usedLow,
+      fixture.productIds.usedHigh,
+      fixture.productIds.legacy,
+      fixture.productIds.private,
+    ],
     price: [
       fixture.productIds.private,
       fixture.productIds.usedLow,
       fixture.productIds.legacy,
+      fixture.productIds.usedHigh,
+    ],
+    availability: [
+      fixture.productIds.usedLow,
+      fixture.productIds.legacy,
+      fixture.productIds.private,
+      fixture.productIds.usedHigh,
+    ],
+    shop: [
+      fixture.productIds.usedLow,
+      fixture.productIds.legacy,
+      fixture.productIds.private,
       fixture.productIds.usedHigh,
     ],
     createdAt: [
@@ -216,6 +240,28 @@ test("GET /api/backend/products applies every supported sort at the HTTP boundar
     assert.deepEqual(products.map((product) => product.id), expectedIds, `sort=${sort}`);
     assert.ok(products.every((product) => product.restaurantId === fixture.restaurantId));
   }
+});
+
+test("GET /api/backend/products/page applies server filters, direction, and pagination", async () => {
+  const category = encodeURIComponent(fixture.categoryNames.globalUsed);
+  const response = await requestJson(
+    `/backend/products/page?shopId=${fixture.restaurantId}&category=${category}&sort=price&sortDirection=desc&page=1&pageSize=1`,
+    authToken,
+  );
+  assert.equal(response.status, 200);
+  const page = response.body as {
+    items: Array<{ id: number; category: string; price: number }>;
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+  assert.deepEqual(page.items.map((product) => product.id), [fixture.productIds.usedHigh]);
+  assert.equal(page.total, 2);
+  assert.equal(page.page, 1);
+  assert.equal(page.pageSize, 1);
+  assert.equal(page.totalPages, 2);
+  assert.ok(page.items.every((product) => product.category === fixture.categoryNames.globalUsed));
 });
 
 test("GET /api/restaurants/:restaurantId/menu groups categories and keeps legacy products visible", async () => {

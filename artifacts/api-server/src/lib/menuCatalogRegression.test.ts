@@ -6,6 +6,7 @@ import {
   compareCustomerMenuEntries,
   compareProductsBySort,
   normalizeProductSort,
+  normalizeProductSortDirection,
 } from "./productOrdering";
 
 test("GET /api/menu-categories keeps used global categories and legacy name matches only", () => {
@@ -41,6 +42,20 @@ test("backend product sort modes are deterministic and invalid values fall back 
   assert.deepEqual(orderedIds("createdAt"), [2, 1, 3]);
   assert.equal(normalizeProductSort("not-a-sort"), "custom");
   assert.equal(normalizeProductSort(undefined), "custom");
+  assert.equal(normalizeProductSortDirection(undefined, "createdAt"), "desc");
+  assert.equal(normalizeProductSortDirection("asc", "createdAt"), "asc");
+  assert.deepEqual(
+    [...products].sort((left, right) => compareProductsBySort(left, right, "price", "desc")).map((product) => product.id),
+    [2, 3, 1],
+  );
+  assert.deepEqual(
+    [...products].sort((left, right) => compareProductsBySort(
+      { ...left, category: left.id === 1 ? "Burgers" : "Drinks", isAvailable: left.id !== 3, restaurantId: left.id === 2 ? 20 : 10 },
+      { ...right, category: right.id === 1 ? "Burgers" : "Drinks", isAvailable: right.id !== 3, restaurantId: right.id === 2 ? 20 : 10 },
+      "availability",
+    )).map((product) => product.id),
+    [3, 1, 2],
+  );
 });
 
 test("customer menu order preserves custom product positions within a category", () => {

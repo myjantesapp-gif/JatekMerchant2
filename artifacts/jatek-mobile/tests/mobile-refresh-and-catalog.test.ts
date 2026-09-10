@@ -257,6 +257,20 @@ test("home keeps pull-to-refresh without a header refresh button", () => {
   assert.doesNotMatch(code, /RefreshButton/);
 });
 
+test("home header omits the wordmark while retaining its actions", () => {
+  const code = source("app/(tabs)/index.tsx");
+  const headerTopRow = code.slice(
+    code.indexOf("/* Top row: menu + orders + profile */"),
+    code.indexOf("/* Search bar */"),
+  );
+
+  assert.doesNotMatch(headerTopRow, /headerLogo|>Jatek</);
+  assert.match(headerTopRow, /accessibilityLabel="Ouvrir le menu"/);
+  assert.match(headerTopRow, /accessibilityLabel="Mon panier"/);
+  assert.match(headerTopRow, /accessibilityLabel="Mon profil"/);
+  assert.doesNotMatch(code, /^\s*headerLogo:\s*\{/m);
+});
+
 test("home includes every commerce type instead of defaulting to restaurants", () => {
   const code = source("app/(tabs)/index.tsx");
 

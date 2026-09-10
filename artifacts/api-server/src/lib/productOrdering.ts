@@ -1,8 +1,10 @@
 import { asc, desc } from "drizzle-orm";
 import { menuItemsTable } from "@workspace/db/schema";
 
-export const PRODUCT_SORT_VALUES = ["custom", "name", "price", "createdAt"] as const;
+export const PRODUCT_SORT_VALUES = ["custom", "name", "category", "price", "availability", "shop", "createdAt"] as const;
 export type ProductSort = typeof PRODUCT_SORT_VALUES[number];
+export const PRODUCT_SORT_DIRECTION_VALUES = ["asc", "desc"] as const;
+export type ProductSortDirection = typeof PRODUCT_SORT_DIRECTION_VALUES[number];
 
 export function normalizeProductSort(value: unknown): ProductSort {
   return typeof value === "string" && PRODUCT_SORT_VALUES.includes(value as ProductSort)
@@ -10,22 +12,39 @@ export function normalizeProductSort(value: unknown): ProductSort {
     : "custom";
 }
 
+export function normalizeProductSortDirection(value: unknown, sort: ProductSort = "custom"): ProductSortDirection {
+  if (typeof value === "string" && PRODUCT_SORT_DIRECTION_VALUES.includes(value as ProductSortDirection)) {
+    return value as ProductSortDirection;
+  }
+  // Preserve the historical endpoint order for callers that do not send a
+  // direction: every mode is ascending by default, while createdAt was
+  // historically newest first.
+  return sort === "createdAt" ? "desc" : "asc";
+}
+
 /**
  * Keep the database order used by GET /api/backend/products in one place.
  * The final id tie-breaker makes every sort deterministic.
  */
-export function getBackendProductsOrderBy(sort: ProductSort): any[] {
-  if (sort === "name") return [menuItemsTable.name, menuItemsTable.id];
-  if (sort === "price") return [menuItemsTable.price, menuItemsTable.name, menuItemsTable.id];
-  if (sort === "createdAt") return [desc(menuItemsTable.createdAt), desc(menuItemsTable.id)];
-  return [menuItemsTable.sortOrder, menuItemsTable.name, menuItemsTable.id];
+export function getBackendProductsOrderBy(sort: ProductSort, direction: ProductSortDirection = normalizeProductSortDirection(undefined, sort)): any[] {
+  const order = direction === "desc" ? desc : asc;
+  if (sort === "name") return [order(menuItemsTable.name), order(menuItemsTable.id)];
+  if (sort === "category") return [order(menuItemsTable.category), order(menuItemsTable.name), order(menuItemsTable.id)];
+  if (sort === "price") return [order(menuItemsTable.price), order(menuItemsTable.name), order(menuItemsTable.id)];
+  if (sort === "availability") return [order(menuItemsTable.isAvailable), order(menuItemsTable.name), order(menuItemsTable.id)];
+  if (sort === "shop") return [order(menuItemsTable.restaurantId), order(menuItemsTable.name), order(menuItemsTable.id)];
+  if (sort === "createdAt") return [order(menuItemsTable.createdAt), order(menuItemsTable.id)];
+  return [order(menuItemsTable.sortOrder), order(menuItemsTable.name), order(menuItemsTable.id)];
 }
 
 type SortableProduct = {
   id: number;
   name: string;
+  category?: string;
   price: number;
   sortOrder: number;
+  isAvailable?: boolean;
+  restaurantId?: number | null;
   createdAt: Date | string;
 };
 
@@ -45,22 +64,37 @@ export function compareProductsBySort(
   left: SortableProduct,
   right: SortableProduct,
   sort: ProductSort,
+  direction: ProductSortDirection = normalizeProductSortDirection(undefined, sort),
 ): number {
+  const multiplier = direction === "desc" ? -1 : 1;
   if (sort === "name") {
-    return compareText(left.name, right.name) || compareNumbers(left.id, right.id);
+    return multiplier * (compareText(left.name, right.name) || compareNumbers(left.id, right.id));
+  }
+  if (sort === "category") {
+    return multiplier * (compareText(left.category ?? "", right.category ?? "") || compareText(left.name, right.name) || compareNumbers(left.id, right.id));
   }
   if (sort === "price") {
-    return compareNumbers(left.price, right.price)
+    return multiplier * (compareNumbers(left.price, right.price)
       || compareText(left.name, right.name)
-      || compareNumbers(left.id, right.id);
+      || compareNumbers(left.id, right.id));
+  }
+  if (sort === "availability") {
+    return multiplier * (compareNumbers(Number(Boolean(left.isAvailable)), Number(Boolean(right.isAvailable)))
+      || compareText(left.name, right.name)
+      || compareNumbers(left.id, right.id));
+  }
+  if (sort === "shop") {
+    return multiplier * (compareNumbers(left.restaurantId ?? 0, right.restaurantId ?? 0)
+      || compareText(left.name, right.name)
+      || compareNumbers(left.id, right.id));
   }
   if (sort === "createdAt") {
-    return compareNumbers(new Date(right.createdAt).getTime(), new Date(left.createdAt).getTime())
-      || compareNumbers(right.id, left.id);
+    return multiplier * (compareNumbers(new Date(left.createdAt).getTime(), new Date(right.createdAt).getTime())
+      || compareNumbers(left.id, right.id));
   }
-  return compareNumbers(left.sortOrder, right.sortOrder)
+  return multiplier * (compareNumbers(left.sortOrder, right.sortOrder)
     || compareText(left.name, right.name)
-    || compareNumbers(left.id, right.id);
+    || compareNumbers(left.id, right.id));
 }
 
 type CustomerMenuEntry = SortableProduct & {
