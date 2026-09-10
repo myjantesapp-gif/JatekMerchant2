@@ -1,0 +1,22 @@
+{
+  "delivery": {
+    "mode": "native",
+    "runtimeVersion": "",
+    "updateId": "",
+    "channel": "",
+    "sourceCommit": "",
+    "evidence": "",
+    "beforeReport": ""
+  },
+  "deviceProfile": {
+    "approvedBy": "",
+    "size": [1080, 2400],
+    "statusHeight": 90,
+    "masks": []
+  },
+  "screens": {
+    "home": {"route": "/", "expectedText": "Ouvrir le menu"},
+    "commerce": {"route": "/restaurant/REPLACE_WITH_TEST_SHOP_ID", "expectedText": "REPLACE_WITH_VISIBLE_SHOP_NAME"},
+    "secondary": {"route": "/cart", "expectedText": "(?m)^Panier\\s*$"}
+  }
+}
