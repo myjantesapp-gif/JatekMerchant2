@@ -267,8 +267,15 @@ test("home includes every commerce type instead of defaulting to restaurants", (
 
 test("app keeps the system status bar opaque and readable", () => {
   const code = source("app/_layout.tsx");
+  const appConfig = source("app.json");
 
   assert.match(code, /<StatusBar style="dark" backgroundColor="#FFFFFF" translucent=\{false\}/);
+  assert.match(code, /function SystemStatusBarBackdrop\(\)/);
+  assert.match(code, /testID="system-status-bar-backdrop"/);
+  assert.match(code, /height: insets\.top/);
+  assert.match(code, /backgroundColor: "#FFFFFF"/);
+  assert.match(appConfig, /"edgeToEdgeEnabled": false/);
+  assert.match(appConfig, /"androidStatusBar": \{[\s\S]*"backgroundColor": "#FFFFFF"[\s\S]*"barStyle": "dark-content"[\s\S]*"translucent": false/);
 });
 
 const profileFeedScreens = [

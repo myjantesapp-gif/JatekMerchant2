@@ -5,9 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
+import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -35,6 +36,34 @@ setBaseUrl(apiBase);
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const queryClient = new QueryClient();
+
+/**
+ * Android edge-to-edge ignores StatusBar.backgroundColor on recent OS versions.
+ * This real view sits behind the system icons, keeping the reserved top inset
+ * opaque even when the active screen has a coloured header.
+ */
+function SystemStatusBarBackdrop() {
+  const insets = useSafeAreaInsets();
+
+  if (Platform.OS === "web" || insets.top <= 0) return null;
+
+  return (
+    <View
+      pointerEvents="none"
+      testID="system-status-bar-backdrop"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: "#FFFFFF",
+        zIndex: 10000,
+        elevation: 10000,
+      }}
+    />
+  );
+}
 
 function RootLayoutNav() {
   return (
@@ -130,13 +159,14 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" backgroundColor="#FFFFFF" translucent={false} />
+      <SystemStatusBarBackdrop />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <AppSetup />
             <LanguageProvider>
               <CartProvider>
-                <GestureHandlerRootView>
+                <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
                   <KeyboardProvider>
                     <FriendlyAlertProvider>
                         <SessionExpiryRedirect />

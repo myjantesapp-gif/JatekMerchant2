@@ -29,3 +29,4 @@
 - [Restaurant menu category visibility](restaurant-menu-category-visibility.md) — global product categories must be scoped to actual restaurant usage, with a legacy-name fallback for old products.
 - [Dashboard component test environment](dashboard-component-test-environment.md) — use Happy DOM for Radix Select interaction tests; jsdom lacks required pointer/focus behavior.
 - [API ESM test bootstrap](api-esm-test-bootstrap.md) — app-level API tests run native ESM; source-relative paths must not rely on CommonJS globals.
+- [Android opaque status bar](android-opaque-status-bar.md) — edge-to-edge can ignore StatusBar colors; keep a real safe-area backdrop for OTA compatibility.
