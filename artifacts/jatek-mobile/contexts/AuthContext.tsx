@@ -3,6 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { setAuthTokenGetter, setUnauthorizedHandler } from "@workspace/api-client-react";
 import { fetchMe, setApiUnauthorizedHandler } from "@/lib/api";
+import { detachRegisteredPushToken } from "@/hooks/usePushNotifications";
 
 const TOKEN_KEY = "jatek_jwt";
 const USER_KEY = "jatek_user";
@@ -127,12 +128,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!requestToken || requestToken !== activeTokenRef.current) return;
     if (invalidatingSessionRef.current) return;
     invalidatingSessionRef.current = true;
-    sessionRevisionRef.current += 1;
+    const revision = ++sessionRevisionRef.current;
     activeTokenRef.current = null;
     setToken(null);
     setUser(null);
+    void detachRegisteredPushToken(
+      requestToken,
+      () => revision === sessionRevisionRef.current,
+    );
     setSessionExpired(true);
     void enqueueSessionStorage(async () => {
+      if (revision !== sessionRevisionRef.current) return;
       await Promise.all([secureDel(SESSION_KEY), secureDel(TOKEN_KEY), secureDel(USER_KEY)]);
     }).catch((err) => {
       console.warn("[Auth] failed to clear an invalid session:", err);
@@ -202,17 +208,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    const tokenAtStart = activeTokenRef.current ?? token;
     const revision = ++sessionRevisionRef.current;
     invalidatingSessionRef.current = false;
     activeTokenRef.current = null;
+    // Stop auth-aware push registration immediately. The detach request below
+    // uses the captured bearer token and is conditional on the exact push
+    // token, so storage cleanup can still be serialized safely.
     setSessionExpired(false);
+    setToken(null);
+    setUser(null);
+    await detachRegisteredPushToken(
+      tokenAtStart,
+      () => revision === sessionRevisionRef.current,
+    );
     await enqueueSessionStorage(async () => {
       if (revision !== sessionRevisionRef.current) return;
       await Promise.all([secureDel(SESSION_KEY), secureDel(TOKEN_KEY), secureDel(USER_KEY)]);
     });
-    if (revision !== sessionRevisionRef.current) return;
-    setToken(null);
-    setUser(null);
   };
 
   const updateUser = async (newUser: AuthUser) => {

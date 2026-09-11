@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
 import { db, notificationPrefsTable, usersTable, driversTable } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { z } from "@workspace/api-zod";
 import { requireAuth, requireRole, type AuthedRequest } from "../middlewares/auth";
 import { vapidPublicKey } from "../lib/vapid";
-import { sendExpoPush } from "../lib/expoPush";
+import { isExpoPushToken, sendExpoPush } from "../lib/expoPush";
+import { clearInvalidExpoPushToken } from "../lib/pushTokenCleanup";
 import { sendFcmPush } from "../lib/fcmPush";
 import { sendWebPush } from "../lib/vapid";
 import { notificationsTable } from "@workspace/db";
@@ -26,6 +27,9 @@ const DEFAULTS = {
 const pushTokenBody = z.object({
   token: z.string().trim().min(10).max(4096),
   platform: z.enum(["ios", "android", "web", "fcm"]).optional(),
+});
+const deletePushTokenBody = z.object({
+  token: z.string().trim().min(10).max(4096).optional(),
 });
 
 const sendNotificationBody = z.object({
@@ -51,9 +55,11 @@ export type UserNotificationPayload = {
 export async function dispatchNotificationToUsers(
   userIds: number[],
   payload: UserNotificationPayload,
-): Promise<{ recipients: number; inAppSaved: number; remoteSent: number }> {
+): Promise<{ recipients: number; inAppSaved: number; remoteSent: number; receiptsPending: number }> {
   const uniqueIds = Array.from(new Set(userIds));
-  if (uniqueIds.length === 0) return { recipients: 0, inAppSaved: 0, remoteSent: 0 };
+  if (uniqueIds.length === 0) {
+    return { recipients: 0, inAppSaved: 0, remoteSent: 0, receiptsPending: 0 };
+  }
 
   const users = await db.select({ id: usersTable.id })
     .from(usersTable)
@@ -64,6 +70,7 @@ export async function dispatchNotificationToUsers(
   const prefsByUser = new Map(prefs.map((pref) => [pref.userId, pref]));
   let inAppSaved = 0;
   let remoteSent = 0;
+  let receiptsPending = 0;
 
   for (const userId of existingIds) {
     await db.insert(notificationsTable).values({
@@ -83,8 +90,20 @@ export async function dispatchNotificationToUsers(
 
     const pref = prefsByUser.get(userId);
     if (!pref) continue;
-    if (pref.pushToken?.startsWith("ExponentPushToken[")) {
-      if (await sendExpoPush({ to: pref.pushToken, ...payload, sound: "default", priority: "high" })) remoteSent++;
+    if (isExpoPushToken(pref.pushToken)) {
+      const result = await sendExpoPush(
+        { to: pref.pushToken, ...payload, sound: "default", priority: "high" },
+        {
+          onInvalidToken: clearInvalidExpoPushToken,
+          onReceiptStatus: (status) => {
+            if (status !== "ok") {
+              console.warn("[notifications] Expo receipt status:", { userId, status });
+            }
+          },
+        },
+      );
+      if (result.ticketAccepted) remoteSent++;
+      if (result.receiptStatus === "pending") receiptsPending++;
     } else if (pref.pushToken) {
       if (await sendFcmPush({
         token: pref.pushToken,
@@ -97,7 +116,7 @@ export async function dispatchNotificationToUsers(
     }
   }
 
-  return { recipients: existingIds.length, inAppSaved, remoteSent };
+  return { recipients: existingIds.length, inAppSaved, remoteSent, receiptsPending };
 }
 
 router.get("/notification-prefs", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
@@ -135,30 +154,55 @@ router.put("/notifications/push-token", requireAuth, async (req: AuthedRequest, 
     return;
   }
 
-  const [saved] = await db
-    .insert(notificationPrefsTable)
-    .values({ userId: req.userId!, ...DEFAULTS, pushToken: token })
-    .onConflictDoUpdate({
-      target: notificationPrefsTable.userId,
-      set: { pushToken: token, updatedAt: new Date() },
-    })
-    .returning({ userId: notificationPrefsTable.userId, pushToken: notificationPrefsTable.pushToken });
-  // Drivers are also read from drivers.pushToken when new delivery jobs are
-  // broadcast. Keep both stores in sync regardless of which mobile client
-  // registered the token.
-  await db.update(driversTable)
-    .set({ pushToken: token })
-    .where(eq(driversTable.userId, req.userId!));
+  const saved = await db.transaction(async (tx) => {
+    // The schema intentionally remains single-token-per-user. Before assigning
+    // a device token, atomically detach it from any older user/driver rows so
+    // one device cannot receive another account's notifications.
+    await tx.update(notificationPrefsTable)
+      .set({ pushToken: null, updatedAt: new Date() })
+      .where(and(eq(notificationPrefsTable.pushToken, token), ne(notificationPrefsTable.userId, req.userId!)));
+    await tx.update(driversTable)
+      .set({ pushToken: null })
+      .where(and(eq(driversTable.pushToken, token), ne(driversTable.userId, req.userId!)));
+
+    const [row] = await tx
+      .insert(notificationPrefsTable)
+      .values({ userId: req.userId!, ...DEFAULTS, pushToken: token })
+      .onConflictDoUpdate({
+        target: notificationPrefsTable.userId,
+        set: { pushToken: token, updatedAt: new Date() },
+      })
+      .returning({ userId: notificationPrefsTable.userId, pushToken: notificationPrefsTable.pushToken });
+    // Drivers are also read from drivers.pushToken when new delivery jobs are
+    // broadcast. Keep both stores in sync regardless of which mobile client
+    // registered the token.
+    await tx.update(driversTable)
+      .set({ pushToken: token })
+      .where(eq(driversTable.userId, req.userId!));
+    return row;
+  });
   res.json(saved);
 });
 
 router.delete("/notifications/push-token", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
+  const parsed = deletePushTokenBody.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const expectedToken = parsed.data.token;
+  const prefsWhere = expectedToken
+    ? and(eq(notificationPrefsTable.userId, req.userId!), eq(notificationPrefsTable.pushToken, expectedToken))
+    : eq(notificationPrefsTable.userId, req.userId!);
+  const driverWhere = expectedToken
+    ? and(eq(driversTable.userId, req.userId!), eq(driversTable.pushToken, expectedToken))
+    : eq(driversTable.userId, req.userId!);
   await db.update(notificationPrefsTable)
     .set({ pushToken: null })
-    .where(eq(notificationPrefsTable.userId, req.userId!));
+    .where(prefsWhere);
   await db.update(driversTable)
     .set({ pushToken: null })
-    .where(eq(driversTable.userId, req.userId!));
+    .where(driverWhere);
   res.json({ success: true });
 });
 

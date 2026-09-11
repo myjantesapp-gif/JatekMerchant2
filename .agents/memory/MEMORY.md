@@ -30,3 +30,4 @@
 - [Dashboard component test environment](dashboard-component-test-environment.md) — use Happy DOM for Radix Select interaction tests; jsdom lacks required pointer/focus behavior.
 - [API ESM test bootstrap](api-esm-test-bootstrap.md) — app-level API tests run native ESM; source-relative paths must not rely on CommonJS globals.
 - [Android opaque status bar](android-opaque-status-bar.md) — edge-to-edge can ignore StatusBar colors; keep a real safe-area backdrop for OTA compatibility.
+- [Mobile release verification](mobile-release-verification.md) — separate browser checks, Expo acceptance and actual device delivery; deploy new API contracts before the mobile client.

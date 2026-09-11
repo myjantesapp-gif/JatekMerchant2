@@ -2,7 +2,7 @@ import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons, FontAwesome, FontAwesome5 } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, router } from "expo-router";
+import { Stack, router, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
 import { Platform, View } from "react-native";
@@ -85,8 +85,9 @@ function RootLayoutNav() {
  * auth token and pass it to useNotificationSetup for re-registration on login.
  */
 function AppSetup() {
-  const { token } = useAuth();
-  useNotificationSetup(token);
+  const { token, isLoading } = useAuth();
+  const rootNavigationState = useRootNavigationState();
+  useNotificationSetup(token, !isLoading, Boolean(rootNavigationState?.key));
   return null;
 }
 

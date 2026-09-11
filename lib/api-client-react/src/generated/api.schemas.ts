@@ -58,6 +58,7 @@ export interface SendNotificationResponse {
   recipients: number;
   inAppSaved: number;
   remoteSent: number;
+  receiptsPending?: number;
 }
 
 export interface UpdateCartItemBody {
@@ -1418,6 +1419,15 @@ export type SubscribeEventsParams = {
  * Comma-separated channels such as order:5,restaurant:2,available_orders,driver:7.
  */
 channels: string;
+};
+
+export type DeletePushTokenBody = {
+  /**
+     * Only clear the token if it is still the registered token
+     * @minLength 10
+     * @maxLength 4096
+     */
+  token?: string;
 };
 
 export type DeletePushToken200 = {

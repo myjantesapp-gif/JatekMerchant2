@@ -58,7 +58,7 @@ export default function RestaurantScreen() {
   const insets = useSafeAreaInsets();
   const { width: viewportWidth } = useWindowDimensions();
   const t = useT();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, productId } = useLocalSearchParams<{ id: string; productId?: string }>();
   const restaurantId = parseInt(id, 10);
   const menuCardWidth = Math.max(140, (viewportWidth - SIDE * 2 - MENU_GRID_GAP) / 2);
   const [activeCategory, setActiveCategory] = useState("Tous");
@@ -119,6 +119,18 @@ export default function RestaurantScreen() {
     if (!infoModalOpen || restaurantCoords || !restaurant) return;
     geocodeAddress(restaurant.address).then((pos) => { if (pos) setRestaurantCoords(pos); }).catch(() => {});
   }, [infoModalOpen, restaurant, restaurantCoords]);
+
+  // Home recommendation cards can deep-link to a product while preserving the
+  // normal merchant menu screen and its existing detail modal/cart flow.
+  useEffect(() => {
+    const requestedProductId = Number(productId);
+    if (!Number.isInteger(requestedProductId) || requestedProductId <= 0 || !menuItems) return;
+    const requestedProduct = menuItems.find((item) => item.id === requestedProductId);
+    // Recommendation links can outlive an availability change. Keep the
+    // merchant page usable, but never open a stale/unavailable item through
+    // the deep-link path.
+    if (requestedProduct?.isAvailable === true) setSelectedItem(requestedProduct);
+  }, [menuItems, productId]);
 
   const categories = useMemo(() => {
     const fromApi = (productCategories ?? []).map((category) => ({
@@ -799,7 +811,7 @@ export default function RestaurantScreen() {
         restaurantOpen={isOpen}
         onClose={() => setSelectedItem(null)}
         onAdd={({ qty, selectedSize, selectedSizeId, selectedExtras, selectedExtraIds, unitPrice, displayName, cartLineId }) => {
-          if (!selectedItem || !isOpen) return;
+          if (!selectedItem || !isOpen || selectedItem.isAvailable === false) return;
           const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null; commissionRate?: number | null };
           // Use addItemWithQty so the cart directly reflects the qty chosen in
           // the modal rather than calling addItem N times (which mishandles

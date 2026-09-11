@@ -29,9 +29,10 @@ import {
 import { publish } from "../lib/sse";
 import * as tracking from "../lib/trackingService";
 import { pushNotification } from "./notifications";
-import { notifyDrivers } from "../lib/expoPush";
+import { isExpoPushToken, notifyDrivers } from "../lib/expoPush";
 import { sendFcmPush } from "../lib/fcmPush";
 import { sendWebPush } from "../lib/vapid";
+import { clearInvalidExpoPushToken } from "../lib/pushTokenCleanup";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
 import { calculateOrderPricing } from "../lib/orderPricing";
 import {
@@ -170,8 +171,13 @@ async function notifyCustomerStatus(
     // clients that register a Firebase token).
     if (prefs?.pushToken && prefs.pushOrders !== false) {
       const pushData = { orderId: String(orderId), status };
-      const pushPromise = prefs.pushToken.startsWith("ExponentPushToken[")
-        ? notifyDrivers([prefs.pushToken], title, body, { orderId, status }, { channelId: "order-status", priority: "high", ttl: 300 })
+      const pushPromise = isExpoPushToken(prefs.pushToken)
+        ? notifyDrivers([prefs.pushToken], title, body, { orderId, status }, {
+          channelId: "order-status",
+          priority: "high",
+          ttl: 300,
+          onInvalidToken: clearInvalidExpoPushToken,
+        })
         : sendFcmPush({ token: prefs.pushToken, title, body, data: pushData, channelId: "order-status" });
       pushPromise
         .then((sent) => {
@@ -179,7 +185,7 @@ async function notifyCustomerStatus(
             console.warn("[orders] mobile-push-to-customer rejected", {
               userId,
               orderId,
-              provider: prefs.pushToken?.startsWith("ExponentPushToken[") ? "expo" : "fcm",
+              provider: isExpoPushToken(prefs.pushToken) ? "expo" : "fcm",
             });
           }
         })
@@ -219,8 +225,13 @@ async function notifyAssignedDriver(
 
   const title = "🏍️ Course attribuée";
   const body = `${restaurantName} → ${deliveryAddress}\nGain estimé : ${earning} DH`;
-  const sent = token.startsWith("ExponentPushToken[")
-    ? await notifyDrivers([token], title, body, { orderId, type: "order_assigned" }, { channelId: "incoming-order", priority: "high", ttl: 300 })
+  const sent = isExpoPushToken(token)
+    ? await notifyDrivers([token], title, body, { orderId, type: "order_assigned" }, {
+      channelId: "incoming-order",
+      priority: "high",
+      ttl: 300,
+      onInvalidToken: clearInvalidExpoPushToken,
+    })
     : await sendFcmPush({
       token,
       title,
@@ -823,7 +834,12 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
           "🏍️ Nouvelle course disponible !",
           `${order.restaurantName} → ${order.deliveryAddress}\nGain estimé : ${earning} DH`,
           { orderId: order.id, type: "new_order" },
-          { channelId: "incoming-order", priority: "high", ttl: 60 },
+          {
+            channelId: "incoming-order",
+            priority: "high",
+            ttl: 60,
+            onInvalidToken: clearInvalidExpoPushToken,
+          },
         );
       } catch (err) {
         console.warn("[orders] push-to-drivers failed:", err);

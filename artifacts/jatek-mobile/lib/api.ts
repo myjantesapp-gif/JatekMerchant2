@@ -460,6 +460,40 @@ export async function listShorts(): Promise<Short[]> {
   return jsonFetch("/api/shorts");
 }
 
+// Home recommendations -------------------------------------------------
+
+/**
+ * Products returned by the public Home catalog. The API only returns products
+ * that are currently available, have an image, and belong to an open,
+ * verified merchant with an active owner account.
+ */
+export interface RecommendedProduct {
+  id: number;
+  restaurantId: number;
+  restaurantName: string;
+  restaurantImageUrl?: string | null;
+  restaurantLogoUrl?: string | null;
+  name: string;
+  description?: string | null;
+  price: number;
+  imageUrl: string;
+  category: string;
+  deliveryTime?: number | null;
+  deliveryFee?: number | null;
+  rating?: number | null;
+}
+
+export async function listRecommendedProducts(params?: {
+  limit?: number;
+  businessType?: string;
+}): Promise<RecommendedProduct[]> {
+  const query = new URLSearchParams();
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  if (params?.businessType) query.set("businessType", params.businessType);
+  const qs = query.toString();
+  return jsonFetch(`/api/recommendations/products${qs ? `?${qs}` : ""}`);
+}
+
 // Promo codes -----------------------------------------------------------
 
 export interface PromoValidation {

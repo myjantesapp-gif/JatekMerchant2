@@ -271,6 +271,35 @@ test("home header omits the wordmark while retaining its actions", () => {
   assert.doesNotMatch(code, /^\s*headerLogo:\s*\{/m);
 });
 
+test("home keeps section actions and renders live product recommendations", () => {
+  const code = source("app/(tabs)/index.tsx");
+
+  assert.match(code, /listRecommendedProducts/);
+  assert.match(code, /home-recommendations/);
+  assert.match(code, /productId: String\(product\.id\)/);
+  assert.match(code, /Voir toutes les vidéos/);
+  assert.match(code, /Voir les commerces/);
+  assert.doesNotMatch(code, />Partenaires VIP & Promos</);
+  assert.doesNotMatch(code, />Découvrir en vidéo</);
+  assert.doesNotMatch(code, />Près de chez vous</);
+  assert.doesNotMatch(code, /<Text style=\{s\.gridSectionTitle\}/);
+});
+
+test("home does not invent new or promo badges for ordinary merchants", () => {
+  const code = source("app/(tabs)/index.tsx");
+
+  assert.doesNotMatch(code, /badge=\{i % 2/);
+  assert.doesNotMatch(code, /tileBadge/);
+  assert.match(code, /badge=\{ad\.badge \|\| "VIP"\}/);
+});
+
+test("product deep links only open currently available menu items", () => {
+  const code = source("app/restaurant/[id].tsx");
+
+  assert.match(code, /requestedProduct\?\.isAvailable === true/);
+  assert.match(code, /selectedItem\.isAvailable === false/);
+});
+
 test("home includes every commerce type instead of defaulting to restaurants", () => {
   const code = source("app/(tabs)/index.tsx");
 

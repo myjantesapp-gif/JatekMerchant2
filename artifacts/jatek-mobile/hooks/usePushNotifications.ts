@@ -14,7 +14,9 @@ import { AppState, Platform } from "react-native";
 import { router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import Constants, { ExecutionEnvironment } from "expo-constants";
-import { useRegisterPushToken } from "@workspace/api-client-react";
+import { deletePushToken, registerPushToken } from "@workspace/api-client-react";
+import { notificationResponseKey, orderIdFromNotificationResponse } from "@/lib/pushNotificationUtils";
+import { pushOperationQueue, withManualAbortTimeout } from "@/lib/pushOperationQueue";
 
 /**
  * Expo Go on SDK 53+ no longer ships the native `expo-notifications` module.
@@ -104,28 +106,77 @@ async function fetchExpoPushToken(): Promise<string | null> {
  * Requires a valid auth token — no-ops if absent.
  */
 async function fetchAndRegisterPushToken(
-  register: ReturnType<typeof useRegisterPushToken>["mutateAsync"],
+  expectedAuthToken: string,
+  isCurrent: () => boolean,
 ): Promise<void> {
   const expoPushToken = await fetchExpoPushToken();
-  if (!expoPushToken) return;
+  if (!expoPushToken || !isCurrent()) return;
   const platform = Platform.OS === "ios" ? "ios" : "android";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
+    if (!isCurrent()) return;
     try {
-      await register({
-        data: {
-          token: expoPushToken,
-          platform,
-        },
-      });
+      await withManualAbortTimeout(
+        (signal) => registerPushToken(
+          { token: expoPushToken, platform },
+          {
+            headers: { Authorization: `Bearer ${expectedAuthToken}` },
+            signal,
+          },
+        ),
+        15_000,
+        () => !isCurrent(),
+      );
       return;
     } catch (err) {
       if (attempt === 3) {
-        console.warn("[push] could not register token with backend:", err);
+        if (isCurrent()) {
+          console.warn("[push] could not register token with backend:", err);
+        }
         return;
       }
-      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+      if (!isCurrent()) return;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 750));
     }
   }
+}
+
+/**
+ * Detach the token registered by this app session before local auth storage is
+ * cleared. The server compares the supplied token before clearing, so an
+ * in-flight receipt or logout cannot remove a newer registration.
+ */
+export async function detachRegisteredPushToken(
+  authToken: string | null,
+  shouldContinue: () => boolean = () => true,
+): Promise<void> {
+  const token = cachedExpoPushToken;
+  if (!authToken || !token) return;
+  await pushOperationQueue(async () => {
+    if (!shouldContinue()) return;
+    try {
+      await withManualAbortTimeout(
+        (signal) => deletePushToken(
+          { token },
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+            signal,
+          },
+        ),
+        10_000,
+        () => !shouldContinue(),
+      );
+      if (cachedExpoPushToken === token) cachedExpoPushToken = null;
+    } catch (error) {
+      // Logout must still complete when connectivity is unavailable. The
+      // conditional server-side clear makes a later registration safe.
+      if (shouldContinue()) {
+        console.warn("[push] could not detach token during logout:", error);
+      }
+    }
+  });
 }
 
 /**
@@ -136,18 +187,65 @@ async function fetchAndRegisterPushToken(
  *     changes — this handles cold-start-while-logged-out and login-after-boot.
  *
  * @param authToken  Live auth token from AuthContext (null when logged out).
+ * @param navigatorReady  Root navigator has mounted and can accept pushes.
  */
-export function useNotificationSetup(authToken: string | null) {
-  const registerPushToken = useRegisterPushToken();
-  const registerPushTokenWithBackend = useCallback(
-    () => fetchAndRegisterPushToken(registerPushToken.mutateAsync),
-    [registerPushToken.mutateAsync],
-  );
+export function useNotificationSetup(
+  authToken: string | null,
+  authReady = true,
+  navigatorReady = true,
+) {
   const listenerRef = useRef<Notifications.EventSubscription | null>(null);
   // Keep a ref to the latest authToken so the async permission callback can
   // access it without capturing a stale closure value.
   const authTokenRef = useRef<string | null>(authToken);
   authTokenRef.current = authToken;
+  const authReadyRef = useRef(authReady);
+  authReadyRef.current = authReady;
+  const navigatorReadyRef = useRef(navigatorReady);
+  navigatorReadyRef.current = navigatorReady;
+  const registrationGenerationRef = useRef(0);
+  const handledResponseKeysRef = useRef<Set<string>>(new Set());
+  const pendingResponseRef = useRef<Notifications.NotificationResponse | null>(null);
+
+  const routeNotificationResponse = useCallback((response: Notifications.NotificationResponse) => {
+    if (!authReadyRef.current || !navigatorReadyRef.current || !authTokenRef.current) {
+      pendingResponseRef.current = response;
+      return;
+    }
+    const responseKey = notificationResponseKey(response);
+    if (handledResponseKeysRef.current.has(responseKey)) return;
+    const orderId = orderIdFromNotificationResponse(response);
+    if (!orderId) return;
+    try {
+      router.push({ pathname: "/order/[id]", params: { id: String(orderId) } });
+      // Only dedupe after a response was actually actionable and handed to
+      // the mounted root navigator. Invalid/unauthenticated intents remain
+      // pending for the next authenticated session.
+      handledResponseKeysRef.current.add(responseKey);
+      pendingResponseRef.current = null;
+    } catch (error) {
+      pendingResponseRef.current = response;
+      console.warn("[push] could not navigate from notification response:", error);
+    }
+  }, []);
+
+  const registerPushTokenWithBackend = useCallback((expectedToken = authTokenRef.current) => {
+    if (!expectedToken) return Promise.resolve();
+    const generation = registrationGenerationRef.current;
+    return pushOperationQueue(() => fetchAndRegisterPushToken(
+      expectedToken,
+      () => authTokenRef.current === expectedToken &&
+        generation === registrationGenerationRef.current,
+    ));
+  }, []);
+
+  // A cold-start tap can arrive before AuthProvider restores its session. Do
+  // not navigate until the authenticated root is ready.
+  useEffect(() => {
+    if (!authReady || !navigatorReady || !authToken || !pendingResponseRef.current) return;
+    const response = pendingResponseRef.current;
+    routeNotificationResponse(response);
+  }, [authReady, authToken, navigatorReady, routeNotificationResponse]);
 
   // ── One-time: permission request + notification tap listener ──────────────
   useEffect(() => {
@@ -172,18 +270,18 @@ export function useNotificationSetup(authToken: string | null) {
       }
     })();
 
-    listenerRef.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const rawOrderId = response.notification.request.content.data?.orderId;
-      const orderId = typeof rawOrderId === "number" ? rawOrderId : Number(rawOrderId);
-      if (Number.isInteger(orderId) && orderId > 0) {
-        router.push({ pathname: "/order/[id]", params: { id: String(orderId) } });
-      }
-    });
+    listenerRef.current = Notifications.addNotificationResponseReceivedListener(routeNotificationResponse);
+    void Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) routeNotificationResponse(response);
+      })
+      .catch((err) => console.warn("[push] cold-start response lookup failed:", err));
 
     return () => {
       listenerRef.current?.remove();
+      listenerRef.current = null;
     };
-  }, [registerPushTokenWithBackend]);
+  }, [routeNotificationResponse]);
 
   // A user may grant push permission later from the system settings.
   // Re-checking on foreground makes the registration self-healing.
@@ -205,8 +303,8 @@ export function useNotificationSetup(authToken: string | null) {
   // or logs in after the app started. If permission has not been granted yet,
   // the registration above (post-permission callback) will handle it instead.
   useEffect(() => {
-    if (!pushSupported) return;
-    if (!authToken) return;
+    registrationGenerationRef.current += 1;
+    if (!pushSupported || !authToken) return;
     void registerPushTokenWithBackend();
   }, [authToken, registerPushTokenWithBackend]);
 }

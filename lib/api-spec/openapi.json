@@ -3227,6 +3227,24 @@
             "bearerAuth": []
           }
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 4096,
+                    "description": "Only clear the token if it is still the registered token"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Token removed",
@@ -6248,7 +6266,12 @@
             "type": "integer"
           },
           "remoteSent": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Remote push requests accepted by their provider; Expo ticket acceptance is not device delivery confirmation"
+          },
+          "receiptsPending": {
+            "type": "integer",
+            "description": "Accepted Expo tickets queued for asynchronous receipt polling"
           }
         },
         "required": [

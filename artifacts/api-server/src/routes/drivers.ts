@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, driversTable, ordersTable } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { db, driversTable, notificationPrefsTable, ordersTable } from "@workspace/db";
+import { eq, and, inArray, ne } from "drizzle-orm";
 import { publish } from "../lib/sse";
 import * as tracking from "../lib/trackingService";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
@@ -11,7 +11,7 @@ import {
   GetDriverEarningsParams,
   ListDriversQueryParams,
 } from "@workspace/api-zod";
-import { notifyDrivers } from "../lib/expoPush";
+import { isExpoPushToken, notifyDrivers } from "../lib/expoPush";
 
 const router: IRouter = Router();
 
@@ -298,7 +298,7 @@ router.patch("/drivers/me/push-token", requireAuth, async (req: AuthedRequest, r
     res.status(400).json({ error: "pushToken (string) required" });
     return;
   }
-  if (!pushToken.startsWith("ExponentPushToken[")) {
+  if (!isExpoPushToken(pushToken)) {
     res.status(400).json({ error: "Invalid Expo push token format" });
     return;
   }
@@ -314,10 +314,20 @@ router.patch("/drivers/me/push-token", requireAuth, async (req: AuthedRequest, r
     return;
   }
 
-  await db
-    .update(driversTable)
-    .set({ pushToken })
-    .where(eq(driversTable.id, driver.id));
+  await db.transaction(async (tx) => {
+    // Keep one device token attached to one account even though the
+    // pre-release schema intentionally remains single-token-per-user.
+    await tx.update(notificationPrefsTable)
+      .set({ pushToken: null, updatedAt: new Date() })
+      .where(and(eq(notificationPrefsTable.pushToken, pushToken), ne(notificationPrefsTable.userId, req.userId!)));
+    await tx.update(driversTable)
+      .set({ pushToken: null })
+      .where(and(eq(driversTable.pushToken, pushToken), ne(driversTable.userId, req.userId!)));
+    await tx
+      .update(driversTable)
+      .set({ pushToken })
+      .where(eq(driversTable.id, driver.id));
+  });
 
   res.json({ ok: true });
 });

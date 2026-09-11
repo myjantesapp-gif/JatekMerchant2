@@ -1692,6 +1692,15 @@ export const RegisterPushTokenResponse = zod.object({
 /**
  * @summary Remove the current user's push token
  */
+export const deletePushTokenBodyTokenMin = 10;
+export const deletePushTokenBodyTokenMax = 4096;
+
+
+
+export const DeletePushTokenBody = zod.object({
+  "token": zod.string().min(deletePushTokenBodyTokenMin).max(deletePushTokenBodyTokenMax).optional().describe('Only clear the token if it is still the registered token')
+})
+
 export const DeletePushTokenResponse = zod.object({
   "success": zod.boolean().optional()
 })
@@ -1717,7 +1726,8 @@ export const SendNotificationResponse = zod.object({
   "success": zod.boolean(),
   "recipients": zod.number().int(),
   "inAppSaved": zod.number().int(),
-  "remoteSent": zod.number().int()
+  "remoteSent": zod.number().int(),
+  "receiptsPending": zod.number().int().optional()
 })
 
 

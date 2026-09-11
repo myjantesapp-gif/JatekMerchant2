@@ -48,6 +48,7 @@ import type {
   CreateTodoBody,
   DashboardTodo,
   DeletePushToken200,
+  DeletePushTokenBody,
   Driver,
   DriverEarnings,
   DriverLocation,
@@ -5001,14 +5002,14 @@ export const getDeletePushTokenUrl = () => {
 /**
  * @summary Remove the current user's push token
  */
-export const deletePushToken = async ( options?: Parameters<typeof customFetch>[1]): Promise<DeletePushToken200> => {
+export const deletePushToken = async (deletePushTokenBody?: DeletePushTokenBody, options?: Parameters<typeof customFetch>[1]): Promise<DeletePushToken200> => {
 
   return customFetch<DeletePushToken200>(getDeletePushTokenUrl(),
   {
     ...options,
-    method: 'DELETE'
-
-
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(deletePushTokenBody)
   }
 );}
 
@@ -5017,8 +5018,8 @@ export const deletePushToken = async ( options?: Parameters<typeof customFetch>[
 
 
 export const getDeletePushTokenMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePushToken>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deletePushToken>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePushToken>>, TError,{data?: BodyType<DeletePushTokenBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePushToken>>, TError,{data?: BodyType<DeletePushTokenBody>}, TContext> => {
 
 const mutationKey = ['deletePushToken'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -5030,10 +5031,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePushToken>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePushToken>>, {data?: BodyType<DeletePushTokenBody>}> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  deletePushToken(requestOptions)
+          return  deletePushToken(data,requestOptions)
         }
 
 
@@ -5044,18 +5045,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type DeletePushTokenMutationResult = NonNullable<Awaited<ReturnType<typeof deletePushToken>>>
-
+    export type DeletePushTokenMutationBody = BodyType<DeletePushTokenBody> | undefined
     export type DeletePushTokenMutationError = ErrorType<unknown>
 
     /**
  * @summary Remove the current user's push token
  */
 export const useDeletePushToken = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePushToken>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePushToken>>, TError,{data?: BodyType<DeletePushTokenBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deletePushToken>>,
         TError,
-        void,
+        {data?: BodyType<DeletePushTokenBody>},
         TContext
       > => {
       return useMutation(getDeletePushTokenMutationOptions(options));
