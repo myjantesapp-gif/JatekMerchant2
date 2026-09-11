@@ -28,7 +28,7 @@
     "android": {
       "package": "ma.jatek.app",
       "versionCode": 13,
-      "edgeToEdgeEnabled": false,
+      "edgeToEdgeEnabled": true,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -40,9 +40,9 @@
       }
     },
     "androidStatusBar": {
-      "backgroundColor": "#FFFFFF",
+      "backgroundColor": "transparent",
       "barStyle": "dark-content",
-      "translucent": false
+      "translucent": true
     },
     "web": {
       "favicon": "./assets/images/favicon.png"

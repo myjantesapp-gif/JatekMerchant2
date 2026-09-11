@@ -20,7 +20,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Path } from "react-native-svg";
 import { useQuery } from "@tanstack/react-query";
 import {
   useListRestaurants,
@@ -99,43 +98,6 @@ function LoadRetry({ message, onRetry }: { message: string; onRetry: () => void 
       <TouchableOpacity onPress={onRetry} style={s.loadRetryButton} activeOpacity={0.85}>
         <Text style={s.loadRetryButtonText}>Réessayer</Text>
       </TouchableOpacity>
-    </View>
-  );
-}
-
-function HomeWaveDivider() {
-  return (
-    <View style={s.homeWaveDivider} accessibilityElementsHidden importantForAccessibility="no">
-      <Svg width="100%" height={20} viewBox="0 0 360 20" preserveAspectRatio="none">
-        <Path
-          d="M0 10 C30 2 60 2 90 10 S150 18 180 10 S240 2 270 10 S330 18 360 10"
-          stroke={PINK}
-          strokeWidth="2.5"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <Path
-          d="M0 11 C30 17 60 17 90 11 S150 5 180 11 S240 17 270 11 S330 5 360 11"
-          stroke="#C2185B"
-          strokeWidth="2"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <Path
-          d="M0 8 C30 14 60 14 90 8 S150 2 180 8 S240 14 270 8 S330 2 360 8"
-          stroke="#C2B83E"
-          strokeWidth="1.8"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <Path
-          d="M0 13 C30 7 60 7 90 13 S150 19 180 13 S240 7 270 13 S330 19 360 13"
-          stroke="#19B5A5"
-          strokeWidth="1.8"
-          fill="none"
-          strokeLinecap="round"
-        />
-      </Svg>
     </View>
   );
 }
@@ -613,7 +575,7 @@ export default function HomeScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
               nestedScrollEnabled
-              contentContainerStyle={[s.shopCatsContent, { paddingTop: 8, paddingBottom: 6 }]}
+              contentContainerStyle={[s.shopCatsContent, { paddingTop: 10, paddingBottom: 6 }]}
             >
               {serviceShortcuts.map((sc) => (
                 <Pressable
@@ -780,7 +742,7 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
-        <HomeWaveDivider />
+        <View style={s.homeSectionSpacer} accessibilityElementsHidden importantForAccessibility="no" />
 
         {/* ─── Pres de chez vous (all commerce types) ─── */}
         {activeBusinessCategorySlug && (

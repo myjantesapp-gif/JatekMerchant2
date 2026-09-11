@@ -308,17 +308,14 @@ test("home includes every commerce type instead of defaulting to restaurants", (
   assert.match(code, /Aucun commerce à proximité/);
 });
 
-test("app keeps the system status bar opaque and readable", () => {
+test("app uses a transparent edge-to-edge system bar while preserving readable icons", () => {
   const code = source("app/_layout.tsx");
   const appConfig = source("app.json");
 
-  assert.match(code, /<StatusBar style="dark" backgroundColor="#FFFFFF" translucent=\{false\}/);
-  assert.match(code, /function SystemStatusBarBackdrop\(\)/);
-  assert.match(code, /testID="system-status-bar-backdrop"/);
-  assert.match(code, /height: insets\.top/);
-  assert.match(code, /backgroundColor: "#FFFFFF"/);
-  assert.match(appConfig, /"edgeToEdgeEnabled": false/);
-  assert.match(appConfig, /"androidStatusBar": \{[\s\S]*"backgroundColor": "#FFFFFF"[\s\S]*"barStyle": "dark-content"[\s\S]*"translucent": false/);
+  assert.match(code, /<StatusBar style="dark" backgroundColor="transparent" translucent \/>/);
+  assert.doesNotMatch(code, /SystemStatusBarBackdrop/);
+  assert.match(appConfig, /"edgeToEdgeEnabled": true/);
+  assert.match(appConfig, /"androidStatusBar": \{[\s\S]*"backgroundColor": "transparent"[\s\S]*"barStyle": "dark-content"[\s\S]*"translucent": true/);
 });
 
 const profileFeedScreens = [
