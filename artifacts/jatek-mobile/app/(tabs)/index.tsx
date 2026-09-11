@@ -898,12 +898,12 @@ const s = StyleSheet.create({
     padding: 0,
   },
   shopCatsScroll: {
-    marginTop: 12,
+    marginTop: 18,
   },
   serviceShortcutsWrap: {
     // WaveEdge is absolutely positioned and visually extends below the
     // header's layout box. Keep the first icon rail below that painted area.
-    marginTop: 22,
+    marginTop: 28,
   },
   shopCatsContent: {
     paddingHorizontal: 16,
@@ -928,11 +928,9 @@ const s = StyleSheet.create({
     textAlign: "center",
     lineHeight: 14,
   },
-  homeDivider: {
-    height: 1,
-    marginHorizontal: 16,
-    marginVertical: 16,
-    backgroundColor: "#ECECF2",
+  homeSectionSpacer: {
+    height: 22,
+    marginVertical: 8,
   },
   // ── Services row ──
   servicesRow: {
@@ -1142,13 +1140,6 @@ const s = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 2,
   },
-  homeWaveDivider: {
-    height: 20,
-    marginHorizontal: 18,
-    marginVertical: 10,
-    opacity: 0.82,
-  },
-
   // ── Videos ──
   videosGrid: {
     paddingHorizontal: 16,
