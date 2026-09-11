@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Path } from "react-native-svg";
 import { useQuery } from "@tanstack/react-query";
 import {
   useListRestaurants,
@@ -82,7 +83,9 @@ const SHORT_SIDE = 16;
 const SHORT_COLUMNS = 3;
 const SHORT_CARD_W = (SCREEN_W - SHORT_SIDE * 2 - SHORT_GAP * (SHORT_COLUMNS - 1)) / SHORT_COLUMNS;
 const SHORT_CARD_H = Math.round(SHORT_CARD_W * 1.64);
-const RECOMMENDATION_CARD_W = Math.min(224, Math.max(176, SCREEN_W * 0.62));
+const RECOMMENDATION_GAP = 10;
+const RECOMMENDATION_CARD_W = Math.floor((SCREEN_W - GRID_SIDE * 2 - RECOMMENDATION_GAP) / 2);
+const VIP_CARD_W = Math.min(SCREEN_W - 48, 340);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -100,8 +103,41 @@ function LoadRetry({ message, onRetry }: { message: string; onRetry: () => void 
   );
 }
 
-function HomeDivider() {
-  return <View style={s.homeDivider} accessibilityElementsHidden importantForAccessibility="no" />;
+function HomeWaveDivider() {
+  return (
+    <View style={s.homeWaveDivider} accessibilityElementsHidden importantForAccessibility="no">
+      <Svg width="100%" height={20} viewBox="0 0 360 20" preserveAspectRatio="none">
+        <Path
+          d="M0 10 C30 2 60 2 90 10 S150 18 180 10 S240 2 270 10 S330 18 360 10"
+          stroke={PINK}
+          strokeWidth="2.5"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <Path
+          d="M0 11 C30 17 60 17 90 11 S150 5 180 11 S240 17 270 11 S330 5 360 11"
+          stroke="#C2185B"
+          strokeWidth="2"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <Path
+          d="M0 8 C30 14 60 14 90 8 S150 2 180 8 S240 14 270 8 S330 2 360 8"
+          stroke="#C2B83E"
+          strokeWidth="1.8"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <Path
+          d="M0 13 C30 7 60 7 90 13 S150 19 180 13 S240 7 270 13 S330 19 360 13"
+          stroke="#19B5A5"
+          strokeWidth="1.8"
+          fill="none"
+          strokeLinecap="round"
+        />
+      </Svg>
+    </View>
+  );
 }
 
 function ShortAvatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
@@ -602,8 +638,6 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
-        <HomeDivider />
-
         {/* ─── Shop categories horizontal slider ─── */}
         {categoriesLoading && shopCategories.length === 0 && (
           <View style={{ paddingVertical: 24, alignItems: "center" }}>
@@ -644,8 +678,6 @@ export default function HomeScreen() {
           ))}
         </Animated.ScrollView>
 
-        <HomeDivider />
-
         <Animated.ScrollView
           entering={FadeInDown.delay(260).duration(550).springify()}
           horizontal
@@ -653,7 +685,7 @@ export default function HomeScreen() {
           nestedScrollEnabled
           contentContainerStyle={s.vipScrollRow}
           decelerationRate="fast"
-          snapToInterval={SCREEN_W - 20}
+            snapToInterval={VIP_CARD_W + 12}
         >
           {vipAds.length > 0
             ? vipAds.slice(0, 6).map((ad) => (
@@ -686,11 +718,7 @@ export default function HomeScreen() {
           )}
         </Animated.ScrollView>
 
-        <HomeDivider />
-
         <JatekScrollingBanner />
-
-        <HomeDivider />
 
         {/* ─── Available catalog recommendations ─── */}
         {recommendationsLoading ? (
@@ -718,8 +746,6 @@ export default function HomeScreen() {
             ))}
           </Animated.ScrollView>
         ) : null}
-
-        <HomeDivider />
 
         {/* ─── Découvrir en vidéo ─── */}
         {shorts.length > 0 && (
@@ -754,7 +780,7 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
-        <HomeDivider />
+        <HomeWaveDivider />
 
         {/* ─── Pres de chez vous (all commerce types) ─── */}
         {activeBusinessCategorySlug && (
@@ -1072,8 +1098,8 @@ const s = StyleSheet.create({
     paddingBottom: 2,
   },
   vipCard: {
-    width: SCREEN_W - 32,
-    height: 184,
+    width: VIP_CARD_W,
+    height: 156,
     borderRadius: 20,
     overflow: "hidden",
     justifyContent: "flex-end",
@@ -1096,15 +1122,15 @@ const s = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 96,
+    height: 78,
     backgroundColor: "rgba(7,10,36,0.58)",
   },
   vipCardOrb: {
     position: "absolute",
-    width: 150,
-    height: 150,
-    right: -44,
-    top: -54,
+    width: 120,
+    height: 120,
+    right: -34,
+    top: -42,
     borderRadius: 100,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.20)",
@@ -1152,9 +1178,15 @@ const s = StyleSheet.create({
   // ── Available product recommendations ──
   recommendationsRow: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: RECOMMENDATION_GAP,
     paddingTop: 14,
     paddingBottom: 2,
+  },
+  homeWaveDivider: {
+    height: 20,
+    marginHorizontal: 18,
+    marginVertical: 10,
+    opacity: 0.82,
   },
 
   // ── Videos ──
