@@ -100,6 +100,10 @@ function LoadRetry({ message, onRetry }: { message: string; onRetry: () => void 
   );
 }
 
+function HomeDivider() {
+  return <View style={s.homeDivider} accessibilityElementsHidden importantForAccessibility="no" />;
+}
+
 function ShortAvatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
   const [imageFailed, setImageFailed] = useState(false);
   const initials = name
@@ -595,6 +599,8 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
+        <HomeDivider />
+
         {/* ─── Shop categories horizontal slider ─── */}
         {categoriesLoading && shopCategories.length === 0 && (
           <View style={{ paddingVertical: 24, alignItems: "center" }}>
@@ -634,6 +640,8 @@ export default function HomeScreen() {
             </Pressable>
           ))}
         </Animated.ScrollView>
+
+        <HomeDivider />
 
         <Animated.ScrollView
           entering={FadeInDown.delay(260).duration(550).springify()}
@@ -675,7 +683,11 @@ export default function HomeScreen() {
           )}
         </Animated.ScrollView>
 
+        <HomeDivider />
+
         <JatekScrollingBanner />
+
+        <HomeDivider />
 
         {/* ─── Available catalog recommendations ─── */}
         {recommendationsLoading ? (
@@ -703,6 +715,8 @@ export default function HomeScreen() {
             ))}
           </Animated.ScrollView>
         ) : null}
+
+        <HomeDivider />
 
         {/* ─── Découvrir en vidéo ─── */}
         {shorts.length > 0 && (
@@ -737,6 +751,8 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
+        <HomeDivider />
+
         {/* ─── Pres de chez vous (all commerce types) ─── */}
         {activeBusinessCategorySlug && (
           <SectionAction
@@ -770,6 +786,8 @@ export default function HomeScreen() {
             )}
           </Animated.ScrollView>
         )}
+
+        <HomeDivider />
 
         {/* ─── Tous les commerces (2-column grid) ─── */}
         <Animated.View entering={FadeInDown.delay(740).duration(550).springify()} style={s.gridSection}>
@@ -915,6 +933,12 @@ const s = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     textAlign: "center",
     lineHeight: 14,
+  },
+  homeDivider: {
+    height: 1,
+    marginHorizontal: 16,
+    marginVertical: 16,
+    backgroundColor: "#ECECF2",
   },
   // ── Services row ──
   servicesRow: {

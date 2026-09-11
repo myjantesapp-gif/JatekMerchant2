@@ -26,6 +26,23 @@ test("Home recommendations prefer one live catalog product per merchant", () => 
   );
 });
 
+test("Home recommendations preserve the catalog order while diversifying merchants", () => {
+  const rows = [
+    candidate(10, 10),
+    candidate(20, 11),
+    candidate(11, 10),
+    candidate(21, 11),
+  ];
+
+  // The route supplies candidates ordered by sortOrder, createdAt and id.
+  // Diversity may skip a merchant's later product during the first pass, but
+  // it must never move a later catalog entry ahead of an earlier one.
+  assert.deepEqual(
+    selectAvailableRecommendations(rows, 4).map((row) => row.id),
+    [10, 20, 11, 21],
+  );
+});
+
 test("Home recommendations fill remaining slots without using popularity", () => {
   const rows = [
     candidate(1, 10, false),
