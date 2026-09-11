@@ -569,12 +569,15 @@ export default function HomeScreen() {
 
         {/* ─── Service shortcuts row (type=service_shortcut from admin) ─── */}
         {serviceShortcuts.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(60).duration(450).springify()}>
+          <Animated.View
+            entering={FadeInDown.delay(60).duration(450).springify()}
+            style={s.serviceShortcutsWrap}
+          >
             <Animated.ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               nestedScrollEnabled
-              contentContainerStyle={[s.shopCatsContent, { paddingTop: 6, paddingBottom: 4 }]}
+              contentContainerStyle={[s.shopCatsContent, { paddingTop: 8, paddingBottom: 6 }]}
             >
               {serviceShortcuts.map((sc) => (
                 <Pressable
@@ -910,6 +913,11 @@ const s = StyleSheet.create({
   },
   shopCatsScroll: {
     marginTop: 12,
+  },
+  serviceShortcutsWrap: {
+    // WaveEdge is absolutely positioned and visually extends below the
+    // header's layout box. Keep the first icon rail below that painted area.
+    marginTop: 22,
   },
   shopCatsContent: {
     paddingHorizontal: 16,
