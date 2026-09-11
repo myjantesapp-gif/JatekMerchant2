@@ -816,8 +816,6 @@ export default function HomeScreen() {
           </Animated.ScrollView>
         )}
 
-        <HomeDivider />
-
         {/* ─── Tous les commerces (2-column grid) ─── */}
         <Animated.View entering={FadeInDown.delay(740).duration(550).springify()} style={s.gridSection}>
           <View style={s.filterChip} accessibilityLabel={`Filtre actif : ${currentLabel}`}>
