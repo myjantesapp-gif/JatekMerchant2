@@ -13,6 +13,7 @@ import { attachAuth } from "./middlewares/auth";
 
 const app: Express = express();
 const mobileStaticPort = Number(process.env["MOBILE_STATIC_PORT"] ?? "25896");
+const bannerAssetsDir = path.resolve(__dirname, "../public/banners");
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
@@ -25,6 +26,9 @@ app.use(
 );
 
 app.use(compression());
+if (existsSync(bannerAssetsDir)) {
+  app.use("/banners", express.static(bannerAssetsDir, { maxAge: "1d" }));
+}
 
 // In production, restrict CORS to known origins. Set ALLOWED_ORIGINS as a
 // comma-separated list (e.g. "https://app.example.com,https://admin.example.com").

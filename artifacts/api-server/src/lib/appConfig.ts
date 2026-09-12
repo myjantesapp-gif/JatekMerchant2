@@ -22,10 +22,10 @@ const baseHomeSectionSchema = z.object({
 
 export const homeSectionsSchema = z.object({
   popular: baseHomeSectionSchema.extend({
-    source: z.enum(["popular", "newest"]),
+    source: z.enum(["popular", "newest", "promos"]),
   }).strict(),
   new_products: baseHomeSectionSchema.extend({
-    source: z.enum(["newest", "popular"]),
+    source: z.enum(["newest", "popular", "promos"]),
   }).strict(),
   new_restaurants: baseHomeSectionSchema.extend({
     source: z.enum(["new_restaurants", "all_restaurants"]),
@@ -57,13 +57,13 @@ export const DEFAULT_HOME_SECTIONS: HomeSectionsConfig = {
     limit: 6,
   },
   new_products: {
-    title: "Nouveaux produits",
+    title: "Promos",
     visible: true,
-    source: "newest",
+    source: "promos",
     limit: 6,
   },
   new_restaurants: {
-    title: "Près de chez vous",
+    title: "Nouveautés",
     visible: true,
     source: "new_restaurants",
     limit: 6,

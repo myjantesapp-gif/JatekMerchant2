@@ -24,11 +24,13 @@ type Props = {
 };
 
 export function RecommendedProductCard({ product, width, onPress, compact = false }: Props) {
+  const hasPromotion = typeof product.compareAtPrice === "number"
+    && product.compareAtPrice > product.price;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${product.name}, ${product.restaurantName}, ${formatMad(product.price)} dirhams`}
+      accessibilityLabel={`${product.name}, ${product.restaurantName}, ${formatMad(product.price)} dirhams${hasPromotion ? ` au lieu de ${formatMad(product.compareAtPrice!)} dirhams` : ""}`}
       style={({ pressed }) => [
         styles.card,
         compact && styles.cardCompact,
@@ -63,6 +65,11 @@ export function RecommendedProductCard({ product, width, onPress, compact = fals
         <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={2}>{product.name}</Text>
         <View style={styles.priceRow}>
           <Text style={[styles.price, compact && styles.priceCompact]}>{formatMad(product.price)} DH</Text>
+          {hasPromotion ? (
+            <Text style={[styles.compareAtPrice, compact && styles.compareAtPriceCompact]}>
+              {formatMad(product.compareAtPrice!)} DH
+            </Text>
+          ) : null}
         </View>
       </View>
     </Pressable>
@@ -189,5 +196,14 @@ const styles = StyleSheet.create({
   },
   priceCompact: {
     fontSize: 11,
+  },
+  compareAtPrice: {
+    color: TEXT_MUTED,
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    textDecorationLine: "line-through",
+  },
+  compareAtPriceCompact: {
+    fontSize: 9,
   },
 });

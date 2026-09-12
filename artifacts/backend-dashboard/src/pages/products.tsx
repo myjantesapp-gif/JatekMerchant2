@@ -27,7 +27,7 @@ import { apiFetch } from "@/lib/api";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { buildProductListParams, isProductSort, type ProductAvailability, type ProductSort } from "@/lib/productListQuery";
 
-const EMPTY = { name: "", description: "", price: "", category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "", sortOrder: "0" };
+const EMPTY = { name: "", description: "", price: "", compareAtPrice: "", category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "", sortOrder: "0" };
 
 type ProductCat = { id: number; restaurantId: number | null; name: string; isActive: boolean; productCount?: number };
 function useProductCategories(restaurantId: string | number | undefined) {
@@ -301,6 +301,7 @@ export default function Products() {
     name: f.name,
     description: f.description || undefined,
     price: Number(String(f.price).replace(",", ".")),
+    compareAtPrice: f.compareAtPrice ? Number(String(f.compareAtPrice).replace(",", ".")) : null,
      category: f.category || undefined,
      menuItemCategoryId: f.menuItemCategoryId ? Number(f.menuItemCategoryId) : undefined,
     imageUrl: f.imageUrl || undefined,
@@ -323,7 +324,7 @@ export default function Products() {
   const openEdit = (p: any) => {
     setEditing(p);
     setEditForm({
-      name: p.name, description: p.description ?? "", price: String(p.price),
+       name: p.name, description: p.description ?? "", price: String(p.price), compareAtPrice: p.compareAtPrice ? String(p.compareAtPrice) : "",
       category: p.category, menuItemCategoryId: p.menuItemCategoryId ? String(p.menuItemCategoryId) : "", imageUrl: p.imageUrl ?? "",
       isAvailable: p.isAvailable, isPopular: p.isPopular,
       allergens: p.allergens ?? "",
@@ -1000,6 +1001,9 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
           )}
         </Field>
         <Field label="Prix (DH) *"><Input required type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" step="0.01" value={form.price} onChange={(e: any) => set("price", e.target.value)} /></Field>
+        <Field label="Ancien prix barré (DH)">
+          <Input type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" step="0.01" value={form.compareAtPrice} onChange={(e: any) => set("compareAtPrice", e.target.value)} placeholder="Optionnel, supérieur au prix actuel" />
+        </Field>
         <Field label="Ordre personnalisé">
           <Input type="number" step="1" value={form.sortOrder} onChange={(e: any) => set("sortOrder", e.target.value)} />
         </Field>

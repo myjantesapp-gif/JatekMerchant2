@@ -683,7 +683,7 @@ router.post("/backend/products", requireAuth, async (req: AuthedRequest, res, ne
   }
   try {
     const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
-    const { restaurantId, name, description, price, category, menuItemCategoryId, imageUrl, isAvailable, isPopular, allergens, tags, prepTimeMinutes, calories, sortOrder } = req.body || {};
+    const { restaurantId, name, description, price, compareAtPrice, category, menuItemCategoryId, imageUrl, isAvailable, isPopular, allergens, tags, prepTimeMinutes, calories, sortOrder } = req.body || {};
     if (!restaurantId || !name || price === undefined || (!category && !menuItemCategoryId)) {
       res.status(400).json({ error: "restaurantId, name, price, category ou menuItemCategoryId requis" }); return;
     }
@@ -698,8 +698,16 @@ router.post("/backend/products", requireAuth, async (req: AuthedRequest, res, ne
     if (!productCategory) {
       res.status(400).json({ error: "Catégorie produit inexistante, inactive ou non disponible pour cette boutique" }); return;
     }
+    const parsedPrice = parseDecimal(price);
+    const parsedCompareAtPrice = compareAtPrice === undefined || compareAtPrice === null || compareAtPrice === ""
+      ? null
+      : parseDecimal(compareAtPrice);
+    if (parsedCompareAtPrice !== null && parsedCompareAtPrice <= parsedPrice) {
+      res.status(400).json({ error: "Le prix barré doit être supérieur au prix actuel" }); return;
+    }
     const [item] = await db.insert(menuItemsTable).values({
-      restaurantId: rid, name, description: description ?? null, price: parseDecimal(price),
+      restaurantId: rid, name, description: description ?? null, price: parsedPrice,
+      compareAtPrice: parsedCompareAtPrice,
       category: productCategory.name, menuItemCategoryId: productCategory.id,
       imageUrl: normalizeStoredMediaPath(imageUrl) ?? null, isAvailable: isAvailable ?? true,
       isPopular: isPopular ?? false, allergens: allergens ?? null,
@@ -728,7 +736,7 @@ router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, re
     if (scoped !== null && !scoped.includes(existing.restaurantId)) {
       res.status(403).json({ error: "Forbidden: not your restaurant" }); return;
     }
-    const allowed = ["name", "description", "price", "imageUrl", "isAvailable", "isPopular", "allergens", "tags", "prepTimeMinutes", "calories", "sortOrder"];
+    const allowed = ["name", "description", "price", "compareAtPrice", "imageUrl", "isAvailable", "isPopular", "allergens", "tags", "prepTimeMinutes", "calories", "sortOrder"];
     const updates: Record<string, unknown> = {};
     for (const k of allowed) if ((req.body || {})[k] !== undefined) updates[k] = req.body[k];
     if (Object.prototype.hasOwnProperty.call(req.body || {}, "category")
@@ -753,6 +761,18 @@ router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, re
       }
     }
     if ("price" in updates) updates.price = parseDecimal(updates.price);
+    if ("compareAtPrice" in updates) {
+      updates.compareAtPrice = updates.compareAtPrice === null || updates.compareAtPrice === ""
+        ? null
+        : parseDecimal(updates.compareAtPrice);
+    }
+    const nextPrice = "price" in updates ? Number(updates.price) : Number(existing.price);
+    const nextCompareAtPrice = "compareAtPrice" in updates
+      ? updates.compareAtPrice === null ? null : Number(updates.compareAtPrice)
+      : existing.compareAtPrice;
+    if (nextCompareAtPrice !== null && nextCompareAtPrice !== undefined && nextCompareAtPrice <= nextPrice) {
+      res.status(400).json({ error: "Le prix barré doit être supérieur au prix actuel" }); return;
+    }
     if ("prepTimeMinutes" in updates) updates.prepTimeMinutes = parseDecimal(updates.prepTimeMinutes);
     if ("calories" in updates) updates.calories = parseDecimal(updates.calories);
     if ("sortOrder" in updates) {

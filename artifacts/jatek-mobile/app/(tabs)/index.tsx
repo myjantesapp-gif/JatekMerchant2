@@ -97,8 +97,8 @@ const NEW_PRODUCT_PAGE_W = SCREEN_W - 24;
 const NEW_PRODUCT_CARD_W = Math.floor((NEW_PRODUCT_PAGE_W - 28 - RECOMMENDATION_GAP * 2) / 3);
 const DEFAULT_HOME_SECTIONS: HomeSectionConfig[] = [
   { key: "popular", title: "Produits populaires", visible: true, source: "popular", limit: 30 },
-  { key: "new_products", title: "Nouveaux produits", visible: true, source: "newest", limit: 12 },
-  { key: "new_restaurants", title: "Près de chez vous", visible: true, source: "new_restaurants", limit: 6 },
+  { key: "new_products", title: "Promos", visible: true, source: "promos", limit: 12 },
+  { key: "new_restaurants", title: "Nouveautés", visible: true, source: "new_restaurants", limit: 6 },
   { key: "shops", title: "Boutiques", visible: true, source: "shops", limit: 6 },
 ];
 const VIP_CARD_W = Math.min(SCREEN_W - 80, 300);
@@ -438,7 +438,7 @@ export default function HomeScreen() {
     queryFn: () => listRecommendedProducts({
       limit: popularConfig.limit,
       businessType: activeBusinessType || undefined,
-      sort: popularConfig.source === "newest" ? "newest" : "catalog",
+      sort: popularConfig.source === "newest" ? "newest" : popularConfig.source === "promos" ? "promos" : "catalog",
     }),
     staleTime: 60_000,
     enabled: popularConfig.visible,
@@ -453,7 +453,11 @@ export default function HomeScreen() {
     queryFn: () => listRecommendedProducts({
       limit: newProductsConfig.limit,
       businessType: activeBusinessType || undefined,
-      sort: newProductsConfig.source === "popular" ? "catalog" : "newest",
+      sort: newProductsConfig.source === "popular"
+        ? "catalog"
+        : newProductsConfig.source === "promos"
+          ? "promos"
+          : "newest",
     }),
     staleTime: 60_000,
     enabled: newProductsConfig.visible,

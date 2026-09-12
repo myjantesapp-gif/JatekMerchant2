@@ -8,6 +8,8 @@ export const menuItemsTable = pgTable("menu_items", {
   name: text("name").notNull(),
   description: text("description"),
   price: real("price").notNull(),
+  /** Previous price shown crossed out when this product is on promotion. */
+  compareAtPrice: real("compare_at_price"),
   imageUrl: text("image_url"),
   category: text("category").notNull().default("Main"),
   isAvailable: boolean("is_available").notNull().default(true),

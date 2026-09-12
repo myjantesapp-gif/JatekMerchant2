@@ -476,6 +476,7 @@ export interface RecommendedProduct {
   name: string;
   description?: string | null;
   price: number;
+  compareAtPrice?: number | null;
   imageUrl: string;
   category: string;
   deliveryTime?: number | null;
@@ -487,6 +488,7 @@ export type HomeSectionKey = "popular" | "new_products" | "new_restaurants" | "s
 export type HomeSectionSource =
   | "popular"
   | "newest"
+  | "promos"
   | "new_restaurants"
   | "all_restaurants"
   | "shops";
@@ -512,7 +514,7 @@ export async function getPublicAppConfig(): Promise<PublicAppConfig> {
 export async function listRecommendedProducts(params?: {
   limit?: number;
   businessType?: string;
-  sort?: "catalog" | "newest";
+  sort?: "catalog" | "newest" | "promos";
 }): Promise<RecommendedProduct[]> {
   const query = new URLSearchParams();
   if (params?.limit !== undefined) query.set("limit", String(params.limit));

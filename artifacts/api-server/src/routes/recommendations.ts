@@ -28,6 +28,7 @@ export type HomeRecommendedProduct = {
   name: string;
   description: string | null;
   price: number;
+  compareAtPrice: number | null;
   imageUrl: string;
   category: string;
   deliveryTime: number | null;
@@ -40,7 +41,7 @@ export type HomeRecommendedProduct = {
  *
  * The query intentionally joins the merchant owner so a disabled owner
  * account cannot leak its products through a public recommendation feed.
- * Product-category visibility mirrors the public restaurant menu endpoint.
+   * Product-category visibility mirrors the public restaurant menu endpoint.
  */
 router.get("/recommendations/products", async (req, res): Promise<void> => {
   const requestedLimit = Number(req.query.limit ?? DEFAULT_LIMIT);
@@ -55,8 +56,8 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
     : typeof rawSort === "string"
       ? rawSort
       : "";
-  if (sort !== "catalog" && sort !== "newest") {
-    res.status(400).json({ error: "sort must be one of catalog or newest" });
+  if (sort !== "catalog" && sort !== "newest" && sort !== "promos") {
+    res.status(400).json({ error: "sort must be one of catalog, newest or promos" });
     return;
   }
 
@@ -76,6 +77,7 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
       eq(menuItemCategoriesTable.isActive, true),
     )!,
   ];
+  if (sort === "promos") filters.push(sql`${menuItemsTable.compareAtPrice} IS NOT NULL AND ${menuItemsTable.compareAtPrice} > ${menuItemsTable.price}`);
   if (businessType) filters.push(eq(restaurantsTable.businessType, businessType));
 
   const rows = await db
@@ -88,6 +90,7 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
       name: menuItemsTable.name,
       description: menuItemsTable.description,
       price: menuItemsTable.price,
+      compareAtPrice: menuItemsTable.compareAtPrice,
       imageUrl: menuItemsTable.imageUrl,
       category: menuItemsTable.category,
       deliveryTime: restaurantsTable.deliveryTime,
@@ -116,6 +119,8 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
     .orderBy(
       ...(sort === "newest"
         ? [desc(menuItemsTable.createdAt), desc(menuItemsTable.id)]
+        : sort === "promos"
+          ? [desc(sql`(${menuItemsTable.compareAtPrice} - ${menuItemsTable.price})`), asc(menuItemsTable.sortOrder), asc(menuItemsTable.id)]
         : [asc(menuItemsTable.sortOrder), asc(menuItemsTable.createdAt), asc(menuItemsTable.id)]),
     )
     .limit(Math.min(requestedLimit * 4, MAX_CANDIDATES));
@@ -141,6 +146,7 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
     name: String(item.name),
     description: typeof item.description === "string" ? item.description : null,
     price: Number(item.price),
+    compareAtPrice: item.compareAtPrice === null ? null : Number(item.compareAtPrice),
     imageUrl: item.imageUrl as string,
     category: String(item.category),
     deliveryTime: typeof item.deliveryTime === "number" ? item.deliveryTime : null,

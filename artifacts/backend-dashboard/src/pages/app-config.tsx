@@ -30,8 +30,8 @@ const DEFAULT_CONFIG = {
   welcomeMessage: "Bienvenue sur Jatek !",
   homeSections: {
     popular: { visible: true, title: "Produits populaires", source: "popular", limit: 6 },
-    new_products: { visible: true, title: "Nouveaux produits", source: "newest", limit: 6 },
-    new_restaurants: { visible: true, title: "Près de chez vous", source: "new_restaurants", limit: 6 },
+    new_products: { visible: true, title: "Promos", source: "promos", limit: 6 },
+    new_restaurants: { visible: true, title: "Nouveautés", source: "new_restaurants", limit: 6 },
     shops: { visible: true, title: "Boutiques", source: "shops", limit: 6 },
   } as Record<HomeSectionKey, HomeSectionConfig>,
 };
@@ -44,8 +44,8 @@ const HOME_SECTIONS = [
   { key: "featured", label: "Restaurants vedettes" },
   { key: "all", label: "Tous les restaurants" },
   { key: "popular", label: "Populaire" },
-  { key: "new_products", label: "Nouveaux produits" },
-  { key: "new_restaurants", label: "Nouveaux restaurants" },
+  { key: "new_products", label: "Promos" },
+  { key: "new_restaurants", label: "Nouveautés" },
   { key: "shops", label: "Boutiques" },
 ];
 const DYNAMIC_SECTION_KEYS: HomeSectionKey[] = ["popular", "new_products", "new_restaurants", "shops"];
@@ -55,6 +55,7 @@ const SOURCE_OPTIONS: Record<HomeSectionKey, Array<{ value: string; label: strin
     { value: "newest", label: "Produits les plus récents" },
   ],
   new_products: [
+    { value: "promos", label: "Produits en promotion" },
     { value: "newest", label: "Produits les plus récents" },
     { value: "popular", label: "Catalogue recommandé" },
   ],
