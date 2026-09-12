@@ -36,6 +36,15 @@ interface SystemInfo {
   timestamp: string;
 }
 
+interface MediaBackupResult {
+  objectCount: number;
+  totalBytes: number;
+  archiveSize: number;
+  verification: "verified" | "failed";
+  manifestSha256: string;
+  downloadedAt: string;
+}
+
 function fmt(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -72,6 +81,8 @@ function KpiCard({ icon: Icon, label, value, sub, color = "text-primary" }: { ic
 export default function Monitoring() {
   const { toast } = useToast();
   const [backupLoading, setBackupLoading] = useState(false);
+  const [mediaBackupLoading, setMediaBackupLoading] = useState(false);
+  const [mediaBackup, setMediaBackup] = useState<MediaBackupResult | null>(null);
 
   const { data, isLoading, refetch, isFetching, dataUpdatedAt } = useQuery<SystemInfo>({
     queryKey: ["/api/backend/system"],
@@ -118,6 +129,46 @@ export default function Monitoring() {
     }
   };
 
+  const handleMediaBackup = async () => {
+    setMediaBackupLoading(true);
+    try {
+      const token = localStorage.getItem("jatek_backend_token");
+      if (!token) throw new Error("Session expirée. Veuillez vous reconnecter.");
+      const res = await fetch("/api/backend/media/backup", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        if (res.status === 401) endBackendSession();
+        let errMsg = "Sauvegarde média échouée";
+        try { const err = await res.json(); errMsg = err.error ?? errMsg; } catch {}
+        throw new Error(errMsg);
+      }
+
+      const blob = await res.blob();
+      const objectCount = Number(res.headers.get("X-Media-Backup-Object-Count") ?? 0);
+      const totalBytes = Number(res.headers.get("X-Media-Backup-Total-Bytes") ?? 0);
+      const archiveSize = Number(res.headers.get("X-Media-Backup-Archive-Size") ?? blob.size);
+      const verification = res.headers.get("X-Media-Backup-Verification") === "verified" ? "verified" : "failed";
+      const manifestSha256 = res.headers.get("X-Media-Backup-Manifest-Sha256") ?? "";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = cd.match(/filename="([^"]+)"/);
+      a.download = match?.[1] ?? `media-backup-${Date.now()}.tar.gz`;
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      setMediaBackup({ objectCount, totalBytes, archiveSize, verification, manifestSha256, downloadedAt: new Date().toISOString() });
+      toast({ title: "Sauvegarde média téléchargée ✓", description: `${objectCount.toLocaleString()} fichier(s) vérifié(s)` });
+    } catch (e: any) {
+      toast({ title: "Erreur sauvegarde média", description: e?.message, variant: "destructive" });
+    } finally {
+      setMediaBackupLoading(false);
+    }
+  };
+
   const loadPct = data ? Math.min(100, Math.round((data.cpu.loadAvg1 / data.cpu.cores) * 100)) : 0;
   const memPct = data?.memory.systemUsedPercent ?? 0;
   const HEAP_MAX_BYTES = (data?.heapMaxConfigured ?? 512) * 1024 * 1024;
@@ -143,6 +194,10 @@ export default function Monitoring() {
           <Button size="sm" onClick={handleBackup} disabled={backupLoading}>
             <Download className={`h-4 w-4 mr-2 ${backupLoading ? "animate-bounce" : ""}`} />
             {backupLoading ? "Sauvegarde…" : "Sauvegarder la BDD"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleMediaBackup} disabled={mediaBackupLoading}>
+            <Download className={`h-4 w-4 mr-2 ${mediaBackupLoading ? "animate-bounce" : ""}`} />
+            {mediaBackupLoading ? "Médias…" : "Sauvegarder les médias"}
           </Button>
         </div>
       </div>
@@ -350,6 +405,59 @@ export default function Monitoring() {
               {backupLoading ? "En cours…" : "Télécharger le backup"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-dashed">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <HardDrive className="h-4 w-4" /> Sauvegarde médias et Shorts
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Télécharge tous les objets App Storage : bannières, logos, images, médias et Shorts.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                <ShieldCheck className="h-3 w-3 text-green-600" />
+                Export en lecture seule avec manifeste SHA-256 et résumé inclus dans l’archive.
+              </p>
+            </div>
+            <Button onClick={handleMediaBackup} disabled={mediaBackupLoading} variant="outline">
+              <Download className={`h-4 w-4 mr-2 ${mediaBackupLoading ? "animate-bounce" : ""}`} />
+              {mediaBackupLoading ? "Export en cours…" : "Télécharger la sauvegarde média"}
+            </Button>
+          </div>
+          {mediaBackup ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 border-t pt-4">
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Fichiers</p>
+                <p className="text-lg font-bold">{mediaBackup.objectCount.toLocaleString()}</p>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Taille médias</p>
+                <p className="text-lg font-bold">{fmt(mediaBackup.totalBytes)}</p>
+                <p className="text-xs text-muted-foreground">archive : {fmt(mediaBackup.archiveSize)}</p>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Vérification</p>
+                <p className={`text-lg font-bold flex items-center gap-1 ${mediaBackup.verification === "verified" ? "text-green-600" : "text-red-600"}`}>
+                  {mediaBackup.verification === "verified" ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                  {mediaBackup.verification === "verified" ? "Vérifiée" : "Échec"}
+                </p>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Manifest SHA-256</p>
+                <p className="text-xs font-mono break-all mt-1">{mediaBackup.manifestSha256 || "indisponible"}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground border-t pt-4">
+              Aucune sauvegarde média téléchargée pendant cette session.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

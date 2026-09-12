@@ -8,6 +8,8 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import os from "os";
+import path from "node:path";
+import { mkdtemp, rm } from "node:fs/promises";
 import { exec } from "child_process";
 import { promisify } from "util";
 import {
@@ -31,6 +33,7 @@ import { closeUserSubscriptions, publish } from "../lib/sse";
 import * as tracking from "../lib/trackingService";
 import { normalizeStoredMediaPath } from "../lib/objectStorage";
 import { migrateLegacyMedia } from "../scripts/migrate-media-storage";
+import { createMediaBackup } from "../scripts/backup-prepublish";
 import { calculateRefundJatekEarning } from "../lib/orderPricing";
 
 const router: IRouter = Router();
@@ -842,6 +845,66 @@ router.post("/backend/db/backup", requireAuth, async (req: AuthedRequest, res, n
     res.send(stdout);
   } catch (err: any) {
     res.status(500).json({ error: "Backup échoué: " + (err?.message ?? "pg_dump unavailable") });
+  }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// MEDIA BACKUP
+// ────────────────────────────────────────────────────────────────────────────
+
+router.post("/backend/media/backup", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
+  if (!isSuperAdmin(req.userRole)) { res.status(403).json({ error: "Forbidden: super_admin requis" }); return; }
+
+  let outputDir: string | undefined;
+  try {
+    outputDir = await mkdtemp(path.join(os.tmpdir(), "jatek-media-backup-"));
+    const backup = await createMediaBackup(outputDir);
+    const [adminUser] = await db.select({ name: usersTable.name, email: usersTable.email })
+      .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+
+    await logActivity({
+      userId: req.userId,
+      userEmail: adminUser?.email,
+      userName: adminUser?.name,
+      action: "media_backup",
+      entity: "system",
+      details: {
+        objectCount: backup.objectCount,
+        totalBytes: backup.totalBytes,
+        archiveSize: backup.archive.size,
+        manifestSha256: backup.manifestSha256,
+        verification: backup.verification,
+      },
+      ip: req.ip,
+    });
+
+    res.setHeader("Content-Type", "application/gzip");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="jatek-media-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.tar.gz"`,
+    );
+    res.setHeader("X-Media-Backup-Object-Count", String(backup.objectCount));
+    res.setHeader("X-Media-Backup-Total-Bytes", String(backup.totalBytes));
+    res.setHeader("X-Media-Backup-Archive-Size", String(backup.archive.size));
+    res.setHeader("X-Media-Backup-Manifest-Sha256", backup.manifestSha256);
+    res.setHeader("X-Media-Backup-Verification", backup.verification);
+
+    await new Promise<void>((resolve, reject) => {
+      res.sendFile(backup.archivePath, (error) => {
+        if (error) reject(error);
+        else resolve();
+      });
+    });
+  } catch (error) {
+    if (res.headersSent) {
+      console.error("[media-backup] response failed after headers were sent", error);
+    } else {
+      next(error);
+    }
+  } finally {
+    if (outputDir) await rm(outputDir, { recursive: true, force: true }).catch((cleanupError) => {
+      console.error("[media-backup] temporary directory cleanup failed", cleanupError);
+    });
   }
 });
 
