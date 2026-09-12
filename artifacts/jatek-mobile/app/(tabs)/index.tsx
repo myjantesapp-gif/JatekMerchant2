@@ -204,20 +204,18 @@ function VipBannerCard({
   );
 }
 
-function SectionHeader({ title, actionLabel, onAction }: { title: string; actionLabel?: string; onAction?: () => void }) {
+function SectionAction({ label = "Voir plus", onPress }: { label?: string; onPress: () => void }) {
   return (
-    <View style={s.sectionHeaderRow}>
-      <Text style={s.sectionTitle}>{title}</Text>
-      {actionLabel && onAction && (
-        <TouchableOpacity
-          onPress={onAction}
-          activeOpacity={0.85}
-          style={s.voirPlusBtnPill}
-          accessibilityRole="button"
-        >
-          <Text style={s.voirPlusTxtPill}>{actionLabel}</Text>
-        </TouchableOpacity>
-      )}
+    <View style={s.sectionActionRow}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.85}
+        style={s.voirPlusBtnPill}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+      >
+        <Text style={s.voirPlusTxtPill}>{label}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -257,7 +255,6 @@ function RestaurantTile({
             <Ionicons name="restaurant-outline" size={34} color={TEXT_MUTED} />
           </View>
         )}
-        
         {/* Badge Top Left */}
         {badgeText ? (
           <View style={[s.tileBadge, { backgroundColor: badgeBg }]}>
@@ -692,10 +689,8 @@ export default function HomeScreen() {
           />
         ) : recommendedProducts && recommendedProducts.length > 0 ? (
           <Animated.View entering={FadeInDown.delay(380).duration(500).springify()}>
-            <SectionHeader
-              title="Produits populaires"
-              actionLabel="Voir plus"
-              onAction={() => {}}
+            <SectionAction
+              onPress={() => router.push("/restaurants" as any)}
             />
             <ScrollView
               horizontal
@@ -714,12 +709,12 @@ export default function HomeScreen() {
           </Animated.View>
         ) : null}
 
+        <View style={s.homeSectionSpacer} accessibilityElementsHidden importantForAccessibility="no" />
+
         {/* ─── Découvrir en vidéo ─── */}
         {shorts.length > 0 && (
-          <SectionHeader
-            title="Découvrir en vidéo"
-            actionLabel="Voir plus"
-            onAction={() => { setInitialShort(0); setShortsVisible(true); }}
+          <SectionAction
+            onPress={() => { setInitialShort(0); setShortsVisible(true); }}
           />
         )}
         {shortsLoading ? (
@@ -752,17 +747,13 @@ export default function HomeScreen() {
 
         {/* ─── Pres de chez vous (all commerce types) ─── */}
         {activeBusinessCategorySlug && (
-          <SectionHeader
-            title="Près de chez vous"
-            actionLabel="Voir plus"
-            onAction={() => router.push({ pathname: "/category/[slug]", params: { slug: activeBusinessCategorySlug } })}
+          <SectionAction
+            onPress={() => router.push({ pathname: "/category/[slug]", params: { slug: activeBusinessCategorySlug } })}
           />
         )}
         {!activeBusinessCategorySlug && (
-          <SectionHeader
-            title="Près de chez vous"
-            actionLabel="Voir plus"
-            onAction={() => {}}
+          <SectionAction
+            onPress={() => router.push("/restaurants" as any)}
           />
         )}
         {isLoading ? (
@@ -971,8 +962,7 @@ const s = StyleSheet.create({
     lineHeight: 14,
   },
   homeSectionSpacer: {
-    height: 22,
-    marginVertical: 8,
+    height: 10,
   },
   // ── Services row ──
   servicesRow: {
@@ -1108,20 +1098,12 @@ const s = StyleSheet.create({
     opacity: 1,
   },
 
-  // ── Section Header ──
-  sectionHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  // ── Section actions (titles intentionally omitted on Home) ──
+  sectionActionRow: {
+    alignItems: "flex-end",
     paddingHorizontal: 16,
-    marginTop: 24,
+    marginTop: 14,
     marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontFamily: "Inter_900Black",
-    color: TEXT_DARK,
-    letterSpacing: -0.3,
   },
   voirPlusBtnPill: {
     backgroundColor: PINK,

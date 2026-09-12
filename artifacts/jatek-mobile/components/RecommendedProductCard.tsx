@@ -43,7 +43,6 @@ export function RecommendedProductCard({ product, width, onPress, compact = fals
           style={styles.image}
           resizeMode="cover"
         />
-        
         {/* Merchant logo top-left */}
         {product.restaurantLogoUrl ? (
           <View style={styles.merchantLogoWrap}>
