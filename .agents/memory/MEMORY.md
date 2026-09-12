@@ -31,3 +31,4 @@
 - [API ESM test bootstrap](api-esm-test-bootstrap.md) — app-level API tests run native ESM; source-relative paths must not rely on CommonJS globals.
 - [Android opaque status bar](android-opaque-status-bar.md) — edge-to-edge can ignore StatusBar colors; keep a real safe-area backdrop for OTA compatibility.
 - [Mobile release verification](mobile-release-verification.md) — separate browser checks, Expo acceptance and actual device delivery; deploy new API contracts before the mobile client.
+- [Production database pause](production-database-pause.md) — a frozen production database makes OTP signup return 500; unpause it in Replit Database before changing auth code.
