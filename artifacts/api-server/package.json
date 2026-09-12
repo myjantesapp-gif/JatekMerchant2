@@ -8,6 +8,7 @@
     "dev:push": "export NODE_ENV=development && pnpm --filter @workspace/db run push-force && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "test": "node --import tsx --test src/lib/*.test.ts",
+    "backup:prepublish": "pnpm exec tsx src/scripts/backup-prepublish.ts",
     "seed:smashs": "pnpm exec tsx src/scripts/seed-smashs.ts",
     "seed:smashs:bucket": "pnpm exec tsx src/scripts/seed-smashs.ts --from-bucket",
     "start": "node --max-old-space-size=4096 --enable-source-maps ./dist/index.mjs",
