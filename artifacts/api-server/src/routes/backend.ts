@@ -612,6 +612,9 @@ async function queryBackendProducts(
   if (req.query.shopId) conds.push(eq(menuItemsTable.restaurantId, Number(req.query.shopId)));
   if (req.query.status === "available") conds.push(eq(menuItemsTable.isAvailable, true));
   if (req.query.status === "unavailable") conds.push(eq(menuItemsTable.isAvailable, false));
+  if (req.query.promo === "true" || req.query.promo === true) {
+    conds.push(sql`${menuItemsTable.compareAtPrice} IS NOT NULL AND ${menuItemsTable.compareAtPrice} > ${menuItemsTable.price}`);
+  }
   if (req.query.category && typeof req.query.category === "string") {
     conds.push(eq(menuItemsTable.category, req.query.category));
   }

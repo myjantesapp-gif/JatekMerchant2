@@ -7,6 +7,7 @@ export type ProductAvailability = "available" | "unavailable";
 export interface ProductListFilters {
   shopId?: number;
   status?: ProductAvailability;
+  promo?: boolean;
   category?: string;
   sortDirection?: "asc" | "desc";
   page?: number;
@@ -28,6 +29,7 @@ export function buildProductListParams(
   };
   if (filters?.shopId !== undefined) params.shopId = filters.shopId;
   if (filters?.status !== undefined) params.status = filters.status;
+  if (filters?.promo !== undefined) params.promo = filters.promo;
   if (filters?.category !== undefined) params.category = filters.category;
   if (filters?.sortDirection !== undefined) params.sortDirection = filters.sortDirection;
   if (filters?.page !== undefined) params.page = filters.page;

@@ -122,6 +122,7 @@ export default function Products() {
   const [shopFilter, setShopFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | ProductAvailability>("all");
+  const [promoFilter, setPromoFilter] = useState<"all" | "promos">("all");
   const [page, setPage] = useState(1);
   const pageSize = 50;
   const { data: me } = useBackendMe();
@@ -129,6 +130,7 @@ export default function Products() {
   const productQuery = buildProductListParams(search, apiSort, {
     shopId: shopFilter ? Number(shopFilter) : undefined,
     status: availabilityFilter === "all" ? undefined : availabilityFilter,
+    promo: promoFilter === "promos" ? true : undefined,
     category: categoryFilter || undefined,
     sortDirection,
     page,
@@ -177,7 +179,7 @@ export default function Products() {
         : (sortDirection === "asc" ? 1 : -1) * result;
     });
   }, [products, shopName, sortBy, sortDirection]);
-  const hasFilters = Boolean(search || shopFilter || categoryFilter || availabilityFilter !== "all");
+  const hasFilters = Boolean(search || shopFilter || categoryFilter || availabilityFilter !== "all" || promoFilter !== "all");
   const hasResults = displayedProducts.length > 0;
 
   useEffect(() => {
@@ -503,12 +505,20 @@ export default function Products() {
                     <SelectItem value="unavailable">Indisponibles</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={promoFilter} onValueChange={(value) => { if (value === "all" || value === "promos") setPromoFilter(value); }}>
+                  <SelectTrigger className="w-full sm:w-40" data-testid="select-product-promotion"><SelectValue placeholder="Promotions" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les prix</SelectItem>
+                    <SelectItem value="promos">En promotion</SelectItem>
+                  </SelectContent>
+                </Select>
                 {hasFilters && (
                   <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => {
                     setSearch("");
                     setShopFilter("");
                     setCategoryFilter("");
                     setAvailabilityFilter("all");
+                    setPromoFilter("all");
                   }} data-testid="button-clear-product-filters">
                     <X className="h-3.5 w-3.5" /> Réinitialiser
                   </Button>
@@ -585,7 +595,12 @@ export default function Products() {
                       <TableCell className="font-medium">
                         <div className="flex items-center space-x-3 min-w-[12rem]">
                           {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded-md object-cover" data-testid={`img-product-${p.id}`} /> : <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center"><span className="text-xs text-muted-foreground">—</span></div>}
-                          <span data-testid={`text-product-name-${p.id}`}>{p.name}</span>
+                           <div className="flex flex-col gap-1">
+                             <span data-testid={`text-product-name-${p.id}`}>{p.name}</span>
+                             {Number((p as any).compareAtPrice ?? 0) > Number(p.price ?? 0) && (
+                               <Badge variant="secondary" className="w-fit bg-pink-100 text-pink-700 hover:bg-pink-100">Promo</Badge>
+                             )}
+                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-xs text-muted-foreground"><span className="inline-flex items-center gap-1"><Store className="h-3.5 w-3.5" />{shopName(p.restaurantId)}</span></TableCell>
@@ -618,7 +633,14 @@ export default function Products() {
                         </div>
                         {orderErrors[p.id] && <p className="mt-1 max-w-[12rem] text-[11px] text-destructive" role="alert" data-testid={`status-product-order-error-${p.id}`}>{orderErrors[p.id]}</p>}
                       </TableCell>
-                      <TableCell className="font-semibold whitespace-nowrap">{p.price} DH</TableCell>
+                       <TableCell className="whitespace-nowrap">
+                         <div className="flex flex-col">
+                           <span className="font-semibold text-pink-700">{p.price} DH</span>
+                           {Number((p as any).compareAtPrice ?? 0) > Number(p.price ?? 0) && (
+                             <span className="text-xs text-muted-foreground line-through">{(p as any).compareAtPrice} DH</span>
+                           )}
+                         </div>
+                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Switch checked={p.isAvailable} onCheckedChange={(v) => handleToggle(p, v)} disabled={togglePendingIds.has(p.id)} data-testid={`switch-product-availability-${p.id}`} />

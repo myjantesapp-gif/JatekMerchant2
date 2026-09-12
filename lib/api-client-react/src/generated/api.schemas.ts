@@ -1361,6 +1361,7 @@ export const ListBackendProductsSortDirection = {
 
 export type ListBackendProductsPageParams = {
 status?: string;
+  promo?: boolean;
 shopId?: number;
 search?: string;
 category?: string;

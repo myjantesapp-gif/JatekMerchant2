@@ -27,10 +27,11 @@ describe("product list query", () => {
     expect(isProductSort("unknown")).toBe(false);
   });
 
-  it("only sends supported shop and availability filters", () => {
+  it("sends shop, availability, category and promotion filters", () => {
     expect(buildProductListParams("pizza", "custom", {
       shopId: 7,
       status: "available",
+      promo: true,
       category: "Burgers",
       sortDirection: "desc",
       page: 2,
@@ -40,13 +41,14 @@ describe("product list query", () => {
       sort: "custom",
       shopId: 7,
       status: "available",
+      promo: true,
       category: "Burgers",
       sortDirection: "desc",
       page: 2,
       pageSize: 50,
     });
     expect(
-      getListBackendProductsUrl(buildProductListParams("", "custom", { shopId: 7, status: "unavailable" })),
-    ).toBe("/api/backend/products?sort=custom&shopId=7&status=unavailable");
+      getListBackendProductsUrl(buildProductListParams("", "custom", { shopId: 7, status: "unavailable", promo: true })),
+    ).toBe("/api/backend/products?sort=custom&shopId=7&status=unavailable&promo=true");
   });
 });

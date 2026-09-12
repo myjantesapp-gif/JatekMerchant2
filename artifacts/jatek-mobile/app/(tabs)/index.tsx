@@ -812,7 +812,7 @@ export default function HomeScreen() {
         {/* ─── Shorts ─── */}
         <Animated.View
           entering={FadeInDown.delay(340).duration(550).springify()}
-          style={s.homeFeedSection}
+          style={[s.homeFeedSection, s.pinkWaveSection]}
         >
           <PopularSectionWaves />
           <HomeSectionHeader
@@ -875,6 +875,7 @@ export default function HomeScreen() {
           })
           .map((section, sectionIndex) => {
           const isProductSection = section.key === "popular" || section.key === "new_products";
+           const hasPinkWaveBackground = sectionIndex % 2 === 0;
           const products = section.key === "popular" ? recommendedProducts : newestProducts;
           const productsLoading = section.key === "popular" ? recommendationsLoading : newestProductsLoading;
           const productsError = section.key === "popular" ? recommendationsError : newestProductsError;
@@ -887,16 +888,10 @@ export default function HomeScreen() {
               entering={FadeInDown.delay(380 + sectionIndex * 80).duration(500).springify()}
               style={[
                 s.homeFeedSection,
-                section.key === "new_products"
-                  ? s.promoFeedSection
-                  : section.key === "new_restaurants"
-                    ? s.newestFeedSection
-                    : section.key === "popular"
-                      ? s.popularFeedSection
-                      : s.commerceFeedSection,
+                hasPinkWaveBackground && s.pinkWaveSection,
               ]}
             >
-              <PopularSectionWaves />
+              {hasPinkWaveBackground ? <PopularSectionWaves /> : null}
               <HomeSectionHeader title={section.title} onPress={() => goSectionList(section)} />
 
               {isProductSection ? (
@@ -1174,23 +1169,14 @@ const s = StyleSheet.create({
   homeFeedSection: {
     position: "relative",
     overflow: "hidden",
-    paddingBottom: 16,
-    marginHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    marginHorizontal: 0,
     marginTop: 12,
-    borderRadius: 28,
-    backgroundColor: "#FFF8FB",
+    backgroundColor: "#FFFFFF",
   },
-  promoFeedSection: {
-    backgroundColor: "#F3B5CD",
-  },
-  newestFeedSection: {
-    backgroundColor: "#FFF7FA",
-  },
-  popularFeedSection: {
-    backgroundColor: "#FBE1EC",
-  },
-  commerceFeedSection: {
-    backgroundColor: "#F2F8FA",
+  pinkWaveSection: {
+    backgroundColor: "#FFF1F6",
   },
   popularWaves: {
     ...StyleSheet.absoluteFillObject,
