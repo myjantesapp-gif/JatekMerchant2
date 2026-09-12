@@ -204,18 +204,20 @@ function VipBannerCard({
   );
 }
 
-function SectionAction({ label = "Voir plus", onPress }: { label?: string; onPress?: () => void }) {
+function SectionHeader({ title, actionLabel, onAction }: { title: string; actionLabel?: string; onAction?: () => void }) {
   return (
-    <View style={s.sectionActionRow}>
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.85}
-        style={s.voirPlusBtn}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-      >
-        <Text style={s.voirPlusTxt}>{label}</Text>
-      </TouchableOpacity>
+    <View style={s.sectionHeaderRow}>
+      <Text style={s.sectionTitle}>{title}</Text>
+      {actionLabel && onAction && (
+        <TouchableOpacity
+          onPress={onAction}
+          activeOpacity={0.85}
+          style={s.voirPlusBtnPill}
+          accessibilityRole="button"
+        >
+          <Text style={s.voirPlusTxtPill}>{actionLabel}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -234,6 +236,9 @@ function RestaurantTile({
   // imageUrl is the dashboard's canonical banner field. coverImageUrl is only
   // retained as a fallback for older restaurant records.
   const img = restaurant.imageUrl || restaurant.coverImageUrl;
+  const badgeText = (restaurant as any).badge || (restaurant as any).promoText;
+  const isNew = badgeText?.toLowerCase() === "nouveau";
+  const badgeBg = isNew ? "#4ADE80" : PINK;
 
   return (
     <Pressable
@@ -252,45 +257,43 @@ function RestaurantTile({
             <Ionicons name="restaurant-outline" size={34} color={TEXT_MUTED} />
           </View>
         )}
-        <View style={s.tileLogo}>
+        
+        {/* Badge Top Left */}
+        {badgeText ? (
+          <View style={[s.tileBadge, { backgroundColor: badgeBg }]}>
+            <Text style={s.tileBadgeTxt}>{badgeText}</Text>
+          </View>
+        ) : null}
+
+        {/* Logo Top Right */}
+        <View style={s.tileLogoSq}>
           {restaurant.logoUrl ? (
-            <Image source={{ uri: resolveMediaUrl(restaurant.logoUrl) }} style={s.tileLogoImg} resizeMode="contain" />
+            <Image source={{ uri: resolveMediaUrl(restaurant.logoUrl) }} style={s.tileLogoSqImg} resizeMode="contain" />
           ) : (
-            <Text style={s.tileLogoText}>{restaurant.name.charAt(0).toUpperCase()}</Text>
+            <Text style={s.tileLogoSqText}>{restaurant.name.charAt(0).toUpperCase()}</Text>
           )}
         </View>
       </View>
       <View style={s.tileBody}>
-        <View style={s.tileNameRow}>
-          <Text style={s.tileName} numberOfLines={1}>
-            {restaurant.name}
-          </Text>
-          {restaurant.rating != null && (
-            <View style={s.tileRatingInline}>
-              <Ionicons name="star" size={11} color={STAR} />
-              <Text style={s.tileRatingTxt}>{restaurant.rating.toFixed(1)}</Text>
-            </View>
-          )}
-        </View>
+        <Text style={s.tileName} numberOfLines={1}>
+          {restaurant.name}
+        </Text>
         <View style={s.tileMetaRow}>
-          {restaurant.deliveryTime != null && (
-            <>
-              <Ionicons name="time-outline" size={12} color={TEXT_MUTED} />
-              <Text style={s.tileMetaTxt}>
-                {restaurant.deliveryTime} - {restaurant.deliveryTime + 10} min
-              </Text>
-            </>
-          )}
+          <View style={s.tileMetaItem}>
+            <Ionicons name="time-outline" size={13} color={TEXT_MUTED} />
+            <Text style={s.tileMetaTxt}>
+              {restaurant.deliveryTime != null ? `${restaurant.deliveryTime} - ${restaurant.deliveryTime + 10} min` : "20 - 30 min"}
+            </Text>
+          </View>
           {restaurant.deliveryFee != null && (
-            <>
+            <View style={s.tileMetaItem}>
               <Ionicons
                 name="location-outline"
-                size={12}
+                size={13}
                 color={TEXT_MUTED}
-                style={{ marginLeft: 8 }}
               />
               <Text style={s.tileMetaTxt}>{formatMad(restaurant.deliveryFee)} MAD</Text>
-            </>
+            </View>
           )}
         </View>
       </View>
@@ -679,7 +682,7 @@ export default function HomeScreen() {
 
         <JatekScrollingBanner />
 
-        {/* ─── Available catalog recommendations ─── */}
+        {/* ─── Produits populaires ─── */}
         {recommendationsLoading ? (
           <ActivityIndicator color={PINK} style={{ marginVertical: 18 }} />
         ) : recommendationsError ? (
@@ -688,40 +691,35 @@ export default function HomeScreen() {
             onRetry={() => refetchRecommendations()}
           />
         ) : recommendedProducts && recommendedProducts.length > 0 ? (
-          <Animated.ScrollView
-            entering={FadeInDown.delay(380).duration(500).springify()}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            nestedScrollEnabled
-            contentContainerStyle={s.recommendationsPager}
-          >
-            {Array.from({ length: Math.ceil(Math.min(recommendedProducts.length, 30) / 6) }, (_, pageIndex) => {
-              const pageProducts = recommendedProducts.slice(pageIndex * 6, pageIndex * 6 + 6);
-              return (
-                <View key={`recommendation-page-${pageIndex}`} style={s.recommendationsPage}>
-                  <View style={s.recommendationsGrid}>
-                    {pageProducts.map((product) => (
-                      <RecommendedProductCard
-                        key={`${product.restaurantId}-${product.id}`}
-                        product={product}
-                        width={RECOMMENDATION_CARD_W}
-                        compact
-                        onPress={() => goRecommendedProduct(product)}
-                      />
-                    ))}
-                  </View>
-                </View>
-              );
-            })}
-          </Animated.ScrollView>
+          <Animated.View entering={FadeInDown.delay(380).duration(500).springify()}>
+            <SectionHeader
+              title="Produits populaires"
+              actionLabel="Voir plus"
+              onAction={() => {}}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.horizontalRow}
+            >
+              {recommendedProducts.map((product) => (
+                <RecommendedProductCard
+                  key={`${product.restaurantId}-${product.id}`}
+                  product={product}
+                  width={140}
+                  onPress={() => goRecommendedProduct(product)}
+                />
+              ))}
+            </ScrollView>
+          </Animated.View>
         ) : null}
 
         {/* ─── Découvrir en vidéo ─── */}
         {shorts.length > 0 && (
-          <SectionAction
-            onPress={() => { setInitialShort(0); setShortsVisible(true); }}
-            label="Voir toutes les vidéos"
+          <SectionHeader
+            title="Découvrir en vidéo"
+            actionLabel="Voir plus"
+            onAction={() => { setInitialShort(0); setShortsVisible(true); }}
           />
         )}
         {shortsLoading ? (
@@ -754,9 +752,17 @@ export default function HomeScreen() {
 
         {/* ─── Pres de chez vous (all commerce types) ─── */}
         {activeBusinessCategorySlug && (
-          <SectionAction
-            label="Voir les commerces"
-            onPress={() => router.push({ pathname: "/category/[slug]", params: { slug: activeBusinessCategorySlug } })}
+          <SectionHeader
+            title="Près de chez vous"
+            actionLabel="Voir plus"
+            onAction={() => router.push({ pathname: "/category/[slug]", params: { slug: activeBusinessCategorySlug } })}
+          />
+        )}
+        {!activeBusinessCategorySlug && (
+          <SectionHeader
+            title="Près de chez vous"
+            actionLabel="Voir plus"
+            onAction={() => {}}
           />
         )}
         {isLoading ? (
@@ -775,7 +781,7 @@ export default function HomeScreen() {
               <RestaurantTile
                 key={r.id}
                 restaurant={r}
-                width={260}
+                width={280}
                 onPress={() => goRestaurant(r.id)}
                 showDistance
               />
@@ -1102,24 +1108,32 @@ const s = StyleSheet.create({
     opacity: 1,
   },
 
-  // ── Section actions (headings intentionally omitted on Home) ──
-  sectionActionRow: {
-    alignItems: "flex-end",
+  // ── Section Header ──
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 8,
+    marginTop: 24,
+    marginBottom: 12,
   },
-  voirPlusBtn: {
-    backgroundColor: PINK_SOFT,
-    paddingHorizontal: 14,
+  sectionTitle: {
+    fontSize: 22,
+    fontFamily: "Inter_900Black",
+    color: TEXT_DARK,
+    letterSpacing: -0.3,
+  },
+  voirPlusBtnPill: {
+    backgroundColor: PINK,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     flexShrink: 0,
   },
-  voirPlusTxt: {
-    color: PINK,
+  voirPlusTxtPill: {
+    color: "#fff",
     fontFamily: "Inter_600SemiBold",
-    fontSize: 12,
+    fontSize: 13,
   },
 
   // ── Available product recommendations ──
@@ -1261,62 +1275,64 @@ const s = StyleSheet.create({
   },
   tile: {
     backgroundColor: "#fff",
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
+    borderColor: "#F0F0F5",
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   tileImgWrap: {
     width: "100%",
-    height: 96,
+    height: 120,
     position: "relative",
     backgroundColor: "#F3F4F6",
   },
   tileImg: { width: "100%", height: "100%" },
   tileImgPlaceholder: { alignItems: "center", justifyContent: "center", backgroundColor: "#F3F4F6" },
-  tileLogo: {
+  tileBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  tileBadgeTxt: {
+    color: "#fff",
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+  },
+  tileLogoSq: {
     position: "absolute",
     top: 8,
     right: 8,
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: "transparent",
+    borderRadius: 10,
+    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    padding: 2,
   },
-  tileLogoImg: { width: "100%", height: "100%", backgroundColor: "transparent" },
-  tileLogoText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 18, textShadowColor: "rgba(0,0,0,0.45)", textShadowRadius: 4 },
-  tileRatingInline: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "#FFF1F6",
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-    flexShrink: 0,
-  },
-  tileRatingTxt: {
-    fontSize: 11,
-    fontFamily: "Inter_700Bold",
-    color: TEXT_DARK,
-  },
+  tileLogoSqImg: { width: "100%", height: "100%", borderRadius: 8 },
+  tileLogoSqText: { color: TEXT_DARK, fontFamily: "Inter_700Bold", fontSize: 18 },
   tileBody: {
     paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 14,
     gap: 6,
   },
-  tileNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
   tileName: {
-    flex: 1,
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     color: TEXT_DARK,
@@ -1324,13 +1340,18 @@ const s = StyleSheet.create({
   tileMetaRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  tileMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   tileMetaTxt: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
     color: TEXT_MUTED,
-    flexShrink: 1,
   },
   emptyTxt: {
     color: TEXT_MUTED,

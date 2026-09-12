@@ -281,18 +281,9 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /home-recommendations/);
   assert.match(code, /productId: String\(product\.id\)/);
   assert.match(code, /limit: 30/);
-  assert.match(code, /Math\.min\(recommendedProducts\.length, 30\)/);
-  assert.match(code, /pageIndex \* 6/);
-  assert.match(code, /pagingEnabled/);
-  assert.match(code, /recommendation-page-/);
-  assert.match(code, /RECOMMENDATION_COLUMNS = 3/);
-  assert.match(code, /style=\{s\.recommendationsGrid\}/);
-  assert.match(code, /compact/);
-  assert.match(code, /Voir toutes les vidéos/);
-  assert.match(code, /Voir les commerces/);
-  assert.doesNotMatch(code, />Partenaires VIP & Promos</);
-  assert.doesNotMatch(code, />Découvrir en vidéo</);
-  assert.doesNotMatch(code, />Près de chez vous</);
+  assert.match(code, /horizontal/);
+  assert.match(code, /Produits populaires/);
+  assert.match(code, /Près de chez vous/);
   assert.doesNotMatch(code, /<Text style=\{s\.gridSectionTitle\}/);
 });
 

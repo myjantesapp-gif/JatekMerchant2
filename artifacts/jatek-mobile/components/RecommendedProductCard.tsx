@@ -20,10 +20,12 @@ type Props = {
   product: RecommendedProduct;
   width: number;
   onPress: () => void;
-  compact?: boolean;
+  compact?: boolean; // Kept for interface compatibility, but we enforce the new layout
 };
 
 export function RecommendedProductCard({ product, width, onPress, compact = false }: Props) {
+  const oldPrice = (product as any).oldPrice;
+
   return (
     <Pressable
       onPress={onPress}
@@ -35,20 +37,38 @@ export function RecommendedProductCard({ product, width, onPress, compact = fals
         pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
       ]}
     >
-      <View style={[styles.imageWrap, compact && styles.imageWrapCompact]}>
+      <View style={styles.imageWrap}>
         <Image
           source={{ uri: resolveMediaUrl(product.imageUrl) ?? product.imageUrl }}
           style={styles.image}
           resizeMode="cover"
         />
-        <View style={[styles.arrow, compact && styles.arrowCompact]}>
-          <Ionicons name="arrow-forward" size={compact ? 11 : 14} color={PINK} />
+        
+        {/* Merchant logo top-left */}
+        {product.restaurantLogoUrl ? (
+          <View style={styles.merchantLogoWrap}>
+            <Image
+              source={{ uri: resolveMediaUrl(product.restaurantLogoUrl) }}
+              style={styles.merchantLogo}
+              resizeMode="contain"
+            />
+          </View>
+        ) : null}
+
+        {/* Plus affordance bottom-right */}
+        <View style={styles.plusButton}>
+          <Ionicons name="add" size={18} color={PINK} />
         </View>
       </View>
-      <View style={[styles.body, compact && styles.bodyCompact]}>
-        <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>{product.name}</Text>
-        <Text style={[styles.merchant, compact && styles.merchantCompact]} numberOfLines={1}>{product.restaurantName}</Text>
-        <Text style={[styles.price, compact && styles.priceCompact]}>{formatMad(product.price)} MAD</Text>
+
+      <View style={styles.body}>
+        <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
+        <View style={styles.priceRow}>
+          <Text style={styles.price}>{formatMad(product.price)} DH</Text>
+          {oldPrice ? (
+            <Text style={styles.oldPrice}>{formatMad(oldPrice)} DH</Text>
+          ) : null}
+        </View>
       </View>
     </Pressable>
   );
@@ -58,73 +78,91 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#F2DDE7",
     overflow: "hidden",
-    shadowColor: PINK,
-    shadowOpacity: 0.08,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
+    borderWidth: 1,
+    borderColor: "#F0F0F5",
   },
   imageWrap: {
-    height: 132,
-    backgroundColor: "#FFF1F6",
+    height: 120,
+    backgroundColor: "#F8F8F8",
     position: "relative",
   },
-  imageWrapCompact: {
-    height: 82,
+  image: {
+    width: "100%",
+    height: "100%",
   },
-  image: { width: "100%", height: "100%" },
-  arrow: {
+  merchantLogoWrap: {
     position: "absolute",
-    right: 9,
-    bottom: 9,
+    top: 8,
+    left: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    overflow: "hidden",
+    padding: 2,
+  },
+  merchantLogo: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 14,
+  },
+  plusButton: {
+    position: "absolute",
+    right: 8,
+    bottom: 8,
     width: 28,
     height: 28,
     borderRadius: 14,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
-  arrowCompact: {
-    right: 6,
-    bottom: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-  },
-  body: { paddingHorizontal: 11, paddingTop: 10, paddingBottom: 12, gap: 3 },
-  bodyCompact: {
-    paddingHorizontal: 7,
-    paddingTop: 7,
-    paddingBottom: 8,
-    gap: 2,
+  body: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 14,
+    gap: 6,
   },
   name: {
     color: TEXT_DARK,
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_700Bold",
+    lineHeight: 18,
+    minHeight: 36, // Reserve 2 lines so price alignment is consistent
   },
-  nameCompact: {
-    fontSize: 11,
-  },
-  merchant: {
-    color: TEXT_MUTED,
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-  },
-  merchantCompact: {
-    fontSize: 9,
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
   },
   price: {
     color: PINK,
     fontSize: 14,
-    fontFamily: "Inter_900Black",
-    marginTop: 4,
+    fontFamily: "Inter_800ExtraBold",
   },
-  priceCompact: {
-    fontSize: 11,
-    marginTop: 2,
+  oldPrice: {
+    color: "#A0AAB0",
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    textDecorationLine: "line-through",
   },
 });
