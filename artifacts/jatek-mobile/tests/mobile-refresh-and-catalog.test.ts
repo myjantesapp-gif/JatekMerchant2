@@ -321,6 +321,14 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.doesNotMatch(code, /<Text style=\{s\.gridSectionTitle\}/);
 });
 
+test("home renders Promos before Shorts", () => {
+  const page = source("app/(tabs)/index.tsx");
+  const promos = page.indexOf('section.key === "new_products"');
+  const shorts = page.indexOf('title="Shorts"');
+  assert.ok(promos >= 0);
+  assert.ok(shorts > promos);
+});
+
 test("home keeps a blank spacer between the header wave and shop categories", () => {
   const page = source("app/(tabs)/index.tsx");
   const headerEnd = page.indexOf('<WaveEdge color={PINK} height={28} />');

@@ -816,60 +816,6 @@ export default function HomeScreen() {
 
         <JatekScrollingBanner />
 
-        {/* ─── Shorts ─── */}
-        <Animated.View
-          entering={FadeInDown.delay(340).duration(550).springify()}
-          style={s.homeFeedSection}
-        >
-          <HomeSectionHeader
-            title="Shorts"
-            onPress={() => { setInitialShort(0); setShortsVisible(true); }}
-          />
-          {shortsLoading ? (
-            <ActivityIndicator color={PINK} style={s.sectionLoader} />
-          ) : shortsError ? (
-            <LoadRetry message="Impossible de charger les vidéos." onRetry={() => refetchShorts()} />
-          ) : shorts.length > 0 ? (
-            <ScrollView
-              horizontal
-              pagingEnabled
-              nestedScrollEnabled
-              showsHorizontalScrollIndicator={false}
-              decelerationRate="fast"
-              snapToInterval={SHORT_PAGE_W}
-            >
-              {Array.from({ length: Math.ceil(shorts.length / SHORT_PAGE_SIZE) }, (_, pageIndex) => (
-                <View key={`shorts-page-${pageIndex}`} style={s.shortsPage}>
-                  <View style={s.videosGrid}>
-                    {shorts
-                      .slice(pageIndex * SHORT_PAGE_SIZE, pageIndex * SHORT_PAGE_SIZE + SHORT_PAGE_SIZE)
-                      .map((short, offset) => {
-                        const index = pageIndex * SHORT_PAGE_SIZE + offset;
-                        return (
-                          <Pressable
-                            key={short.id}
-                            onPress={() => openShort(index)}
-                            style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}
-                          >
-                            <ShortThumbnail
-                              short={short}
-                              avatarUrl={
-                                short.restaurantLogoUrl
-                                ?? (short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null)
-                              }
-                            />
-                          </Pressable>
-                        );
-                      })}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={s.emptyTxt}>Aucune vidéo disponible pour le moment</Text>
-          )}
-        </Animated.View>
-
         {/* ─── Configurable Home sections ─── */}
         {homeSections
           .filter((section) => section.visible)
@@ -980,6 +926,60 @@ export default function HomeScreen() {
             </Animated.View>
           );
         })}
+
+        {/* ─── Shorts ─── */}
+        <Animated.View
+          entering={FadeInDown.delay(700).duration(550).springify()}
+          style={s.homeFeedSection}
+        >
+          <HomeSectionHeader
+            title="Shorts"
+            onPress={() => { setInitialShort(0); setShortsVisible(true); }}
+          />
+          {shortsLoading ? (
+            <ActivityIndicator color={PINK} style={s.sectionLoader} />
+          ) : shortsError ? (
+            <LoadRetry message="Impossible de charger les vidéos." onRetry={() => refetchShorts()} />
+          ) : shorts.length > 0 ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              snapToInterval={SHORT_PAGE_W}
+            >
+              {Array.from({ length: Math.ceil(shorts.length / SHORT_PAGE_SIZE) }, (_, pageIndex) => (
+                <View key={`shorts-page-${pageIndex}`} style={s.shortsPage}>
+                  <View style={s.videosGrid}>
+                    {shorts
+                      .slice(pageIndex * SHORT_PAGE_SIZE, pageIndex * SHORT_PAGE_SIZE + SHORT_PAGE_SIZE)
+                      .map((short, offset) => {
+                        const index = pageIndex * SHORT_PAGE_SIZE + offset;
+                        return (
+                          <Pressable
+                            key={short.id}
+                            onPress={() => openShort(index)}
+                            style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}
+                          >
+                            <ShortThumbnail
+                              short={short}
+                              avatarUrl={
+                                short.restaurantLogoUrl
+                                ?? (short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null)
+                              }
+                            />
+                          </Pressable>
+                        );
+                      })}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={s.emptyTxt}>Aucune vidéo disponible pour le moment</Text>
+          )}
+        </Animated.View>
 
         <View style={s.homeSectionSpacer} accessibilityElementsHidden importantForAccessibility="no" />
 
