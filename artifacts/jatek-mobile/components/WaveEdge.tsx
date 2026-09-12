@@ -8,6 +8,7 @@ type Props = {
   color: string;
   gradientStops?: GradStop[];
   height?: number;
+  position?: "top" | "bottom";
 };
 
 /**
@@ -15,7 +16,12 @@ type Props = {
  * Uses cubic Bézier curves to create a smooth, non-uniform wave.
  * The fill colour matches the parent header so it looks like an extension of it.
  */
-export function WaveEdge({ color, gradientStops, height = 28 }: Props) {
+export function WaveEdge({
+  color,
+  gradientStops,
+  height = 28,
+  position = "bottom",
+}: Props) {
   const H = height;
   const gradId = "waveEdgeGrad";
 
@@ -35,7 +41,9 @@ export function WaveEdge({ color, gradientStops, height = 28 }: Props) {
     <View
       style={[
         styles.wrap,
-        { bottom: -(H - 1), height: H, pointerEvents: "none" },
+        position === "top"
+          ? { top: -(H - 1), height: H, pointerEvents: "none", transform: [{ scaleY: -1 }] }
+          : { bottom: -(H - 1), height: H, pointerEvents: "none" },
       ]}
     >
       <Svg

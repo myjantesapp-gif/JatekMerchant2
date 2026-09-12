@@ -59,6 +59,7 @@ const CATEGORY_WIDTH = 82;
 const PROMO_PRODUCT_WIDTH = Math.max(100, (SCREEN_WIDTH - 32 - 20) / 3);
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.min(286, Math.max(260, SCREEN_WIDTH * 0.72));
+const STORE_GRID_WIDTH = Math.max(0, (SCREEN_WIDTH - 48) / 2);
 const FALLBACK_PROMO =
   "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=88";
 const LOCAL_PROMO_BANNERS = [
@@ -420,26 +421,31 @@ function HomeScreen() {
           <CategoryRow categories={categories} onPress={openCategory} />
         </View>
 
-        {/* 1. Promos : bannières administrables + produits remisés */}
+        {/* 1. Produits populaires : contenu remisé piloté depuis le dashboard */}
         <View style={styles.promoSection}>
-          <SectionHeader title="Promos" onPress={() => router.push("/restaurants" as any)} testID="section-promos" />
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bannerRail}
-            nestedScrollEnabled
-          >
-            {(ads?.filter((ad) => ad.type === "promo_banner" || ad.type === "hero") ?? []).length > 0
-              ? ads!
-                  .filter((ad) => ad.type === "promo_banner" || ad.type === "hero")
-                  .map((ad) => (
-                    <PromoBanner key={ad.id} ad={ad} onPress={() => openAd(ad)} />
-                  ))
-              : LOCAL_PROMO_BANNERS.map((source, index) => (
-                  <PromoBanner key={String(source)} fallbackSource={source} onPress={() => router.push("/restaurants" as any)} />
+          <WaveEdge color={SECTION_TINT} position="top" height={30} />
+          <SectionHeader
+            title="Produits populaires"
+            buttonLabel="Voir plus"
+            accent={false}
+            onPress={() => router.push("/restaurants" as any)}
+            testID="section-popular-products"
+          />
+          {(ads?.filter((ad) => ad.type === "promo_banner" || ad.type === "hero") ?? []).length > 0 ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.bannerRail}
+              nestedScrollEnabled
+            >
+              {ads!
+                .filter((ad) => ad.type === "promo_banner" || ad.type === "hero")
+                .map((ad) => (
+                  <PromoBanner key={ad.id} ad={ad} onPress={() => openAd(ad)} />
                 ))}
-          </ScrollView>
+            </ScrollView>
+          ) : null}
           {promoProductsLoading || promoProductsError ? (
             <LoadingOrEmpty
               loading={promoProductsLoading}
@@ -465,12 +471,14 @@ function HomeScreen() {
           <WaveEdge color={WHITE} height={34} />
         </View>
 
-        {/* 2. Shorts */}
+        {/* 2. Vidéos courtes */}
         <View style={styles.section}>
           <SectionHeader
-            title="Shorts"
+            title="Découvrir en vidéo"
+            buttonLabel="Voir plus"
+            accent={false}
             onPress={() => openShort(0)}
-            testID="section-shorts"
+            testID="section-videos"
           />
           {shortsLoading || shortsError ? (
             <LoadingOrEmpty
@@ -504,12 +512,14 @@ function HomeScreen() {
           )}
         </View>
 
-        {/* 3. Nouveautés */}
+        {/* 3. Commerces proches */}
         <View style={styles.newestSection}>
           <SectionHeader
-            title="Nouveautés"
+            title="Près de chez vous"
+            buttonLabel="Voir plus"
+            accent={false}
             onPress={() => router.push("/restaurants" as any)}
-            testID="section-newest"
+            testID="section-nearby"
           />
           {restaurantsLoading || restaurantsError ? (
             <LoadingOrEmpty
@@ -519,17 +529,14 @@ function HomeScreen() {
               onRetry={() => refetchRestaurants()}
             />
           ) : newestStores.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalCards}
-              nestedScrollEnabled
-            >
-              {newestStores.map((restaurant) => (
+            <View style={styles.storeGrid}>
+              {newestStores.slice(0, 2).map((restaurant, index) => (
                 <StoreCard
                   key={restaurant.id}
                   restaurant={restaurant}
-                  width={STORE_WIDTH}
+                  width={STORE_GRID_WIDTH}
+                  compact
+                  badgeLabel={index === 0 ? "Nouveau" : "Promo"}
                   onPress={() =>
                     router.push({
                       pathname: "/restaurant/[id]",
@@ -538,7 +545,7 @@ function HomeScreen() {
                   }
                 />
               ))}
-            </ScrollView>
+            </View>
           ) : (
             <Text style={styles.empty}>Aucun commerce disponible pour le moment</Text>
           )}
@@ -715,12 +722,13 @@ const styles = StyleSheet.create({
   },
   promoSection: {
     marginTop: 7,
-    paddingBottom: 40,
+    paddingBottom: 35,
+    position: "relative",
     backgroundColor: SECTION_TINT,
   },
   newestSection: {
     marginTop: 7,
-    paddingBottom: 20,
+    paddingBottom: 27,
     backgroundColor: WHITE,
   },
   restaurantSection: {
@@ -757,6 +765,11 @@ const styles = StyleSheet.create({
   },
   horizontalCards: {
     gap: 11,
+    paddingHorizontal: 16,
+  },
+  storeGrid: {
+    flexDirection: "row",
+    gap: 16,
     paddingHorizontal: 16,
   },
   loader: {

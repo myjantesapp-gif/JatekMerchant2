@@ -14,9 +14,17 @@ type Props = {
   restaurant: Restaurant;
   width: number;
   onPress: () => void;
+  compact?: boolean;
+  badgeLabel?: string;
 };
 
-export function StoreCard({ restaurant, width, onPress }: Props) {
+export function StoreCard({
+  restaurant,
+  width,
+  onPress,
+  compact = false,
+  badgeLabel,
+}: Props) {
   const imageUrl = resolveMediaUrl(restaurant.imageUrl || restaurant.coverImageUrl) ?? FALLBACK_STORE_IMAGE;
   const time = restaurant.deliveryTime != null
     ? `${restaurant.deliveryTime} - ${restaurant.deliveryTime + 10} min`
@@ -29,31 +37,51 @@ export function StoreCard({ restaurant, width, onPress }: Props) {
       testID={`store-card-${restaurant.id}`}
       accessibilityRole="button"
       accessibilityLabel={`Ouvrir ${restaurant.name}`}
-      style={({ pressed }) => [styles.card, { width }, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.card,
+        compact && styles.cardCompact,
+        { width },
+        pressed && styles.pressed,
+      ]}
     >
-      <Image source={{ uri: imageUrl }} style={styles.cover} resizeMode="cover" />
-      <View style={styles.info}>
-        <View style={styles.logo}>
+      <View style={styles.coverWrap}>
+        <Image
+          source={{ uri: imageUrl }}
+          style={[styles.cover, compact && styles.coverCompact]}
+          resizeMode="cover"
+        />
+        {badgeLabel ? (
+          <View style={[styles.badge, badgeLabel === "Promo" && styles.badgePromo]}>
+            <Text style={styles.badgeText}>{badgeLabel}</Text>
+          </View>
+        ) : null}
+      </View>
+      <View style={[styles.info, compact && styles.infoCompact]}>
+        <View style={[styles.logo, compact && styles.logoCompact]}>
           {restaurant.logoUrl ? (
             <Image
               source={{ uri: resolveMediaUrl(restaurant.logoUrl) }}
-              style={styles.logoImage}
+              style={[styles.logoImage, compact && styles.logoImageCompact]}
               resizeMode="contain"
             />
           ) : (
-            <Text style={styles.logoInitial}>{restaurant.name.charAt(0).toUpperCase() || "J"}</Text>
+            <Text style={[styles.logoInitial, compact && styles.logoInitialCompact]}>
+              {restaurant.name.charAt(0).toUpperCase() || "J"}
+            </Text>
           )}
         </View>
-        <View style={styles.copy}>
-          <Text style={styles.name} numberOfLines={1}>{restaurant.name}</Text>
+        <View style={[styles.copy, compact && styles.copyCompact]}>
+          <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>
+            {restaurant.name}
+          </Text>
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={14} color={colors.light.mutedForeground} />
-              <Text style={styles.metaText}>{time}</Text>
+              <Ionicons name="time-outline" size={compact ? 12 : 14} color={colors.light.mutedForeground} />
+              <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{time}</Text>
             </View>
             <View style={styles.metaItem}>
-              <Ionicons name="location-outline" size={14} color={colors.light.mutedForeground} />
-              <Text style={styles.metaText}>{fee}</Text>
+              <Ionicons name="location-outline" size={compact ? 12 : 14} color={colors.light.mutedForeground} />
+              <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{fee}</Text>
             </View>
           </View>
         </View>
@@ -74,14 +102,47 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
+  cardCompact: {
+    height: 132,
+    borderRadius: 16,
+    shadowOpacity: 0.05,
+    borderWidth: 1,
+    borderColor: colors.light.border,
+  },
   pressed: {
     opacity: 0.9,
     transform: [{ scale: 0.98 }],
+  },
+  coverWrap: {
+    position: "relative",
   },
   cover: {
     width: "100%",
     height: 132,
     backgroundColor: colors.light.muted,
+  },
+  coverCompact: {
+    height: 83,
+  },
+  badge: {
+    position: "absolute",
+    left: 9,
+    top: 9,
+    paddingHorizontal: 10,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.light.success,
+  },
+  badgePromo: {
+    backgroundColor: colors.light.primary,
+  },
+  badgeText: {
+    color: colors.light.heading,
+    fontSize: 10,
+    lineHeight: 13,
+    fontFamily: "Inter_700Bold",
   },
   info: {
     minHeight: 82,
@@ -96,6 +157,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: colors.light.card,
   },
+  infoCompact: {
+    minHeight: 49,
+    marginTop: -1,
+    marginHorizontal: 0,
+    paddingHorizontal: 8,
+    paddingTop: 7,
+    paddingBottom: 6,
+    gap: 6,
+    borderRadius: 0,
+  },
   logo: {
     width: 42,
     height: 42,
@@ -106,9 +177,18 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: colors.light.primarySoft,
   },
+  logoCompact: {
+    width: 25,
+    height: 25,
+    borderRadius: 13,
+    padding: 2,
+  },
   logoImage: {
     width: "100%",
     height: "100%",
+    borderRadius: 99,
+  },
+  logoImageCompact: {
     borderRadius: 99,
   },
   logoInitial: {
@@ -116,15 +196,24 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: "Inter_700Bold",
   },
+  logoInitialCompact: {
+    fontSize: 11,
+  },
   copy: {
     flex: 1,
     minWidth: 0,
     gap: 6,
   },
+  copyCompact: {
+    gap: 3,
+  },
   name: {
     color: colors.light.cardForeground,
     fontSize: 15,
     fontFamily: "Inter_700Bold",
+  },
+  nameCompact: {
+    fontSize: 11,
   },
   metaRow: {
     flexDirection: "row",
@@ -140,5 +229,8 @@ const styles = StyleSheet.create({
     color: colors.light.mutedForeground,
     fontSize: 11,
     fontFamily: "Inter_500Medium",
+  },
+  metaTextCompact: {
+    fontSize: 8,
   },
 });

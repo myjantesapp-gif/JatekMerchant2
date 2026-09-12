@@ -8,16 +8,30 @@ type Props = {
   title: string;
   onPress?: () => void;
   testID?: string;
+  buttonLabel?: string;
+  accent?: boolean;
 };
 
-export function SectionHeader({ title, onPress, testID }: Props) {
+export function SectionHeader({
+  title,
+  onPress,
+  testID,
+  buttonLabel,
+  accent = true,
+}: Props) {
   const accentIndex = Math.floor(title.length / 2);
   return (
     <View style={styles.row}>
       <Text style={styles.title} numberOfLines={1}>
-        {title.slice(0, accentIndex)}
-        <Text style={styles.titleAccent}>{title.charAt(accentIndex)}</Text>
-        {title.slice(accentIndex + 1)}
+        {accent ? (
+          <>
+            {title.slice(0, accentIndex)}
+            <Text style={styles.titleAccent}>{title.charAt(accentIndex)}</Text>
+            {title.slice(accentIndex + 1)}
+          </>
+        ) : (
+          title
+        )}
       </Text>
       {onPress ? (
         <Pressable
@@ -25,9 +39,16 @@ export function SectionHeader({ title, onPress, testID }: Props) {
           testID={testID}
           accessibilityRole="button"
           accessibilityLabel={`Ouvrir la section ${title}`}
-          style={({ pressed }) => [styles.arrow, pressed && styles.arrowPressed]}
+          style={({ pressed }) => [
+            buttonLabel ? styles.moreButton : styles.arrow,
+            pressed && (buttonLabel ? styles.moreButtonPressed : styles.arrowPressed),
+          ]}
         >
-          <Ionicons name="arrow-forward" size={19} color={colors.light.primaryForeground} />
+          {buttonLabel ? (
+            <Text style={styles.moreButtonText}>{buttonLabel}</Text>
+          ) : (
+            <Ionicons name="arrow-forward" size={19} color={colors.light.primaryForeground} />
+          )}
         </Pressable>
       ) : null}
     </View>
@@ -47,9 +68,9 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     color: colors.light.heading,
-    fontSize: 24,
-    lineHeight: 29,
-    letterSpacing: -0.6,
+    fontSize: 23,
+    lineHeight: 28,
+    letterSpacing: -0.45,
     fontFamily: "Inter_700Bold",
   },
   titleAccent: {
@@ -72,5 +93,24 @@ const styles = StyleSheet.create({
   arrowPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.94 }],
+  },
+  moreButton: {
+    minWidth: 83,
+    height: 34,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.light.primary,
+  },
+  moreButtonPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }],
+  },
+  moreButtonText: {
+    color: colors.light.primaryForeground,
+    fontSize: 12,
+    lineHeight: 16,
+    fontFamily: "Inter_700Bold",
   },
 });

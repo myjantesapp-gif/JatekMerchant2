@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.muted,
   },
   imageWrapCompact: {
-    height: 122,
+    height: 92,
   },
   image: {
     width: "100%",
@@ -127,11 +127,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   restaurantLogoCompact: {
-    top: 8,
-    left: 8,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    top: 7,
+    left: 7,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    padding: 2,
   },
   restaurantLogoImage: {
     width: "100%",
@@ -160,11 +161,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   addButtonCompact: {
-    right: 8,
-    bottom: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    right: 7,
+    bottom: 7,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
   body: {
     paddingHorizontal: 12,
@@ -173,10 +174,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   bodyCompact: {
-    paddingHorizontal: 9,
-    paddingTop: 9,
-    paddingBottom: 11,
-    gap: 4,
+    paddingHorizontal: 8,
+    paddingTop: 7,
+    paddingBottom: 9,
+    gap: 3,
   },
   name: {
     minHeight: 38,
@@ -186,9 +187,9 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   nameCompact: {
-    minHeight: 32,
-    fontSize: 12,
-    lineHeight: 16,
+    minHeight: 31,
+    fontSize: 11,
+    lineHeight: 15,
   },
   priceRow: {
     flexDirection: "row",
@@ -211,6 +212,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
   },
   compareAtPriceCompact: {
-    fontSize: 10,
+    fontSize: 9,
   },
 });
