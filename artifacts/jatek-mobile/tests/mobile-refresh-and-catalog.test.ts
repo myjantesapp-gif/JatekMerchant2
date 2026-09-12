@@ -277,6 +277,10 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /listRecommendedProducts/);
   assert.match(code, /home-recommendations/);
   assert.match(code, /productId: String\(product\.id\)/);
+  assert.match(code, /recommendedProducts\.slice\(0, 6\)/);
+  assert.match(code, /RECOMMENDATION_COLUMNS = 3/);
+  assert.match(code, /style=\{s\.recommendationsGrid\}/);
+  assert.match(code, /compact/);
   assert.match(code, /Voir toutes les vidéos/);
   assert.match(code, /Voir les commerces/);
   assert.doesNotMatch(code, />Partenaires VIP & Promos</);

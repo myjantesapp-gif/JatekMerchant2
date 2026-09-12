@@ -20,9 +20,10 @@ type Props = {
   product: RecommendedProduct;
   width: number;
   onPress: () => void;
+  compact?: boolean;
 };
 
-export function RecommendedProductCard({ product, width, onPress }: Props) {
+export function RecommendedProductCard({ product, width, onPress, compact = false }: Props) {
   return (
     <Pressable
       onPress={onPress}
@@ -34,20 +35,20 @@ export function RecommendedProductCard({ product, width, onPress }: Props) {
         pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
       ]}
     >
-      <View style={styles.imageWrap}>
+      <View style={[styles.imageWrap, compact && styles.imageWrapCompact]}>
         <Image
           source={{ uri: resolveMediaUrl(product.imageUrl) ?? product.imageUrl }}
           style={styles.image}
           resizeMode="cover"
         />
-        <View style={styles.arrow}>
-          <Ionicons name="arrow-forward" size={14} color={PINK} />
+        <View style={[styles.arrow, compact && styles.arrowCompact]}>
+          <Ionicons name="arrow-forward" size={compact ? 11 : 14} color={PINK} />
         </View>
       </View>
-      <View style={styles.body}>
-        <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
-        <Text style={styles.merchant} numberOfLines={1}>{product.restaurantName}</Text>
-        <Text style={styles.price}>{formatMad(product.price)} MAD</Text>
+      <View style={[styles.body, compact && styles.bodyCompact]}>
+        <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>{product.name}</Text>
+        <Text style={[styles.merchant, compact && styles.merchantCompact]} numberOfLines={1}>{product.restaurantName}</Text>
+        <Text style={[styles.price, compact && styles.priceCompact]}>{formatMad(product.price)} MAD</Text>
       </View>
     </Pressable>
   );
@@ -71,6 +72,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF1F6",
     position: "relative",
   },
+  imageWrapCompact: {
+    height: 82,
+  },
   image: { width: "100%", height: "100%" },
   arrow: {
     position: "absolute",
@@ -83,21 +87,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  arrowCompact: {
+    right: 6,
+    bottom: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
   body: { paddingHorizontal: 11, paddingTop: 10, paddingBottom: 12, gap: 3 },
+  bodyCompact: {
+    paddingHorizontal: 7,
+    paddingTop: 7,
+    paddingBottom: 8,
+    gap: 2,
+  },
   name: {
     color: TEXT_DARK,
     fontSize: 14,
     fontFamily: "Inter_700Bold",
+  },
+  nameCompact: {
+    fontSize: 11,
   },
   merchant: {
     color: TEXT_MUTED,
     fontSize: 11,
     fontFamily: "Inter_500Medium",
   },
+  merchantCompact: {
+    fontSize: 9,
+  },
   price: {
     color: PINK,
     fontSize: 14,
     fontFamily: "Inter_900Black",
     marginTop: 4,
+  },
+  priceCompact: {
+    fontSize: 11,
+    marginTop: 2,
   },
 });

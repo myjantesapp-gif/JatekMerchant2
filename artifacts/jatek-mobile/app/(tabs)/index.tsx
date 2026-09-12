@@ -82,8 +82,11 @@ const SHORT_SIDE = 16;
 const SHORT_COLUMNS = 3;
 const SHORT_CARD_W = (SCREEN_W - SHORT_SIDE * 2 - SHORT_GAP * (SHORT_COLUMNS - 1)) / SHORT_COLUMNS;
 const SHORT_CARD_H = Math.round(SHORT_CARD_W * 1.64);
-const RECOMMENDATION_GAP = 10;
-const RECOMMENDATION_CARD_W = Math.floor((SCREEN_W - GRID_SIDE * 2 - RECOMMENDATION_GAP) / 2);
+const RECOMMENDATION_GAP = 8;
+const RECOMMENDATION_COLUMNS = 3;
+const RECOMMENDATION_CARD_W = Math.floor(
+  (SCREEN_W - GRID_SIDE * 2 - RECOMMENDATION_GAP * (RECOMMENDATION_COLUMNS - 1)) / RECOMMENDATION_COLUMNS,
+);
 const VIP_CARD_W = Math.min(SCREEN_W - 48, 340);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -667,22 +670,20 @@ export default function HomeScreen() {
             onRetry={() => refetchRecommendations()}
           />
         ) : recommendedProducts && recommendedProducts.length > 0 ? (
-          <Animated.ScrollView
+          <Animated.View
             entering={FadeInDown.delay(380).duration(500).springify()}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            nestedScrollEnabled
-            contentContainerStyle={s.recommendationsRow}
+            style={s.recommendationsGrid}
           >
-            {recommendedProducts.map((product) => (
+            {recommendedProducts.slice(0, 6).map((product) => (
               <RecommendedProductCard
                 key={`${product.restaurantId}-${product.id}`}
                 product={product}
                 width={RECOMMENDATION_CARD_W}
+                compact
                 onPress={() => goRecommendedProduct(product)}
               />
             ))}
-          </Animated.ScrollView>
+          </Animated.View>
         ) : null}
 
         {/* ─── Découvrir en vidéo ─── */}
@@ -1065,11 +1066,14 @@ const s = StyleSheet.create({
   },
 
   // ── Available product recommendations ──
-  recommendationsRow: {
+  recommendationsGrid: {
     paddingHorizontal: 16,
-    gap: RECOMMENDATION_GAP,
+    columnGap: RECOMMENDATION_GAP,
+    rowGap: RECOMMENDATION_GAP,
     paddingTop: 14,
     paddingBottom: 2,
+    flexDirection: "row",
+    flexWrap: "wrap",
   },
   // ── Videos ──
   videosGrid: {
