@@ -421,57 +421,7 @@ function HomeScreen() {
           <CategoryRow categories={categories} onPress={openCategory} />
         </View>
 
-        {/* 1. Produits populaires : contenu remisé piloté depuis le dashboard */}
-        <View style={styles.promoSection}>
-          <WaveEdge color={SECTION_TINT} position="top" height={30} />
-          <SectionHeader
-            title="Produits populaires"
-            buttonLabel="Voir plus"
-            accent={false}
-            onPress={() => router.push("/restaurants" as any)}
-            testID="section-popular-products"
-          />
-          {(ads?.filter((ad) => ad.type === "promo_banner" || ad.type === "hero") ?? []).length > 0 ? (
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.bannerRail}
-              nestedScrollEnabled
-            >
-              {ads!
-                .filter((ad) => ad.type === "promo_banner" || ad.type === "hero")
-                .map((ad) => (
-                  <PromoBanner key={ad.id} ad={ad} onPress={() => openAd(ad)} />
-                ))}
-            </ScrollView>
-          ) : null}
-          {promoProductsLoading || promoProductsError ? (
-            <LoadingOrEmpty
-              loading={promoProductsLoading}
-              error={promoProductsError}
-              empty="Aucun produit en promotion pour le moment"
-              onRetry={() => refetchPromoProducts()}
-            />
-          ) : promoProducts && promoProducts.length > 0 ? (
-            <View style={styles.promoProductGrid}>
-              {promoProducts.map((product) => (
-                <ProductCard
-                  key={`${product.restaurantId}-${product.id}`}
-                  product={product}
-                  width={PROMO_PRODUCT_WIDTH}
-                  compact
-                  onPress={() => openProduct(product)}
-                />
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.empty}>Aucun produit en promotion pour le moment</Text>
-          )}
-          <WaveEdge color={WHITE} height={34} />
-        </View>
-
-        {/* 2. Vidéos courtes */}
+        {/* 1. Vidéos courtes */}
         <View style={styles.section}>
           <SectionHeader
             title="Découvrir en vidéo"
@@ -510,6 +460,41 @@ function HomeScreen() {
           ) : (
             <Text style={styles.empty}>Aucun Short disponible pour le moment</Text>
           )}
+        </View>
+
+        {/* 2. Produits populaires : contenu remisé piloté depuis le dashboard */}
+        <View style={styles.promoSection}>
+          <WaveEdge color={SECTION_TINT} position="top" height={30} />
+          <SectionHeader
+            title="Produits populaires"
+            buttonLabel="Voir plus"
+            accent={false}
+            onPress={() => router.push("/restaurants" as any)}
+            testID="section-popular-products"
+          />
+          {promoProductsLoading || promoProductsError ? (
+            <LoadingOrEmpty
+              loading={promoProductsLoading}
+              error={promoProductsError}
+              empty="Aucun produit en promotion pour le moment"
+              onRetry={() => refetchPromoProducts()}
+            />
+          ) : promoProducts && promoProducts.length > 0 ? (
+            <View style={styles.promoProductGrid}>
+              {promoProducts.map((product) => (
+                <ProductCard
+                  key={`${product.restaurantId}-${product.id}`}
+                  product={product}
+                  width={PROMO_PRODUCT_WIDTH}
+                  compact
+                  onPress={() => openProduct(product)}
+                />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.empty}>Aucun produit en promotion pour le moment</Text>
+          )}
+          <WaveEdge color={WHITE} height={34} />
         </View>
 
         {/* 3. Commerces proches */}

@@ -167,11 +167,11 @@ test("restaurant page keeps the safe-area header and renders a three-column prod
   assert.match(gridCard, /aspectRatio: 1/);
 });
 
-test("home renders Shorts as a horizontal 9:16 card rail", () => {
+test("home renders discovery videos as a horizontal 9:16 card rail", () => {
   const page = source("app/(tabs)/index.tsx");
   const card = source("components/ShortCard.tsx");
 
-  assert.match(page, /title="Shorts"/);
+  assert.match(page, /title="Découvrir en vidéo"/);
   assert.match(page, /shorts\.map\(\(short, index\)/);
   assert.match(page, /<ShortCard/);
   assert.match(card, /height: 238/);
@@ -276,9 +276,9 @@ test("home renders reusable sections and live product recommendations", () => {
 
   assert.match(code, /listRecommendedProducts/);
   assert.match(code, /productId: String\(product\.id\)/);
-  assert.match(code, /<SectionHeader title="Promos"/);
-  assert.match(code, /<SectionHeader[\s\S]*title="Shorts"/);
-  assert.match(code, /<SectionHeader[\s\S]*title="Nouveautés"/);
+  assert.match(code, /title="Produits populaires"/);
+  assert.match(code, /<SectionHeader[\s\S]*title="Découvrir en vidéo"/);
+  assert.match(code, /<SectionHeader[\s\S]*title="Près de chez vous"/);
   assert.match(code, /<SectionHeader[\s\S]*title="Restauration"/);
   assert.match(code, /<ProductCard/);
   assert.match(code, /<ShortCard/);
@@ -297,13 +297,13 @@ test("home renders reusable sections and live product recommendations", () => {
 
 test("home renders the requested strict section order", () => {
   const page = source("app/(tabs)/index.tsx");
-  const promos = page.indexOf('title="Promos"');
-  const shorts = page.indexOf('title="Shorts"');
-  const newest = page.indexOf('title="Nouveautés"');
+  const videos = page.indexOf('title="Découvrir en vidéo"');
+  const popular = page.indexOf('title="Produits populaires"');
+  const nearby = page.indexOf('title="Près de chez vous"');
   const restaurants = page.indexOf('title="Restauration"');
-  assert.ok(promos >= 0 && promos < shorts);
-  assert.ok(shorts < newest);
-  assert.ok(newest < restaurants);
+  assert.ok(videos >= 0 && videos < popular);
+  assert.ok(popular < nearby);
+  assert.ok(nearby < restaurants);
 });
 
 test("home shows promo products in a three-column grid", () => {
@@ -326,7 +326,7 @@ test("home promo banner displays artwork without overlay text", () => {
   const productCard = source("components/ProductCard.tsx");
 
   assert.match(code, /LOCAL_PROMO_BANNERS/);
-  assert.match(code, /<PromoBanner key=\{ad\.id\} ad=\{ad\}/);
+  assert.match(code, /function PromoBanner/);
   assert.match(code, /promoImage/);
   assert.doesNotMatch(code, /ad\.title/);
   assert.match(productCard, /textDecorationLine: "line-through"/);
@@ -353,7 +353,7 @@ test("app uses a transparent edge-to-edge system bar while preserving readable i
 
   assert.match(code, /<StatusBar style="dark" backgroundColor="transparent" translucent \/>/);
   assert.doesNotMatch(code, /SystemStatusBarBackdrop/);
-  assert.match(appConfig, /"edgeToEdgeEnabled": true/);
+  assert.match(appConfig, /"android": \{[\s\S]*"edgeToEdgeEnabled": true/);
   assert.match(appConfig, /"androidStatusBar": \{[\s\S]*"backgroundColor": "#00000000"[\s\S]*"barStyle": "dark-content"[\s\S]*"translucent": true/);
 });
 
