@@ -293,6 +293,17 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.doesNotMatch(code, /<Text style=\{s\.gridSectionTitle\}/);
 });
 
+test("home keeps a blank spacer between the header wave and shop categories", () => {
+  const page = source("app/(tabs)/index.tsx");
+  const headerEnd = page.indexOf('<WaveEdge color={PINK} height={28} />');
+  const categoriesStart = page.indexOf("/* ─── Service shortcuts row");
+  const topArea = page.slice(headerEnd, categoriesStart);
+
+  assert.match(topArea, /shopCategorySpacer/);
+  assert.match(page, /shopCategorySpacer:\s*\{\s*height: 10/);
+  assert.match(page, /serviceShortcutsWrap:\s*\{[\s\S]*marginTop: 18/);
+});
+
 test("home banners display artwork without overlaid text or badges", () => {
   const code = source("app/(tabs)/index.tsx");
 

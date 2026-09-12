@@ -550,6 +550,8 @@ export default function HomeScreen() {
           <WaveEdge color={PINK} height={28} />
         </View>
 
+        <View style={s.shopCategorySpacer} accessibilityElementsHidden importantForAccessibility="no" />
+
         {/* ─── Service shortcuts row (type=service_shortcut from admin) ─── */}
         {serviceShortcuts.length > 0 && (
           <Animated.View
@@ -893,7 +895,10 @@ const s = StyleSheet.create({
   serviceShortcutsWrap: {
     // WaveEdge is absolutely positioned and visually extends below the
     // header's layout box. Keep the first icon rail below that painted area.
-    marginTop: 28,
+    marginTop: 18,
+  },
+  shopCategorySpacer: {
+    height: 10,
   },
   shopCatsContent: {
     paddingHorizontal: 16,
