@@ -224,18 +224,18 @@ function PopularSectionWaves() {
       <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
         <Path
           d="M0 6 C17 0 32 13 49 7 C67 1 83 14 100 6 L100 24 C82 31 67 18 49 24 C31 31 16 18 0 25 Z"
-          fill="#FDE8F0"
-          opacity={0.72}
+          fill="#F8C4D7"
+          opacity={0.58}
         />
         <Path
           d="M0 38 C19 30 34 46 52 38 C70 31 85 45 100 37 L100 57 C82 64 68 50 50 57 C31 64 16 50 0 58 Z"
-          fill="#FAD6E4"
-          opacity={0.42}
+          fill="#FFF0F5"
+          opacity={0.82}
         />
         <Path
           d="M0 75 C17 68 32 82 50 75 C69 68 84 82 100 74 L100 96 C82 100 66 88 48 94 C29 100 15 88 0 96 Z"
-          fill="#FDE8F0"
-          opacity={0.68}
+          fill="#FAD6E3"
+          opacity={0.56}
         />
       </Svg>
     </View>
@@ -1182,7 +1182,7 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   pinkWaveSection: {
-    backgroundColor: "#FFF7FA",
+    backgroundColor: "#FFF5F8",
   },
   popularWaves: {
     ...StyleSheet.absoluteFillObject,

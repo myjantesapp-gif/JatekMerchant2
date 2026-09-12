@@ -302,7 +302,7 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /products\.slice\(pageIndex \* 3, pageIndex \* 3 \+ 3\)/);
   assert.match(code, /width=\{RECOMMENDATION_CARD_W\}/);
   assert.match(code, /<PopularSectionWaves \/>/);
-  assert.match(code, /fill="#FDE8F0"/);
+  assert.match(code, /fill="#F8C4D7"/);
   assert.match(code, /sectionArrowButton/);
   assert.match(code, /<Ionicons name="arrow-forward" size=\{20\} color="#FFFFFF" \/>/);
   assert.doesNotMatch(code, /voirPlusText/);
@@ -313,9 +313,9 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /title="Shorts"/);
   assert.match(code, /pinkWaveSection/);
   assert.match(code, /section\.key === "popular"/);
-  assert.match(code, /#FFF7FA/);
-  assert.match(code, /#FDE8F0/);
-  assert.match(code, /#FAD6E4/);
+  assert.match(code, /#FFF5F8/);
+  assert.match(code, /#FAD6E3/);
+  assert.match(code, /#FFF0F5/);
   assert.doesNotMatch(code, /^\s*sectionTitle:\s*\{/m);
   assert.match(code, /homeSectionSpacer:\s*\{\s*height: 10/);
   assert.doesNotMatch(code, /<Text style=\{s\.gridSectionTitle\}/);
