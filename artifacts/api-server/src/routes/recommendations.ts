@@ -6,10 +6,11 @@ import {
   restaurantsTable,
   usersTable,
 } from "@workspace/db";
-import { and, asc, eq, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, or, sql } from "drizzle-orm";
 import { resolveLegacyMediaPath } from "../lib/objectStorage";
 import {
   selectAvailableRecommendations,
+  selectNewestRecommendations,
   type AvailableProductCandidate,
 } from "../lib/recommendations";
 
@@ -45,6 +46,17 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
   const requestedLimit = Number(req.query.limit ?? DEFAULT_LIMIT);
   if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > MAX_LIMIT) {
     res.status(400).json({ error: `limit must be an integer between 1 and ${MAX_LIMIT}` });
+    return;
+  }
+
+  const rawSort = req.query.sort;
+  const sort = rawSort === undefined
+    ? "catalog"
+    : typeof rawSort === "string"
+      ? rawSort
+      : "";
+  if (sort !== "catalog" && sort !== "newest") {
+    res.status(400).json({ error: "sort must be one of catalog or newest" });
     return;
   }
 
@@ -101,7 +113,11 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
     .where(and(...filters))
     // Catalog order is intentionally deterministic and never uses isPopular,
     // ratings, clicks or order history as a hidden recommendation score.
-    .orderBy(asc(menuItemsTable.sortOrder), asc(menuItemsTable.createdAt), asc(menuItemsTable.id))
+    .orderBy(
+      ...(sort === "newest"
+        ? [desc(menuItemsTable.createdAt), desc(menuItemsTable.id)]
+        : [asc(menuItemsTable.sortOrder), asc(menuItemsTable.createdAt), asc(menuItemsTable.id)]),
+    )
     .limit(Math.min(requestedLimit * 4, MAX_CANDIDATES));
 
   const candidates: AvailableProductCandidate[] = rows
@@ -113,7 +129,10 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
       imageUrl: resolveLegacyMediaPath(row.imageUrl, "images") ?? row.imageUrl,
     }));
 
-  const items = selectAvailableRecommendations(candidates, requestedLimit).map((item) => ({
+  const selectedCandidates = sort === "newest"
+    ? selectNewestRecommendations(candidates, requestedLimit)
+    : selectAvailableRecommendations(candidates, requestedLimit);
+  const items = selectedCandidates.map((item) => ({
     id: item.id,
     restaurantId: item.restaurantId,
     restaurantName: String(item.restaurantName),

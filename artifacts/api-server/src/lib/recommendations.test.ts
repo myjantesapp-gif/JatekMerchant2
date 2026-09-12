@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { selectAvailableRecommendations, type AvailableProductCandidate } from "./recommendations";
+import {
+  selectAvailableRecommendations,
+  selectNewestRecommendations,
+  type AvailableProductCandidate,
+} from "./recommendations";
 
 function candidate(id: number, restaurantId: number, isPopular = false): AvailableProductCandidate & { isPopular: boolean } {
   return {
@@ -61,4 +65,17 @@ test("Home recommendations clamp the response to the server limit", () => {
 
   assert.equal(selectAvailableRecommendations(rows, 100).length, 12);
   assert.equal(selectAvailableRecommendations(rows, 0).length, 1);
+});
+
+test("Newest recommendations preserve the recency order across merchants", () => {
+  const rows = [
+    candidate(30, 10),
+    candidate(29, 10),
+    candidate(28, 11),
+  ];
+
+  assert.deepEqual(
+    selectNewestRecommendations(rows, 2).map((row) => row.id),
+    [30, 29],
+  );
 });

@@ -17,6 +17,8 @@ import { useLocalSearchParams, router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Path } from "react-native-svg";
 import { useListRestaurants, useGetFeaturedRestaurants, useListCategories, type Restaurant } from "@workspace/api-client-react";
 import { getApiBaseSafe } from "@/lib/apiBase";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
@@ -60,6 +62,18 @@ type SlugConfig = {
   businessType: string;
   subcategories: SubcatConfig[];
 };
+
+function getHeaderPatternIcon(
+  businessType: string,
+  slug: string,
+): React.ComponentProps<typeof Ionicons>["name"] {
+  const value = `${businessType} ${slug}`.toLowerCase();
+  if (value.includes("pharm")) return "medkit";
+  if (value.includes("market") || value.includes("grocery") || value.includes("supermarch")) return "cart";
+  if (value.includes("shop") || value.includes("boutique")) return "bag-handle";
+  if (value.includes("service")) return "construct";
+  return "restaurant";
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -258,6 +272,7 @@ export default function CategoryScreen() {
       ],
     };
   }, [apiCategories, slug, parent]);
+  const headerPatternIcon = getHeaderPatternIcon(config.businessType, slug);
 
   const activeSub = config.subcategories.find((s) => s.id === activeSubId) ?? config.subcategories[0];
   const apiCategory = activeSub.id === "all" ? undefined : activeSub.apiCategory;
@@ -302,25 +317,43 @@ export default function CategoryScreen() {
   return (
     <View style={[styles.root]}>
       {/* ─── Banner header — image served from backend bannerImageUrl ─── */}
-      <View style={[styles.bannerWrap, { paddingTop: insets.top + 6 }]}>
+      <LinearGradient
+        colors={[config.color, PINK]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.bannerWrap, { paddingTop: insets.top + 6 }]}
+      >
         {config.bannerImageUrl ? (
           <Image source={{ uri: resolveMediaUrl(config.bannerImageUrl) }} style={styles.bannerImg} resizeMode="cover" />
         ) : null}
         <View style={styles.bannerOverlay} />
+        <View pointerEvents="none" style={styles.categoryPattern}>
+          <Ionicons name={headerPatternIcon} size={104} color="rgba(255,255,255,0.13)" style={styles.patternIconMain} />
+          <Ionicons name={headerPatternIcon} size={52} color="rgba(255,255,255,0.11)" style={styles.patternIconTop} />
+          <Ionicons name={headerPatternIcon} size={68} color="rgba(255,255,255,0.10)" style={styles.patternIconBottom} />
+        </View>
+        <View pointerEvents="none" style={styles.bannerWaves}>
+          <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <Path
+              d="M0 62 C18 45 34 79 52 61 C70 43 84 78 100 58 L100 100 L0 100 Z"
+              fill="rgba(255,255,255,0.12)"
+            />
+          </Svg>
+        </View>
         <View style={styles.bannerTopRow}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={22} color={TEXT_DARK} />
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
-          <RefreshButton onPress={onRefresh} refreshing={refreshing} color={TEXT_DARK} accessibilityLabel="Actualiser la catégorie" />
+          <RefreshButton onPress={onRefresh} refreshing={refreshing} color="#FFFFFF" accessibilityLabel="Actualiser la catégorie" />
         </View>
         <View style={styles.bannerTitleWrap}>
-          <Text style={[styles.bannerTitle, { color: TEXT_DARK }]}>{config.label}</Text>
-          <Text style={[styles.bannerSub, { color: TEXT_DARK }]}>
+          <Text style={styles.bannerTitle}>{config.label}</Text>
+          <Text style={styles.bannerSub}>
             Découvrez les meilleurs partenaires
           </Text>
         </View>
-      </View>
+      </LinearGradient>
 
       <FlatList
         data={filtered}
@@ -458,17 +491,43 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     justifyContent: "space-between",
     overflow: "hidden",
-    backgroundColor: "#FFF",
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    backgroundColor: PINK,
   },
   bannerImg: {
     ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%",
-    opacity: 0.2, // image at 80% transparency (20% opacity)
+    opacity: 0.16,
   },
   bannerOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.4)",
+    backgroundColor: "rgba(194,24,91,0.16)",
+  },
+  bannerWaves: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  categoryPattern: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  patternIconMain: {
+    position: "absolute",
+    right: 18,
+    top: 50,
+    transform: [{ rotate: "-12deg" }],
+  },
+  patternIconTop: {
+    position: "absolute",
+    left: "48%",
+    top: 18,
+    transform: [{ rotate: "18deg" }],
+  },
+  patternIconBottom: {
+    position: "absolute",
+    left: 30,
+    bottom: -12,
+    transform: [{ rotate: "-20deg" }],
   },
   bannerTopRow: {
     flexDirection: "row",
@@ -479,7 +538,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -489,8 +548,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   bannerTitleWrap: { gap: 4 },
-  bannerTitle: { fontSize: 26, fontFamily: "Inter_900Black", letterSpacing: -0.5 },
-  bannerSub: { fontSize: 13, fontFamily: "Inter_500Medium", opacity: 0.75 },
+  bannerTitle: { color: "#FFFFFF", fontSize: 26, fontFamily: "Inter_900Black", letterSpacing: -0.5 },
+  bannerSub: { color: "#FFFFFF", fontSize: 13, fontFamily: "Inter_600SemiBold", opacity: 0.9 },
 
   // ── Search ──
   searchWrap: {

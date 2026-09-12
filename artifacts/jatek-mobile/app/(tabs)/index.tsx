@@ -33,7 +33,12 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAds, useShorts } from "@/hooks/useContent";
-import { listRecommendedProducts, type Ad } from "@/lib/api";
+import {
+  getPublicAppConfig,
+  listRecommendedProducts,
+  type Ad,
+  type HomeSectionConfig,
+} from "@/lib/api";
 import { getYouTubeThumbnailUrl, resolveMediaUrl } from "@/lib/mediaUrl";
 import { getApiBaseSafe } from "@/lib/apiBase";
 import { formatMad } from "@/lib/money";
@@ -85,6 +90,14 @@ const SHORT_CARD_W = (SCREEN_W - SHORT_SIDE * 2 - SHORT_GAP * (SHORT_COLUMNS - 1
 const SHORT_CARD_H = Math.round(SHORT_CARD_W * 1.64);
 const RECOMMENDATION_GAP = 8;
 const RECOMMENDATION_CARD_W = Math.min(138, Math.max(112, Math.floor((SCREEN_W - 48) / 2.5)));
+const NEW_PRODUCT_PAGE_W = SCREEN_W - 24;
+const NEW_PRODUCT_CARD_W = Math.floor((NEW_PRODUCT_PAGE_W - 28 - RECOMMENDATION_GAP * 2) / 3);
+const DEFAULT_HOME_SECTIONS: HomeSectionConfig[] = [
+  { key: "popular", title: "Populaires", visible: true, source: "popular", limit: 30 },
+  { key: "new_products", title: "Nouveautés", visible: true, source: "newest", limit: 12 },
+  { key: "new_restaurants", title: "Nouveaux restaurants", visible: true, source: "new_restaurants", limit: 6 },
+  { key: "shops", title: "Boutiques", visible: true, source: "shops", limit: 6 },
+];
 const VIP_CARD_W = Math.min(SCREEN_W - 80, 300);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,22 +215,6 @@ function VipBannerCard({
   );
 }
 
-function SectionAction({ label = "Voir plus", onPress }: { label?: string; onPress: () => void }) {
-  return (
-    <View style={s.sectionActionRow}>
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.85}
-        style={s.voirPlusBtnPill}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-      >
-        <Text style={s.voirPlusTxtPill}>{label}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
 function PopularSectionWaves() {
   return (
     <View pointerEvents="none" style={s.popularWaves}>
@@ -235,20 +232,20 @@ function PopularSectionWaves() {
   );
 }
 
-function PopularSectionHeader({ onPress }: { onPress: () => void }) {
+function HomeSectionHeader({ title, onPress }: { title: string; onPress: () => void }) {
   return (
     <View style={s.popularHeaderRow}>
       <View style={s.popularTitleBadge}>
-        <Text style={s.popularTitle}>Populaires</Text>
+        <Text style={s.popularTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>{title}</Text>
       </View>
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.85}
         style={s.voirPlusBtnPill}
         accessibilityRole="button"
-        accessibilityLabel="Voir plus de produits populaires"
+        accessibilityLabel={`Voir tout : ${title}`}
       >
-        <Text style={s.voirPlusTxtPill}>Voir plus</Text>
+        <Text style={s.voirPlusTxtPill}>Voir tout</Text>
       </TouchableOpacity>
     </View>
   );
@@ -355,6 +352,48 @@ export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [rotationSeed, setRotationSeed] = useState(() => Math.floor(Date.now() / 86_400_000));
+  const {
+    data: publicAppConfig,
+    refetch: refetchAppConfig,
+  } = useQuery({
+    queryKey: ["public-app-config"],
+    queryFn: getPublicAppConfig,
+    staleTime: 60_000,
+  });
+  const homeSections = useMemo<HomeSectionConfig[]>(() => {
+    const configured = publicAppConfig?.homeSections;
+    if (!configured || typeof configured !== "object" || Array.isArray(configured)) return DEFAULT_HOME_SECTIONS;
+    const validKeys = new Set(DEFAULT_HOME_SECTIONS.map((section) => section.key));
+    const configuredOrder = Array.isArray(publicAppConfig.homeOrder)
+      ? publicAppConfig.homeOrder.filter((key): key is HomeSectionConfig["key"] => validKeys.has(key as HomeSectionConfig["key"]))
+      : [];
+    const orderedKeys = [
+      ...configuredOrder,
+      ...DEFAULT_HOME_SECTIONS.map((section) => section.key).filter((key) => !configuredOrder.includes(key)),
+    ];
+    const normalized = orderedKeys.flatMap((key) => {
+      const section = configured[key];
+      if (!section || typeof section.title !== "string") return [];
+      return [{
+        key,
+        ...section,
+        title: section.title.trim() || DEFAULT_HOME_SECTIONS.find((item) => item.key === key)!.title,
+        limit: Math.min(30, Math.max(1, Number(section.limit) || 6)),
+      }];
+    });
+    const configuredKeys = new Set(normalized.map((section) => section.key));
+    return [
+      ...normalized,
+      ...DEFAULT_HOME_SECTIONS.filter((section) => !configuredKeys.has(section.key)),
+    ];
+  }, [publicAppConfig]);
+  const sectionConfig = (key: HomeSectionConfig["key"]) =>
+    homeSections.find((section) => section.key === key)
+    ?? DEFAULT_HOME_SECTIONS.find((section) => section.key === key)!;
+  const popularConfig = sectionConfig("popular");
+  const newProductsConfig = sectionConfig("new_products");
+  const newRestaurantsConfig = sectionConfig("new_restaurants");
+  const shopsConfig = sectionConfig("shops");
 
   const params = useMemo<ListRestaurantsParams>(() => {
     const p: ListRestaurantsParams = {};
@@ -371,6 +410,12 @@ export default function HomeScreen() {
     isError: restaurantsError,
     refetch: refetchRestaurants,
   } = useListRestaurants(params);
+  const {
+    data: homeRestaurants,
+    isLoading: homeRestaurantsLoading,
+    isError: homeRestaurantsError,
+    refetch: refetchHomeRestaurants,
+  } = useListRestaurants({});
   const { data: featuredPartners, refetch: refetchFeatured } = useGetFeaturedRestaurants();
   const { data: apiCategories, isLoading: categoriesLoading, refetch: refetchCategories } = useListCategories();
   const { data: ads, refetch: refetchAds } = useAds();
@@ -386,12 +431,29 @@ export default function HomeScreen() {
     isError: recommendationsError,
     refetch: refetchRecommendations,
   } = useQuery({
-    queryKey: ["home-recommendations", activeBusinessType],
+    queryKey: ["home-recommendations", activeBusinessType, popularConfig.source, popularConfig.limit],
     queryFn: () => listRecommendedProducts({
-      limit: 30,
+      limit: popularConfig.limit,
       businessType: activeBusinessType || undefined,
+      sort: popularConfig.source === "newest" ? "newest" : "catalog",
     }),
     staleTime: 60_000,
+    enabled: popularConfig.visible,
+  });
+  const {
+    data: newestProducts,
+    isLoading: newestProductsLoading,
+    isError: newestProductsError,
+    refetch: refetchNewestProducts,
+  } = useQuery({
+    queryKey: ["home-new-products", activeBusinessType, newProductsConfig.source, newProductsConfig.limit],
+    queryFn: () => listRecommendedProducts({
+      limit: newProductsConfig.limit,
+      businessType: activeBusinessType || undefined,
+      sort: newProductsConfig.source === "popular" ? "catalog" : "newest",
+    }),
+    staleTime: 60_000,
+    enabled: newProductsConfig.visible,
   });
 
   // Ads managed from the admin dashboard (Bannières page).
@@ -403,19 +465,6 @@ export default function HomeScreen() {
     if (url.startsWith("/")) router.push(url as any);
     else Linking.openURL(url).catch(() => {});
   };
-
-  // Resolve the current activity parent from the API. This keeps the home
-  // feed compatible with restaurants, supermarkets, groceries and shops
-  // instead of assuming that every parent is a restaurant.
-  const activeBusinessCategorySlug = useMemo(() => {
-    const cat = (apiCategories ?? []).find(
-      (c: any) => activeBusinessType
-        && c.parentId == null
-        && c.isActive !== false
-        && c.businessType === activeBusinessType,
-    ) as any;
-    return cat?.slug ?? null;
-  }, [activeBusinessType, apiCategories]);
 
   // Categories are 100% managed from the admin dashboard (ma.jatek.app/admin).
   // "service_shortcut" type → quick-action row; "category" type → Explorer slider.
@@ -463,6 +512,19 @@ export default function HomeScreen() {
   const orderedRestaurants = useMemo(() => {
     return rotateItems(restaurants ?? [], rotationSeed);
   }, [restaurants, rotationSeed]);
+  const newestRestaurants = useMemo(() => {
+    const items = [...(homeRestaurants ?? [])];
+    if (newRestaurantsConfig.source === "new_restaurants") {
+      items.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    }
+    return items.slice(0, newRestaurantsConfig.limit);
+  }, [homeRestaurants, newRestaurantsConfig.limit, newRestaurantsConfig.source]);
+  const shopRestaurants = useMemo(() => {
+    const items = shopsConfig.source === "all_restaurants"
+      ? [...(homeRestaurants ?? [])]
+      : (homeRestaurants ?? []).filter((restaurant) => restaurant.businessType === "shop");
+    return items.slice(0, shopsConfig.limit);
+  }, [homeRestaurants, shopsConfig.limit, shopsConfig.source]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -475,6 +537,9 @@ export default function HomeScreen() {
         refetchAds,
         refetchShorts,
         refetchRecommendations,
+        refetchNewestProducts,
+        refetchHomeRestaurants,
+        refetchAppConfig,
       ]);
     } finally {
       setRefreshing(false);
@@ -498,6 +563,30 @@ export default function HomeScreen() {
       pathname: "/restaurant/[id]",
       params: { id: String(product.restaurantId), productId: String(product.id) },
     });
+  const categorySlugForBusinessType = (businessType: string) =>
+    (apiCategories ?? []).find(
+      (category: any) =>
+        category.parentId == null
+        && category.isActive !== false
+        && category.businessType === businessType,
+    )?.slug as string | undefined;
+  const goSectionList = (section: HomeSectionConfig) => {
+    if (section.key === "shops") {
+      const slug = categorySlugForBusinessType("shop");
+      if (slug) {
+        router.push({ pathname: "/category/[slug]", params: { slug } });
+        return;
+      }
+    }
+    if (section.key === "new_restaurants") {
+      const slug = categorySlugForBusinessType("restaurant");
+      if (slug) {
+        router.push({ pathname: "/category/[slug]", params: { slug } });
+        return;
+      }
+    }
+    router.push("/restaurants" as any);
+  };
 
   // Tab bar leaves ~84pt of empty space at the bottom — pad accordingly.
   // Real rendered tab bar height — keeps the floating bar glued to its top edge
@@ -713,116 +802,140 @@ export default function HomeScreen() {
 
         <JatekScrollingBanner />
 
-        {/* ─── Produits populaires ─── */}
-        {recommendationsLoading ? (
-          <ActivityIndicator color={PINK} style={{ marginVertical: 18 }} />
-        ) : recommendationsError ? (
-          <LoadRetry
-            message="Impossible de charger les produits."
-            onRetry={() => refetchRecommendations()}
-          />
-        ) : recommendedProducts && recommendedProducts.length > 0 ? (
-          <Animated.View
-            entering={FadeInDown.delay(380).duration(500).springify()}
-            style={s.popularSection}
-          >
-            <PopularSectionWaves />
-            <PopularSectionHeader
-              onPress={() => router.push("/restaurants" as any)}
-            />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              decelerationRate="fast"
-              nestedScrollEnabled
-              contentContainerStyle={s.popularProductsRow}
+        {/* ─── Configurable Home sections ─── */}
+        {homeSections.filter((section) => section.visible).map((section, sectionIndex) => {
+          const isProductSection = section.key === "popular" || section.key === "new_products";
+          const products = section.key === "popular" ? recommendedProducts : newestProducts;
+          const productsLoading = section.key === "popular" ? recommendationsLoading : newestProductsLoading;
+          const productsError = section.key === "popular" ? recommendationsError : newestProductsError;
+          const retryProducts = section.key === "popular" ? refetchRecommendations : refetchNewestProducts;
+          const commerce = section.key === "new_restaurants" ? newestRestaurants : shopRestaurants;
+
+          return (
+            <Animated.View
+              key={section.key}
+              entering={FadeInDown.delay(380 + sectionIndex * 80).duration(500).springify()}
+              style={s.homeFeedSection}
             >
-              {recommendedProducts.map((product) => (
-                <RecommendedProductCard
-                  key={`${product.restaurantId}-${product.id}`}
-                  product={product}
-                  width={RECOMMENDATION_CARD_W}
-                  compact
-                  onPress={() => goRecommendedProduct(product)}
-                />
-              ))}
-            </ScrollView>
-          </Animated.View>
-        ) : null}
+              <PopularSectionWaves />
+              <HomeSectionHeader title={section.title} onPress={() => goSectionList(section)} />
+
+              {isProductSection ? (
+                productsLoading ? (
+                  <ActivityIndicator color={PINK} style={s.sectionLoader} />
+                ) : productsError ? (
+                  <LoadRetry message="Impossible de charger les produits." onRetry={() => retryProducts()} />
+                ) : products && products.length > 0 ? (
+                  section.key === "new_products" ? (
+                    <ScrollView
+                      horizontal
+                      pagingEnabled
+                      nestedScrollEnabled
+                      showsHorizontalScrollIndicator={false}
+                      decelerationRate="fast"
+                      snapToInterval={NEW_PRODUCT_PAGE_W}
+                    >
+                      {Array.from(
+                        { length: Math.ceil(products.length / 3) },
+                        (_, pageIndex) => (
+                          <View key={`new-products-${pageIndex}`} style={s.newProductsPage}>
+                            {products.slice(pageIndex * 3, pageIndex * 3 + 3).map((product) => (
+                              <RecommendedProductCard
+                                key={`${product.restaurantId}-${product.id}`}
+                                product={product}
+                                width={NEW_PRODUCT_CARD_W}
+                                compact
+                                onPress={() => goRecommendedProduct(product)}
+                              />
+                            ))}
+                          </View>
+                        ),
+                      )}
+                    </ScrollView>
+                  ) : (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      decelerationRate="fast"
+                      nestedScrollEnabled
+                      contentContainerStyle={s.popularProductsRow}
+                    >
+                      {products.map((product) => (
+                        <RecommendedProductCard
+                          key={`${product.restaurantId}-${product.id}`}
+                          product={product}
+                          width={RECOMMENDATION_CARD_W}
+                          compact
+                          onPress={() => goRecommendedProduct(product)}
+                        />
+                      ))}
+                    </ScrollView>
+                  )
+                ) : (
+                  <Text style={s.sectionEmptyTxt}>Aucun produit disponible pour le moment</Text>
+                )
+              ) : homeRestaurantsLoading ? (
+                <ActivityIndicator color={PINK} style={s.sectionLoader} />
+              ) : homeRestaurantsError ? (
+                <LoadRetry message="Impossible de charger les commerces." onRetry={() => refetchHomeRestaurants()} />
+              ) : commerce.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  nestedScrollEnabled
+                  contentContainerStyle={s.homeCommerceRow}
+                >
+                  {commerce.map((restaurant) => (
+                    <RestaurantTile
+                      key={`${section.key}-${restaurant.id}`}
+                      restaurant={restaurant}
+                      width={250}
+                      onPress={() => goRestaurant(restaurant.id)}
+                    />
+                  ))}
+                </ScrollView>
+              ) : (
+                <Text style={s.sectionEmptyTxt}>Aucun commerce disponible pour le moment</Text>
+              )}
+            </Animated.View>
+          );
+        })}
 
         <View style={s.homeSectionSpacer} accessibilityElementsHidden importantForAccessibility="no" />
 
         {/* ─── Découvrir en vidéo ─── */}
-        {shorts.length > 0 && (
-          <SectionAction
+        <Animated.View
+          entering={FadeInDown.delay(700).duration(550).springify()}
+          style={s.homeFeedSection}
+        >
+          <PopularSectionWaves />
+          <HomeSectionHeader
+            title="Découvrir en vidéo"
             onPress={() => { setInitialShort(0); setShortsVisible(true); }}
           />
-        )}
-        {shortsLoading ? (
-          <ActivityIndicator color={PINK} style={{ marginVertical: 18 }} />
-        ) : shortsError ? (
-          <LoadRetry message="Impossible de charger les vidéos." onRetry={() => refetchShorts()} />
-        ) : (
-          <Animated.View
-            entering={FadeInDown.delay(500).duration(550).springify()}
-            style={s.videosGrid}
-          >
-            {shorts.map((short, i) => (
-              <Pressable key={short.id} onPress={() => openShort(i)} style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}>
-                <ShortThumbnail
-                  short={short}
-                  avatarUrl={
-                    short.restaurantLogoUrl
-                    ?? (short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null)
-                  }
-                />
-              </Pressable>
-            ))}
-            {shorts.length === 0 && (
-              <Text style={s.emptyTxt}>Aucune vidéo disponible pour le moment</Text>
-            )}
-          </Animated.View>
-        )}
-
-        <View style={s.homeSectionSpacer} accessibilityElementsHidden importantForAccessibility="no" />
-
-        {/* ─── Pres de chez vous (all commerce types) ─── */}
-        {activeBusinessCategorySlug && (
-          <SectionAction
-            onPress={() => router.push({ pathname: "/category/[slug]", params: { slug: activeBusinessCategorySlug } })}
-          />
-        )}
-        {!activeBusinessCategorySlug && (
-          <SectionAction
-            onPress={() => router.push("/restaurants" as any)}
-          />
-        )}
-        {isLoading ? (
-          <ActivityIndicator color={PINK} style={{ marginVertical: 18 }} />
-        ) : restaurantsError ? (
-          <LoadRetry message="Impossible de charger les commerces." onRetry={() => refetchRestaurants()} />
-        ) : (
-          <Animated.ScrollView
-            entering={FadeInDown.delay(620).duration(550).springify()}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            nestedScrollEnabled
-            contentContainerStyle={s.horizontalRow}
-          >
-            {orderedRestaurants.slice(0, 6).map((r) => (
-              <RestaurantTile
-                key={r.id}
-                restaurant={r}
-                width={280}
-                onPress={() => goRestaurant(r.id)}
-                showDistance
-              />
-            ))}
-            {(restaurants ?? []).length === 0 && !isLoading && (
-              <Text style={s.emptyTxt}>Aucun commerce à proximité</Text>
-            )}
-          </Animated.ScrollView>
-        )}
+          {shortsLoading ? (
+            <ActivityIndicator color={PINK} style={s.sectionLoader} />
+          ) : shortsError ? (
+            <LoadRetry message="Impossible de charger les vidéos." onRetry={() => refetchShorts()} />
+          ) : (
+            <View style={s.videosGrid}>
+              {shorts.map((short, i) => (
+                <Pressable key={short.id} onPress={() => openShort(i)} style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}>
+                  <ShortThumbnail
+                    short={short}
+                    avatarUrl={
+                      short.restaurantLogoUrl
+                      ?? (short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null)
+                    }
+                  />
+                </Pressable>
+              ))}
+              {shorts.length === 0 && (
+                <Text style={s.emptyTxt}>Aucune vidéo disponible pour le moment</Text>
+              )}
+            </View>
+          )}
+        </Animated.View>
 
         {/* ─── Tous les commerces (2-column grid) ─── */}
         <Animated.View entering={FadeInDown.delay(740).duration(550).springify()} style={s.gridSection}>
@@ -1005,13 +1118,19 @@ const s = StyleSheet.create({
   homeSectionSpacer: {
     height: 10,
   },
-  popularSection: {
+  homeFeedSection: {
     position: "relative",
     overflow: "hidden",
     paddingBottom: 16,
     marginHorizontal: 12,
+    marginTop: 12,
     borderRadius: 22,
     backgroundColor: "#FFFDFE",
+    shadowColor: PINK_DEEP,
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   popularWaves: {
     ...StyleSheet.absoluteFillObject,
@@ -1023,8 +1142,10 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 10,
+    gap: 10,
   },
   popularTitleBadge: {
+    flexShrink: 1,
     backgroundColor: PINK_DEEP,
     borderRadius: 18,
     paddingHorizontal: 16,
@@ -1045,6 +1166,28 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     gap: RECOMMENDATION_GAP,
     paddingBottom: 4,
+  },
+  newProductsPage: {
+    width: NEW_PRODUCT_PAGE_W,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    gap: RECOMMENDATION_GAP,
+  },
+  homeCommerceRow: {
+    paddingHorizontal: 14,
+    gap: 10,
+    paddingBottom: 4,
+  },
+  sectionLoader: {
+    marginVertical: 18,
+  },
+  sectionEmptyTxt: {
+    color: TEXT_MUTED,
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    textAlign: "center",
   },
   // ── Services row ──
   servicesRow: {
@@ -1196,7 +1339,7 @@ const s = StyleSheet.create({
   },
   voirPlusTxtPill: {
     color: "#fff",
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
     fontSize: 13,
   },
 
@@ -1230,8 +1373,6 @@ const s = StyleSheet.create({
     height: SHORT_CARD_H,
     borderRadius: 8,
     backgroundColor: "#202020",
-    borderWidth: 2,
-    borderColor: SHORT_BORDER,
     overflow: "hidden",
     position: "relative",
   },

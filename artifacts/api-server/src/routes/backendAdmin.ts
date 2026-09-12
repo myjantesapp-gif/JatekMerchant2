@@ -25,6 +25,7 @@ import {
   appConfigTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, count, inArray } from "drizzle-orm";
+import { homeOrderSchema, homeSectionsSchema, getDefaultHomeSections, type AppConfig } from "../lib/appConfig";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 import { closeUserSubscriptions, publish } from "../lib/sse";
 import * as tracking from "../lib/trackingService";
@@ -902,21 +903,28 @@ export function startRestaurantAutoCloseScheduler() {
 // APP CONFIG (public read + admin write)
 // ────────────────────────────────────────────────────────────────────────────
 
-const DEFAULT_APP_CONFIG: Record<string, unknown> = {
+const DEFAULT_APP_CONFIG = {
   defaultLanguage: "fr",
   maintenanceMode: false,
   featuredCount: 6,
-  homeOrder: ["banners", "categories", "featured", "all"],
+  homeOrder: ["banners", "categories", "popular", "new_products", "new_restaurants", "shops", "featured", "all"],
   welcomeMessage: "Bienvenue sur Jatek !",
-};
+  homeSections: getDefaultHomeSections(),
+} satisfies AppConfig;
 
-async function getAppConfig(): Promise<Record<string, unknown>> {
+async function getAppConfig(): Promise<AppConfig> {
   const rows = await db.select().from(appConfigTable);
-  const config = { ...DEFAULT_APP_CONFIG };
+  const config: Record<string, unknown> = { ...DEFAULT_APP_CONFIG };
   for (const row of rows) {
     config[row.key] = row.value;
   }
-  return config;
+  // Validate persisted JSON as well as writes. This prevents a malformed
+  // admin value from being exposed to every mobile client.
+  const parsedHomeSections = homeSectionsSchema.safeParse(config.homeSections);
+  if (!parsedHomeSections.success) {
+    throw new Error("Stored homeSections configuration is invalid");
+  }
+  return { ...config, homeSections: parsedHomeSections.data } as AppConfig;
 }
 
 /** Public endpoint read by the mobile app at startup (no auth required). */
@@ -936,9 +944,39 @@ router.get("/backend/app-config", requireAuth, async (req: AuthedRequest, res, n
 router.put("/backend/app-config", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   if (!isSuperAdmin(req.userRole)) { res.status(403).json({ error: "Forbidden" }); return; }
   try {
-    const entries = Object.entries(req.body ?? {});
+    const body = req.body;
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      res.status(400).json({ error: "Configuration body must be an object" });
+      return;
+    }
+    const entries = Object.entries(body);
     if (entries.length === 0) { res.status(400).json({ error: "No config keys provided" }); return; }
-    for (const [key, value] of entries) {
+    const validatedEntries: Array<[string, unknown]> = entries.map(([key, value]) => [key, value]);
+    const homeSectionsEntry = validatedEntries.find(([key]) => key === "homeSections");
+    if (homeSectionsEntry) {
+      const parsedHomeSections = homeSectionsSchema.safeParse(homeSectionsEntry[1]);
+      if (!parsedHomeSections.success) {
+        res.status(400).json({
+          error: "Invalid homeSections",
+          details: parsedHomeSections.error.issues,
+        });
+        return;
+      }
+      homeSectionsEntry[1] = parsedHomeSections.data;
+    }
+    const homeOrderEntry = validatedEntries.find(([key]) => key === "homeOrder");
+    if (homeOrderEntry) {
+      const parsedHomeOrder = homeOrderSchema.safeParse(homeOrderEntry[1]);
+      if (!parsedHomeOrder.success) {
+        res.status(400).json({
+          error: "Invalid homeOrder",
+          details: parsedHomeOrder.error.issues,
+        });
+        return;
+      }
+      homeOrderEntry[1] = parsedHomeOrder.data;
+    }
+    for (const [key, value] of validatedEntries) {
       await db
         .insert(appConfigTable)
         .values({ key, value })

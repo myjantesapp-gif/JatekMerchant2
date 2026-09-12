@@ -47,3 +47,19 @@ export function selectAvailableRecommendations<T extends AvailableProductCandida
 
   return selected;
 }
+
+/**
+ * Newest must be a real recency sort, rather than the catalog diversity pass:
+ * a second product from a merchant can be newer than the first product from a
+ * different merchant. The route query has already applied all public
+ * eligibility predicates, so taking this prefix preserves those predicates.
+ */
+export function selectNewestRecommendations<T extends AvailableProductCandidate>(
+  candidates: readonly T[],
+  requestedLimit: number,
+): T[] {
+  const limit = Number.isInteger(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), 12)
+    : 6;
+  return candidates.slice(0, limit);
+}

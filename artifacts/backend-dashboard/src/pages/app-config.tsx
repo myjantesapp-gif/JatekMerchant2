@@ -9,16 +9,31 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Save, Loader2, Globe, AlertTriangle, Star, LayoutGrid, MessageSquare } from "lucide-react";
+import { Settings, Save, Loader2, Globe, AlertTriangle, Star, LayoutGrid, MessageSquare, SlidersHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+
+type HomeSectionConfig = {
+  visible: boolean;
+  title: string;
+  source: string;
+  limit: number;
+};
+
+type HomeSectionKey = "popular" | "new_products" | "new_restaurants" | "shops";
 
 const DEFAULT_CONFIG = {
   defaultLanguage: "fr",
   maintenanceMode: false,
   featuredCount: 6,
-  homeOrder: ["banners", "categories", "featured", "all"],
+  homeOrder: ["banners", "categories", "featured", "all", "popular", "new_products", "new_restaurants", "shops"],
   welcomeMessage: "Bienvenue sur Jatek !",
+  homeSections: {
+    popular: { visible: true, title: "Populaires", source: "popular", limit: 6 },
+    new_products: { visible: true, title: "Nouveautés", source: "newest", limit: 6 },
+    new_restaurants: { visible: true, title: "Nouveaux restaurants", source: "new_restaurants", limit: 6 },
+    shops: { visible: true, title: "Boutiques", source: "shops", limit: 6 },
+  } as Record<HomeSectionKey, HomeSectionConfig>,
 };
 
 type AppConfigData = typeof DEFAULT_CONFIG;
@@ -28,7 +43,30 @@ const HOME_SECTIONS = [
   { key: "categories", label: "Catégories" },
   { key: "featured", label: "Restaurants vedettes" },
   { key: "all", label: "Tous les restaurants" },
+  { key: "popular", label: "Populaire" },
+  { key: "new_products", label: "Nouveaux produits" },
+  { key: "new_restaurants", label: "Nouveaux restaurants" },
+  { key: "shops", label: "Boutiques" },
 ];
+const DYNAMIC_SECTION_KEYS: HomeSectionKey[] = ["popular", "new_products", "new_restaurants", "shops"];
+const SOURCE_OPTIONS: Record<HomeSectionKey, Array<{ value: string; label: string }>> = {
+  popular: [
+    { value: "popular", label: "Catalogue recommandé" },
+    { value: "newest", label: "Produits les plus récents" },
+  ],
+  new_products: [
+    { value: "newest", label: "Produits les plus récents" },
+    { value: "popular", label: "Catalogue recommandé" },
+  ],
+  new_restaurants: [
+    { value: "new_restaurants", label: "Restaurants les plus récents" },
+    { value: "all_restaurants", label: "Tous les restaurants" },
+  ],
+  shops: [
+    { value: "shops", label: "Boutiques uniquement" },
+    { value: "all_restaurants", label: "Tous les commerces" },
+  ],
+};
 
 export default function AppConfig() {
   const { toast } = useToast();
@@ -42,7 +80,20 @@ export default function AppConfig() {
   const [form, setForm] = useState<AppConfigData>(DEFAULT_CONFIG);
 
   useEffect(() => {
-    if (config) setForm({ ...DEFAULT_CONFIG, ...config });
+    if (config) {
+      const savedOrder = config.homeOrder || [];
+      const missingOrder = DEFAULT_CONFIG.homeOrder.filter(k => !savedOrder.includes(k));
+
+      setForm({
+        ...DEFAULT_CONFIG,
+        ...config,
+        homeOrder: [...savedOrder, ...missingOrder],
+        homeSections: {
+          ...DEFAULT_CONFIG.homeSections,
+          ...(config.homeSections || {})
+        }
+      });
+    }
   }, [config]);
 
   const saveMutation = useMutation({
@@ -65,8 +116,18 @@ export default function AppConfig() {
     setForm({ ...form, homeOrder: arr });
   };
 
+  const updateSectionConfig = (key: HomeSectionKey, updates: Partial<HomeSectionConfig>) => {
+    setForm(prev => ({
+      ...prev,
+      homeSections: {
+        ...prev.homeSections,
+        [key]: { ...prev.homeSections[key], ...updates },
+      }
+    }));
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-2xl">
+    <div className="space-y-6 animate-in fade-in duration-500 max-w-2xl pb-10">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
@@ -170,13 +231,20 @@ export default function AppConfig() {
               <div className="space-y-2">
                 {form.homeOrder.map((key, idx) => {
                   const sec = HOME_SECTIONS.find((s) => s.key === key);
+                  const isDynamic = DYNAMIC_SECTION_KEYS.includes(key as HomeSectionKey);
+                  const config = isDynamic ? form.homeSections[key as HomeSectionKey] : null;
+                  const isHidden = isDynamic && config && !config.visible;
+
                   return (
                     <div
                       key={key}
-                      className="flex items-center gap-2 p-2.5 rounded-lg border bg-muted/30"
+                      className={`flex items-center gap-2 p-2.5 rounded-lg border transition-opacity ${isHidden ? 'bg-muted/10 opacity-50' : 'bg-muted/30'}`}
                     >
                       <span className="text-xs text-muted-foreground font-mono w-5 text-center">{idx + 1}</span>
-                      <span className="flex-1 text-sm font-medium">{sec?.label ?? key}</span>
+                      <span className="flex-1 text-sm font-medium flex items-center gap-2">
+                        {sec?.label ?? key}
+                        {isHidden && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">Masqué</span>}
+                      </span>
                       <Button
                         variant="ghost" size="icon" className="h-7 w-7"
                         onClick={() => moveSection(key, -1)} disabled={idx === 0}
@@ -189,6 +257,73 @@ export default function AppConfig() {
                   );
                 })}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Dynamic sections configuration */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4" /> Paramètres des sections dynamiques
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {DYNAMIC_SECTION_KEYS.map(key => {
+                const config = form.homeSections[key] || DEFAULT_CONFIG.homeSections[key];
+                const sec = HOME_SECTIONS.find(s => s.key === key);
+                return (
+                  <div key={key} className={`space-y-3 border rounded-lg p-4 transition-colors ${config.visible ? 'bg-card' : 'bg-muted/10'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={config.visible}
+                          onCheckedChange={(v) => updateSectionConfig(key, { visible: v })}
+                        />
+                        <Label
+                          className="font-semibold text-base cursor-pointer select-none"
+                          onClick={() => updateSectionConfig(key, { visible: !config.visible })}
+                        >
+                          {sec?.label}
+                        </Label>
+                      </div>
+                      {!config.visible && <Badge variant="secondary">Masqué</Badge>}
+                    </div>
+
+                    {config.visible && (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Titre affiché</Label>
+                          <Input
+                            value={config.title}
+                            onChange={(e) => updateSectionConfig(key, { title: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Source autorisée</Label>
+                          <Select value={config.source} onValueChange={(source) => updateSectionConfig(key, { source })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {SOURCE_OPTIONS[key].map((option) => (
+                                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Limite d'éléments</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={30}
+                            value={config.limit}
+                            onChange={(e) => updateSectionConfig(key, { limit: Number(e.target.value) })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </CardContent>
           </Card>
 

@@ -483,13 +483,41 @@ export interface RecommendedProduct {
   rating?: number | null;
 }
 
+export type HomeSectionKey = "popular" | "new_products" | "new_restaurants" | "shops";
+export type HomeSectionSource =
+  | "popular"
+  | "newest"
+  | "new_restaurants"
+  | "all_restaurants"
+  | "shops";
+
+export interface HomeSectionConfig {
+  key: HomeSectionKey;
+  title: string;
+  visible: boolean;
+  source: HomeSectionSource;
+  limit: number;
+}
+
+export interface PublicAppConfig {
+  homeSections?: Record<HomeSectionKey, Omit<HomeSectionConfig, "key">>;
+  homeOrder?: string[];
+  [key: string]: unknown;
+}
+
+export async function getPublicAppConfig(): Promise<PublicAppConfig> {
+  return jsonFetch("/api/app-config");
+}
+
 export async function listRecommendedProducts(params?: {
   limit?: number;
   businessType?: string;
+  sort?: "catalog" | "newest";
 }): Promise<RecommendedProduct[]> {
   const query = new URLSearchParams();
   if (params?.limit !== undefined) query.set("limit", String(params.limit));
   if (params?.businessType) query.set("businessType", params.businessType);
+  if (params?.sort) query.set("sort", params.sort);
   const qs = query.toString();
   return jsonFetch(`/api/recommendations/products${qs ? `?${qs}` : ""}`);
 }

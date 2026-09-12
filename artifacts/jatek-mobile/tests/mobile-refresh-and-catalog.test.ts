@@ -170,23 +170,22 @@ test("home Shorts render as a three-column vertical grid", () => {
   const page = source("app/(tabs)/index.tsx");
   const shortsSection = page.slice(
     page.indexOf("/* ─── Découvrir en vidéo ─── */"),
-    page.indexOf("/* ─── Pres de chez vous"),
+    page.indexOf("<AddressQuickPicker"),
   );
 
-  assert.match(shortsSection, /<Animated\.View[\s\S]*style=\{s\.videosGrid\}/);
-  assert.doesNotMatch(shortsSection, /\bhorizontal\b/);
+  assert.match(shortsSection, /<View style=\{s\.videosGrid\}/);
   assert.match(page, /videosGrid:\s*\{[\s\S]*flexDirection: "row"[\s\S]*flexWrap: "wrap"/);
   assert.match(page, /const SHORT_COLUMNS = 3/);
   assert.match(page, /SHORT_GAP \* \(SHORT_COLUMNS - 1\)/);
 });
 
-test("home shorts use three-column magenta framed cards without labels", () => {
+test("home shorts use three-column borderless cards without labels", () => {
   const page = source("app/(tabs)/index.tsx");
 
   assert.match(page, /const SHORT_CARD_W/);
-  assert.match(page, /const SHORT_BORDER = PINK/);
-  assert.match(page, /borderWidth: 2/);
-  assert.match(page, /borderColor: SHORT_BORDER/);
+  const videoCardStyle = page.slice(page.indexOf("videoCard:"), page.indexOf("videoImg:"));
+  assert.doesNotMatch(videoCardStyle, /borderWidth/);
+  assert.doesNotMatch(videoCardStyle, /borderColor/);
   assert.match(page, /shortAvatarRing/);
   assert.match(page, /shortAvatarImageFrame/);
   assert.match(page, /restaurantAvatarById/);
@@ -208,6 +207,18 @@ test("category search matches both establishment name and category", () => {
   assert.deepEqual(filterRestaurantsBySearch(restaurants, "pÂtIs"), [restaurants[0]]);
   assert.deepEqual(filterRestaurantsBySearch(restaurants, "burger"), [restaurants[1]]);
   assert.deepEqual(filterRestaurantsBySearch(restaurants, "  "), restaurants);
+});
+
+test("category headers use business-specific illustrated backgrounds", () => {
+  const page = source("app/category/[slug].tsx");
+
+  assert.match(page, /getHeaderPatternIcon/);
+  assert.match(page, /includes\("pharm"\)[\s\S]*return "medkit"/);
+  assert.match(page, /includes\("market"\)[\s\S]*return "cart"/);
+  assert.match(page, /includes\("shop"\)[\s\S]*return "bag-handle"/);
+  assert.match(page, /includes\("service"\)[\s\S]*return "construct"/);
+  assert.match(page, /colors=\{\[config\.color, PINK\]\}/);
+  assert.match(page, /style=\{styles\.categoryPattern\}/);
 });
 
 test("order sorting is stable for the source array and supports both feed directions", () => {
@@ -280,16 +291,17 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /listRecommendedProducts/);
   assert.match(code, /home-recommendations/);
   assert.match(code, /productId: String\(product\.id\)/);
-  assert.match(code, /limit: 30/);
-  assert.match(code, /<PopularSectionHeader/);
-  assert.match(code, />Populaires</);
+  assert.match(code, /DEFAULT_HOME_SECTIONS/);
+  assert.match(code, /<HomeSectionHeader title=\{section\.title\}/);
   assert.match(code, /contentContainerStyle=\{s\.popularProductsRow\}/);
-  assert.doesNotMatch(code, /RECOMMENDATION_PAGE_SIZE/);
-  assert.doesNotMatch(code, /pagingEnabled/);
+  assert.match(code, /pagingEnabled/);
+  assert.match(code, /products\.slice\(pageIndex \* 3, pageIndex \* 3 \+ 3\)/);
   assert.match(code, /width=\{RECOMMENDATION_CARD_W\}/);
   assert.match(code, /<PopularSectionWaves \/>/);
   assert.match(code, /fill="rgba\(233,30,99,0\.08\)"/);
-  assert.match(code, /SectionAction/);
+  assert.match(code, />Voir tout</);
+  assert.match(code, /getPublicAppConfig/);
+  assert.match(code, /homeSections\.filter\(\(section\) => section\.visible\)/);
   assert.doesNotMatch(code, /title="Produits populaires"/);
   assert.doesNotMatch(code, /title="Près de chez vous"/);
   assert.doesNotMatch(code, /^\s*sectionTitle:\s*\{/m);
@@ -332,7 +344,7 @@ test("home includes every commerce type instead of defaulting to restaurants", (
 
   assert.match(code, /const \[activeBusinessType, setActiveBusinessType\] = useState\(""\)/);
   assert.match(code, /const \[activeLabel, setActiveLabel\] = useState\("Tous les commerces"\)/);
-  assert.match(code, /Aucun commerce à proximité/);
+  assert.match(code, /Aucun commerce disponible pour le moment/);
 });
 
 test("app uses a transparent edge-to-edge system bar while preserving readable icons", () => {
