@@ -51,19 +51,19 @@ export const homeOrderSchema = z.array(z.enum(HOME_ORDER_KEYS)).min(1).max(HOME_
 
 export const DEFAULT_HOME_SECTIONS: HomeSectionsConfig = {
   popular: {
-    title: "Populaires",
+    title: "Produits populaires",
     visible: true,
     source: "popular",
     limit: 6,
   },
   new_products: {
-    title: "Nouveautés",
+    title: "Nouveaux produits",
     visible: true,
     source: "newest",
     limit: 6,
   },
   new_restaurants: {
-    title: "Nouveaux restaurants",
+    title: "Près de chez vous",
     visible: true,
     source: "new_restaurants",
     limit: 6,

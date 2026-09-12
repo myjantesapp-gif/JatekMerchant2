@@ -92,13 +92,13 @@ const SHORT_PAGE_SIZE = SHORT_COLUMNS * SHORT_ROWS;
 const SHORT_CARD_W = (SHORT_PAGE_W - SHORT_SIDE * 2 - SHORT_GAP * (SHORT_COLUMNS - 1)) / SHORT_COLUMNS;
 const SHORT_CARD_H = Math.round(SHORT_CARD_W * 1.64);
 const RECOMMENDATION_GAP = 8;
-const RECOMMENDATION_CARD_W = Math.min(138, Math.max(112, Math.floor((SCREEN_W - 48) / 2.5)));
+const RECOMMENDATION_CARD_W = Math.floor((SCREEN_W - 28 - RECOMMENDATION_GAP * 3) / 4);
 const NEW_PRODUCT_PAGE_W = SCREEN_W - 24;
 const NEW_PRODUCT_CARD_W = Math.floor((NEW_PRODUCT_PAGE_W - 28 - RECOMMENDATION_GAP * 2) / 3);
 const DEFAULT_HOME_SECTIONS: HomeSectionConfig[] = [
-  { key: "popular", title: "Populaires", visible: true, source: "popular", limit: 30 },
-  { key: "new_products", title: "Nouveautés", visible: true, source: "newest", limit: 12 },
-  { key: "new_restaurants", title: "Nouveaux restaurants", visible: true, source: "new_restaurants", limit: 6 },
+  { key: "popular", title: "Produits populaires", visible: true, source: "popular", limit: 30 },
+  { key: "new_products", title: "Nouveaux produits", visible: true, source: "newest", limit: 12 },
+  { key: "new_restaurants", title: "Près de chez vous", visible: true, source: "new_restaurants", limit: 6 },
   { key: "shops", title: "Boutiques", visible: true, source: "shops", limit: 6 },
 ];
 const VIP_CARD_W = Math.min(SCREEN_W - 80, 300);
@@ -244,11 +244,11 @@ function HomeSectionHeader({ title, onPress }: { title: string; onPress: () => v
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.85}
-        style={s.sectionArrowButton}
+        style={s.voirPlusButton}
         accessibilityRole="button"
-        accessibilityLabel={`Voir tout : ${title}`}
+        accessibilityLabel={`Voir plus : ${title}`}
       >
-        <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+        <Text style={s.voirPlusText}>Voir plus</Text>
       </TouchableOpacity>
     </View>
   );
@@ -961,11 +961,19 @@ export default function HomeScreen() {
           )}
         </Animated.View>
 
-        {/* ─── Tous les commerces (2-column grid) ─── */}
+        {/* ─── Près de chez vous (2-column grid) ─── */}
         <Animated.View entering={FadeInDown.delay(740).duration(550).springify()} style={s.gridSection}>
-          <View style={s.filterChip} accessibilityLabel={`Filtre actif : ${currentLabel}`}>
-            <Ionicons name="options-outline" size={15} color={PINK} />
-            <Text style={s.filterChipText}>{currentLabel}</Text>
+          <View style={s.nearbyHeaderRow}>
+            <Text style={s.nearbyTitle}>Près de chez vous</Text>
+            <TouchableOpacity
+              onPress={() => router.push("/restaurants" as any)}
+              activeOpacity={0.85}
+              style={s.voirPlusButton}
+              accessibilityRole="button"
+              accessibilityLabel={`Voir plus : ${currentLabel}`}
+            >
+              <Text style={s.voirPlusText}>Voir plus</Text>
+            </TouchableOpacity>
           </View>
           {isLoading ? (
             <ActivityIndicator color={PINK} style={{ marginVertical: 24 }} />
@@ -1146,15 +1154,9 @@ const s = StyleSheet.create({
     position: "relative",
     overflow: "hidden",
     paddingBottom: 16,
-    marginHorizontal: 12,
+    marginHorizontal: 0,
     marginTop: 12,
-    borderRadius: 22,
-    backgroundColor: "#FFFDFE",
-    shadowColor: PINK_DEEP,
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    backgroundColor: "transparent",
   },
   popularWaves: {
     ...StyleSheet.absoluteFillObject,
@@ -1163,28 +1165,20 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
     gap: 10,
   },
   popularTitleBadge: {
     flexShrink: 1,
-    backgroundColor: PINK_DEEP,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    shadowColor: PINK_DEEP,
-    shadowOpacity: 0.14,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    paddingVertical: 2,
   },
   popularTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
+    color: TEXT_DARK,
+    fontSize: 23,
     fontFamily: "Inter_900Black",
-    letterSpacing: -0.2,
+    letterSpacing: -0.5,
   },
   popularProductsRow: {
     paddingHorizontal: 14,
@@ -1347,18 +1341,24 @@ const s = StyleSheet.create({
     opacity: 1,
   },
 
-  sectionArrowButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  voirPlusButton: {
+    minWidth: 102,
+    height: 44,
+    paddingHorizontal: 18,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: PINK,
-    shadowColor: PINK_DEEP,
-    shadowOpacity: 0.22,
-    shadowRadius: 7,
+    backgroundColor: "#E51A73",
+    shadowColor: "#B41059",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
+  },
+  voirPlusText: {
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
   },
 
   // ── Available product recommendations ──
@@ -1591,6 +1591,20 @@ const s = StyleSheet.create({
   gridSection: {
     paddingHorizontal: 16,
     marginTop: 22,
+  },
+  nearbyHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 16,
+  },
+  nearbyTitle: {
+    flex: 1,
+    color: TEXT_DARK,
+    fontFamily: "Inter_900Black",
+    fontSize: 23,
+    letterSpacing: -0.5,
   },
   filterChip: {
     alignSelf: "flex-start",

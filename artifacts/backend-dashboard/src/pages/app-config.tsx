@@ -29,9 +29,9 @@ const DEFAULT_CONFIG = {
   homeOrder: ["banners", "categories", "featured", "all", "popular", "new_products", "new_restaurants", "shops"],
   welcomeMessage: "Bienvenue sur Jatek !",
   homeSections: {
-    popular: { visible: true, title: "Populaires", source: "popular", limit: 6 },
-    new_products: { visible: true, title: "Nouveautés", source: "newest", limit: 6 },
-    new_restaurants: { visible: true, title: "Nouveaux restaurants", source: "new_restaurants", limit: 6 },
+    popular: { visible: true, title: "Produits populaires", source: "popular", limit: 6 },
+    new_products: { visible: true, title: "Nouveaux produits", source: "newest", limit: 6 },
+    new_restaurants: { visible: true, title: "Près de chez vous", source: "new_restaurants", limit: 6 },
     shops: { visible: true, title: "Boutiques", source: "shops", limit: 6 },
   } as Record<HomeSectionKey, HomeSectionConfig>,
 };

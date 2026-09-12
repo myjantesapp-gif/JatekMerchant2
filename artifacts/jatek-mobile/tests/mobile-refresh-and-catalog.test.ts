@@ -303,13 +303,13 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /width=\{RECOMMENDATION_CARD_W\}/);
   assert.match(code, /<PopularSectionWaves \/>/);
   assert.match(code, /fill="rgba\(233,30,99,0\.08\)"/);
-  assert.match(code, /sectionArrowButton/);
-  assert.match(code, /<Ionicons name="arrow-forward"/);
-  assert.doesNotMatch(code, /voirPlusTxtPill/);
+  assert.match(code, /voirPlusButton/);
+  assert.match(code, /<Text style=\{s\.voirPlusText\}>Voir plus<\/Text>/);
+  assert.doesNotMatch(code, /sectionArrowButton/);
   assert.match(code, /getPublicAppConfig/);
   assert.match(code, /homeSections\.filter\(\(section\) => section\.visible\)/);
-  assert.doesNotMatch(code, /title="Produits populaires"/);
-  assert.doesNotMatch(code, /title="Près de chez vous"/);
+  assert.match(code, /Produits populaires/);
+  assert.match(code, /Près de chez vous/);
   assert.doesNotMatch(code, /^\s*sectionTitle:\s*\{/m);
   assert.match(code, /homeSectionSpacer:\s*\{\s*height: 10/);
   assert.doesNotMatch(code, /<Text style=\{s\.gridSectionTitle\}/);
