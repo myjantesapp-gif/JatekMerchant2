@@ -281,7 +281,12 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /home-recommendations/);
   assert.match(code, /productId: String\(product\.id\)/);
   assert.match(code, /limit: 30/);
-  assert.match(code, /horizontal/);
+  assert.match(code, /RECOMMENDATION_PAGE_SIZE = 6/);
+  assert.match(code, /pagingEnabled/);
+  assert.match(code, /snapToInterval=\{SCREEN_W\}/);
+  assert.match(code, /width=\{RECOMMENDATION_CARD_W\}/);
+  assert.match(code, /<PopularSectionWaves \/>/);
+  assert.match(code, /fill="rgba\(233,30,99,0\.08\)"/);
   assert.match(code, /SectionAction/);
   assert.doesNotMatch(code, /title="Produits populaires"/);
   assert.doesNotMatch(code, /title="Près de chez vous"/);

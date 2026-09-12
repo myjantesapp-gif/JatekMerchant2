@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Path } from "react-native-svg";
 import { useQuery } from "@tanstack/react-query";
 import {
   useListRestaurants,
@@ -84,6 +85,7 @@ const SHORT_CARD_W = (SCREEN_W - SHORT_SIDE * 2 - SHORT_GAP * (SHORT_COLUMNS - 1
 const SHORT_CARD_H = Math.round(SHORT_CARD_W * 1.64);
 const RECOMMENDATION_GAP = 8;
 const RECOMMENDATION_COLUMNS = 3;
+const RECOMMENDATION_PAGE_SIZE = 6;
 const RECOMMENDATION_CARD_W = Math.floor(
   (SCREEN_W - GRID_SIDE * 2 - RECOMMENDATION_GAP * (RECOMMENDATION_COLUMNS - 1)) / RECOMMENDATION_COLUMNS,
 );
@@ -216,6 +218,23 @@ function SectionAction({ label = "Voir plus", onPress }: { label?: string; onPre
       >
         <Text style={s.voirPlusTxtPill}>{label}</Text>
       </TouchableOpacity>
+    </View>
+  );
+}
+
+function PopularSectionWaves() {
+  return (
+    <View pointerEvents="none" style={s.popularWaves}>
+      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <Path
+          d="M0 7 C18 1 31 14 49 8 C68 2 83 15 100 7 L100 27 C81 34 68 20 48 27 C28 34 15 20 0 27 Z"
+          fill="rgba(233,30,99,0.08)"
+        />
+        <Path
+          d="M0 73 C17 66 31 80 50 73 C69 66 84 80 100 72 L100 96 C82 100 66 88 48 94 C29 100 15 88 0 95 Z"
+          fill="rgba(233,30,99,0.11)"
+        />
+      </Svg>
     </View>
   );
 }
@@ -688,23 +707,43 @@ export default function HomeScreen() {
             onRetry={() => refetchRecommendations()}
           />
         ) : recommendedProducts && recommendedProducts.length > 0 ? (
-          <Animated.View entering={FadeInDown.delay(380).duration(500).springify()}>
+          <Animated.View
+            entering={FadeInDown.delay(380).duration(500).springify()}
+            style={s.popularSection}
+          >
+            <PopularSectionWaves />
             <SectionAction
               onPress={() => router.push("/restaurants" as any)}
             />
             <ScrollView
               horizontal
+              pagingEnabled
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.horizontalRow}
+              decelerationRate="fast"
+              snapToInterval={SCREEN_W}
+              snapToAlignment="start"
             >
-              {recommendedProducts.map((product) => (
-                <RecommendedProductCard
-                  key={`${product.restaurantId}-${product.id}`}
-                  product={product}
-                  width={140}
-                  onPress={() => goRecommendedProduct(product)}
-                />
-              ))}
+              {Array.from(
+                { length: Math.ceil(recommendedProducts.length / RECOMMENDATION_PAGE_SIZE) },
+                (_, pageIndex) => (
+                  <View key={`popular-page-${pageIndex}`} style={s.popularPage}>
+                    {recommendedProducts
+                      .slice(
+                        pageIndex * RECOMMENDATION_PAGE_SIZE,
+                        (pageIndex + 1) * RECOMMENDATION_PAGE_SIZE,
+                      )
+                      .map((product) => (
+                        <RecommendedProductCard
+                          key={`${product.restaurantId}-${product.id}`}
+                          product={product}
+                          width={RECOMMENDATION_CARD_W}
+                          compact
+                          onPress={() => goRecommendedProduct(product)}
+                        />
+                      ))}
+                  </View>
+                ),
+              )}
             </ScrollView>
           </Animated.View>
         ) : null}
@@ -963,6 +1002,22 @@ const s = StyleSheet.create({
   },
   homeSectionSpacer: {
     height: 10,
+  },
+  popularSection: {
+    position: "relative",
+    overflow: "hidden",
+    paddingBottom: 16,
+    backgroundColor: "#FFFDFE",
+  },
+  popularWaves: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  popularPage: {
+    width: SCREEN_W,
+    paddingHorizontal: GRID_SIDE,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: RECOMMENDATION_GAP,
   },
   // ── Services row ──
   servicesRow: {

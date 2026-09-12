@@ -24,8 +24,6 @@ type Props = {
 };
 
 export function RecommendedProductCard({ product, width, onPress, compact = false }: Props) {
-  const oldPrice = (product as any).oldPrice;
-
   return (
     <Pressable
       onPress={onPress}
@@ -33,11 +31,12 @@ export function RecommendedProductCard({ product, width, onPress, compact = fals
       accessibilityLabel={`${product.name}, ${product.restaurantName}, ${formatMad(product.price)} dirhams`}
       style={({ pressed }) => [
         styles.card,
+        compact && styles.cardCompact,
         { width },
         pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
       ]}
     >
-      <View style={styles.imageWrap}>
+      <View style={[styles.imageWrap, compact && styles.imageWrapCompact]}>
         <Image
           source={{ uri: resolveMediaUrl(product.imageUrl) ?? product.imageUrl }}
           style={styles.image}
@@ -45,7 +44,7 @@ export function RecommendedProductCard({ product, width, onPress, compact = fals
         />
         {/* Merchant logo top-left */}
         {product.restaurantLogoUrl ? (
-          <View style={styles.merchantLogoWrap}>
+          <View style={[styles.merchantLogoWrap, compact && styles.merchantLogoWrapCompact]}>
             <Image
               source={{ uri: resolveMediaUrl(product.restaurantLogoUrl) }}
               style={styles.merchantLogo}
@@ -55,18 +54,15 @@ export function RecommendedProductCard({ product, width, onPress, compact = fals
         ) : null}
 
         {/* Plus affordance bottom-right */}
-        <View style={styles.plusButton}>
-          <Ionicons name="add" size={18} color={PINK} />
+        <View style={[styles.plusButton, compact && styles.plusButtonCompact]}>
+          <Ionicons name="add" size={compact ? 15 : 18} color={PINK} />
         </View>
       </View>
 
-      <View style={styles.body}>
-        <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
+      <View style={[styles.body, compact && styles.bodyCompact]}>
+        <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={2}>{product.name}</Text>
         <View style={styles.priceRow}>
-          <Text style={styles.price}>{formatMad(product.price)} DH</Text>
-          {oldPrice ? (
-            <Text style={styles.oldPrice}>{formatMad(oldPrice)} DH</Text>
-          ) : null}
+          <Text style={[styles.price, compact && styles.priceCompact]}>{formatMad(product.price)} DH</Text>
         </View>
       </View>
     </Pressable>
@@ -86,10 +82,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#F0F0F5",
   },
+  cardCompact: {
+    borderRadius: 12,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+  },
   imageWrap: {
     height: 120,
     backgroundColor: "#F8F8F8",
     position: "relative",
+  },
+  imageWrapCompact: {
+    height: 76,
   },
   image: {
     width: "100%",
@@ -113,6 +117,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     padding: 2,
   },
+  merchantLogoWrapCompact: {
+    top: 5,
+    left: 5,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+  },
   merchantLogo: {
     width: "100%",
     height: "100%",
@@ -134,11 +145,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
   },
+  plusButtonCompact: {
+    right: 5,
+    bottom: 5,
+    width: 23,
+    height: 23,
+    borderRadius: 12,
+  },
   body: {
     paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 14,
     gap: 6,
+  },
+  bodyCompact: {
+    paddingHorizontal: 7,
+    paddingTop: 7,
+    paddingBottom: 9,
+    gap: 3,
   },
   name: {
     color: TEXT_DARK,
@@ -146,6 +170,11 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     lineHeight: 18,
     minHeight: 36, // Reserve 2 lines so price alignment is consistent
+  },
+  nameCompact: {
+    fontSize: 10,
+    lineHeight: 13,
+    minHeight: 26,
   },
   priceRow: {
     flexDirection: "row",
@@ -156,12 +185,9 @@ const styles = StyleSheet.create({
   price: {
     color: PINK,
     fontSize: 14,
-    fontFamily: "Inter_800ExtraBold",
+    fontFamily: "Inter_700Bold",
   },
-  oldPrice: {
-    color: "#A0AAB0",
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    textDecorationLine: "line-through",
+  priceCompact: {
+    fontSize: 11,
   },
 });
