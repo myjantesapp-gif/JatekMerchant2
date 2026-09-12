@@ -302,7 +302,7 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /products\.slice\(pageIndex \* 3, pageIndex \* 3 \+ 3\)/);
   assert.match(code, /width=\{RECOMMENDATION_CARD_W\}/);
   assert.match(code, /<PopularSectionWaves \/>/);
-  assert.match(code, /fill="rgba\(233,30,99,0\.08\)"/);
+  assert.match(code, /fill="#FDE8F0"/);
   assert.match(code, /sectionArrowButton/);
   assert.match(code, /<Ionicons name="arrow-forward" size=\{20\} color="#FFFFFF" \/>/);
   assert.doesNotMatch(code, /voirPlusText/);
