@@ -26,27 +26,26 @@ const DEFAULT_CONFIG = {
   defaultLanguage: "fr",
   maintenanceMode: false,
   featuredCount: 6,
-  homeOrder: ["banners", "categories", "featured", "all", "popular", "new_products", "new_restaurants", "shops"],
+  homeOrder: ["categories", "banners", "shorts", "new_products", "popular", "all"],
   welcomeMessage: "Bienvenue sur Jatek !",
   homeSections: {
     popular: { visible: true, title: "Produits populaires", source: "popular", limit: 6 },
     new_products: { visible: true, title: "Promos", source: "promos", limit: 6 },
-    new_restaurants: { visible: true, title: "Nouveautés", source: "new_restaurants", limit: 6 },
-    shops: { visible: true, title: "Boutiques", source: "shops", limit: 6 },
+    new_restaurants: { visible: false, title: "Restauration", source: "new_restaurants", limit: 6 },
+    shops: { visible: false, title: "Boutiques", source: "shops", limit: 6 },
   } as Record<HomeSectionKey, HomeSectionConfig>,
 };
 
 type AppConfigData = typeof DEFAULT_CONFIG;
 
 const HOME_SECTIONS = [
+  { key: "categories", label: "Catégories des shops" },
   { key: "banners", label: "Bannières" },
-  { key: "categories", label: "Catégories" },
-  { key: "featured", label: "Restaurants vedettes" },
-  { key: "all", label: "Tous les restaurants" },
-  { key: "popular", label: "Populaire" },
+  { key: "shorts", label: "Shorts" },
   { key: "new_products", label: "Promos" },
-  { key: "new_restaurants", label: "Nouveautés" },
-  { key: "shops", label: "Boutiques" },
+  { key: "new_restaurants", label: "Restauration (ancien bloc nouveautés)" },
+  { key: "popular", label: "Populaires" },
+  { key: "all", label: "Restauration" },
 ];
 const DYNAMIC_SECTION_KEYS: HomeSectionKey[] = ["popular", "new_products", "new_restaurants", "shops"];
 const SOURCE_OPTIONS: Record<HomeSectionKey, Array<{ value: string; label: string }>> = {

@@ -98,7 +98,7 @@ const NEW_PRODUCT_CARD_W = Math.floor((NEW_PRODUCT_PAGE_W - 28 - RECOMMENDATION_
 const DEFAULT_HOME_SECTIONS: HomeSectionConfig[] = [
   { key: "popular", title: "Produits populaires", visible: true, source: "popular", limit: 30 },
   { key: "new_products", title: "Promos", visible: true, source: "promos", limit: 12 },
-  { key: "new_restaurants", title: "Nouveautés", visible: true, source: "new_restaurants", limit: 6 },
+  { key: "new_restaurants", title: "Restauration", visible: false, source: "new_restaurants", limit: 6 },
   { key: "shops", title: "Boutiques", visible: true, source: "shops", limit: 6 },
 ];
 const VIP_CARD_W = Math.min(SCREEN_W - 80, 300);
@@ -244,11 +244,11 @@ function HomeSectionHeader({ title, onPress }: { title: string; onPress: () => v
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.85}
-        style={s.voirPlusButton}
+        style={s.sectionArrowButton}
         accessibilityRole="button"
-        accessibilityLabel={`Voir plus : ${title}`}
+        accessibilityLabel={`Ouvrir la section : ${title}`}
       >
-        <Text style={s.voirPlusText}>Voir plus</Text>
+        <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
   );
@@ -809,8 +809,71 @@ export default function HomeScreen() {
 
         <JatekScrollingBanner />
 
+        {/* ─── Shorts ─── */}
+        <Animated.View
+          entering={FadeInDown.delay(340).duration(550).springify()}
+          style={s.homeFeedSection}
+        >
+          <PopularSectionWaves />
+          <HomeSectionHeader
+            title="Shorts"
+            onPress={() => { setInitialShort(0); setShortsVisible(true); }}
+          />
+          {shortsLoading ? (
+            <ActivityIndicator color={PINK} style={s.sectionLoader} />
+          ) : shortsError ? (
+            <LoadRetry message="Impossible de charger les vidéos." onRetry={() => refetchShorts()} />
+          ) : shorts.length > 0 ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              snapToInterval={SHORT_PAGE_W}
+            >
+              {Array.from({ length: Math.ceil(shorts.length / SHORT_PAGE_SIZE) }, (_, pageIndex) => (
+                <View key={`shorts-page-${pageIndex}`} style={s.shortsPage}>
+                  <View style={s.videosGrid}>
+                    {shorts
+                      .slice(pageIndex * SHORT_PAGE_SIZE, pageIndex * SHORT_PAGE_SIZE + SHORT_PAGE_SIZE)
+                      .map((short, offset) => {
+                        const index = pageIndex * SHORT_PAGE_SIZE + offset;
+                        return (
+                          <Pressable
+                            key={short.id}
+                            onPress={() => openShort(index)}
+                            style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}
+                          >
+                            <ShortThumbnail
+                              short={short}
+                              avatarUrl={
+                                short.restaurantLogoUrl
+                                ?? (short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null)
+                              }
+                            />
+                          </Pressable>
+                        );
+                      })}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={s.emptyTxt}>Aucune vidéo disponible pour le moment</Text>
+          )}
+        </Animated.View>
+
         {/* ─── Configurable Home sections ─── */}
-        {homeSections.filter((section) => section.visible).map((section, sectionIndex) => {
+        {homeSections
+          .filter((section) => section.visible)
+          .sort((a, b) => {
+            const order = ["new_products", "new_restaurants", "popular", "shops"];
+            const aIndex = order.indexOf(a.key);
+            const bIndex = order.indexOf(b.key);
+            return (aIndex < 0 ? order.length : aIndex) - (bIndex < 0 ? order.length : bIndex);
+          })
+          .map((section, sectionIndex) => {
           const isProductSection = section.key === "popular" || section.key === "new_products";
           const products = section.key === "popular" ? recommendedProducts : newestProducts;
           const productsLoading = section.key === "popular" ? recommendationsLoading : newestProductsLoading;
@@ -822,7 +885,16 @@ export default function HomeScreen() {
             <Animated.View
               key={section.key}
               entering={FadeInDown.delay(380 + sectionIndex * 80).duration(500).springify()}
-              style={s.homeFeedSection}
+              style={[
+                s.homeFeedSection,
+                section.key === "new_products"
+                  ? s.promoFeedSection
+                  : section.key === "new_restaurants"
+                    ? s.newestFeedSection
+                    : section.key === "popular"
+                      ? s.popularFeedSection
+                      : s.commerceFeedSection,
+              ]}
             >
               <PopularSectionWaves />
               <HomeSectionHeader title={section.title} onPress={() => goSectionList(section)} />
@@ -910,73 +982,18 @@ export default function HomeScreen() {
 
         <View style={s.homeSectionSpacer} accessibilityElementsHidden importantForAccessibility="no" />
 
-        {/* ─── Découvrir en vidéo ─── */}
-        <Animated.View
-          entering={FadeInDown.delay(700).duration(550).springify()}
-          style={s.homeFeedSection}
-        >
-          <PopularSectionWaves />
-          <HomeSectionHeader
-            title="Découvrir en vidéo"
-            onPress={() => { setInitialShort(0); setShortsVisible(true); }}
-          />
-          {shortsLoading ? (
-            <ActivityIndicator color={PINK} style={s.sectionLoader} />
-          ) : shortsError ? (
-            <LoadRetry message="Impossible de charger les vidéos." onRetry={() => refetchShorts()} />
-          ) : shorts.length > 0 ? (
-            <ScrollView
-              horizontal
-              pagingEnabled
-              nestedScrollEnabled
-              showsHorizontalScrollIndicator={false}
-              decelerationRate="fast"
-              snapToInterval={SHORT_PAGE_W}
-            >
-              {Array.from({ length: Math.ceil(shorts.length / SHORT_PAGE_SIZE) }, (_, pageIndex) => (
-                <View key={`shorts-page-${pageIndex}`} style={s.shortsPage}>
-                  <View style={s.videosGrid}>
-                    {shorts
-                      .slice(pageIndex * SHORT_PAGE_SIZE, pageIndex * SHORT_PAGE_SIZE + SHORT_PAGE_SIZE)
-                      .map((short, offset) => {
-                        const index = pageIndex * SHORT_PAGE_SIZE + offset;
-                        return (
-                          <Pressable
-                            key={short.id}
-                            onPress={() => openShort(index)}
-                            style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}
-                          >
-                            <ShortThumbnail
-                              short={short}
-                              avatarUrl={
-                                short.restaurantLogoUrl
-                                ?? (short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null)
-                              }
-                            />
-                          </Pressable>
-                        );
-                      })}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={s.emptyTxt}>Aucune vidéo disponible pour le moment</Text>
-          )}
-        </Animated.View>
-
-        {/* ─── Près de chez vous (2-column grid) ─── */}
+        {/* ─── Restauration (2-column grid) ─── */}
         <Animated.View entering={FadeInDown.delay(740).duration(550).springify()} style={s.gridSection}>
           <View style={s.nearbyHeaderRow}>
-            <Text style={s.nearbyTitle}>Près de chez vous</Text>
+            <Text style={s.nearbyTitle}>Restauration</Text>
             <TouchableOpacity
               onPress={() => router.push("/restaurants" as any)}
               activeOpacity={0.85}
-              style={s.voirPlusButton}
+              style={s.sectionArrowButton}
               accessibilityRole="button"
               accessibilityLabel={`Voir plus : ${currentLabel}`}
             >
-              <Text style={s.voirPlusText}>Voir plus</Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
           {isLoading ? (
@@ -1158,9 +1175,22 @@ const s = StyleSheet.create({
     position: "relative",
     overflow: "hidden",
     paddingBottom: 16,
-    marginHorizontal: 0,
+    marginHorizontal: 12,
     marginTop: 12,
-    backgroundColor: "transparent",
+    borderRadius: 28,
+    backgroundColor: "#FFF8FB",
+  },
+  promoFeedSection: {
+    backgroundColor: "#F3B5CD",
+  },
+  newestFeedSection: {
+    backgroundColor: "#FFF7FA",
+  },
+  popularFeedSection: {
+    backgroundColor: "#FBE1EC",
+  },
+  commerceFeedSection: {
+    backgroundColor: "#F2F8FA",
   },
   popularWaves: {
     ...StyleSheet.absoluteFillObject,
@@ -1345,11 +1375,10 @@ const s = StyleSheet.create({
     opacity: 1,
   },
 
-  voirPlusButton: {
-    minWidth: 102,
-    height: 44,
-    paddingHorizontal: 18,
-    borderRadius: 24,
+  sectionArrowButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#E51A73",
@@ -1358,11 +1387,6 @@ const s = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
-  },
-  voirPlusText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
   },
 
   // ── Available product recommendations ──

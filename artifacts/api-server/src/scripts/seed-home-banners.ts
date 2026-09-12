@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { adsTable, db, pool } from "@workspace/db";
+import { adsTable, appConfigTable, db, pool } from "@workspace/db";
 
 const banners = [
   {
@@ -49,6 +49,24 @@ for (const banner of banners) {
       sortOrder: banner.sortOrder,
     });
   }
+}
+
+const homeSections = {
+  popular: { title: "Produits populaires", visible: true, source: "popular", limit: 6 },
+  new_products: { title: "Promos", visible: true, source: "promos", limit: 6 },
+  new_restaurants: { title: "Restauration", visible: false, source: "new_restaurants", limit: 6 },
+  shops: { title: "Boutiques", visible: false, source: "shops", limit: 6 },
+};
+const homeOrder = ["categories", "banners", "shorts", "new_products", "popular", "all"];
+
+for (const [key, value] of [
+  ["homeSections", homeSections],
+  ["homeOrder", homeOrder],
+] as const) {
+  await db.insert(appConfigTable).values({ key, value }).onConflictDoUpdate({
+    target: appConfigTable.key,
+    set: { value, updatedAt: new Date() },
+  });
 }
 
 console.log(`Seeded ${banners.length} Home banners.`);

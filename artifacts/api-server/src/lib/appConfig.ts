@@ -37,13 +37,12 @@ export const homeSectionsSchema = z.object({
 
 export type HomeSectionsConfig = z.infer<typeof homeSectionsSchema>;
 export const HOME_ORDER_KEYS = [
-  "banners",
   "categories",
-  "popular",
+  "banners",
+  "shorts",
   "new_products",
   "new_restaurants",
-  "shops",
-  "featured",
+  "popular",
   "all",
 ] as const;
 export const homeOrderSchema = z.array(z.enum(HOME_ORDER_KEYS)).min(1).max(HOME_ORDER_KEYS.length)
@@ -63,14 +62,14 @@ export const DEFAULT_HOME_SECTIONS: HomeSectionsConfig = {
     limit: 6,
   },
   new_restaurants: {
-    title: "Nouveautés",
-    visible: true,
+    title: "Restauration",
+    visible: false,
     source: "new_restaurants",
     limit: 6,
   },
   shops: {
     title: "Boutiques",
-    visible: true,
+    visible: false,
     source: "shops",
     limit: 6,
   },
