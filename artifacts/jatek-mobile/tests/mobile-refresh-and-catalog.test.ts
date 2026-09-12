@@ -169,7 +169,7 @@ test("restaurant page keeps the safe-area header and renders a two-column produc
 test("home Shorts render as three-column horizontal pages", () => {
   const page = source("app/(tabs)/index.tsx");
   const shortsSection = page.slice(
-    page.indexOf("/* ─── Découvrir en vidéo ─── */"),
+    page.indexOf("/* ─── Shorts ─── */"),
     page.indexOf("<AddressQuickPicker"),
   );
 
@@ -311,7 +311,8 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /Produits populaires/);
   assert.match(code, /Restauration/);
   assert.match(code, /title="Shorts"/);
-  assert.match(code, /promoFeedSection/);
+  assert.match(code, /pinkWaveSection/);
+  assert.match(code, /sectionIndex % 2 === 0/);
   assert.doesNotMatch(code, /^\s*sectionTitle:\s*\{/m);
   assert.match(code, /homeSectionSpacer:\s*\{\s*height: 10/);
   assert.doesNotMatch(code, /<Text style=\{s\.gridSectionTitle\}/);
