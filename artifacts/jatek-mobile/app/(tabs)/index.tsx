@@ -451,6 +451,7 @@ export default function HomeScreen() {
     router.push({ pathname: "/restaurant/[id]", params: { id: String(id) } });
 
   const addressLabel = selectedAddress || "Livraison en 5R22+CVC2";
+  const greetingLabel = user?.name?.trim() ? `Bonjour, ${user.name.trim()}` : "Bonjour";
   const currentLabel = activeLabel;
 
   const openShort = (index: number) => {
@@ -498,6 +499,21 @@ export default function HomeScreen() {
                 accessibilityLabel="Ouvrir le menu"
               >
                 <Ionicons name="menu" size={24} color="#fff" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={s.headerIdentity}
+                onPress={() => setAddressPickerOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Adresse de livraison : ${addressLabel}`}
+              >
+                <Text style={s.headerGreeting} numberOfLines={1}>{greetingLabel}</Text>
+                <View style={s.headerAddressRow}>
+                  <Ionicons name="location" size={15} color="#fff" />
+                  <Text style={s.headerAddress} numberOfLines={1}>{addressLabel}</Text>
+                  <Ionicons name="chevron-down" size={16} color="#fff" />
+                </View>
               </TouchableOpacity>
 
               {/* right actions */}
@@ -839,6 +855,31 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+  },
+  headerIdentity: {
+    flex: 1,
+    minWidth: 0,
+    marginHorizontal: 8,
+  },
+  headerGreeting: {
+    color: "#fff",
+    fontSize: 18,
+    lineHeight: 22,
+    fontFamily: "Inter_900Black",
+  },
+  headerAddressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 2,
+  },
+  headerAddress: {
+    flex: 1,
+    minWidth: 0,
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 12,
+    lineHeight: 16,
+    fontFamily: "Inter_500Medium",
   },
   iconBtn: {
     width: 38,

@@ -268,6 +268,9 @@ test("home header omits the wordmark while retaining its actions", () => {
   assert.match(headerTopRow, /accessibilityLabel="Ouvrir le menu"/);
   assert.match(headerTopRow, /accessibilityLabel="Mon panier"/);
   assert.match(headerTopRow, /accessibilityLabel="Mon profil"/);
+  assert.match(headerTopRow, /greetingLabel/);
+  assert.match(headerTopRow, /headerAddressRow/);
+  assert.match(headerTopRow, /addressLabel/);
   assert.doesNotMatch(code, /^\s*headerLogo:\s*\{/m);
 });
 
@@ -338,7 +341,7 @@ test("app uses a transparent edge-to-edge system bar while preserving readable i
   assert.match(code, /<StatusBar style="dark" backgroundColor="transparent" translucent \/>/);
   assert.doesNotMatch(code, /SystemStatusBarBackdrop/);
   assert.match(appConfig, /"edgeToEdgeEnabled": true/);
-  assert.match(appConfig, /"androidStatusBar": \{[\s\S]*"backgroundColor": "transparent"[\s\S]*"barStyle": "dark-content"[\s\S]*"translucent": true/);
+  assert.match(appConfig, /"androidStatusBar": \{[\s\S]*"backgroundColor": "#00000000"[\s\S]*"barStyle": "dark-content"[\s\S]*"translucent": true/);
 });
 
 const profileFeedScreens = [
