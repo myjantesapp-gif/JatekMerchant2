@@ -84,11 +84,7 @@ const SHORT_COLUMNS = 3;
 const SHORT_CARD_W = (SCREEN_W - SHORT_SIDE * 2 - SHORT_GAP * (SHORT_COLUMNS - 1)) / SHORT_COLUMNS;
 const SHORT_CARD_H = Math.round(SHORT_CARD_W * 1.64);
 const RECOMMENDATION_GAP = 8;
-const RECOMMENDATION_COLUMNS = 3;
-const RECOMMENDATION_PAGE_SIZE = 6;
-const RECOMMENDATION_CARD_W = Math.floor(
-  (SCREEN_W - GRID_SIDE * 2 - RECOMMENDATION_GAP * (RECOMMENDATION_COLUMNS - 1)) / RECOMMENDATION_COLUMNS,
-);
+const RECOMMENDATION_CARD_W = Math.min(138, Math.max(112, Math.floor((SCREEN_W - 48) / 2.5)));
 const VIP_CARD_W = Math.min(SCREEN_W - 80, 300);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -235,6 +231,25 @@ function PopularSectionWaves() {
           fill="rgba(233,30,99,0.11)"
         />
       </Svg>
+    </View>
+  );
+}
+
+function PopularSectionHeader({ onPress }: { onPress: () => void }) {
+  return (
+    <View style={s.popularHeaderRow}>
+      <View style={s.popularTitleBadge}>
+        <Text style={s.popularTitle}>Populaires</Text>
+      </View>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.85}
+        style={s.voirPlusBtnPill}
+        accessibilityRole="button"
+        accessibilityLabel="Voir plus de produits populaires"
+      >
+        <Text style={s.voirPlusTxtPill}>Voir plus</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -712,38 +727,25 @@ export default function HomeScreen() {
             style={s.popularSection}
           >
             <PopularSectionWaves />
-            <SectionAction
+            <PopularSectionHeader
               onPress={() => router.push("/restaurants" as any)}
             />
             <ScrollView
               horizontal
-              pagingEnabled
               showsHorizontalScrollIndicator={false}
               decelerationRate="fast"
-              snapToInterval={SCREEN_W}
-              snapToAlignment="start"
+              nestedScrollEnabled
+              contentContainerStyle={s.popularProductsRow}
             >
-              {Array.from(
-                { length: Math.ceil(recommendedProducts.length / RECOMMENDATION_PAGE_SIZE) },
-                (_, pageIndex) => (
-                  <View key={`popular-page-${pageIndex}`} style={s.popularPage}>
-                    {recommendedProducts
-                      .slice(
-                        pageIndex * RECOMMENDATION_PAGE_SIZE,
-                        (pageIndex + 1) * RECOMMENDATION_PAGE_SIZE,
-                      )
-                      .map((product) => (
-                        <RecommendedProductCard
-                          key={`${product.restaurantId}-${product.id}`}
-                          product={product}
-                          width={RECOMMENDATION_CARD_W}
-                          compact
-                          onPress={() => goRecommendedProduct(product)}
-                        />
-                      ))}
-                  </View>
-                ),
-              )}
+              {recommendedProducts.map((product) => (
+                <RecommendedProductCard
+                  key={`${product.restaurantId}-${product.id}`}
+                  product={product}
+                  width={RECOMMENDATION_CARD_W}
+                  compact
+                  onPress={() => goRecommendedProduct(product)}
+                />
+              ))}
             </ScrollView>
           </Animated.View>
         ) : null}
@@ -1007,17 +1009,42 @@ const s = StyleSheet.create({
     position: "relative",
     overflow: "hidden",
     paddingBottom: 16,
+    marginHorizontal: 12,
+    borderRadius: 22,
     backgroundColor: "#FFFDFE",
   },
   popularWaves: {
     ...StyleSheet.absoluteFillObject,
   },
-  popularPage: {
-    width: SCREEN_W,
-    paddingHorizontal: GRID_SIDE,
+  popularHeaderRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
+  },
+  popularTitleBadge: {
+    backgroundColor: PINK_DEEP,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    shadowColor: PINK_DEEP,
+    shadowOpacity: 0.14,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  popularTitle: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontFamily: "Inter_900Black",
+    letterSpacing: -0.2,
+  },
+  popularProductsRow: {
+    paddingHorizontal: 14,
     gap: RECOMMENDATION_GAP,
+    paddingBottom: 4,
   },
   // ── Services row ──
   servicesRow: {
