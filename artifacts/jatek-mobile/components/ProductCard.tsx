@@ -1,0 +1,216 @@
+import React from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+
+import type { RecommendedProduct } from "@/lib/api";
+import { formatMad } from "@/lib/money";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
+import colors from "@/constants/colors";
+
+const FALLBACK_PRODUCT_IMAGE =
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=720&q=85";
+
+type Props = {
+  product: RecommendedProduct;
+  width: number;
+  onPress: () => void;
+  compact?: boolean;
+};
+
+export function ProductCard({ product, width, onPress, compact = false }: Props) {
+  const hasPromotion =
+    typeof product.compareAtPrice === "number" && product.compareAtPrice > product.price;
+  const imageUrl = resolveMediaUrl(product.imageUrl) ?? FALLBACK_PRODUCT_IMAGE;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      testID={`product-card-${product.id}`}
+      accessibilityRole="button"
+      accessibilityLabel={`${product.name}, ${formatMad(product.price)} dirhams`}
+      style={({ pressed }) => [
+        styles.card,
+        compact && styles.cardCompact,
+        { width },
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={[styles.imageWrap, compact && styles.imageWrapCompact]}>
+        <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+        <View style={[styles.restaurantLogo, compact && styles.restaurantLogoCompact]}>
+          {product.restaurantLogoUrl ? (
+            <Image
+              source={{ uri: resolveMediaUrl(product.restaurantLogoUrl) }}
+              style={styles.restaurantLogoImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={styles.restaurantInitial}>
+              {product.restaurantName.trim().charAt(0).toUpperCase() || "J"}
+            </Text>
+          )}
+        </View>
+        <View style={[styles.addButton, compact && styles.addButtonCompact]}>
+          <Ionicons name="add" size={compact ? 16 : 19} color={colors.light.primary} />
+        </View>
+      </View>
+      <View style={[styles.body, compact && styles.bodyCompact]}>
+        <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={2}>
+          {product.name}
+        </Text>
+        <View style={styles.priceRow}>
+          <Text style={[styles.price, compact && styles.priceCompact]}>
+            {formatMad(product.price)} DH
+          </Text>
+          {hasPromotion ? (
+            <Text style={[styles.compareAtPrice, compact && styles.compareAtPriceCompact]}>
+              {formatMad(product.compareAtPrice!)} DH
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.light.card,
+    borderRadius: 18,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.light.border,
+    shadowColor: colors.light.heading,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  cardCompact: {
+    borderRadius: 15,
+    shadowOpacity: 0.05,
+  },
+  pressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
+  },
+  imageWrap: {
+    height: 148,
+    position: "relative",
+    backgroundColor: colors.light.muted,
+  },
+  imageWrapCompact: {
+    height: 122,
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
+  restaurantLogo: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    padding: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: colors.light.card,
+    borderWidth: 2,
+    borderColor: colors.light.card,
+    shadowColor: colors.light.heading,
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  restaurantLogoCompact: {
+    top: 8,
+    left: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  restaurantLogoImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 99,
+  },
+  restaurantInitial: {
+    color: colors.light.primary,
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  addButton: {
+    position: "absolute",
+    right: 10,
+    bottom: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.light.card,
+    shadowColor: colors.light.heading,
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  addButtonCompact: {
+    right: 8,
+    bottom: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  body: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 14,
+    gap: 6,
+  },
+  bodyCompact: {
+    paddingHorizontal: 9,
+    paddingTop: 9,
+    paddingBottom: 11,
+    gap: 4,
+  },
+  name: {
+    minHeight: 38,
+    color: colors.light.cardForeground,
+    fontSize: 14,
+    lineHeight: 19,
+    fontFamily: "Inter_700Bold",
+  },
+  nameCompact: {
+    minHeight: 32,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  price: {
+    color: colors.light.primary,
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  priceCompact: {
+    fontSize: 12,
+  },
+  compareAtPrice: {
+    color: colors.light.mutedForeground,
+    fontSize: 12,
+    textDecorationLine: "line-through",
+    fontFamily: "Inter_500Medium",
+  },
+  compareAtPriceCompact: {
+    fontSize: 10,
+  },
+});
