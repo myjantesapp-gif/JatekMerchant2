@@ -86,7 +86,10 @@ const GRID_CARD_W = (SCREEN_W - GRID_SIDE * 2 - GRID_GAP) / 2;
 const SHORT_GAP = 10;
 const SHORT_SIDE = 16;
 const SHORT_COLUMNS = 3;
-const SHORT_CARD_W = (SCREEN_W - SHORT_SIDE * 2 - SHORT_GAP * (SHORT_COLUMNS - 1)) / SHORT_COLUMNS;
+const SHORT_PAGE_W = SCREEN_W - 24;
+const SHORT_ROWS = 2;
+const SHORT_PAGE_SIZE = SHORT_COLUMNS * SHORT_ROWS;
+const SHORT_CARD_W = (SHORT_PAGE_W - SHORT_SIDE * 2 - SHORT_GAP * (SHORT_COLUMNS - 1)) / SHORT_COLUMNS;
 const SHORT_CARD_H = Math.round(SHORT_CARD_W * 1.64);
 const RECOMMENDATION_GAP = 8;
 const RECOMMENDATION_CARD_W = Math.min(138, Math.max(112, Math.floor((SCREEN_W - 48) / 2.5)));
@@ -241,11 +244,11 @@ function HomeSectionHeader({ title, onPress }: { title: string; onPress: () => v
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.85}
-        style={s.voirPlusBtnPill}
+        style={s.sectionArrowButton}
         accessibilityRole="button"
         accessibilityLabel={`Voir tout : ${title}`}
       >
-        <Text style={s.voirPlusTxtPill}>Voir tout</Text>
+        <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
   );
@@ -917,23 +920,44 @@ export default function HomeScreen() {
             <ActivityIndicator color={PINK} style={s.sectionLoader} />
           ) : shortsError ? (
             <LoadRetry message="Impossible de charger les vidéos." onRetry={() => refetchShorts()} />
-          ) : (
-            <View style={s.videosGrid}>
-              {shorts.map((short, i) => (
-                <Pressable key={short.id} onPress={() => openShort(i)} style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}>
-                  <ShortThumbnail
-                    short={short}
-                    avatarUrl={
-                      short.restaurantLogoUrl
-                      ?? (short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null)
-                    }
-                  />
-                </Pressable>
+          ) : shorts.length > 0 ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              snapToInterval={SHORT_PAGE_W}
+            >
+              {Array.from({ length: Math.ceil(shorts.length / SHORT_PAGE_SIZE) }, (_, pageIndex) => (
+                <View key={`shorts-page-${pageIndex}`} style={s.shortsPage}>
+                  <View style={s.videosGrid}>
+                    {shorts
+                      .slice(pageIndex * SHORT_PAGE_SIZE, pageIndex * SHORT_PAGE_SIZE + SHORT_PAGE_SIZE)
+                      .map((short, offset) => {
+                        const index = pageIndex * SHORT_PAGE_SIZE + offset;
+                        return (
+                          <Pressable
+                            key={short.id}
+                            onPress={() => openShort(index)}
+                            style={({ pressed }) => [s.videoCard, pressed && { opacity: 0.9 }]}
+                          >
+                            <ShortThumbnail
+                              short={short}
+                              avatarUrl={
+                                short.restaurantLogoUrl
+                                ?? (short.restaurantId != null ? restaurantAvatarById.get(short.restaurantId) : null)
+                              }
+                            />
+                          </Pressable>
+                        );
+                      })}
+                  </View>
+                </View>
               ))}
-              {shorts.length === 0 && (
-                <Text style={s.emptyTxt}>Aucune vidéo disponible pour le moment</Text>
-              )}
-            </View>
+            </ScrollView>
+          ) : (
+            <Text style={s.emptyTxt}>Aucune vidéo disponible pour le moment</Text>
           )}
         </Animated.View>
 
@@ -1323,24 +1347,18 @@ const s = StyleSheet.create({
     opacity: 1,
   },
 
-  // ── Section actions (titles intentionally omitted on Home) ──
-  sectionActionRow: {
-    alignItems: "flex-end",
-    paddingHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 12,
-  },
-  voirPlusBtnPill: {
+  sectionArrowButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: PINK,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    flexShrink: 0,
-  },
-  voirPlusTxtPill: {
-    color: "#fff",
-    fontFamily: "Inter_700Bold",
-    fontSize: 13,
+    shadowColor: PINK_DEEP,
+    shadowOpacity: 0.22,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
 
   // ── Available product recommendations ──
@@ -1360,13 +1378,17 @@ const s = StyleSheet.create({
     width: SCREEN_W,
   },
   // ── Videos ──
+  shortsPage: {
+    width: SHORT_PAGE_W,
+  },
   videosGrid: {
-    paddingHorizontal: 16,
+    paddingHorizontal: SHORT_SIDE,
     columnGap: SHORT_GAP,
     rowGap: SHORT_GAP,
     flexDirection: "row",
     flexWrap: "wrap",
     paddingBottom: 4,
+    paddingTop: 2,
   },
   videoCard: {
     width: SHORT_CARD_W,

@@ -166,7 +166,7 @@ test("restaurant page keeps the safe-area header and renders a two-column produc
   assert.match(gridCard, /aspectRatio: 1/);
 });
 
-test("home Shorts render as a three-column vertical grid", () => {
+test("home Shorts render as three-column horizontal pages", () => {
   const page = source("app/(tabs)/index.tsx");
   const shortsSection = page.slice(
     page.indexOf("/* ─── Découvrir en vidéo ─── */"),
@@ -174,8 +174,12 @@ test("home Shorts render as a three-column vertical grid", () => {
   );
 
   assert.match(shortsSection, /<View style=\{s\.videosGrid\}/);
+  assert.match(shortsSection, /horizontal/);
+  assert.match(shortsSection, /pagingEnabled/);
+  assert.match(shortsSection, /SHORT_PAGE_SIZE/);
   assert.match(page, /videosGrid:\s*\{[\s\S]*flexDirection: "row"[\s\S]*flexWrap: "wrap"/);
   assert.match(page, /const SHORT_COLUMNS = 3/);
+  assert.match(page, /const SHORT_ROWS = 2/);
   assert.match(page, /SHORT_GAP \* \(SHORT_COLUMNS - 1\)/);
 });
 
@@ -299,7 +303,9 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /width=\{RECOMMENDATION_CARD_W\}/);
   assert.match(code, /<PopularSectionWaves \/>/);
   assert.match(code, /fill="rgba\(233,30,99,0\.08\)"/);
-  assert.match(code, />Voir tout</);
+  assert.match(code, /sectionArrowButton/);
+  assert.match(code, /<Ionicons name="arrow-forward"/);
+  assert.doesNotMatch(code, /voirPlusTxtPill/);
   assert.match(code, /getPublicAppConfig/);
   assert.match(code, /homeSections\.filter\(\(section\) => section\.visible\)/);
   assert.doesNotMatch(code, /title="Produits populaires"/);
