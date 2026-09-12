@@ -312,7 +312,10 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /Restauration/);
   assert.match(code, /title="Shorts"/);
   assert.match(code, /pinkWaveSection/);
-  assert.match(code, /sectionIndex % 2 === 0/);
+  assert.match(code, /section\.key === "popular"/);
+  assert.match(code, /#FFF7FA/);
+  assert.match(code, /#FDE8F0/);
+  assert.match(code, /#FAD6E4/);
   assert.doesNotMatch(code, /^\s*sectionTitle:\s*\{/m);
   assert.match(code, /homeSectionSpacer:\s*\{\s*height: 10/);
   assert.doesNotMatch(code, /<Text style=\{s\.gridSectionTitle\}/);

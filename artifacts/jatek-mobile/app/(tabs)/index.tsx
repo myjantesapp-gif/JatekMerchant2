@@ -223,12 +223,19 @@ function PopularSectionWaves() {
     <View pointerEvents="none" style={s.popularWaves}>
       <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
         <Path
-          d="M0 7 C18 1 31 14 49 8 C68 2 83 15 100 7 L100 27 C81 34 68 20 48 27 C28 34 15 20 0 27 Z"
-          fill="rgba(233,30,99,0.08)"
+          d="M0 6 C17 0 32 13 49 7 C67 1 83 14 100 6 L100 24 C82 31 67 18 49 24 C31 31 16 18 0 25 Z"
+          fill="#FDE8F0"
+          opacity={0.72}
         />
         <Path
-          d="M0 73 C17 66 31 80 50 73 C69 66 84 80 100 72 L100 96 C82 100 66 88 48 94 C29 100 15 88 0 95 Z"
-          fill="rgba(233,30,99,0.11)"
+          d="M0 38 C19 30 34 46 52 38 C70 31 85 45 100 37 L100 57 C82 64 68 50 50 57 C31 64 16 50 0 58 Z"
+          fill="#FAD6E4"
+          opacity={0.42}
+        />
+        <Path
+          d="M0 75 C17 68 32 82 50 75 C69 68 84 82 100 74 L100 96 C82 100 66 88 48 94 C29 100 15 88 0 96 Z"
+          fill="#FDE8F0"
+          opacity={0.68}
         />
       </Svg>
     </View>
@@ -812,9 +819,8 @@ export default function HomeScreen() {
         {/* ─── Shorts ─── */}
         <Animated.View
           entering={FadeInDown.delay(340).duration(550).springify()}
-          style={[s.homeFeedSection, s.pinkWaveSection]}
+          style={s.homeFeedSection}
         >
-          <PopularSectionWaves />
           <HomeSectionHeader
             title="Shorts"
             onPress={() => { setInitialShort(0); setShortsVisible(true); }}
@@ -875,7 +881,7 @@ export default function HomeScreen() {
           })
           .map((section, sectionIndex) => {
           const isProductSection = section.key === "popular" || section.key === "new_products";
-           const hasPinkWaveBackground = sectionIndex % 2 === 0;
+           const hasPinkWaveBackground = section.key === "popular";
           const products = section.key === "popular" ? recommendedProducts : newestProducts;
           const productsLoading = section.key === "popular" ? recommendationsLoading : newestProductsLoading;
           const productsError = section.key === "popular" ? recommendationsError : newestProductsError;
@@ -1176,7 +1182,7 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   pinkWaveSection: {
-    backgroundColor: "#FFF1F6",
+    backgroundColor: "#FFF7FA",
   },
   popularWaves: {
     ...StyleSheet.absoluteFillObject,
