@@ -19,6 +19,7 @@ import {
   Menu,
   X,
 } from 'lucide-react';
+import { PrivacyPage, RgpdPage, SupportPage } from './pages/InfoPages';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 16 },
@@ -550,7 +551,7 @@ const Footer = () => (
             <li><a href="#download" className="hover:text-brand-pink transition-colors">À propos</a></li>
             <li><a href="mailto:jobs@jatek.ma" className="hover:text-brand-pink transition-colors">Carrières</a></li>
             <li><a href="#download" className="hover:text-brand-pink transition-colors">Blog</a></li>
-            <li><a href="mailto:contact@jatek.ma" className="hover:text-brand-pink transition-colors">Contact</a></li>
+            <li><a href="/support" className="hover:text-brand-pink transition-colors">Support</a></li>
           </ul>
         </div>
 
@@ -568,7 +569,11 @@ const Footer = () => (
         <p className="text-xs text-[#9CA3AF]">
           &copy; {new Date().getFullYear()} Jatek App. Fièrement créé à Oujda, Maroc.
         </p>
-        <div className="flex items-center gap-4 text-[10px] text-[#9CA3AF]">
+        <div className="flex flex-wrap items-center justify-center gap-4 text-[10px] text-[#9CA3AF]">
+          <a href="/support" className="hover:text-brand-pink transition-colors">Support</a>
+          <a href="/confidentialite" className="hover:text-brand-pink transition-colors">Confidentialité</a>
+          <a href="/rgpd" className="hover:text-brand-pink transition-colors">RGPD</a>
+          <span className="text-[#D1D5DB]">|</span>
           <a href="/admin/" className="hover:text-brand-pink transition-colors">Admin</a>
           <span className="text-[#D1D5DB]">|</span>
           <a href="/mobile/" className="hover:text-brand-pink transition-colors">App mobile</a>
@@ -579,6 +584,11 @@ const Footer = () => (
 );
 
 export default function App() {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (path === '/support') return <SupportPage />;
+  if (path === '/confidentialite') return <PrivacyPage />;
+  if (path === '/rgpd') return <RgpdPage />;
+
   return (
     <div className="min-h-screen bg-white text-[#0A1B3D] selection:bg-brand-pink selection:text-white">
       <Navbar />

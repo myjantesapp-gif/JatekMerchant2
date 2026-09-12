@@ -177,17 +177,11 @@ function ShortThumbnail({
 }
 
 function VipBannerCard({
-  title,
-  subtitle,
   bgColor,
-  badge,
   imageUrl,
   onPress,
 }: {
-  title: string;
-  subtitle: string;
   bgColor: string;
-  badge: string;
   imageUrl?: string | null;
   onPress: () => void;
 }) {
@@ -202,18 +196,6 @@ function VipBannerCard({
         {imageUrl ? (
           <Image source={{ uri: resolveMediaUrl(imageUrl) }} style={s.vipCardImg} resizeMode="cover" />
         ) : null}
-        {/* Pink scrims keep dashboard-managed banner art readable. */}
-        <View style={s.vipCardScrimTop} />
-        <View style={s.vipCardScrimBottom} />
-        <View style={s.vipCardOrb} />
-        <View style={s.vipBadge}>
-          <Ionicons name="star" size={11} color="#fff" />
-          <Text style={s.vipBadgeTxt}>{badge}</Text>
-        </View>
-        <View style={s.vipCardBody}>
-          <Text style={s.vipCardTitle} numberOfLines={1}>{title}</Text>
-          <Text style={s.vipCardSubtitle} numberOfLines={2}>{subtitle}</Text>
-        </View>
       </LinearGradient>
     </Pressable>
   );
@@ -653,10 +635,7 @@ export default function HomeScreen() {
             ? vipAds.slice(0, 6).map((ad) => (
                 <VipBannerCard
                   key={`ad-${ad.id}`}
-                  title={ad.title}
-                  subtitle={ad.subtitle ?? ""}
                   bgColor={ad.bgColor || PINK}
-                  badge={ad.badge || "VIP"}
                   imageUrl={ad.imageUrl}
                   onPress={() => openAdLink(ad)}
                 />
@@ -664,10 +643,7 @@ export default function HomeScreen() {
             : (featuredPartners ?? []).slice(0, 6).map((r) => (
                 <VipBannerCard
                   key={`vip-${r.id}`}
-                  title={r.name}
-                  subtitle={r.description?.trim() || ""}
                   bgColor={PINK}
-                  badge="PARTENAIRE"
                   imageUrl={r.imageUrl ?? r.coverImageUrl}
                   onPress={() => {
                     trackBannerClick(r.id);
@@ -1060,58 +1036,13 @@ const s = StyleSheet.create({
     height: 156,
     borderRadius: 20,
     overflow: "hidden",
-    justifyContent: "flex-end",
-    padding: 16,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.22)",
   },
   vipCardImg: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.65,
+    opacity: 1,
   },
-  // light vignette at the top
-  vipCardScrimTop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.06)",
-  },
-  // strong gradient-like overlay at the bottom where text lives
-  vipCardScrimBottom: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 78,
-    backgroundColor: "rgba(7,10,36,0.58)",
-  },
-  vipCardOrb: {
-    position: "absolute",
-    width: 120,
-    height: 120,
-    right: -34,
-    top: -42,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.20)",
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  vipBadge: {
-    position: "absolute",
-    top: 14,
-    right: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-  },
-  vipBadgeTxt: { color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.4 },
-  vipCardBody: { gap: 4, overflow: "hidden" },
-  vipCardTitle: { color: "#fff", fontSize: 18, fontFamily: "Inter_900Black", letterSpacing: -0.3 },
-  vipCardSubtitle: { color: "rgba(255,255,255,0.88)", fontSize: 13, fontFamily: "Inter_500Medium" },
 
   // ── Section actions (headings intentionally omitted on Home) ──
   sectionActionRow: {

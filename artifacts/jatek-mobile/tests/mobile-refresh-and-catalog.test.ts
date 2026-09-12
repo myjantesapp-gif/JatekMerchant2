@@ -285,12 +285,14 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.doesNotMatch(code, /<Text style=\{s\.gridSectionTitle\}/);
 });
 
-test("home does not invent new or promo badges for ordinary merchants", () => {
+test("home banners display artwork without overlaid text or badges", () => {
   const code = source("app/(tabs)/index.tsx");
 
-  assert.doesNotMatch(code, /badge=\{i % 2/);
-  assert.doesNotMatch(code, /tileBadge/);
-  assert.match(code, /badge=\{ad\.badge \|\| "VIP"\}/);
+  assert.doesNotMatch(code, /vipCardTitle/);
+  assert.doesNotMatch(code, /vipCardSubtitle/);
+  assert.doesNotMatch(code, /vipBadge/);
+  assert.doesNotMatch(code, /title=\{ad\.title\}/);
+  assert.match(code, /vipCardImg[\s\S]*opacity: 1/);
 });
 
 test("product deep links only open currently available menu items", () => {
