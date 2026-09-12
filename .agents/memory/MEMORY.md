@@ -33,3 +33,4 @@
 - [Mobile release verification](mobile-release-verification.md) — separate browser checks, Expo acceptance and actual device delivery; deploy new API contracts before the mobile client.
 - [Production database pause](production-database-pause.md) — a frozen production database makes OTP signup return 500; unpause it in Replit Database before changing auth code.
 - [Jatek brand typography](jatek-brand-typography.md) — the logo is an image wordmark; use the bundled Poppins family for app copy while preserving semantic font aliases.
+- [Home promotional content](home-promotional-content.md) — admin-managed promo ads and discounted products take priority, with bundled banner fallbacks for an empty content feed.

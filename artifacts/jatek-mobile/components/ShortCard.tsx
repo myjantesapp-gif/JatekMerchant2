@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: colors.light.card,
     borderWidth: 2,
-    borderColor: colors.light.card,
+    borderColor: colors.light.primary,
   },
   avatarImage: {
     width: "100%",

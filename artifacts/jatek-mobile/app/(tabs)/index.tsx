@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import Svg, { Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useQuery } from "@tanstack/react-query";
@@ -46,6 +45,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { ShortCard } from "@/components/ShortCard";
 import { StoreCard } from "@/components/StoreCard";
 import { SectionHeader } from "@/components/SectionHeader";
+import { WaveEdge } from "@/components/WaveEdge";
 import colors from "@/constants/colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -54,13 +54,17 @@ const PINK_SOFT = colors.light.primarySoft;
 const NAVY = colors.light.heading;
 const MUTED = colors.light.mutedForeground;
 const WHITE = colors.light.background;
-const SECTION_TINT = "#FFF0F6";
+const SECTION_TINT = colors.light.pinkBg;
 const CATEGORY_WIDTH = 82;
-const PRODUCT_WIDTH = Math.min(184, Math.max(158, SCREEN_WIDTH * 0.44));
+const PROMO_PRODUCT_WIDTH = Math.max(100, (SCREEN_WIDTH - 32 - 20) / 3);
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.min(286, Math.max(260, SCREEN_WIDTH * 0.72));
 const FALLBACK_PROMO =
   "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=88";
+const LOCAL_PROMO_BANNERS = [
+  require("../../assets/images/banner-rentree.png"),
+  require("../../assets/images/banner-mois-mamans.png"),
+];
 
 type HomeCategory = {
   key: string;
@@ -174,12 +178,16 @@ function CategoryRow({
 
 function PromoBanner({
   ad,
+  fallbackSource,
   onPress,
 }: {
   ad?: Ad;
+  fallbackSource?: number;
   onPress: () => void;
 }) {
-  const imageUrl = resolveMediaUrl(ad?.imageUrl) ?? FALLBACK_PROMO;
+  const imageSource = ad?.imageUrl
+    ? { uri: resolveMediaUrl(ad.imageUrl) ?? FALLBACK_PROMO }
+    : fallbackSource ?? { uri: FALLBACK_PROMO };
   return (
     <Pressable
       onPress={onPress}
@@ -188,7 +196,7 @@ function PromoBanner({
       accessibilityLabel="Ouvrir les promotions"
       style={({ pressed }) => [styles.promoBanner, pressed && styles.pressed]}
     >
-      <Image source={{ uri: imageUrl }} style={styles.promoImage} resizeMode="cover" />
+      <Image source={imageSource} style={styles.promoImage} resizeMode="cover" />
     </Pressable>
   );
 }
@@ -216,7 +224,6 @@ function HomeScreen() {
   const { data: apiCategories, refetch: refetchCategories } = useListCategories();
   const {
     data: ads,
-    isLoading: adsLoading,
     refetch: refetchAds,
   } = useAds();
   const {
@@ -236,13 +243,13 @@ function HomeScreen() {
     refetch: refetchFeaturedRestaurants,
   } = useGetFeaturedRestaurants();
   const {
-    data: popularProducts,
-    isLoading: popularLoading,
-    isError: popularError,
-    refetch: refetchPopular,
+    data: promoProducts,
+    isLoading: promoProductsLoading,
+    isError: promoProductsError,
+    refetch: refetchPromoProducts,
   } = useQuery({
-    queryKey: ["home-products-popular"],
-    queryFn: () => listRecommendedProducts({ limit: 12, sort: "catalog" }),
+    queryKey: ["home-products-promos"],
+    queryFn: () => listRecommendedProducts({ limit: 12, sort: "promos" }),
     staleTime: 60_000,
   });
   const { refetch: refetchAppConfig } = useQuery({
@@ -281,6 +288,10 @@ function HomeScreen() {
         .slice(0, 8),
     [restaurants],
   );
+  const restaurantStores = useMemo<Restaurant[]>(
+    () => (featuredRestaurants?.length ? featuredRestaurants : restaurants ?? []).slice(0, 8),
+    [featuredRestaurants, restaurants],
+  );
   const restaurantLogoById = useMemo(
     () =>
       new Map(
@@ -290,10 +301,6 @@ function HomeScreen() {
         ]),
       ),
     [featuredRestaurants],
-  );
-  const promoAd = useMemo(
-    () => (ads ?? []).find((ad) => ad.type === "promo_banner" || ad.type === "hero" || ad.type === "vip_banner"),
-    [ads],
   );
   const greeting = user?.name?.trim() ? `Bonjour, ${user.name.trim()}` : "Bonjour";
   const addressLabel = selectedAddress || "Choisir une adresse";
@@ -307,7 +314,7 @@ function HomeScreen() {
         refetchShorts,
         refetchRestaurants,
         refetchFeaturedRestaurants,
-        refetchPopular,
+        refetchPromoProducts,
         refetchAppConfig,
       ]);
     } finally {
@@ -413,49 +420,52 @@ function HomeScreen() {
           <CategoryRow categories={categories} onPress={openCategory} />
         </View>
 
-        {/* 1. Promos */}
+        {/* 1. Promos : bannières administrables + produits remisés */}
         <View style={styles.promoSection}>
           <SectionHeader title="Promos" onPress={() => router.push("/restaurants" as any)} testID="section-promos" />
-          {adsLoading ? (
-            <ActivityIndicator color={PINK} style={styles.loader} />
-          ) : (
-            <PromoBanner ad={promoAd} onPress={() => openAd(promoAd)} />
-          )}
-        </View>
-
-        {/* 2. Populaires */}
-        <View style={styles.popularSection}>
-          <SectionHeader title="Populaires" onPress={() => router.push("/restaurants" as any)} testID="section-popular" />
-          {popularLoading || popularError ? (
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bannerRail}
+            nestedScrollEnabled
+          >
+            {(ads?.filter((ad) => ad.type === "promo_banner" || ad.type === "hero") ?? []).length > 0
+              ? ads!
+                  .filter((ad) => ad.type === "promo_banner" || ad.type === "hero")
+                  .map((ad) => (
+                    <PromoBanner key={ad.id} ad={ad} onPress={() => openAd(ad)} />
+                  ))
+              : LOCAL_PROMO_BANNERS.map((source, index) => (
+                  <PromoBanner key={String(source)} fallbackSource={source} onPress={() => router.push("/restaurants" as any)} />
+                ))}
+          </ScrollView>
+          {promoProductsLoading || promoProductsError ? (
             <LoadingOrEmpty
-              loading={popularLoading}
-              error={popularError}
-              empty="Aucun produit populaire pour le moment"
-              onRetry={() => refetchPopular()}
+              loading={promoProductsLoading}
+              error={promoProductsError}
+              empty="Aucun produit en promotion pour le moment"
+              onRetry={() => refetchPromoProducts()}
             />
-          ) : popularProducts && popularProducts.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalCards}
-              nestedScrollEnabled
-            >
-              {popularProducts.map((product) => (
+          ) : promoProducts && promoProducts.length > 0 ? (
+            <View style={styles.promoProductGrid}>
+              {promoProducts.map((product) => (
                 <ProductCard
                   key={`${product.restaurantId}-${product.id}`}
                   product={product}
-                  width={PRODUCT_WIDTH}
+                  width={PROMO_PRODUCT_WIDTH}
                   compact
                   onPress={() => openProduct(product)}
                 />
               ))}
-            </ScrollView>
+            </View>
           ) : (
-            <Text style={styles.empty}>Aucun produit populaire pour le moment</Text>
+            <Text style={styles.empty}>Aucun produit en promotion pour le moment</Text>
           )}
+          <WaveEdge color={WHITE} height={34} />
         </View>
 
-        {/* 3. Shorts */}
+        {/* 2. Shorts */}
         <View style={styles.section}>
           <SectionHeader
             title="Shorts"
@@ -494,7 +504,7 @@ function HomeScreen() {
           )}
         </View>
 
-        {/* 4. Nouveautés */}
+        {/* 3. Nouveautés */}
         <View style={styles.newestSection}>
           <SectionHeader
             title="Nouveautés"
@@ -532,6 +542,47 @@ function HomeScreen() {
           ) : (
             <Text style={styles.empty}>Aucun commerce disponible pour le moment</Text>
           )}
+        </View>
+
+        {/* 4. Restauration */}
+        <View style={styles.restaurantSection}>
+          <SectionHeader
+            title="Restauration"
+            onPress={() => router.push("/restaurants" as any)}
+            testID="section-restauration"
+          />
+          {restaurantsLoading || restaurantsError ? (
+            <LoadingOrEmpty
+              loading={restaurantsLoading}
+              error={restaurantsError}
+              empty="Aucun restaurant disponible pour le moment"
+              onRetry={() => refetchRestaurants()}
+            />
+          ) : restaurantStores.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalCards}
+              nestedScrollEnabled
+            >
+              {restaurantStores.map((restaurant) => (
+                <StoreCard
+                  key={`restaurant-${restaurant.id}`}
+                  restaurant={restaurant}
+                  width={STORE_WIDTH}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/restaurant/[id]",
+                      params: { id: String(restaurant.id) },
+                    })
+                  }
+                />
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.empty}>Aucun restaurant disponible pour le moment</Text>
+          )}
+          <WaveEdge color={WHITE} height={34} />
         </View>
 
       </ScrollView>
@@ -664,17 +715,17 @@ const styles = StyleSheet.create({
   },
   promoSection: {
     marginTop: 7,
-    paddingBottom: 19,
-    backgroundColor: SECTION_TINT,
-  },
-  popularSection: {
-    marginTop: 7,
-    paddingBottom: 20,
+    paddingBottom: 40,
     backgroundColor: SECTION_TINT,
   },
   newestSection: {
     marginTop: 7,
     paddingBottom: 20,
+    backgroundColor: WHITE,
+  },
+  restaurantSection: {
+    marginTop: 7,
+    paddingBottom: 40,
     backgroundColor: SECTION_TINT,
   },
   promoBanner: {
@@ -692,6 +743,17 @@ const styles = StyleSheet.create({
   promoImage: {
     width: "100%",
     height: "100%",
+  },
+  bannerRail: {
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  promoProductGrid: {
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    columnGap: 10,
+    rowGap: 12,
   },
   horizontalCards: {
     gap: 11,

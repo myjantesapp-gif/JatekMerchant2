@@ -60,7 +60,7 @@ export default function RestaurantScreen() {
   const t = useT();
   const { id, productId } = useLocalSearchParams<{ id: string; productId?: string }>();
   const restaurantId = parseInt(id, 10);
-  const menuCardWidth = Math.max(140, (viewportWidth - SIDE * 2 - MENU_GRID_GAP) / 2);
+  const menuCardWidth = (viewportWidth - SIDE * 2 - MENU_GRID_GAP * 2) / 3;
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [selectedCategory, setSelectedCategory] = useState("Tous");
   const [selectedItem, setSelectedItem] = useState<any | null>(null);

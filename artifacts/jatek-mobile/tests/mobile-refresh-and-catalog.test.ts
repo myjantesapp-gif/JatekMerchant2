@@ -151,7 +151,7 @@ test("restaurant category navigation stays sticky and tracks visible sections", 
   assert.match(code, /testID=\{`restaurant-category-\$\{cat\.id\}`\}/);
 });
 
-test("restaurant page keeps the safe-area header and renders a two-column product grid", () => {
+test("restaurant page keeps the safe-area header and renders a three-column product grid", () => {
   const page = source("app/restaurant/[id].tsx");
   const gridCard = source("components/MenuItemGridCard.tsx");
 
@@ -160,6 +160,7 @@ test("restaurant page keeps the safe-area header and renders a two-column produc
   assert.match(page, /paddingTop: insets\.top/);
   assert.match(page, /<MenuItemGridCard/);
   assert.match(page, /width=\{menuCardWidth\}/);
+  assert.match(page, /MENU_GRID_GAP \* 2\) \/ 3/);
   assert.match(page, /menuList:\s*\{[\s\S]*flexDirection: "row"[\s\S]*flexWrap: "wrap"/);
   assert.match(page, /const MENU_GRID_GAP/);
   assert.doesNotMatch(page, /section\.items\.length.*articles/);
@@ -177,10 +178,10 @@ test("home renders Shorts as a horizontal 9:16 card rail", () => {
   assert.match(card, /borderRadius: 18/);
 });
 
-test("short cards keep the merchant logo in a white circular frame", () => {
+test("short cards keep the merchant logo in a pink circular frame", () => {
   const card = source("components/ShortCard.tsx");
 
-  assert.match(card, /borderColor: colors\.light\.card/);
+  assert.match(card, /borderColor: colors\.light\.primary/);
   assert.match(card, /avatarImage/);
   assert.match(card, /avatarUrl/);
 });
@@ -276,17 +277,18 @@ test("home renders reusable sections and live product recommendations", () => {
   assert.match(code, /listRecommendedProducts/);
   assert.match(code, /productId: String\(product\.id\)/);
   assert.match(code, /<SectionHeader title="Promos"/);
-  assert.match(code, /<SectionHeader title="Populaires"/);
   assert.match(code, /<SectionHeader[\s\S]*title="Shorts"/);
   assert.match(code, /<SectionHeader[\s\S]*title="Nouveautés"/);
+  assert.match(code, /<SectionHeader[\s\S]*title="Restauration"/);
   assert.match(code, /<ProductCard/);
   assert.match(code, /<ShortCard/);
   assert.match(code, /<StoreCard/);
-  assert.doesNotMatch(code, /HomeWaves/);
   assert.match(code, /styles\.promoSection/);
-  assert.match(code, /styles\.popularSection/);
+  assert.match(code, /styles\.promoProductGrid/);
   assert.match(code, /styles\.newestSection/);
   assert.match(code, /const SECTION_TINT/);
+  assert.match(code, /WaveEdge/);
+  assert.match(code, /sort: "promos"/);
   assert.match(productCard, /compareAtPrice/);
   assert.match(sectionHeader, /arrow-forward/);
   assert.match(storeCard, /time-outline/);
@@ -296,12 +298,18 @@ test("home renders reusable sections and live product recommendations", () => {
 test("home renders the requested strict section order", () => {
   const page = source("app/(tabs)/index.tsx");
   const promos = page.indexOf('title="Promos"');
-  const popular = page.indexOf('title="Populaires"');
   const shorts = page.indexOf('title="Shorts"');
   const newest = page.indexOf('title="Nouveautés"');
-  assert.ok(promos >= 0 && promos < popular);
-  assert.ok(popular < shorts);
+  const restaurants = page.indexOf('title="Restauration"');
+  assert.ok(promos >= 0 && promos < shorts);
   assert.ok(shorts < newest);
+  assert.ok(newest < restaurants);
+});
+
+test("home shows promo products in a three-column grid", () => {
+  const page = source("app/(tabs)/index.tsx");
+  assert.match(page, /const PROMO_PRODUCT_WIDTH = Math\.max\(100, \(SCREEN_WIDTH - 32 - 20\) \/ 3\)/);
+  assert.match(page, /styles\.promoProductGrid/);
 });
 
 test("home keeps the four requested categories above the feed", () => {
@@ -317,7 +325,8 @@ test("home promo banner displays artwork without overlay text", () => {
   const code = source("app/(tabs)/index.tsx");
   const productCard = source("components/ProductCard.tsx");
 
-  assert.match(code, /<PromoBanner ad=\{promoAd\}/);
+  assert.match(code, /LOCAL_PROMO_BANNERS/);
+  assert.match(code, /<PromoBanner key=\{ad\.id\} ad=\{ad\}/);
   assert.match(code, /promoImage/);
   assert.doesNotMatch(code, /ad\.title/);
   assert.match(productCard, /textDecorationLine: "line-through"/);
