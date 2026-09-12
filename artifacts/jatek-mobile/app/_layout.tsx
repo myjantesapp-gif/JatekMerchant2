@@ -1,4 +1,11 @@
 import { useFonts } from "expo-font";
+import {
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+  Poppins_900Black,
+} from "@expo-google-fonts/poppins";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons, FontAwesome, FontAwesome5 } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -92,11 +99,13 @@ function SessionExpiryRedirect() {
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular: require("../assets/fonts/Inter_400Regular.ttf"),
-    Inter_500Medium: require("../assets/fonts/Inter_500Medium.ttf"),
-    Inter_600SemiBold: require("../assets/fonts/Inter_600SemiBold.ttf"),
-    Inter_700Bold: require("../assets/fonts/Inter_700Bold.ttf"),
-    Inter_900Black: require("../assets/fonts/Inter_900Black.ttf"),
+    // Keep the existing semantic names so every screen and shared component
+    // automatically uses the Jatek brand typeface without a risky mass rename.
+    Inter_400Regular: Poppins_400Regular,
+    Inter_500Medium: Poppins_500Medium,
+    Inter_600SemiBold: Poppins_600SemiBold,
+    Inter_700Bold: Poppins_700Bold,
+    Inter_900Black: Poppins_900Black,
     ...Ionicons.font,
     ...MaterialCommunityIcons.font,
     ...MaterialIcons.font,

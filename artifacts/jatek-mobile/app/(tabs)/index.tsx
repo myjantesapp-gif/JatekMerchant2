@@ -54,6 +54,7 @@ const PINK_SOFT = colors.light.primarySoft;
 const NAVY = colors.light.heading;
 const MUTED = colors.light.mutedForeground;
 const WHITE = colors.light.background;
+const SECTION_TINT = "#FFF0F6";
 const CATEGORY_WIDTH = 82;
 const PRODUCT_WIDTH = Math.min(184, Math.max(158, SCREEN_WIDTH * 0.44));
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
@@ -111,30 +112,6 @@ function normalize(value: unknown): string {
     .toLocaleLowerCase("fr-FR")
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
-}
-
-function HomeWaves() {
-  return (
-    <View pointerEvents="none" style={styles.backgroundWaves}>
-      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <Path
-          d="M0 6 C14 0 29 13 46 7 C65 0 82 14 100 5 L100 21 C82 29 65 16 47 23 C29 30 14 17 0 24 Z"
-          fill="#FAD7E6"
-          opacity={0.62}
-        />
-        <Path
-          d="M0 37 C17 29 33 46 51 38 C69 30 84 45 100 36 L100 52 C83 61 68 47 50 55 C32 62 16 48 0 56 Z"
-          fill="#FFF0F6"
-          opacity={0.95}
-        />
-        <Path
-          d="M0 73 C15 66 31 81 49 74 C67 67 83 81 100 72 L100 88 C83 97 67 84 49 92 C31 99 16 85 0 94 Z"
-          fill="#F7C4D9"
-          opacity={0.48}
-        />
-      </Svg>
-    </View>
-  );
 }
 
 function LoadingOrEmpty({
@@ -360,7 +337,6 @@ function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      <HomeWaves />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: tabBarHeight + 74 }}
@@ -438,7 +414,7 @@ function HomeScreen() {
         </View>
 
         {/* 1. Promos */}
-        <View style={styles.section}>
+        <View style={styles.promoSection}>
           <SectionHeader title="Promos" onPress={() => router.push("/restaurants" as any)} testID="section-promos" />
           {adsLoading ? (
             <ActivityIndicator color={PINK} style={styles.loader} />
@@ -449,12 +425,6 @@ function HomeScreen() {
 
         {/* 2. Populaires */}
         <View style={styles.popularSection}>
-          <View style={styles.popularWaveLayer}>
-            <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <Path d="M0 8 C20 1 31 16 50 8 C69 0 82 15 100 7 L100 24 C80 32 68 17 49 25 C30 32 18 18 0 26 Z" fill="#F9C9DC" opacity={0.55} />
-              <Path d="M0 68 C19 61 33 78 50 69 C69 60 84 76 100 67 L100 87 C81 95 68 82 50 91 C31 98 17 84 0 94 Z" fill="#FFF0F6" opacity={0.9} />
-            </Svg>
-          </View>
           <SectionHeader title="Populaires" onPress={() => router.push("/restaurants" as any)} testID="section-popular" />
           {popularLoading || popularError ? (
             <LoadingOrEmpty
@@ -525,7 +495,7 @@ function HomeScreen() {
         </View>
 
         {/* 4. Nouveautés */}
-        <View style={styles.section}>
+        <View style={styles.newestSection}>
           <SectionHeader
             title="Nouveautés"
             onPress={() => router.push("/restaurants" as any)}
@@ -589,11 +559,6 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
     backgroundColor: "transparent",
-  },
-  backgroundWaves: {
-    ...StyleSheet.absoluteFillObject,
-    top: 220,
-    opacity: 1,
   },
   header: {
     paddingHorizontal: 16,
@@ -695,17 +660,22 @@ const styles = StyleSheet.create({
   section: {
     marginTop: 7,
     paddingBottom: 19,
+    backgroundColor: WHITE,
+  },
+  promoSection: {
+    marginTop: 7,
+    paddingBottom: 19,
+    backgroundColor: SECTION_TINT,
   },
   popularSection: {
-    position: "relative",
-    overflow: "hidden",
     marginTop: 7,
     paddingBottom: 20,
-    backgroundColor: "rgba(255,240,246,0.72)",
+    backgroundColor: SECTION_TINT,
   },
-  popularWaveLayer: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.92,
+  newestSection: {
+    marginTop: 7,
+    paddingBottom: 20,
+    backgroundColor: SECTION_TINT,
   },
   promoBanner: {
     height: Math.min(190, Math.max(148, SCREEN_WIDTH * 0.43)),

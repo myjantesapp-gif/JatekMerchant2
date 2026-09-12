@@ -282,7 +282,11 @@ test("home renders reusable sections and live product recommendations", () => {
   assert.match(code, /<ProductCard/);
   assert.match(code, /<ShortCard/);
   assert.match(code, /<StoreCard/);
-  assert.match(code, /<HomeWaves \/>/);
+  assert.doesNotMatch(code, /HomeWaves/);
+  assert.match(code, /styles\.promoSection/);
+  assert.match(code, /styles\.popularSection/);
+  assert.match(code, /styles\.newestSection/);
+  assert.match(code, /const SECTION_TINT/);
   assert.match(productCard, /compareAtPrice/);
   assert.match(sectionHeader, /arrow-forward/);
   assert.match(storeCard, /time-outline/);
