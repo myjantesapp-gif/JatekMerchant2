@@ -15,7 +15,7 @@ import {
 
 const router: IRouter = Router();
 const DEFAULT_LIMIT = 6;
-const MAX_LIMIT = 12;
+const MAX_LIMIT = 30;
 const MAX_CANDIDATES = MAX_LIMIT * 4;
 
 export type HomeRecommendedProduct = {

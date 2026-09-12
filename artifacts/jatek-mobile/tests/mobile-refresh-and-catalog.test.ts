@@ -277,7 +277,11 @@ test("home keeps section actions and renders live product recommendations", () =
   assert.match(code, /listRecommendedProducts/);
   assert.match(code, /home-recommendations/);
   assert.match(code, /productId: String\(product\.id\)/);
-  assert.match(code, /recommendedProducts\.slice\(0, 6\)/);
+  assert.match(code, /limit: 30/);
+  assert.match(code, /Math\.min\(recommendedProducts\.length, 30\)/);
+  assert.match(code, /pageIndex \* 6/);
+  assert.match(code, /pagingEnabled/);
+  assert.match(code, /recommendation-page-/);
   assert.match(code, /RECOMMENDATION_COLUMNS = 3/);
   assert.match(code, /style=\{s\.recommendationsGrid\}/);
   assert.match(code, /compact/);
@@ -292,6 +296,8 @@ test("home keeps section actions and renders live product recommendations", () =
 test("home banners display artwork without overlaid text or badges", () => {
   const code = source("app/(tabs)/index.tsx");
 
+  assert.match(code, /const VIP_CARD_W = Math\.min\(SCREEN_W - 80, 300\)/);
+  assert.doesNotMatch(code, /borderWidth: 1,\s*borderColor: "rgba\(255,255,255,0\.22\)"/);
   assert.doesNotMatch(code, /vipCardTitle/);
   assert.doesNotMatch(code, /vipCardSubtitle/);
   assert.doesNotMatch(code, /vipBadge/);

@@ -87,7 +87,7 @@ const RECOMMENDATION_COLUMNS = 3;
 const RECOMMENDATION_CARD_W = Math.floor(
   (SCREEN_W - GRID_SIDE * 2 - RECOMMENDATION_GAP * (RECOMMENDATION_COLUMNS - 1)) / RECOMMENDATION_COLUMNS,
 );
-const VIP_CARD_W = Math.min(SCREEN_W - 48, 340);
+const VIP_CARD_W = Math.min(SCREEN_W - 80, 300);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -354,7 +354,7 @@ export default function HomeScreen() {
   } = useQuery({
     queryKey: ["home-recommendations", activeBusinessType],
     queryFn: () => listRecommendedProducts({
-      limit: 6,
+      limit: 30,
       businessType: activeBusinessType || undefined,
     }),
     staleTime: 60_000,
@@ -670,20 +670,33 @@ export default function HomeScreen() {
             onRetry={() => refetchRecommendations()}
           />
         ) : recommendedProducts && recommendedProducts.length > 0 ? (
-          <Animated.View
+          <Animated.ScrollView
             entering={FadeInDown.delay(380).duration(500).springify()}
-            style={s.recommendationsGrid}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            nestedScrollEnabled
+            contentContainerStyle={s.recommendationsPager}
           >
-            {recommendedProducts.slice(0, 6).map((product) => (
-              <RecommendedProductCard
-                key={`${product.restaurantId}-${product.id}`}
-                product={product}
-                width={RECOMMENDATION_CARD_W}
-                compact
-                onPress={() => goRecommendedProduct(product)}
-              />
-            ))}
-          </Animated.View>
+            {Array.from({ length: Math.ceil(Math.min(recommendedProducts.length, 30) / 6) }, (_, pageIndex) => {
+              const pageProducts = recommendedProducts.slice(pageIndex * 6, pageIndex * 6 + 6);
+              return (
+                <View key={`recommendation-page-${pageIndex}`} style={s.recommendationsPage}>
+                  <View style={s.recommendationsGrid}>
+                    {pageProducts.map((product) => (
+                      <RecommendedProductCard
+                        key={`${product.restaurantId}-${product.id}`}
+                        product={product}
+                        width={RECOMMENDATION_CARD_W}
+                        compact
+                        onPress={() => goRecommendedProduct(product)}
+                      />
+                    ))}
+                  </View>
+                </View>
+              );
+            })}
+          </Animated.ScrollView>
         ) : null}
 
         {/* ─── Découvrir en vidéo ─── */}
@@ -1037,8 +1050,6 @@ const s = StyleSheet.create({
     height: 156,
     borderRadius: 20,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.22)",
   },
   vipCardImg: {
     ...StyleSheet.absoluteFillObject,
@@ -1074,6 +1085,12 @@ const s = StyleSheet.create({
     paddingBottom: 2,
     flexDirection: "row",
     flexWrap: "wrap",
+  },
+  recommendationsPager: {
+    flexGrow: 1,
+  },
+  recommendationsPage: {
+    width: SCREEN_W,
   },
   // ── Videos ──
   videosGrid: {
