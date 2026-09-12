@@ -166,40 +166,23 @@ test("restaurant page keeps the safe-area header and renders a two-column produc
   assert.match(gridCard, /aspectRatio: 1/);
 });
 
-test("home Shorts render as three-column horizontal pages", () => {
+test("home renders Shorts as a horizontal 9:16 card rail", () => {
   const page = source("app/(tabs)/index.tsx");
-  const shortsSection = page.slice(
-    page.indexOf("/* ─── Shorts ─── */"),
-    page.indexOf("<AddressQuickPicker"),
-  );
+  const card = source("components/ShortCard.tsx");
 
-  assert.match(shortsSection, /<View style=\{s\.videosGrid\}/);
-  assert.match(shortsSection, /horizontal/);
-  assert.match(shortsSection, /pagingEnabled/);
-  assert.match(shortsSection, /SHORT_PAGE_SIZE/);
-  assert.match(page, /videosGrid:\s*\{[\s\S]*flexDirection: "row"[\s\S]*flexWrap: "wrap"/);
-  assert.match(page, /const SHORT_COLUMNS = 3/);
-  assert.match(page, /const SHORT_ROWS = 2/);
-  assert.match(page, /SHORT_GAP \* \(SHORT_COLUMNS - 1\)/);
+  assert.match(page, /title="Shorts"/);
+  assert.match(page, /shorts\.map\(\(short, index\)/);
+  assert.match(page, /<ShortCard/);
+  assert.match(card, /height: 238/);
+  assert.match(card, /borderRadius: 18/);
 });
 
-test("home shorts use three-column borderless cards without labels", () => {
-  const page = source("app/(tabs)/index.tsx");
+test("short cards keep the merchant logo in a white circular frame", () => {
+  const card = source("components/ShortCard.tsx");
 
-  assert.match(page, /const SHORT_CARD_W/);
-  const videoCardStyle = page.slice(page.indexOf("videoCard:"), page.indexOf("videoImg:"));
-  assert.doesNotMatch(videoCardStyle, /borderWidth/);
-  assert.doesNotMatch(videoCardStyle, /borderColor/);
-  assert.match(page, /shortAvatarRing/);
-  assert.match(page, /shortAvatarImageFrame/);
-  assert.match(page, /restaurantAvatarById/);
-  assert.match(page, /short\.restaurantLogoUrl/);
-  assert.match(page, /shortAvatarImage[\s\S]*resizeMode="contain"/);
-  assert.match(page, /videoCard:\s*\{[\s\S]*borderRadius: 8/);
-  assert.match(page, /shortAvatarRing:\s*\{[\s\S]*width: 44[\s\S]*height: 44/);
-  assert.match(page, /shortAvatarImageFrame:\s*\{[\s\S]*padding: 3/);
-  assert.doesNotMatch(page, /shortNameLabel/);
-  assert.doesNotMatch(page, /<Ionicons name="play-circle"/);
+  assert.match(card, /borderColor: colors\.light\.card/);
+  assert.match(card, /avatarImage/);
+  assert.match(card, /avatarUrl/);
 });
 
 test("category search matches both establishment name and category", () => {
@@ -274,82 +257,66 @@ test("home keeps pull-to-refresh without a header refresh button", () => {
 
 test("home header omits the wordmark while retaining its actions", () => {
   const code = source("app/(tabs)/index.tsx");
-  const headerTopRow = code.slice(
-    code.indexOf("/* Top row: menu + orders + profile */"),
-    code.indexOf("/* Search bar */"),
-  );
 
-  assert.doesNotMatch(headerTopRow, /headerLogo|>Jatek</);
-  assert.match(headerTopRow, /accessibilityLabel="Ouvrir le menu"/);
-  assert.match(headerTopRow, /accessibilityLabel="Mon panier"/);
-  assert.match(headerTopRow, /accessibilityLabel="Mon profil"/);
-  assert.match(headerTopRow, /greetingLabel/);
-  assert.match(headerTopRow, /headerAddressRow/);
-  assert.match(headerTopRow, /addressLabel/);
-  assert.doesNotMatch(code, /^\s*headerLogo:\s*\{/m);
+  assert.doesNotMatch(code, /headerLogo|>Jatek</);
+  assert.match(code, /accessibilityLabel="Ouvrir le menu"/);
+  assert.match(code, /accessibilityLabel="Ouvrir le panier"/);
+  assert.match(code, /accessibilityLabel="Ouvrir le profil"/);
+  assert.match(code, /greeting/);
+  assert.match(code, /addressRow/);
+  assert.match(code, /addressLabel/);
 });
 
-test("home keeps section actions and renders live product recommendations", () => {
+test("home renders reusable sections and live product recommendations", () => {
   const code = source("app/(tabs)/index.tsx");
+  const productCard = source("components/ProductCard.tsx");
+  const storeCard = source("components/StoreCard.tsx");
+  const sectionHeader = source("components/SectionHeader.tsx");
 
   assert.match(code, /listRecommendedProducts/);
-  assert.match(code, /home-recommendations/);
   assert.match(code, /productId: String\(product\.id\)/);
-  assert.match(code, /DEFAULT_HOME_SECTIONS/);
-  assert.match(code, /<HomeSectionHeader title=\{section\.title\}/);
-  assert.match(code, /contentContainerStyle=\{s\.popularProductsRow\}/);
-  assert.match(code, /pagingEnabled/);
-  assert.match(code, /products\.slice\(pageIndex \* 3, pageIndex \* 3 \+ 3\)/);
-  assert.match(code, /width=\{RECOMMENDATION_CARD_W\}/);
-  assert.match(code, /<PopularSectionWaves \/>/);
-  assert.match(code, /fill="#F8C4D7"/);
-  assert.match(code, /sectionArrowButton/);
-  assert.match(code, /<Ionicons name="arrow-forward" size=\{20\} color="#FFFFFF" \/>/);
-  assert.doesNotMatch(code, /voirPlusText/);
-  assert.match(code, /getPublicAppConfig/);
-  assert.match(code, /homeSections\s*\.filter\(\(section\) => section\.visible\)/);
-  assert.match(code, /Produits populaires/);
-  assert.match(code, /Restauration/);
-  assert.match(code, /title="Shorts"/);
-  assert.match(code, /pinkWaveSection/);
-  assert.match(code, /section\.key === "popular"/);
-  assert.match(code, /#FFF5F8/);
-  assert.match(code, /#FAD6E3/);
-  assert.match(code, /#FFF0F5/);
-  assert.doesNotMatch(code, /^\s*sectionTitle:\s*\{/m);
-  assert.match(code, /homeSectionSpacer:\s*\{\s*height: 10/);
-  assert.doesNotMatch(code, /<Text style=\{s\.gridSectionTitle\}/);
+  assert.match(code, /<SectionHeader title="Promos"/);
+  assert.match(code, /<SectionHeader title="Populaires"/);
+  assert.match(code, /<SectionHeader[\s\S]*title="Shorts"/);
+  assert.match(code, /<SectionHeader[\s\S]*title="Nouveautés"/);
+  assert.match(code, /<ProductCard/);
+  assert.match(code, /<ShortCard/);
+  assert.match(code, /<StoreCard/);
+  assert.match(code, /<HomeWaves \/>/);
+  assert.match(productCard, /compareAtPrice/);
+  assert.match(sectionHeader, /arrow-forward/);
+  assert.match(storeCard, /time-outline/);
+  assert.match(storeCard, /location-outline/);
 });
 
-test("home renders Promos before Shorts", () => {
+test("home renders the requested strict section order", () => {
   const page = source("app/(tabs)/index.tsx");
-  const promos = page.indexOf('section.key === "new_products"');
+  const promos = page.indexOf('title="Promos"');
+  const popular = page.indexOf('title="Populaires"');
   const shorts = page.indexOf('title="Shorts"');
-  assert.ok(promos >= 0);
-  assert.ok(shorts > promos);
+  const newest = page.indexOf('title="Nouveautés"');
+  assert.ok(promos >= 0 && promos < popular);
+  assert.ok(popular < shorts);
+  assert.ok(shorts < newest);
 });
 
-test("home keeps a blank spacer between the header wave and shop categories", () => {
+test("home keeps the four requested categories above the feed", () => {
   const page = source("app/(tabs)/index.tsx");
-  const headerEnd = page.indexOf('<WaveEdge color={PINK} height={28} />');
-  const categoriesStart = page.indexOf("/* ─── Service shortcuts row");
-  const topArea = page.slice(headerEnd, categoriesStart);
-
-  assert.match(topArea, /shopCategorySpacer/);
-  assert.match(page, /shopCategorySpacer:\s*\{\s*height: 10/);
-  assert.match(page, /serviceShortcutsWrap:\s*\{[\s\S]*marginTop: 18/);
+  assert.match(page, /label: "Restauration"/);
+  assert.match(page, /label: "Épicerie"/);
+  assert.match(page, /label: "Santé"/);
+  assert.match(page, /label: "Supermarché"/);
+  assert.match(page, /<CategoryRow categories=\{categories\}/);
 });
 
-test("home banners display artwork without overlaid text or badges", () => {
+test("home promo banner displays artwork without overlay text", () => {
   const code = source("app/(tabs)/index.tsx");
+  const productCard = source("components/ProductCard.tsx");
 
-  assert.match(code, /const VIP_CARD_W = Math\.min\(SCREEN_W - 80, 300\)/);
-  assert.doesNotMatch(code, /borderWidth: 1,\s*borderColor: "rgba\(255,255,255,0\.22\)"/);
-  assert.doesNotMatch(code, /vipCardTitle/);
-  assert.doesNotMatch(code, /vipCardSubtitle/);
-  assert.doesNotMatch(code, /vipBadge/);
-  assert.doesNotMatch(code, /title=\{ad\.title\}/);
-  assert.match(code, /vipCardImg[\s\S]*opacity: 1/);
+  assert.match(code, /<PromoBanner ad=\{promoAd\}/);
+  assert.match(code, /promoImage/);
+  assert.doesNotMatch(code, /ad\.title/);
+  assert.match(productCard, /textDecorationLine: "line-through"/);
 });
 
 test("product deep links only open currently available menu items", () => {
@@ -362,8 +329,8 @@ test("product deep links only open currently available menu items", () => {
 test("home includes every commerce type instead of defaulting to restaurants", () => {
   const code = source("app/(tabs)/index.tsx");
 
-  assert.match(code, /const \[activeBusinessType, setActiveBusinessType\] = useState\(""\)/);
-  assert.match(code, /const \[activeLabel, setActiveLabel\] = useState\("Tous les commerces"\)/);
+  assert.match(code, /CATEGORY_PRESETS/);
+  assert.match(code, /matches: \["pharmacy", "pharmacie", "health", "santé", "sante"\]/);
   assert.match(code, /Aucun commerce disponible pour le moment/);
 });
 
