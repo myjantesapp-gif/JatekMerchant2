@@ -209,6 +209,15 @@ test("category headers use business-specific illustrated backgrounds", () => {
   assert.match(page, /style=\{styles\.categoryPattern\}/);
 });
 
+test("category search stays fixed above the scrolling results", () => {
+  const page = source("app/category/[slug].tsx");
+  const search = page.indexOf("style={styles.searchWrap}");
+  const resultsList = page.indexOf("<FlatList", search);
+
+  assert.ok(search >= 0, "category search must be rendered");
+  assert.ok(resultsList > search, "category search must stay outside and above the scrolling list");
+});
+
 test("order sorting is stable for the source array and supports both feed directions", () => {
   const orders = [
     { id: 1, createdAt: "2026-09-01T10:00:00Z" },
