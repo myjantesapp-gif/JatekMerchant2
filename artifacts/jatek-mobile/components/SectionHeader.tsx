@@ -17,21 +17,11 @@ export function SectionHeader({
   onPress,
   testID,
   buttonLabel,
-  accent = true,
 }: Props) {
-  const accentIndex = Math.floor(title.length / 2);
   return (
     <View style={styles.row}>
       <Text style={styles.title} numberOfLines={1}>
-        {accent ? (
-          <>
-            {title.slice(0, accentIndex)}
-            <Text style={styles.titleAccent}>{title.charAt(accentIndex)}</Text>
-            {title.slice(accentIndex + 1)}
-          </>
-        ) : (
-          title
-        )}
+        {title}
       </Text>
       {onPress ? (
         <Pressable
@@ -72,10 +62,6 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     letterSpacing: -0.45,
     fontFamily: "Inter_700Bold",
-  },
-  titleAccent: {
-    color: colors.light.primary,
-    fontFamily: "Inter_900Black",
   },
   arrow: {
     width: 42,

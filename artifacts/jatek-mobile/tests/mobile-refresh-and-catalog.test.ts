@@ -309,8 +309,21 @@ test("home renders reusable sections and live product recommendations", () => {
   assert.match(code, /sort: "promos"/);
   assert.match(productCard, /compareAtPrice/);
   assert.match(sectionHeader, /arrow-forward/);
+  assert.match(sectionHeader, /\{title\}/);
+  assert.doesNotMatch(sectionHeader, /titleAccent/);
+  const titleStyle = sectionHeader.match(/title:\s*\{([\s\S]*?)\n\s*\},/)?.[1] ?? "";
+  assert.doesNotMatch(titleStyle, /backgroundColor/);
   assert.match(storeCard, /time-outline/);
   assert.match(storeCard, /location-outline/);
+});
+
+test("app applies the Poppins family to text by default", () => {
+  const layout = source("app/_layout.tsx");
+
+  assert.match(layout, /Inter_400Regular: Poppins_400Regular/);
+  assert.match(layout, /Inter_700Bold: Poppins_700Bold/);
+  assert.match(layout, /applyDefaultFont\(Text\)/);
+  assert.match(layout, /applyDefaultFont\(TextInput\)/);
 });
 
 test("home renders the requested strict section order", () => {

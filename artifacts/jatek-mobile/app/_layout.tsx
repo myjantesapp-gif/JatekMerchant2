@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
+import { Text, TextInput } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -42,6 +43,22 @@ setBaseUrl(apiBase);
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const queryClient = new QueryClient();
+
+function applyDefaultFont(component: typeof Text | typeof TextInput) {
+  const target = component as typeof component & {
+    defaultProps?: { style?: unknown };
+  };
+  const currentStyle = target.defaultProps?.style;
+  target.defaultProps = {
+    ...target.defaultProps,
+    style: [{ fontFamily: "Inter_400Regular" }, currentStyle].filter(Boolean),
+  };
+}
+
+// Explicit weight styles still override this value. Text without a dedicated
+// style now also uses Poppins instead of the native system font.
+applyDefaultFont(Text);
+applyDefaultFont(TextInput);
 
 function RootLayoutNav() {
   return (
