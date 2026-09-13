@@ -306,8 +306,8 @@ test("home renders reusable sections and live product recommendations", () => {
   assert.match(code, /styles\.newestSection/);
   assert.match(code, /const SECTION_TINT/);
   assert.match(code, /WaveEdge/);
-  assert.match(code, /sort: "catalog"/);
-  assert.match(code, /PROMO_DISCOUNT_RATE = 0\.25/);
+   assert.match(code, /sort: "promos"/);
+   assert.match(code, /sort: "newest"/);
   assert.match(productCard, /compareAtPrice/);
   assert.ok(
     productCard.indexOf("formatMad(product.compareAtPrice!)") <
@@ -359,10 +359,12 @@ test("home keeps whitespace between the header, categories, and banners without 
   assert.match(page, /bannerSection:\s*\{[\s\S]*paddingTop: 10/);
 });
 
-test("home shows products in the compact four-column reference grid", () => {
+test("home shows three products at once in one horizontal row for promos and nouveautés", () => {
   const page = source("app/(tabs)/index.tsx");
-  assert.match(page, /const PROMO_PRODUCT_WIDTH = Math\.max\(74, \(SCREEN_WIDTH - 32 - 24\) \/ 4\)/);
+  assert.match(page, /const PROMO_PRODUCT_WIDTH = Math\.max\(96, \(SCREEN_WIDTH - 32 - 16\) \/ 3\)/);
   assert.match(page, /styles\.promoProductGrid/);
+  assert.match(page, /queryKey: \["home-products-newest"\]/);
+  assert.match(page, /newestProducts\.map/);
 });
 
 test("home keeps the four requested categories above the feed", () => {
@@ -388,10 +390,11 @@ test("home promo banner displays artwork without overlay text", () => {
   assert.match(productCard, /textDecorationLine: "line-through"/);
 });
 
-test("home promo section shows the first three products only", () => {
+test("home promo section keeps all products in a single horizontal rail", () => {
   const code = source("app/(tabs)/index.tsx");
 
-  assert.match(code, /promoProducts\.slice\(0, 3\)/);
+  assert.match(code, /promoProducts\.map/);
+  assert.doesNotMatch(code, /promoProducts\.slice\(0, 3\)/);
 });
 
 test("product deep links only open currently available menu items", () => {

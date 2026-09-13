@@ -55,13 +55,13 @@ const SECTION_TINT = colors.light.pinkBg;
 const HEADER_PINK = "#CF346E";
 const HEADER_ACCENT = "#F1B4D1";
 const CATEGORY_WIDTH = 82;
-const PROMO_PRODUCT_WIDTH = Math.max(74, (SCREEN_WIDTH - 32 - 24) / 4);
+const PROMO_PRODUCT_WIDTH = Math.max(96, (SCREEN_WIDTH - 32 - 16) / 3);
+const PRODUCT_GRID_WIDTH = Math.max(74, (SCREEN_WIDTH - 32 - 24) / 4);
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.min(286, Math.max(260, SCREEN_WIDTH * 0.72));
 const STORE_GRID_WIDTH = Math.max(0, (SCREEN_WIDTH - 48) / 2);
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
-const PROMO_PRODUCT_COUNT = 3;
-const PROMO_DISCOUNT_RATE = 0.25;
+const HORIZONTAL_PRODUCT_LIMIT = 12;
 const LOCAL_PROMO_BANNERS = [
   require("../../assets/images/banner-mois-mamans.png"),
   require("../../assets/images/banner-rentree.png"),
@@ -237,24 +237,17 @@ function HomeScreen() {
     refetch: refetchPromoProducts,
   } = useQuery({
     queryKey: ["home-products-promos"],
-    queryFn: async () => {
-      const products = await listRecommendedProducts({ limit: PROMO_PRODUCT_COUNT, sort: "catalog" });
-
-      return products.slice(0, PROMO_PRODUCT_COUNT).map((product) => {
-        const originalPrice =
-          typeof product.compareAtPrice === "number" && product.compareAtPrice > product.price
-            ? product.compareAtPrice
-            : product.price;
-        const discountedPrice =
-          Math.round(originalPrice * (1 - PROMO_DISCOUNT_RATE) * 100) / 100;
-
-        return {
-          ...product,
-          price: discountedPrice,
-          compareAtPrice: originalPrice,
-        };
-      });
-    },
+    queryFn: () => listRecommendedProducts({ limit: HORIZONTAL_PRODUCT_LIMIT, sort: "promos" }),
+    staleTime: 60_000,
+  });
+  const {
+    data: newestProducts,
+    isLoading: newestProductsLoading,
+    isError: newestProductsError,
+    refetch: refetchNewestProducts,
+  } = useQuery({
+    queryKey: ["home-products-newest"],
+    queryFn: () => listRecommendedProducts({ limit: HORIZONTAL_PRODUCT_LIMIT, sort: "newest" }),
     staleTime: 60_000,
   });
   const {
@@ -296,13 +289,6 @@ function HomeScreen() {
   }, [apiCategories]);
 
   const shorts = useMemo<Short[]>(() => shortsData ?? [], [shortsData]);
-  const newestStores = useMemo<Restaurant[]>(
-    () =>
-      [...(restaurants ?? [])]
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-        .slice(0, 8),
-    [restaurants],
-  );
   const restaurantStores = useMemo<Restaurant[]>(
     () => (featuredRestaurants?.length ? featuredRestaurants : restaurants ?? []).slice(0, 8),
     [featuredRestaurants, restaurants],
@@ -329,6 +315,7 @@ function HomeScreen() {
         refetchRestaurants,
         refetchFeaturedRestaurants,
         refetchPromoProducts,
+         refetchNewestProducts,
         refetchPopularProducts,
         refetchAppConfig,
       ]);
@@ -477,8 +464,14 @@ function HomeScreen() {
               onRetry={() => refetchPromoProducts()}
             />
           ) : promoProducts && promoProducts.length > 0 ? (
-            <View style={styles.promoProductGrid}>
-               {promoProducts.slice(0, 3).map((product) => (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.promoProductGrid}
+              nestedScrollEnabled
+              scrollEnabled={promoProducts.length > 0}
+            >
+              {promoProducts.map((product) => (
                 <ProductCard
                   key={`${product.restaurantId}-${product.id}`}
                   product={product}
@@ -487,7 +480,7 @@ function HomeScreen() {
                   onPress={() => openProduct(product)}
                 />
               ))}
-            </View>
+            </ScrollView>
           ) : (
             <Text style={styles.empty}>Aucun produit en promotion pour le moment</Text>
           )}
@@ -553,12 +546,12 @@ function HomeScreen() {
               onRetry={() => refetchPopularProducts()}
             />
           ) : popularProducts && popularProducts.length > 0 ? (
-            <View style={styles.promoProductGrid}>
+             <View style={styles.productGrid}>
               {popularProducts.slice(0, 4).map((product) => (
                 <ProductCard
                   key={`popular-${product.restaurantId}-${product.id}`}
                   product={product}
-                  width={PROMO_PRODUCT_WIDTH}
+                   width={PRODUCT_GRID_WIDTH}
                   compact
                   onPress={() => openProduct(product)}
                 />
@@ -579,33 +572,33 @@ function HomeScreen() {
             onPress={() => router.push("/restaurants" as any)}
             testID="section-newest"
           />
-          {restaurantsLoading || restaurantsError ? (
+           {newestProductsLoading || newestProductsError ? (
             <LoadingOrEmpty
-              loading={restaurantsLoading}
-              error={restaurantsError}
-              empty="Aucun nouveau commerce pour le moment"
-              onRetry={() => refetchRestaurants()}
+               loading={newestProductsLoading}
+               error={newestProductsError}
+               empty="Aucun nouveau produit pour le moment"
+               onRetry={() => refetchNewestProducts()}
             />
-          ) : newestStores.length > 0 ? (
-            <View style={styles.storeGrid}>
-              {newestStores.slice(0, 2).map((restaurant, index) => (
-                <StoreCard
-                  key={restaurant.id}
-                  restaurant={restaurant}
-                  width={STORE_GRID_WIDTH}
-                  compact
-                  badgeLabel={index === 0 ? "Nouveau" : "Promo"}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/restaurant/[id]",
-                      params: { id: String(restaurant.id) },
-                    })
-                  }
-                />
+           ) : newestProducts && newestProducts.length > 0 ? (
+             <ScrollView
+               horizontal
+               showsHorizontalScrollIndicator={false}
+               contentContainerStyle={styles.promoProductGrid}
+               nestedScrollEnabled
+               scrollEnabled={newestProducts.length > 0}
+             >
+               {newestProducts.map((product) => (
+                 <ProductCard
+                   key={`newest-${product.restaurantId}-${product.id}`}
+                   product={product}
+                   width={PROMO_PRODUCT_WIDTH}
+                   compact
+                   onPress={() => openProduct(product)}
+                 />
               ))}
-            </View>
+             </ScrollView>
           ) : (
-            <Text style={styles.empty}>Aucun nouveau commerce pour le moment</Text>
+             <Text style={styles.empty}>Aucun nouveau produit pour le moment</Text>
           )}
         </View>
 
@@ -833,6 +826,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   promoProductGrid: {
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    gap: 8,
+  },
+  productGrid: {
     paddingHorizontal: 16,
     flexDirection: "row",
     flexWrap: "wrap",
