@@ -97,7 +97,7 @@ export function ProductCard({ product, width, onPress, compact = false }: Props)
         </Pressable>
       </View>
       <View style={[styles.body, compact && styles.bodyCompact]}>
-        <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={2}>
+        <Text style={[styles.name, compact && styles.nameCompact]}>
           {product.name}
         </Text>
         <View style={styles.priceBlock}>
@@ -141,12 +141,12 @@ const styles = StyleSheet.create({
     position: "relative",
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 5,
-    paddingTop: 20,
-    paddingBottom: 18,
+    paddingTop: 10,
+    paddingBottom: 9,
   },
   imageWrapCompact: {
     height: undefined,
-    aspectRatio: 1.05,
+    aspectRatio: 1.12,
   },
   image: {
     width: "100%",
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   nameCompact: {
-    minHeight: 30,
+    minHeight: 28,
     fontSize: 10,
     lineHeight: 14,
   },

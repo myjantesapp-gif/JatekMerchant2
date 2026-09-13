@@ -511,7 +511,6 @@ function HomeScreen() {
 
         {/* 3. Shorts — placed before popular products in the target layout */}
         <View style={styles.section}>
-          <WaveEdge color={OLIVE_TINT} position="top" height={24} />
           <SectionHeader
             title="Shorts"
             onPress={() => openShort(0)}
@@ -547,7 +546,6 @@ function HomeScreen() {
           ) : (
             <Text style={styles.empty}>Aucun Short disponible pour le moment</Text>
           )}
-          <WaveEdge color={OLIVE_TINT} height={24} />
         </View>
 
         {/* 4. Produits populaires */}
@@ -826,21 +824,21 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
   section: {
-    marginTop: 46,
-    paddingBottom: 24,
-    backgroundColor: OLIVE_TINT,
+    marginTop: 34,
+    paddingBottom: 16,
+    backgroundColor: "#FFFFFF",
   },
   promoSection: {
     marginTop: 0,
     paddingTop: 2,
-    paddingBottom: 35,
+    paddingBottom: 24,
     position: "relative",
     backgroundColor: SECTION_TINT,
   },
   popularSection: {
-    marginTop: 46,
+    marginTop: 34,
     paddingTop: 2,
-    paddingBottom: 35,
+    paddingBottom: 24,
     position: "relative",
     backgroundColor: TURQUOISE_TINT,
   },
@@ -853,8 +851,8 @@ const styles = StyleSheet.create({
     backgroundColor: SECTION_TINT,
   },
   newestSection: {
-    marginTop: 46,
-    paddingBottom: 27,
+    marginTop: 34,
+    paddingBottom: 20,
     backgroundColor: OLIVE_TINT,
   },
   restaurantSection: {
@@ -869,7 +867,7 @@ const styles = StyleSheet.create({
     backgroundColor: SECTION_TINT,
   },
   promoCard: {
-    minHeight: 176,
+    minHeight: 150,
     borderRadius: 20,
     overflow: "hidden",
     flexDirection: "row",

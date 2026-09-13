@@ -82,7 +82,7 @@ export function ShortCard({ short, width, avatarUrl, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    height: 200,
+    height: 168,
     borderRadius: 18,
     overflow: "hidden",
     position: "relative",
