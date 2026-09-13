@@ -64,7 +64,8 @@ const OLIVE_TINT = "#FEFCEF";
 const TURQUOISE_TINT = "#F0FAFB";
 const HEADER_PINK = "#E91E63";
 const HEADER_ACCENT = "#FFD0E0";
-const CATEGORY_WIDTH = (SCREEN_WIDTH - 32 - 24) / 4;
+const CATEGORY_GAP = 8;
+const CATEGORY_WIDTH = (SCREEN_WIDTH - 32 - CATEGORY_GAP * 3) / 4;
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.max(0, (SCREEN_WIDTH - 32 - 12) / 2);
 const HORIZONTAL_PRODUCT_LIMIT = 12;
@@ -196,8 +197,8 @@ function CategoryRow({
           accessibilityLabel={category.label}
           style={({ pressed }) => [styles.categoryItem, pressed && styles.pressed]}
         >
-          <View style={[styles.categoryIcon, { backgroundColor: `${category.accent}24` }]}>
-            <Ionicons name={category.icon} size={29} color={category.accent} />
+          <View style={styles.categoryIcon}>
+            <Ionicons name={category.icon} size={33} color={category.accent} />
           </View>
           <Text style={styles.categoryLabel} numberOfLines={2}>
             {category.label}
@@ -961,41 +962,44 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   categorySection: {
-    paddingTop: 4,
-    paddingBottom: 4,
-    backgroundColor: "#FFFFFF",
+    paddingTop: 8,
+    paddingBottom: 8,
+    backgroundColor: "#FFF3F8",
     marginBottom: 2,
   },
   categoryRow: {
-    gap: 12,
+    gap: CATEGORY_GAP,
     paddingHorizontal: 16,
     justifyContent: "space-between",
   },
   categoryItem: {
     width: CATEGORY_WIDTH,
+    minHeight: 104,
+    paddingTop: 8,
+    paddingBottom: 9,
+    paddingHorizontal: 3,
     alignItems: "center",
-    gap: 7,
+    justifyContent: "space-between",
+    gap: 2,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#D58BA9",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   categoryIcon: {
-    width: 70,
-    height: 60,
-    borderRadius: 16,
+    width: "100%",
+    height: 58,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#f3f4f6",
   },
   categoryLabel: {
-    minHeight: 18,
-    color: "#274C77",
-    fontSize: 11,
-    lineHeight: 14,
+    minHeight: 17,
+    color: NAVY,
+    fontSize: 12,
+    lineHeight: 16,
     textAlign: "center",
     fontFamily: "Poppins_700Bold",
   },
