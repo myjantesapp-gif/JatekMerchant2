@@ -58,15 +58,15 @@ export function ProductCard({ product, width, onPress, compact = false }: Props)
         <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={2}>
           {product.name}
         </Text>
-        <View style={styles.priceRow}>
-          <Text style={[styles.price, compact && styles.priceCompact]}>
-            {formatMad(product.price)} DH
-          </Text>
+        <View style={styles.priceBlock}>
           {hasPromotion ? (
             <Text style={[styles.compareAtPrice, compact && styles.compareAtPriceCompact]}>
               {formatMad(product.compareAtPrice!)} DH
             </Text>
           ) : null}
+          <Text style={[styles.price, compact && styles.priceCompact]}>
+            {formatMad(product.price)} DH
+          </Text>
         </View>
       </View>
     </Pressable>
@@ -191,11 +191,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15,
   },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 6,
+  priceBlock: {
+    alignItems: "flex-start",
+    gap: 1,
   },
   price: {
     color: colors.light.primary,

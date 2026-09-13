@@ -308,6 +308,11 @@ test("home renders reusable sections and live product recommendations", () => {
   assert.match(code, /WaveEdge/);
   assert.match(code, /sort: "promos"/);
   assert.match(productCard, /compareAtPrice/);
+  assert.ok(
+    productCard.indexOf("formatMad(product.compareAtPrice!)") <
+      productCard.lastIndexOf("formatMad(product.price)"),
+    "the crossed-out base price must appear above the promotional price",
+  );
   assert.match(sectionHeader, /arrow-forward/);
   assert.match(sectionHeader, /\{title\}/);
   assert.doesNotMatch(sectionHeader, /titleAccent/);

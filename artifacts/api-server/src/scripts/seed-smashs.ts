@@ -347,11 +347,13 @@ async function main() {
       });
     const categoryIds = new Map(insertedCategories.map((category) => [category.name, category.id]));
 
+    const promotionalCompareAtPrices = [50, 65, 60, 80];
     const menuRows = products.map(({ category, product }, index) => ({
       restaurantId: restaurant.id,
       name: product.name.trim(),
       description: product.description?.trim() || null,
       price: Number(product.price),
+      compareAtPrice: promotionalCompareAtPrices[index] ?? null,
       imageUrl: product.image
         ? productImageUrls.get(product.image) ?? null
         : productImageUrls.get(product.name) ?? null,
