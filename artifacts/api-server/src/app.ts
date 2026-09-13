@@ -7,13 +7,15 @@ import pinoHttp from "pino-http";
 import http from "http";
 import path from "path";
 import { existsSync } from "fs";
+import { fileURLToPath } from "url";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { attachAuth } from "./middlewares/auth";
 
 const app: Express = express();
 const mobileStaticPort = Number(process.env["MOBILE_STATIC_PORT"] ?? "25896");
-const bannerAssetsDir = path.resolve(__dirname, "../public/banners");
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const bannerAssetsDir = path.resolve(currentDir, "../public/banners");
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);

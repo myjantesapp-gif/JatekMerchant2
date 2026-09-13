@@ -31,7 +31,7 @@ import { homeOrderSchema, homeSectionsSchema, getDefaultHomeSections, type AppCo
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 import { closeUserSubscriptions, publish } from "../lib/sse";
 import * as tracking from "../lib/trackingService";
-import { normalizeStoredMediaPath } from "../lib/objectStorage";
+import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectStorage";
 import { migrateLegacyMedia } from "../scripts/migrate-media-storage";
 import { createMediaBackup } from "../scripts/backup-prepublish";
 import { calculateRefundJatekEarning } from "../lib/orderPricing";
@@ -131,7 +131,10 @@ router.get("/backend/ads", requireAuth, async (req: AuthedRequest, res, next): P
   if (!isAdmin(req.userRole)) { res.status(403).json({ error: "Forbidden" }); return; }
   try {
     const ads = await db.select().from(adsTable).orderBy(adsTable.sortOrder);
-    res.json(ads);
+    res.json(ads.map((ad) => ({
+      ...ad,
+      imageUrl: resolveLegacyMediaPath(ad.imageUrl, "banners"),
+    })));
   } catch (err) { next(err); }
 });
 

@@ -10,6 +10,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, attachAuth, type AuthedRequest } from "../middlewares/auth";
 import { closeUserSubscriptions } from "../lib/sse";
+import { resolveLegacyMediaPath } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -26,6 +27,13 @@ const USER_SAFE_FIELDS = {
   walletBalance: usersTable.walletBalance,
   createdAt: usersTable.createdAt,
 };
+
+function serializeUser<T extends { avatarUrl?: string | null }>(user: T): T {
+  return {
+    ...user,
+    avatarUrl: resolveLegacyMediaPath(user.avatarUrl, "images"),
+  };
+}
 
 // requireAuth: must be logged in; admins can list all, customers only their own record via /users/:id
 router.get("/users", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
@@ -48,7 +56,7 @@ router.get("/users", requireAuth, async (req: AuthedRequest, res, next): Promise
       ? await db.select(USER_SAFE_FIELDS).from(usersTable).where(and(...conditions))
       : await db.select(USER_SAFE_FIELDS).from(usersTable);
 
-    res.json(users);
+    res.json(users.map(serializeUser));
   } catch (err) {
     next(err);
   }
@@ -79,11 +87,11 @@ router.get("/users/:id", attachAuth, async (req: AuthedRequest, res, next): Prom
     const isAdmin = req.userRole === "admin" || req.userRole === "super_admin";
     if (!isOwn && !isAdmin) {
       const { walletBalance: _, ...pub } = user;
-      res.json(pub);
+      res.json(serializeUser(pub));
       return;
     }
 
-    res.json(user);
+    res.json(serializeUser(user));
   } catch (err) {
     next(err);
   }
@@ -119,7 +127,7 @@ router.patch("/users/:id", requireAuth, async (req: AuthedRequest, res, next): P
     }
 
     if (parsed.data.isActive === false) closeUserSubscriptions(params.data.id);
-    res.json(user);
+    res.json(serializeUser(user));
   } catch (err) {
     next(err);
   }

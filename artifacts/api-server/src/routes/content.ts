@@ -21,6 +21,10 @@ router.get("/categories", async (req, res): Promise<void> => {
   const all = await db.select().from(categoriesTable)
     .where(eq(categoriesTable.isActive, true))
     .orderBy(asc(categoriesTable.sortOrder), asc(categoriesTable.name), asc(categoriesTable.id));
+  const withMedia = (category: typeof all[number]) => ({
+    ...category,
+    bannerImageUrl: resolveLegacyMediaPath(category.bannerImageUrl, "banners"),
+  });
 
   // Apply type / businessType filters
   let filtered = all;
@@ -35,12 +39,12 @@ router.get("/categories", async (req, res): Promise<void> => {
     if (pid === null) {
       // Return top-level parents with nested subCategories from the full set
       res.json(rows.map((p) => ({
-        ...p,
-        subCategories: all.filter((c) => c.parentId === p.id && c.isActive),
+        ...withMedia(p),
+        subCategories: all.filter((c) => c.parentId === p.id && c.isActive).map(withMedia),
       })));
     } else {
       // Return children flat (no further nesting)
-      res.json(rows);
+      res.json(rows.map(withMedia));
     }
     return;
   }
@@ -48,8 +52,8 @@ router.get("/categories", async (req, res): Promise<void> => {
   // Default (no parentId filter): return full hierarchy — parents with nested subCategories[]
   const parents = all.filter((c) => !c.parentId);
   const result = parents.map((p) => ({
-    ...p,
-    subCategories: all.filter((c) => c.parentId === p.id),
+    ...withMedia(p),
+    subCategories: all.filter((c) => c.parentId === p.id).map(withMedia),
   }));
   res.json(result);
 });
@@ -110,7 +114,10 @@ router.get("/ads", async (req, res): Promise<void> => {
   const conditions = [eq(adsTable.isActive, true)];
   if (type) conditions.push(eq(adsTable.type, type));
   const rows = await db.select().from(adsTable).where(and(...conditions)).orderBy(asc(adsTable.sortOrder));
-  res.json(rows);
+  res.json(rows.map((row) => ({
+    ...row,
+    imageUrl: resolveLegacyMediaPath(row.imageUrl, "banners"),
+  })));
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -326,7 +333,11 @@ router.get("/backend/categories/all", requireAuth, async (req: AuthedRequest, re
 router.get("/backend/shorts", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   if (!await requireAdmin(req, res)) return;
   const rows = await db.select().from(shortsTable).orderBy(asc(shortsTable.sortOrder));
-  res.json(rows);
+  res.json(rows.map((row) => ({
+    ...row,
+    imageUrl: resolveLegacyMediaPath(row.imageUrl, "images"),
+    videoUrl: resolveLegacyMediaPath(row.videoUrl, "shorts"),
+  })));
 });
 
 router.post("/backend/shorts", requireAuth, async (req: AuthedRequest, res): Promise<void> => {

@@ -7,6 +7,7 @@ interface UploadResponse {
 
 interface UseUploadOptions {
   basePath?: string;
+  mediaKind?: "image" | "logo" | "banner" | "media" | "short";
   getRequestHeaders?: () => Record<string, string> | Promise<Record<string, string>>;
   onSuccess?: (response: UploadResponse) => void;
   onError?: (error: Error) => void;
@@ -29,14 +30,22 @@ export function useUpload(options: UseUploadOptions = {}) {
           ? await options.getRequestHeaders()
           : {};
 
-        if (!file.type.startsWith("image/")) {
+        if (
+          !file.type.startsWith("image/") &&
+          file.type !== "" &&
+          file.type !== "application/octet-stream"
+        ) {
           throw new Error("Only image files can be uploaded.");
         }
 
         setProgress(10);
         const uploadRes = await fetch(`${basePath}/uploads/image`, {
           method: "POST",
-          headers: { "Content-Type": file.type, ...extraHeaders },
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+            ...(options.mediaKind ? { "X-Jatek-Media-Kind": options.mediaKind } : {}),
+            ...extraHeaders,
+          },
           body: file,
         });
         if (!uploadRes.ok) {

@@ -10,6 +10,7 @@ import { handleUnauthorizedResponse } from "./api";
 // ─── Restaurant/menu image upload (server-validated, restricted roles) ─────────
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+export type MobileMediaUploadKind = "image" | "logo" | "banner" | "media" | "short";
 
 /**
  * Upload a restaurant or menu image.
@@ -19,10 +20,11 @@ const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "i
 export async function uploadImage(
   uri: string,
   mimeType: string,
-  token: string
+  token: string,
+  kind: MobileMediaUploadKind = "image",
 ): Promise<string> {
   const apiBase = getApiBaseSafe();
-  if (!ALLOWED_IMAGE_TYPES.has(mimeType)) {
+  if (!ALLOWED_IMAGE_TYPES.has(mimeType) && mimeType !== "" && mimeType !== "application/octet-stream") {
     throw new Error("Format non pris en charge. Choisissez une image JPEG, PNG, WebP ou GIF.");
   }
 
@@ -34,7 +36,11 @@ export async function uploadImage(
 
   const uploadRes = await fetch(`${apiBase}/api/storage/uploads/image`, {
     method: "POST",
-    headers: { "Content-Type": mimeType, Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": mimeType || "application/octet-stream",
+      Authorization: `Bearer ${token}`,
+      "X-Jatek-Media-Kind": kind,
+    },
     body: blob,
   });
 

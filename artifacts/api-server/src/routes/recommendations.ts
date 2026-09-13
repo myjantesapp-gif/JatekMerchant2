@@ -131,7 +131,7 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
     )
     .map((row) => ({
       ...row,
-      imageUrl: resolveLegacyMediaPath(row.imageUrl, "images") ?? row.imageUrl,
+      imageUrl: resolveLegacyMediaPath(row.imageUrl, "medias") ?? row.imageUrl,
     }));
 
   const selectedCandidates = sort === "newest"

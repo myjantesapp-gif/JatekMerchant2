@@ -643,7 +643,16 @@ async function queryBackendProducts(
       .orderBy(...getBackendProductsOrderBy(sort, direction))
       .limit(pageSize)
       .offset((page - 1) * pageSize);
-  return { items: rows, total: totalCount, page, pageSize, totalPages };
+  return {
+    items: rows.map((item) => ({
+      ...item,
+      imageUrl: resolveLegacyMediaPath(item.imageUrl, "medias") ?? null,
+    })),
+    total: totalCount,
+    page,
+    pageSize,
+    totalPages,
+  };
 }
 
 router.get("/backend/products", requireAuth, async (req: AuthedRequest, res): Promise<void> => {

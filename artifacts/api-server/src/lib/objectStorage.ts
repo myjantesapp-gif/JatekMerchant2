@@ -35,6 +35,7 @@ type ManagedObjectFile = {
 
 export const MEDIA_FOLDERS = ["images", "logos", "banners", "medias", "shorts"] as const;
 export type MediaFolder = (typeof MEDIA_FOLDERS)[number];
+const ACCEPTED_OBJECT_ROOTS = new Set<string>([...MEDIA_FOLDERS, "uploads"]);
 
 const MEDIA_FOLDER_BY_KIND = {
   image: "images",
@@ -403,6 +404,19 @@ export class ObjectStorageService {
     }
 
     const entityId = parts.slice(1).join("/");
+    // Object names are user-controlled through the public media route. Keep
+    // reads inside the managed media prefixes and reject traversal/control
+    // characters before passing the name to App Storage.
+    const objectParts = entityId.split("/");
+    if (
+      !ACCEPTED_OBJECT_ROOTS.has(objectParts[0] ?? "") ||
+      objectParts.some((part) => !part || part === "." || part === "..") ||
+      entityId.includes("\\") ||
+      /[\u0000-\u001f\u007f]/.test(entityId)
+    ) {
+      throw new ObjectNotFoundError();
+    }
+
     let exists;
     try {
       exists = await managedObjectStorageClient.exists(entityId);
