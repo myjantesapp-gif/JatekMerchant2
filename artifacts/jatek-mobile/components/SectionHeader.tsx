@@ -8,13 +8,39 @@ type Props = {
   testID?: string;
   buttonLabel?: string;
   accent?: boolean;
+  variant?: "default" | "home";
 };
 
 export function SectionHeader({
   title,
   onPress,
   testID,
+  variant = "default",
 }: Props) {
+  if (variant === "home") {
+    return (
+      <View style={styles.homeRow}>
+        <Text style={styles.homeTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        {onPress ? (
+          <Pressable
+            onPress={onPress}
+            testID={testID}
+            accessibilityRole="button"
+            accessibilityLabel={`Ouvrir la section ${title}`}
+            style={({ pressed }) => [
+              styles.homeArrow,
+              pressed && styles.arrowPressed,
+            ]}
+          >
+            <Ionicons name="chevron-forward" size={18} color="#E91E63" />
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.row}>
       <Text style={styles.title} numberOfLines={1}>
@@ -45,8 +71,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
     paddingHorizontal: 16,
-    paddingTop: 18,
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 6,
   },
   title: {
     flex: 1,
@@ -69,5 +95,32 @@ const styles = StyleSheet.create({
   arrowPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.94 }],
+  },
+  homeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 12,
+  },
+  homeTitle: {
+    flex: 1,
+    color: "#0F172A",
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.5,
+    fontFamily: "Poppins_700Bold",
+  },
+  homeArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: "#FCE4EC",
   },
 });

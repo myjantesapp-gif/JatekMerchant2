@@ -16,6 +16,8 @@ type Props = {
   onPress: () => void;
   compact?: boolean;
   badgeLabel?: string;
+  variant?: "default" | "home";
+  showFee?: boolean;
 };
 
 export function StoreCard({
@@ -24,13 +26,81 @@ export function StoreCard({
   onPress,
   compact = false,
   badgeLabel,
+  variant = "default",
+  showFee = false,
 }: Props) {
   const imageUrl = resolveMediaUrl(restaurant.imageUrl || restaurant.coverImageUrl) ?? FALLBACK_STORE_IMAGE;
   const rating = (restaurant as Restaurant & { rating?: number | null }).rating;
   const time = restaurant.deliveryTime != null
+    ? `${restaurant.deliveryTime}-${restaurant.deliveryTime + 10} min`
+    : "15-25 min";
+  const fee = restaurant.deliveryFee != null ? `${formatMad(restaurant.deliveryFee)} DH` : "12,00 DH";
+
+  if (variant === "home") {
+    const homeRating = rating ?? 4.5;
+    return (
+      <Pressable
+        onPress={onPress}
+        testID={`store-card-${restaurant.id}`}
+        style={({ pressed }) => [
+          styles.homeCard,
+          { width },
+          pressed && styles.pressed,
+        ]}
+      >
+        <View style={styles.homeCoverWrap}>
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.homeCover}
+            resizeMode="cover"
+          />
+          <View style={styles.homeLogoCircle}>
+            {restaurant.logoUrl ? (
+              <Image
+                source={{ uri: resolveMediaUrl(restaurant.logoUrl) }}
+                style={styles.homeLogoImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={styles.homeLogoInitial}>
+                {restaurant.name.charAt(0).toUpperCase() || "J"}
+              </Text>
+            )}
+          </View>
+          <Pressable hitSlop={8} style={styles.homeHeartBtn}>
+            <Ionicons name="heart-outline" size={16} color="#fff" />
+          </Pressable>
+        </View>
+        <View style={styles.homeInfo}>
+          <Text style={styles.homeName} numberOfLines={1}>
+            {restaurant.name}
+          </Text>
+          {showFee ? (
+            <>
+              <View style={styles.homeMetaRow}>
+                <Ionicons name="star" size={10} color="#F4D03F" />
+                <Text style={styles.homeMetaTextBold}>{homeRating.toFixed(1)}</Text>
+                <Text style={styles.homeMetaTextLight}>(500+)</Text>
+              </View>
+              <Text style={styles.homeMetaTextLight}>{time}</Text>
+              <Text style={styles.homeMetaTextLight}>1,5 km • {fee}</Text>
+            </>
+          ) : (
+            <View style={styles.homeMetaRow}>
+              <Ionicons name="star" size={10} color="#F4D03F" />
+              <Text style={styles.homeMetaTextBold}>{homeRating.toFixed(1)}</Text>
+              <Text style={styles.homeMetaTextLight}>(500+) • {time} • 1,2 km</Text>
+            </View>
+          )}
+        </View>
+      </Pressable>
+    );
+  }
+
+  const oldTime = restaurant.deliveryTime != null
     ? `${restaurant.deliveryTime} - ${restaurant.deliveryTime + 10} min`
     : "20 - 30 min";
-  const fee = restaurant.deliveryFee != null ? `${formatMad(restaurant.deliveryFee)} MAD` : "10,00 MAD";
+  const oldFee = restaurant.deliveryFee != null ? `${formatMad(restaurant.deliveryFee)} MAD` : "10,00 MAD";
 
   return (
     <Pressable
@@ -103,11 +173,11 @@ export function StoreCard({
             ) : null}
             <View style={styles.metaItem}>
               <Ionicons name="time-outline" size={compact ? 12 : 14} color={colors.light.mutedForeground} />
-              <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{time}</Text>
+              <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{oldTime}</Text>
             </View>
             <View style={styles.metaItem}>
               <Ionicons name="location-outline" size={compact ? 12 : 14} color={colors.light.mutedForeground} />
-              <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{fee}</Text>
+              <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{oldFee}</Text>
             </View>
           </View>
         </View>
@@ -284,5 +354,80 @@ const styles = StyleSheet.create({
   ratingText: {
     color: "#475569",
     fontFamily: "Inter_700Bold",
+  },
+  
+  // Home Variant Styles
+  homeCard: {
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#f3f4f6",
+  },
+  homeCoverWrap: {
+    position: "relative",
+    height: 100,
+    width: "100%",
+  },
+  homeCover: {
+    width: "100%",
+    height: "100%",
+  },
+  homeLogoCircle: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 2,
+  },
+  homeLogoImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 99,
+  },
+  homeLogoInitial: {
+    color: "#E91E63",
+    fontSize: 14,
+    fontFamily: "Poppins_700Bold",
+  },
+  homeHeartBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  homeInfo: {
+    padding: 10,
+    gap: 4,
+  },
+  homeName: {
+    color: "#111827",
+    fontSize: 13,
+    fontFamily: "Poppins_700Bold",
+  },
+  homeMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  homeMetaTextBold: {
+    color: "#111827",
+    fontSize: 10,
+    fontFamily: "Poppins_600SemiBold",
+  },
+  homeMetaTextLight: {
+    color: "#6b7280",
+    fontSize: 10,
+    fontFamily: "Poppins_400Regular",
   },
 });

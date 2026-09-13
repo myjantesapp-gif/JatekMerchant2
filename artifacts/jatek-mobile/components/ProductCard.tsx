@@ -18,6 +18,7 @@ type Props = {
   onPress: () => void;
   compact?: boolean;
   emphasizeImage?: boolean;
+  variant?: "default" | "home-compact" | "home-offer" | "home-free-delivery";
 };
 
 export function ProductCard({
@@ -26,6 +27,7 @@ export function ProductCard({
   onPress,
   compact = false,
   emphasizeImage = false,
+  variant = "default",
 }: Props) {
   const { token, user } = useAuth();
   const alert = useFriendlyAlert();
@@ -50,6 +52,119 @@ export function ProductCard({
   const originalPrice = product.originalPrice ?? product.oldPrice ?? product.compareAtPrice ?? null;
   const hasPromotion = typeof originalPrice === "number" && originalPrice > product.price;
   const imageUrl = resolveMediaUrl(product.imageUrl);
+
+  const toggleFavorite = (event: any) => {
+    event.stopPropagation();
+    if (!token) { router.push("/(auth)/login"); return; }
+    if (favoritesError) { void refetch(); return; }
+    favoriteMutation.mutate();
+  };
+
+  if (variant === "home-offer") {
+    // "Offres du moment"
+    const discount = hasPromotion ? Math.round(((originalPrice! - product.price) / originalPrice!) * 100) : 0;
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.cardOffer, { width }, pressed && styles.pressed]}
+      >
+        <View style={styles.offerImageWrap}>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.offerImage} resizeMode="cover" />
+          ) : (
+            <View style={[styles.offerImage, { backgroundColor: "#f3f4f6" }]} />
+          )}
+          {discount > 0 && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountText}>-{discount}%</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.offerBody}>
+          <Text style={styles.offerName} numberOfLines={2}>{product.name}</Text>
+          <View style={styles.offerPriceRow}>
+            {hasPromotion && (
+              <Text style={styles.offerOldPrice}>{formatMad(originalPrice!)} DH</Text>
+            )}
+            <Text style={styles.offerNewPrice}>{formatMad(product.price)} DH</Text>
+          </View>
+        </View>
+      </Pressable>
+    );
+  }
+
+  if (variant === "home-free-delivery") {
+    // "Livraison gratuite"
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.cardFreeDelivery, { width }, pressed && styles.pressed]}
+      >
+        <View style={styles.fdImageWrap}>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.fdImage} resizeMode="contain" />
+          ) : (
+            <View style={[styles.fdImage, { backgroundColor: "#f3f4f6" }]} />
+          )}
+          <View style={styles.fdBadge}>
+            <Ionicons name="car" size={10} color="#fff" />
+            <Text style={styles.fdBadgeText}>0 DH</Text>
+          </View>
+        </View>
+        <View style={styles.fdBody}>
+          <Text style={styles.fdName} numberOfLines={1}>{product.name}</Text>
+          <Text style={styles.fdQty}>1 kg</Text> 
+          <View style={styles.fdBottomRow}>
+            <Text style={styles.fdPrice}>{formatMad(product.price)} DH</Text>
+            <Pressable hitSlop={8} style={styles.addBtn} onPress={(e) => { e.stopPropagation(); onPress(); }}>
+              <Ionicons name="add" size={16} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+      </Pressable>
+    );
+  }
+
+  if (variant === "home-compact") {
+    // "Produits populaires"
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.homeCardCompact, { width }, pressed && styles.pressed]}
+      >
+        <View style={styles.compactImageWrap}>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.compactImage} resizeMode="cover" />
+          ) : (
+            <View style={[styles.compactImage, { backgroundColor: "#f3f4f6" }]} />
+          )}
+          <View style={styles.compactLogo}>
+            {product.restaurantLogoUrl ? (
+              <Image
+                source={{ uri: resolveMediaUrl(product.restaurantLogoUrl) }}
+                style={styles.compactLogoImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={styles.compactLogoText}>{product.restaurantName.charAt(0).toUpperCase() || "J"}</Text>
+            )}
+          </View>
+          <Pressable onPress={toggleFavorite} hitSlop={8} style={styles.heartBtn}>
+            <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={16} color={isFavorite ? "#E91E63" : "#4b5563"} />
+          </Pressable>
+        </View>
+        <View style={styles.compactBody}>
+          <Text style={styles.compactName} numberOfLines={1}>{product.name}</Text>
+          <View style={styles.compactBottomRow}>
+            <Text style={styles.compactPrice}>{formatMad(product.price)} DH</Text>
+            <Pressable hitSlop={8} style={styles.addBtn} onPress={(e) => { e.stopPropagation(); onPress(); }}>
+              <Ionicons name="add" size={16} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable
@@ -294,6 +409,215 @@ const styles = StyleSheet.create({
     fontSize: 9,
   },
   promoPrice: {
+    color: "#E91E63",
+  },
+  
+  // Home Variants Styles
+  // Compact (Produits populaires)
+  homeCardCompact: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#f3f4f6",
+    overflow: "hidden",
+  },
+  compactImageWrap: {
+    height: 110,
+    width: "100%",
+    position: "relative",
+  },
+  compactImage: {
+    width: "100%",
+    height: "100%",
+  },
+  compactLogo: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  compactLogoImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 15,
+  },
+  compactLogoText: {
+    fontSize: 12,
+    fontFamily: "Poppins_700Bold",
+    color: "#E91E63",
+  },
+  heartBtn: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  compactBody: {
+    padding: 8,
+  },
+  compactName: {
+    fontSize: 12,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#1f2937",
+    marginBottom: 8,
+  },
+  compactBottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  compactPrice: {
+    fontSize: 12,
+    fontFamily: "Poppins_700Bold",
+    color: "#E91E63",
+  },
+  addBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#E91E63",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Offer (Offres du moment)
+  cardOffer: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#f3f4f6",
+    overflow: "hidden",
+  },
+  offerImageWrap: {
+    height: 120,
+    width: "100%",
+    position: "relative",
+  },
+  offerImage: {
+    width: "100%",
+    height: "100%",
+  },
+  discountBadge: {
+    position: "absolute",
+    top: -4,
+    left: -4,
+    backgroundColor: "#E91E63",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  discountText: {
+    color: "#fff",
+    fontFamily: "Poppins_700Bold",
+    fontSize: 14,
+    transform: [{ rotate: "-15deg" }],
+  },
+  offerBody: {
+    padding: 10,
+  },
+  offerName: {
+    fontSize: 13,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  offerPriceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  offerOldPrice: {
+    fontSize: 12,
+    fontFamily: "Poppins_500Medium",
+    color: "#9ca3af",
+    textDecorationLine: "line-through",
+  },
+  offerNewPrice: {
+    fontSize: 14,
+    fontFamily: "Poppins_700Bold",
+    color: "#E91E63",
+  },
+
+  // Free Delivery
+  cardFreeDelivery: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#f3f4f6",
+    padding: 8,
+  },
+  fdImageWrap: {
+    height: 80,
+    width: "100%",
+    position: "relative",
+    marginBottom: 8,
+  },
+  fdImage: {
+    width: "100%",
+    height: "100%",
+  },
+  fdBadge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    backgroundColor: "#E91E63",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 2,
+  },
+  fdBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontFamily: "Poppins_600SemiBold",
+  },
+  fdBody: {
+    gap: 2,
+  },
+  fdName: {
+    fontSize: 12,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#111827",
+  },
+  fdQty: {
+    fontSize: 10,
+    color: "#6b7280",
+    fontFamily: "Poppins_400Regular",
+    marginBottom: 4,
+  },
+  fdBottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  fdPrice: {
+    fontSize: 12,
+    fontFamily: "Poppins_700Bold",
     color: "#E91E63",
   },
 });

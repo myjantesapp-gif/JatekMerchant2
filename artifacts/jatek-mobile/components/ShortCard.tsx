@@ -15,9 +15,10 @@ type Props = {
   width: number;
   avatarUrl?: string | null;
   onPress: () => void;
+  variant?: "default" | "home";
 };
 
-export function ShortCard({ short, width, avatarUrl, onPress }: Props) {
+export function ShortCard({ short, width, avatarUrl, onPress, variant = "default" }: Props) {
   const [sourceIndex, setSourceIndex] = useState(0);
   const sources = useMemo(
     () =>
@@ -31,6 +32,29 @@ export function ShortCard({ short, width, avatarUrl, onPress }: Props) {
   const initials = merchantName.charAt(0).toUpperCase() || "J";
   const shortWithViews = short as Short & { views?: number; viewCount?: number };
   const viewCount = shortWithViews.viewCount ?? shortWithViews.views;
+  
+  if (variant === "home") {
+    return (
+      <Pressable
+        onPress={onPress}
+        testID={`short-card-${short.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={`Short ${short.title || merchantName}`}
+        style={({ pressed }) => [styles.homeCard, { width }, pressed && styles.pressed]}
+      >
+        <Image
+          source={{ uri: source }}
+          style={styles.image}
+          resizeMode="cover"
+          onError={() => setSourceIndex((index) => Math.min(index + 1, sources.length - 1))}
+        />
+        <View style={styles.homePlayBadge}>
+          <Ionicons name="play" size={18} color="#FFFFFF" style={{ marginLeft: 2 }} />
+        </View>
+      </Pressable>
+    );
+  }
+
   const formattedViews =
     viewCount == null ? "—" : viewCount >= 1000 ? `${(viewCount / 1000).toFixed(viewCount >= 10000 ? 0 : 1)}k` : String(viewCount);
 
@@ -169,5 +193,29 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.9)",
     fontSize: 10,
     fontFamily: "Inter_500Medium",
+  },
+  
+  // Home Variant Styles
+  homeCard: {
+    height: 184,
+    borderRadius: 16,
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: colors.light.heading,
+  },
+  homePlayBadge: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    width: 46,
+    height: 46,
+    marginTop: -23,
+    marginLeft: -23,
+    borderRadius: 23,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(233,30,99,0.92)",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
   },
 });
