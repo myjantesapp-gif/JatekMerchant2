@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
   Image,
   Linking,
@@ -213,6 +214,7 @@ function HomeScreen() {
   const PRODUCT_GRID_WIDTH = PROMO_PRODUCT_WIDTH;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const scrollY = useRef(new Animated.Value(0)).current;
   const { selectedAddress } = useCart();
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -361,6 +363,30 @@ function HomeScreen() {
   return (
     <View style={styles.root}>
         <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+          <Animated.View
+            style={[
+              styles.headerTopRowClip,
+              {
+                height: scrollY.interpolate({
+                  inputRange: [0, 72],
+                  outputRange: [44, 0],
+                  extrapolate: "clamp",
+                }),
+                opacity: scrollY.interpolate({
+                  inputRange: [0, 48],
+                  outputRange: [1, 0],
+                  extrapolate: "clamp",
+                }),
+                transform: [{
+                  translateY: scrollY.interpolate({
+                    inputRange: [0, 72],
+                    outputRange: [0, -18],
+                    extrapolate: "clamp",
+                  }),
+                }],
+              },
+            ]}
+          >
           <View style={styles.headerTopRow}>
             <Pressable
               onPress={() => setMenuOpen(true)}
@@ -401,6 +427,7 @@ function HomeScreen() {
               </Pressable>
             </View>
           </View>
+          </Animated.View>
           <View style={styles.searchBox}>
             <Ionicons name="search" size={18} color={MUTED} />
             <TextInput
@@ -428,6 +455,11 @@ function HomeScreen() {
         contentContainerStyle={{ paddingTop: 40, paddingBottom: tabBarHeight + 74 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false },
+        )}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PINK} />
         }
@@ -703,6 +735,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 6,
     position: "relative",
+  },
+  headerTopRowClip: {
+    overflow: "hidden",
   },
   headerIcon: {
     width: 36,

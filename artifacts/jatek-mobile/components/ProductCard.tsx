@@ -141,12 +141,12 @@ const styles = StyleSheet.create({
     position: "relative",
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 5,
-    paddingTop: 32,
-    paddingBottom: 30,
+    paddingTop: 20,
+    paddingBottom: 18,
   },
   imageWrapCompact: {
     height: undefined,
-    aspectRatio: 0.85,
+    aspectRatio: 1.05,
   },
   image: {
     width: "100%",
@@ -239,21 +239,21 @@ const styles = StyleSheet.create({
   },
   bodyCompact: {
     paddingHorizontal: 8,
-    paddingTop: 7,
-    paddingBottom: 9,
+    paddingTop: 6,
+    paddingBottom: 8,
     gap: 3,
   },
   name: {
-    minHeight: 38,
+    minHeight: 34,
     color: colors.light.cardForeground,
     fontSize: 14,
     lineHeight: 19,
     fontFamily: "Inter_700Bold",
   },
   nameCompact: {
-    height: 32,
-    fontSize: 11,
-    lineHeight: 15,
+    minHeight: 30,
+    fontSize: 10,
+    lineHeight: 14,
   },
   priceBlock: {
     minHeight: 40,
