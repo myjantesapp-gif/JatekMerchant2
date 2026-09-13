@@ -58,7 +58,7 @@ export function ProductCard({ product, width, onPress, compact = false }: Props)
       ]}
     >
       <View style={[styles.imageWrap, compact && styles.imageWrapCompact]}>
-        {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+        {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
           : <View style={[styles.image, { alignItems: "center", justifyContent: "center" }]}>
               <Ionicons name="image-outline" size={24} color="#9CA3AF" />
             </View>}
@@ -101,14 +101,14 @@ export function ProductCard({ product, width, onPress, compact = false }: Props)
           {product.name}
         </Text>
         <View style={styles.priceBlock}>
-          <Text style={[styles.price, compact && styles.priceCompact, hasPromotion && styles.promoPrice]}>
-            {formatMad(product.price)} DH
-          </Text>
           {hasPromotion ? (
             <Text style={[styles.compareAtPrice, compact && styles.compareAtPriceCompact]}>
               {formatMad(originalPrice!)} DH
             </Text>
           ) : null}
+          <Text style={[styles.price, compact && styles.priceCompact, hasPromotion && styles.promoPrice]}>
+            {formatMad(product.price)} DH
+          </Text>
         </View>
       </View>
     </Pressable>
@@ -139,11 +139,14 @@ const styles = StyleSheet.create({
   imageWrap: {
     height: 148,
     position: "relative",
-    backgroundColor: colors.light.muted,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 5,
+    paddingTop: 32,
+    paddingBottom: 30,
   },
   imageWrapCompact: {
     height: undefined,
-    aspectRatio: 1.05,
+    aspectRatio: 0.85,
   },
   image: {
     width: "100%",

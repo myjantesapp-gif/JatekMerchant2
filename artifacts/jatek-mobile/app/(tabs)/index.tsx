@@ -46,6 +46,7 @@ import { ShortCard } from "@/components/ShortCard";
 import { StoreCard } from "@/components/StoreCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { WaveEdge } from "@/components/WaveEdge";
+import { HomeSupportCard } from "@/components/HomeSupportCard";
 import colors from "@/constants/colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -53,7 +54,11 @@ const PINK = "#E91E63";
 const NAVY = "#0F172A";
 const MUTED = colors.light.mutedForeground;
 const WHITE = colors.light.background;
-const SECTION_TINT = "#F8F9FA";
+// Brand colors composited at 5–7% over white; identical opaque wave fills
+// avoid darker seams where the SVG overlaps its section by one pixel.
+const SECTION_TINT = "#FEF3F7";
+const OLIVE_TINT = "#FEFCEF";
+const TURQUOISE_TINT = "#F0FAFB";
 const HEADER_PINK = "#E91E63";
 const HEADER_ACCENT = "#FFD0E0";
 const CATEGORY_WIDTH = (SCREEN_WIDTH - 32 - 24) / 4;
@@ -181,7 +186,7 @@ function PromotionalCard({ onPress, ad }: { onPress: () => void; ad: Ad }) {
       accessibilityLabel="Ouvrir les offres promotionnelles"
       style={({ pressed }) => [styles.promoCard, pressed && styles.pressed]}
     >
-      <View style={styles.promoCopy}>
+      <View style={[styles.promoCopy, !imageUrl && { paddingRight: 16 }, ad.badge ? { paddingTop: 48 } : null]}>
         <Text style={styles.promoEyebrow}>OFFRE DU MOMENT</Text>
         <Text style={styles.promoTitle}>{ad.title}</Text>
         {ad.subtitle ? <Text style={styles.promoSubtitle}>{ad.subtitle}</Text> : null}
@@ -217,8 +222,8 @@ function HomeScreen() {
   const [shortsVisible, setShortsVisible] = useState(false);
   const [initialShort, setInitialShort] = useState(0);
   const { data: ads, isLoading: adsLoading, isError: adsError, refetch: refetchAds } = useQuery({
-    queryKey: ["home-promo-ads"],
-    queryFn: () => listAds("promo_banner"),
+    queryKey: ["home-banner-ads"],
+    queryFn: () => listAds(),
     staleTime: 60_000,
   });
 
@@ -355,15 +360,6 @@ function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: tabBarHeight + 74 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PINK} />
-        }
-      >
         <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <View style={styles.headerTopRow}>
             <Pressable
@@ -427,16 +423,26 @@ function HomeScreen() {
           <WaveEdge color={HEADER_PINK} height={28} />
         </View>
 
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={{ paddingTop: 40, paddingBottom: tabBarHeight + 74 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PINK} />
+        }
+      >
         {/* 1. Catégories */}
         <View style={styles.categorySection}>
           <CategoryRow categories={categories} onPress={openCategory} />
+          <WaveEdge color={TURQUOISE_TINT} height={24} />
         </View>
 
         {/* 2. Produits réellement remisés, pilotés depuis le dashboard */}
         <View style={styles.promoSection}>
           <WaveEdge color={SECTION_TINT} position="top" height={30} />
           <SectionHeader
-            title="Promos"
+            title="PROMOS"
             onPress={() => router.push("/restaurants" as any)}
             testID="section-promo-products"
           />
@@ -473,6 +479,7 @@ function HomeScreen() {
 
         {/* 3. Shorts — placed before popular products in the target layout */}
         <View style={styles.section}>
+          <WaveEdge color={OLIVE_TINT} position="top" height={24} />
           <SectionHeader
             title="Shorts"
             onPress={() => openShort(0)}
@@ -508,11 +515,12 @@ function HomeScreen() {
           ) : (
             <Text style={styles.empty}>Aucun Short disponible pour le moment</Text>
           )}
+          <WaveEdge color={OLIVE_TINT} height={24} />
         </View>
 
         {/* 4. Produits populaires */}
         <View style={styles.popularSection}>
-          <WaveEdge color={SECTION_TINT} position="top" height={30} />
+          <WaveEdge color={TURQUOISE_TINT} position="top" height={24} />
           <SectionHeader
             title="Produits populaires"
             onPress={() => router.push("/restaurants" as any)}
@@ -541,15 +549,16 @@ function HomeScreen() {
           ) : (
             <Text style={styles.empty}>Aucun produit populaire pour le moment</Text>
           )}
-          <WaveEdge color={SECTION_TINT} height={34} />
+          <WaveEdge color={TURQUOISE_TINT} height={24} />
         </View>
 
         {/* 5. Structured promotion card replaces the old image banners */}
         <View style={styles.offerSection}>
+          <WaveEdge color={SECTION_TINT} position="top" height={24} />
           {adsLoading || adsError ? (
             <LoadingOrEmpty loading={adsLoading} error={adsError}
               empty="Aucune offre pour le moment" onRetry={() => refetchAds()} />
-          ) : ads?.filter((ad) => ad.isActive).map((ad) => (
+          ) : ads?.filter((ad) => ad.isActive && (ad.type.includes("banner") || ad.type === "hero")).map((ad) => (
             <PromotionalCard key={ad.id} ad={ad} onPress={() => {
               const link = ad.linkUrl?.trim();
               if (link?.startsWith("/") && !link.startsWith("//")) {
@@ -561,10 +570,12 @@ function HomeScreen() {
               }
             }} />
           ))}
+          <WaveEdge color={SECTION_TINT} height={24} />
         </View>
 
         {/* 6. Nouveautés */}
         <View style={styles.newestSection}>
+          <WaveEdge color={OLIVE_TINT} position="top" height={24} />
           <SectionHeader
             title="Nouveautés"
             onPress={() => router.push("/restaurants" as any)}
@@ -598,10 +609,12 @@ function HomeScreen() {
           ) : (
             <Text style={styles.empty}>Aucun nouveau produit pour le moment</Text>
           )}
+          <WaveEdge color={OLIVE_TINT} height={24} />
         </View>
 
         {/* 7. Près de chez vous */}
         <View style={styles.restaurantSection}>
+          <WaveEdge color={TURQUOISE_TINT} position="top" height={24} />
           <SectionHeader
             title="Près de chez vous"
             onPress={() => router.push("/restaurants" as any)}
@@ -641,9 +654,14 @@ function HomeScreen() {
           ) : (
             <Text style={styles.empty}>Aucun restaurant disponible pour le moment</Text>
           )}
-          <WaveEdge color={SECTION_TINT} height={34} />
+          <WaveEdge color={TURQUOISE_TINT} height={24} />
         </View>
 
+        <View style={styles.supportSection}>
+          <WaveEdge color={SECTION_TINT} position="top" height={24} />
+          <HomeSupportCard />
+          <WaveEdge color={SECTION_TINT} height={24} />
+        </View>
       </ScrollView>
 
       <AddressQuickPicker visible={addressPickerOpen} onClose={() => setAddressPickerOpen(false)} />
@@ -664,20 +682,19 @@ export default HomeScreen;
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#FFFFFF",
   },
   scroll: {
     flex: 1,
     backgroundColor: "transparent",
   },
   header: {
+    flexShrink: 0,
+    zIndex: 10,
     paddingHorizontal: 16,
-    paddingBottom: 8,
-    marginBottom: 27,
+    paddingBottom: 20,
     backgroundColor: HEADER_PINK,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    overflow: "hidden",
+    overflow: "visible",
   },
   headerTopRow: {
     minHeight: 44,
@@ -746,7 +763,8 @@ const styles = StyleSheet.create({
   categorySection: {
     paddingTop: 6,
     paddingBottom: 18,
-    backgroundColor: WHITE,
+    backgroundColor: TURQUOISE_TINT,
+    marginBottom: 46,
   },
   categoryRow: {
     gap: 8,
@@ -773,9 +791,9 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
   section: {
-    marginTop: 0,
+    marginTop: 46,
     paddingBottom: 24,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: OLIVE_TINT,
   },
   promoSection: {
     marginTop: 0,
@@ -785,27 +803,34 @@ const styles = StyleSheet.create({
     backgroundColor: SECTION_TINT,
   },
   popularSection: {
-    marginTop: 0,
+    marginTop: 46,
     paddingTop: 2,
     paddingBottom: 35,
     position: "relative",
-    backgroundColor: SECTION_TINT,
+    backgroundColor: TURQUOISE_TINT,
   },
   offerSection: {
+    marginTop: 46,
     gap: 12,
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 24,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: SECTION_TINT,
   },
   newestSection: {
-    marginTop: 0,
+    marginTop: 46,
     paddingBottom: 27,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: OLIVE_TINT,
   },
   restaurantSection: {
-    marginTop: 0,
+    marginTop: 46,
     paddingBottom: 40,
+    backgroundColor: TURQUOISE_TINT,
+  },
+  supportSection: {
+    marginTop: 46,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
     backgroundColor: SECTION_TINT,
   },
   promoCard: {
