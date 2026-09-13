@@ -18,8 +18,8 @@ type Props = {
 };
 
 export function ProductCard({ product, width, onPress, compact = false }: Props) {
-  const hasPromotion =
-    typeof product.compareAtPrice === "number" && product.compareAtPrice > product.price;
+  const originalPrice = product.originalPrice ?? product.oldPrice ?? product.compareAtPrice ?? null;
+  const hasPromotion = typeof originalPrice === "number" && originalPrice > product.price;
   const imageUrl = resolveMediaUrl(product.imageUrl) ?? FALLBACK_PRODUCT_IMAGE;
 
   return (
@@ -61,10 +61,10 @@ export function ProductCard({ product, width, onPress, compact = false }: Props)
         <View style={styles.priceBlock}>
           {hasPromotion ? (
             <Text style={[styles.compareAtPrice, compact && styles.compareAtPriceCompact]}>
-              {formatMad(product.compareAtPrice!)} DH
+              {formatMad(originalPrice!)} DH
             </Text>
           ) : null}
-          <Text style={[styles.price, compact && styles.priceCompact]}>
+          <Text style={[styles.price, compact && styles.priceCompact, hasPromotion && styles.promoPrice]}>
             {formatMad(product.price)} DH
           </Text>
         </View>
@@ -211,5 +211,8 @@ const styles = StyleSheet.create({
   },
   compareAtPriceCompact: {
     fontSize: 9,
+  },
+  promoPrice: {
+    color: "#E91E63",
   },
 });

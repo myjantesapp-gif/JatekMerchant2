@@ -174,7 +174,7 @@ test("home renders discovery videos as a horizontal 9:16 card rail", () => {
   assert.match(page, /title="Shorts"/);
   assert.match(page, /shorts\.map\(\(short, index\)/);
   assert.match(page, /<ShortCard/);
-  assert.match(card, /height: 238/);
+  assert.match(card, /height: 200/);
   assert.match(card, /borderRadius: 18/);
 });
 

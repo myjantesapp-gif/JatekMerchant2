@@ -476,6 +476,8 @@ export interface RecommendedProduct {
   name: string;
   description?: string | null;
   price: number;
+  originalPrice?: number | null;
+  oldPrice?: number | null;
   compareAtPrice?: number | null;
   imageUrl: string;
   category: string;
