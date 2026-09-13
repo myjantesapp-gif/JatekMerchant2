@@ -55,21 +55,38 @@ export function StoreCard({
             <Text style={styles.badgeText}>{badgeLabel}</Text>
           </View>
         ) : null}
+        {compact ? (
+          <View style={styles.compactLogo}>
+            {restaurant.logoUrl ? (
+              <Image
+                source={{ uri: resolveMediaUrl(restaurant.logoUrl) }}
+                style={styles.compactLogoImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={styles.logoInitialCompact}>
+                {restaurant.name.charAt(0).toUpperCase() || "J"}
+              </Text>
+            )}
+          </View>
+        ) : null}
       </View>
       <View style={[styles.info, compact && styles.infoCompact]}>
-        <View style={[styles.logo, compact && styles.logoCompact]}>
-          {restaurant.logoUrl ? (
-            <Image
-              source={{ uri: resolveMediaUrl(restaurant.logoUrl) }}
-              style={[styles.logoImage, compact && styles.logoImageCompact]}
-              resizeMode="contain"
-            />
-          ) : (
-            <Text style={[styles.logoInitial, compact && styles.logoInitialCompact]}>
-              {restaurant.name.charAt(0).toUpperCase() || "J"}
-            </Text>
-          )}
-        </View>
+        {!compact ? (
+          <View style={[styles.logo, compact && styles.logoCompact]}>
+            {restaurant.logoUrl ? (
+              <Image
+                source={{ uri: resolveMediaUrl(restaurant.logoUrl) }}
+                style={[styles.logoImage, compact && styles.logoImageCompact]}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={[styles.logoInitial, compact && styles.logoInitialCompact]}>
+                {restaurant.name.charAt(0).toUpperCase() || "J"}
+              </Text>
+            )}
+          </View>
+        ) : null}
         <View style={[styles.copy, compact && styles.copyCompact]}>
           <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>
             {restaurant.name}
@@ -143,6 +160,28 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 13,
     fontFamily: "Inter_700Bold",
+  },
+  compactLogo: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 3,
+    backgroundColor: colors.light.card,
+    shadowColor: colors.light.heading,
+    shadowOpacity: 0.14,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  compactLogoImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 99,
   },
   info: {
     minHeight: 82,

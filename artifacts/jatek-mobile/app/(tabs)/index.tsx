@@ -56,7 +56,7 @@ const MUTED = colors.light.mutedForeground;
 const WHITE = colors.light.background;
 const SECTION_TINT = colors.light.pinkBg;
 const CATEGORY_WIDTH = 82;
-const PROMO_PRODUCT_WIDTH = Math.max(100, (SCREEN_WIDTH - 32 - 20) / 3);
+const PROMO_PRODUCT_WIDTH = Math.max(74, (SCREEN_WIDTH - 32 - 24) / 4);
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.min(286, Math.max(260, SCREEN_WIDTH * 0.72));
 const STORE_GRID_WIDTH = Math.max(0, (SCREEN_WIDTH - 48) / 2);
@@ -362,7 +362,7 @@ function HomeScreen() {
               accessibilityLabel="Ouvrir le menu"
               style={styles.headerIcon}
             >
-              <Ionicons name="menu" size={24} color={WHITE} />
+            <Ionicons name="menu" size={24} color={NAVY} />
             </Pressable>
             <Pressable
               onPress={() => setAddressPickerOpen(true)}
@@ -370,11 +370,11 @@ function HomeScreen() {
               accessibilityLabel={`Adresse de livraison : ${addressLabel}`}
               style={styles.identity}
             >
-              <Text style={styles.greeting} numberOfLines={1}>{greeting}</Text>
+                <Text style={styles.greeting} numberOfLines={1}>{greeting}</Text>
               <View style={styles.addressRow}>
-                <Ionicons name="location" size={14} color={WHITE} />
+                  <Ionicons name="location" size={14} color={PINK} />
                 <Text style={styles.address} numberOfLines={1}>{addressLabel}</Text>
-                <Ionicons name="chevron-down" size={15} color={WHITE} />
+                  <Ionicons name="chevron-down" size={15} color={MUTED} />
               </View>
             </Pressable>
             <View style={styles.headerActions}>
@@ -384,7 +384,7 @@ function HomeScreen() {
                 accessibilityLabel="Ouvrir le panier"
                 style={styles.headerIcon}
               >
-                <Ionicons name="bag-handle-outline" size={22} color={WHITE} />
+                <Ionicons name="bag-handle-outline" size={22} color={NAVY} />
               </Pressable>
               <Pressable
                 onPress={() => router.push("/(tabs)/profile" as any)}
@@ -392,7 +392,7 @@ function HomeScreen() {
                 accessibilityLabel="Ouvrir le profil"
                 style={styles.headerIcon}
               >
-                <Ionicons name="person-circle-outline" size={24} color={WHITE} />
+                <Ionicons name="person-circle-outline" size={24} color={NAVY} />
               </Pressable>
             </View>
           </View>
@@ -417,52 +417,7 @@ function HomeScreen() {
           </View>
         </View>
 
-        <View style={styles.categorySection}>
-          <CategoryRow categories={categories} onPress={openCategory} />
-        </View>
-
-        {/* 1. Vidéos courtes */}
-        <View style={styles.section}>
-          <SectionHeader
-            title="Découvrir en vidéo"
-            buttonLabel="Voir plus"
-            accent={false}
-            onPress={() => openShort(0)}
-            testID="section-videos"
-          />
-          {shortsLoading || shortsError ? (
-            <LoadingOrEmpty
-              loading={shortsLoading}
-              error={shortsError}
-              empty="Aucun Short disponible pour le moment"
-              onRetry={() => refetchShorts()}
-            />
-          ) : shorts.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalCards}
-              nestedScrollEnabled
-            >
-              {shorts.map((short, index) => (
-                <ShortCard
-                  key={short.id}
-                  short={short}
-                  width={SHORT_WIDTH}
-                  avatarUrl={
-                    short.restaurantLogoUrl ??
-                    (short.restaurantId != null ? restaurantLogoById.get(short.restaurantId) : null)
-                  }
-                  onPress={() => openShort(index)}
-                />
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={styles.empty}>Aucun Short disponible pour le moment</Text>
-          )}
-        </View>
-
-        {/* 2. Produits populaires : contenu remisé piloté depuis le dashboard */}
+         {/* 1. Produits populaires : contenu remisé piloté depuis le dashboard */}
         <View style={styles.promoSection}>
           <WaveEdge color={SECTION_TINT} position="top" height={30} />
           <SectionHeader
@@ -481,7 +436,7 @@ function HomeScreen() {
             />
           ) : promoProducts && promoProducts.length > 0 ? (
             <View style={styles.promoProductGrid}>
-              {promoProducts.map((product) => (
+               {promoProducts.slice(0, 4).map((product) => (
                 <ProductCard
                   key={`${product.restaurantId}-${product.id}`}
                   product={product}
@@ -497,7 +452,7 @@ function HomeScreen() {
           <WaveEdge color={WHITE} height={34} />
         </View>
 
-        {/* 3. Commerces proches */}
+         {/* 2. Commerces proches */}
         <View style={styles.newestSection}>
           <SectionHeader
             title="Près de chez vous"
@@ -536,7 +491,52 @@ function HomeScreen() {
           )}
         </View>
 
-        {/* 4. Restauration */}
+         <View style={styles.categorySection}>
+           <CategoryRow categories={categories} onPress={openCategory} />
+         </View>
+
+         {/* 3. Vidéos courtes */}
+         <View style={styles.section}>
+           <SectionHeader
+             title="Découvrir en vidéo"
+             buttonLabel="Voir plus"
+             accent={false}
+             onPress={() => openShort(0)}
+             testID="section-videos"
+           />
+           {shortsLoading || shortsError ? (
+             <LoadingOrEmpty
+               loading={shortsLoading}
+               error={shortsError}
+               empty="Aucun Short disponible pour le moment"
+               onRetry={() => refetchShorts()}
+             />
+           ) : shorts.length > 0 ? (
+             <ScrollView
+               horizontal
+               showsHorizontalScrollIndicator={false}
+               contentContainerStyle={styles.horizontalCards}
+               nestedScrollEnabled
+             >
+               {shorts.map((short, index) => (
+                 <ShortCard
+                   key={short.id}
+                   short={short}
+                   width={SHORT_WIDTH}
+                   avatarUrl={
+                     short.restaurantLogoUrl ??
+                     (short.restaurantId != null ? restaurantLogoById.get(short.restaurantId) : null)
+                   }
+                   onPress={() => openShort(index)}
+                 />
+               ))}
+             </ScrollView>
+           ) : (
+             <Text style={styles.empty}>Aucun Short disponible pour le moment</Text>
+           )}
+         </View>
+
+         {/* 4. Restauration */}
         <View style={styles.restaurantSection}>
           <SectionHeader
             title="Restauration"
@@ -605,8 +605,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
-    backgroundColor: PINK,
+    paddingBottom: 10,
+    backgroundColor: WHITE,
   },
   headerTopRow: {
     minHeight: 52,
@@ -627,9 +627,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   greeting: {
-    color: WHITE,
-    fontSize: 18,
-    lineHeight: 22,
+    color: NAVY,
+    fontSize: 16,
+    lineHeight: 20,
     fontFamily: "Inter_700Bold",
   },
   addressRow: {
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
   },
   address: {
     flex: 1,
-    color: "rgba(255,255,255,0.9)",
+    color: MUTED,
     fontSize: 12,
     fontFamily: "Inter_500Medium",
   },
@@ -656,12 +656,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: WHITE,
+    backgroundColor: SECTION_TINT,
     shadowColor: NAVY,
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   searchInput: {
     flex: 1,
@@ -672,8 +672,8 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   categorySection: {
-    paddingTop: 13,
-    paddingBottom: 4,
+    paddingTop: 10,
+    paddingBottom: 8,
     backgroundColor: WHITE,
   },
   categoryRow: {
@@ -701,23 +701,24 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
   section: {
-    marginTop: 7,
+    marginTop: 0,
     paddingBottom: 19,
     backgroundColor: WHITE,
   },
   promoSection: {
-    marginTop: 7,
+    marginTop: 0,
+    paddingTop: 2,
     paddingBottom: 35,
     position: "relative",
     backgroundColor: SECTION_TINT,
   },
   newestSection: {
-    marginTop: 7,
+    marginTop: 0,
     paddingBottom: 27,
     backgroundColor: WHITE,
   },
   restaurantSection: {
-    marginTop: 7,
+    marginTop: 0,
     paddingBottom: 40,
     backgroundColor: SECTION_TINT,
   },
@@ -745,8 +746,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexDirection: "row",
     flexWrap: "wrap",
-    columnGap: 10,
-    rowGap: 12,
+    columnGap: 8,
+    rowGap: 10,
   },
   horizontalCards: {
     gap: 11,
