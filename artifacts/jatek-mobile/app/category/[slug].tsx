@@ -26,6 +26,7 @@ import { formatMad } from "@/lib/money";
 import { RefreshButton } from "@/components/RefreshButton";
 import { refreshAll } from "@/lib/mobileRefresh";
 import { filterRestaurantsBySearch } from "@/lib/catalogUtils";
+import { useCart } from "@/contexts/CartContext";
 
 function trackBannerClick(restaurantId: number) {
   try {
@@ -220,6 +221,7 @@ function EmptyCategorySection({ color, label }: { color: string; label: string }
 export default function CategoryScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const insets = useSafeAreaInsets();
+  const { selectedAddress } = useCart();
   const [search, setSearch] = useState("");
   const [activeSubId, setActiveSubId] = useState("all");
   const [refreshing, setRefreshing] = useState(false);
@@ -333,10 +335,10 @@ export default function CategoryScreen() {
           <Ionicons name={headerPatternIcon} size={68} color="rgba(255,255,255,0.10)" style={styles.patternIconBottom} />
         </View>
         <View pointerEvents="none" style={styles.bannerWaves}>
-          <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <Svg width="100%" height="100%" viewBox="0 0 100 22" preserveAspectRatio="none">
             <Path
-              d="M0 62 C18 45 34 79 52 61 C70 43 84 78 100 58 L100 100 L0 100 Z"
-              fill="rgba(255,255,255,0.12)"
+              d="M0 9 C18 4 34 14 52 9 C70 4 84 14 100 8 L100 22 L0 22 Z"
+              fill={BG}
             />
           </Svg>
         </View>
@@ -344,15 +346,41 @@ export default function CategoryScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.8}>
             <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
-          <View style={{ flex: 1 }} />
+          <View style={styles.bannerIdentity}>
+            <Text style={styles.bannerTitle}>{config.label}</Text>
+            <Text style={styles.bannerSub} numberOfLines={1}>
+              Livrer à {selectedAddress || "votre adresse"}
+            </Text>
+          </View>
           <RefreshButton onPress={onRefresh} refreshing={refreshing} color="#FFFFFF" accessibilityLabel="Actualiser la catégorie" />
         </View>
-        <View style={styles.bannerTitleWrap}>
-          <Text style={styles.bannerTitle}>{config.label}</Text>
-          <Text style={styles.bannerSub}>
-            Découvrez les meilleurs partenaires
-          </Text>
+        <View style={styles.deliveryOffer}>
+          <View style={styles.deliveryOfferCopy}>
+            <Ionicons name="bicycle" size={18} color="#FFFFFF" />
+            <Text style={styles.deliveryOfferText} numberOfLines={1}>
+              Livraison rapide dans votre quartier
+            </Text>
+          </View>
+          <View style={styles.deliveryOfferBadge}>
+            <Text style={styles.deliveryOfferBadgeText}>Jatek</Text>
+          </View>
         </View>
+        <Animated.View entering={FadeInDown.delay(80).duration(450).springify()} style={styles.searchWrap}>
+          <Ionicons name="search" size={18} color={TEXT_MUTED} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={`Rechercher dans ${config.label}…`}
+            placeholderTextColor={TEXT_MUTED}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")} hitSlop={8}>
+              <Ionicons name="close-circle" size={17} color={TEXT_MUTED} />
+            </TouchableOpacity>
+          )}
+        </Animated.View>
       </LinearGradient>
 
       <FlatList
@@ -365,24 +393,6 @@ export default function CategoryScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={config.color} />}
         ListHeaderComponent={
           <>
-            {/* ─── Search bar ─── */}
-            <Animated.View entering={FadeInDown.delay(80).duration(450).springify()} style={styles.searchWrap}>
-              <Ionicons name="search" size={16} color={TEXT_MUTED} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder={`Rechercher dans ${config.label}…`}
-                placeholderTextColor={TEXT_MUTED}
-                value={search}
-                onChangeText={setSearch}
-                returnKeyType="search"
-              />
-              {search.length > 0 && (
-                <TouchableOpacity onPress={() => setSearch("")} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color={TEXT_MUTED} />
-                </TouchableOpacity>
-              )}
-            </Animated.View>
-
             {/* ─── Sub-categories as icon slider ─── */}
             <Animated.ScrollView
               entering={FadeInDown.delay(160).duration(500).springify()}
@@ -486,9 +496,9 @@ const styles = StyleSheet.create({
   // ── Banner header ──
   bannerWrap: {
     width: "100%",
-    height: 160,
+    height: 190,
     paddingHorizontal: SIDE,
-    paddingBottom: 16,
+    paddingBottom: 18,
     justifyContent: "space-between",
     overflow: "hidden",
     borderBottomLeftRadius: 26,
@@ -506,7 +516,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(194,24,91,0.16)",
   },
   bannerWaves: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 22,
   },
   categoryPattern: {
     ...StyleSheet.absoluteFillObject,
@@ -534,6 +548,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  bannerIdentity: {
+    flex: 1,
+    minWidth: 0,
+    marginHorizontal: 12,
+  },
   backBtn: {
     width: 40,
     height: 40,
@@ -547,27 +566,39 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  bannerTitleWrap: { gap: 4 },
-  bannerTitle: { color: "#FFFFFF", fontSize: 26, fontFamily: "Inter_900Black", letterSpacing: -0.5 },
-  bannerSub: { color: "#FFFFFF", fontSize: 13, fontFamily: "Inter_600SemiBold", opacity: 0.9 },
+  bannerTitle: { color: "#FFFFFF", fontSize: 18, fontFamily: "Inter_700Bold", letterSpacing: -0.25 },
+  bannerSub: { color: "#FFFFFF", fontSize: 12, fontFamily: "Inter_500Medium", opacity: 0.9, marginTop: 1 },
+  deliveryOffer: {
+    minHeight: 36,
+    borderRadius: 12,
+    paddingLeft: 12,
+    paddingRight: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  deliveryOfferCopy: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 },
+  deliveryOfferText: { flex: 1, color: "#FFFFFF", fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  deliveryOfferBadge: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 9, backgroundColor: "rgba(10,27,61,0.28)" },
+  deliveryOfferBadgeText: { color: "#FFFFFF", fontSize: 11, fontFamily: "Inter_700Bold" },
 
   // ── Search ──
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: CARD_BG,
-    marginHorizontal: SIDE,
-    marginTop: 14,
-    marginBottom: 4,
-    borderRadius: 14,
+    marginTop: 8,
+    borderRadius: 22,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    height: 42,
     gap: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 2,
+    zIndex: 2,
   },
   searchInput: {
     flex: 1,

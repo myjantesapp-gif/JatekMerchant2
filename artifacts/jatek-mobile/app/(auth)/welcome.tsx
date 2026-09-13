@@ -10,7 +10,6 @@ import {
   Pressable,
   FlatList,
   Keyboard,
-  Image,
 } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -21,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GoogleMapPicker } from "@/components/GoogleMapPicker";
 import { useFriendlyAlert } from "@/components/FriendlyAlert";
 import { useCart } from "@/contexts/CartContext";
+import { JatekLogoBadge } from "@/components/JatekLogoBadge";
 import {
   OUJDA_CENTER,
   checkDeliveryZone,
@@ -253,12 +253,7 @@ export default function WelcomeScreen() {
       {/* Bottom card — address summary + confirm button */}
       <View style={[styles.bottomCard, { backgroundColor: colors.background, paddingBottom: insets.bottom + 14 }]}>
         <View style={styles.brandRow}>
-          <Image
-            source={require("../../assets/images/jatek-wordmark-transparent.png")}
-            style={styles.brandLogo}
-            resizeMode="contain"
-            accessibilityLabel="Jatek"
-          />
+          <JatekLogoBadge />
           <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>Oujda · Livraison rapide</Text>
         </View>
 
@@ -340,7 +335,6 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 12,
   },
   brandRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  brandLogo: { width: 96, height: 38 },
   brandSub: { fontSize: 11, fontFamily: "Inter_500Medium" },
 
   addrCard: {

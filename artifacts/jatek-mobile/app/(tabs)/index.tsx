@@ -392,6 +392,19 @@ function HomeScreen() {
             >
               <Ionicons name="menu" size={24} color={WHITE} />
             </Pressable>
+            <Pressable
+              onPress={() => setAddressPickerOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Adresse de livraison : ${addressLabel}`}
+              style={styles.identity}
+            >
+              <Text style={styles.greeting} numberOfLines={1}>{greeting}</Text>
+              <View style={styles.addressRow}>
+                <Ionicons name="location" size={13} color={HEADER_ACCENT} />
+                <Text style={styles.address} numberOfLines={1}>{addressLabel}</Text>
+                <Ionicons name="chevron-down" size={14} color={WHITE} />
+              </View>
+            </Pressable>
             <View style={styles.headerActions}>
               <Pressable
                 onPress={() => setCartSheetVisible(true)}
@@ -411,19 +424,6 @@ function HomeScreen() {
               </Pressable>
             </View>
           </View>
-          <Pressable
-            onPress={() => setAddressPickerOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={`Adresse de livraison : ${addressLabel}`}
-            style={styles.identity}
-          >
-            <Text style={styles.greeting} numberOfLines={1}>{greeting}</Text>
-            <View style={styles.addressRow}>
-              <Ionicons name="location" size={14} color={HEADER_ACCENT} />
-              <Text style={styles.address} numberOfLines={1}>{addressLabel}</Text>
-              <Ionicons name="chevron-down" size={15} color={WHITE} />
-            </View>
-          </Pressable>
           <View style={styles.searchBox}>
             <Ionicons name="search" size={18} color={MUTED} />
             <TextInput
@@ -443,7 +443,7 @@ function HomeScreen() {
               </Pressable>
             ) : null}
           </View>
-          <WaveEdge color={HEADER_PINK} height={36} />
+          <WaveEdge color={HEADER_PINK} height={28} />
         </View>
 
         {/* 1. Catégories */}
@@ -703,12 +703,12 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    marginBottom: 35,
+    paddingBottom: 8,
+    marginBottom: 27,
     backgroundColor: HEADER_PINK,
   },
   headerTopRow: {
-    minHeight: 52,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -716,22 +716,22 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   headerIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
   identity: {
-    alignSelf: "center",
+    flex: 1,
+    minWidth: 0,
     alignItems: "center",
-    maxWidth: "88%",
-    marginTop: 3,
+    marginHorizontal: 4,
   },
   greeting: {
     color: WHITE,
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 17,
     fontFamily: "Inter_700Bold",
   },
   addressRow: {
@@ -739,12 +739,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
-    marginTop: 2,
+    marginTop: 0,
   },
   address: {
     flexShrink: 1,
     color: "rgba(255,255,255,0.88)",
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_500Medium",
   },
   headerActions: {
@@ -753,8 +753,8 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   searchBox: {
-    height: 48,
-    marginTop: 7,
+    height: 44,
+    marginTop: 5,
     paddingHorizontal: 15,
     borderRadius: 25,
     flexDirection: "row",
@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: 44,
+    height: 40,
     padding: 0,
     color: NAVY,
     fontSize: 14,

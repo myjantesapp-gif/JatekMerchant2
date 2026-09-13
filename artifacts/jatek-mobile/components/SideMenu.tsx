@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { JatekLogoBadge } from "@/components/JatekLogoBadge";
 
 const PINK      = "#FF4593";
 const PINK_DEEP = "#E91E63";
@@ -101,9 +102,7 @@ export function SideMenu({ visible, onClose }: Props) {
         >
           {/* top: J. logo + close */}
           <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoText}>J.</Text>
-            </View>
+            <JatekLogoBadge />
             <TouchableOpacity
               onPress={onClose}
               hitSlop={10}
@@ -231,20 +230,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: 14,
     gap: 10,
-  },
-  logoBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: PINK_DEEP + "18",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 17,
-    color: PINK_DEEP,
-    fontStyle: "italic",
   },
   closeBtn: {
     width: 28,

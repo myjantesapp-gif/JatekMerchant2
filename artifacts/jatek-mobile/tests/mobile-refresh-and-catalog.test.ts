@@ -261,7 +261,7 @@ test("home header omits the wordmark while retaining its actions and pink wave",
 
   assert.doesNotMatch(code, /styles\.headerLogo|styles\.headerBrand/);
   assert.match(code, /const HEADER_PINK = "#CF346E"/);
-  assert.match(code, /<WaveEdge color=\{HEADER_PINK\} height=\{36\} \/>/);
+  assert.match(code, /<WaveEdge color=\{HEADER_PINK\} height=\{28\} \/>/);
   assert.match(code, /accessibilityLabel="Ouvrir le menu"/);
   assert.match(code, /accessibilityLabel="Ouvrir le panier"/);
   assert.match(code, /accessibilityLabel="Ouvrir le profil"/);
@@ -273,8 +273,7 @@ test("home header omits the wordmark while retaining its actions and pink wave",
 test("welcome address picker uses the official Jatek wordmark", () => {
   const code = source("app/(auth)/welcome.tsx");
 
-  assert.match(code, /jatek-wordmark-transparent\.png/);
-  assert.match(code, /style=\{styles\.brandLogo\}/);
+  assert.match(code, /<JatekLogoBadge \/>/);
   assert.doesNotMatch(code, /Jatek<Text/);
 });
 
