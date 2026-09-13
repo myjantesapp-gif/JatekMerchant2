@@ -12,18 +12,7 @@ type Props = {
 };
 
 function ColoredTitle({ title, style }: { title: string; style: StyleProp<TextStyle> }) {
-  return (
-    <Text style={style} numberOfLines={1}>
-      {Array.from(title).map((character, index) => (
-        <Text
-          key={`${character}-${index}`}
-          style={/[eéèêë]/i.test(character) ? styles.magentaLetter : undefined}
-        >
-          {character}
-        </Text>
-      ))}
-    </Text>
-  );
+  return <Text style={style} numberOfLines={1}>{title}</Text>;
 }
 
 export function SectionHeader({
@@ -123,9 +112,6 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     letterSpacing: -0.5,
     fontFamily: "Poppins_700Bold",
-  },
-  magentaLetter: {
-    color: "#E91E63",
   },
   homeArrow: {
     width: 28,
