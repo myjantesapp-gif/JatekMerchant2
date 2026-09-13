@@ -110,7 +110,7 @@ export function StoreCard({
 const styles = StyleSheet.create({
   card: {
     height: 206,
-    borderRadius: 20,
+    borderRadius: 14,
     overflow: "hidden",
     backgroundColor: colors.light.card,
     shadowColor: colors.light.heading,
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   },
   cardCompact: {
     height: 132,
-    borderRadius: 16,
+    borderRadius: 10,
     shadowOpacity: 0.05,
     borderWidth: 1,
     borderColor: colors.light.border,
