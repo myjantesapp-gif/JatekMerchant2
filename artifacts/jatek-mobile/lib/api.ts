@@ -486,14 +486,30 @@ export interface RecommendedProduct {
   rating?: number | null;
 }
 
-export type HomeSectionKey = "popular" | "new_products" | "new_restaurants" | "shops";
+export type HomeSectionKey =
+  | "categories"
+  | "banners"
+  | "shorts"
+  | "popular"
+  | "new_restaurants"
+  | "new_products"
+  | "shops"
+  | "all"
+  | "free_delivery"
+  | "newest"
+  | "support";
 export type HomeSectionSource =
+  | "categories"
+  | "banners"
+  | "shorts"
   | "popular"
   | "newest"
   | "promos"
   | "new_restaurants"
   | "all_restaurants"
-  | "shops";
+  | "shops"
+  | "free_delivery"
+  | "support";
 
 export interface HomeSectionConfig {
   key: HomeSectionKey;

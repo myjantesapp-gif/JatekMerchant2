@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   homeName: {
-    color: "#111827",
+    color: "#274C77",
     fontSize: 13,
     fontFamily: "Poppins_700Bold",
   },
@@ -421,9 +421,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   homeMetaTextBold: {
-    color: "#111827",
+    color: "#274C77",
     fontSize: 10,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: "Poppins_700Bold",
   },
   homeMetaTextLight: {
     color: "#6b7280",

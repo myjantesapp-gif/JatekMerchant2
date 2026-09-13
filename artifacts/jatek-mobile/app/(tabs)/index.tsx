@@ -35,6 +35,8 @@ import {
   listRecommendedProducts,
   type Short,
   type RecommendedProduct,
+  type HomeSectionKey,
+  type HomeSectionConfig,
 } from "@/lib/api";
 import { refreshAll } from "@/lib/mobileRefresh";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
@@ -66,6 +68,35 @@ const CATEGORY_WIDTH = (SCREEN_WIDTH - 32 - 24) / 4;
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.max(0, (SCREEN_WIDTH - 32 - 12) / 2);
 const HORIZONTAL_PRODUCT_LIMIT = 12;
+const DEFAULT_HOME_ORDER: HomeSectionKey[] = [
+  "categories",
+  "banners",
+  "shorts",
+  "popular",
+  "new_restaurants",
+  "new_products",
+  "shops",
+  "all",
+  "free_delivery",
+  "newest",
+  "support",
+];
+
+type HomeSectionViewConfig = Omit<HomeSectionConfig, "key">;
+
+const DEFAULT_HOME_SECTION_CONFIG: Record<HomeSectionKey, HomeSectionViewConfig> = {
+  categories: { title: "Catégories", visible: true, source: "categories", limit: 4 },
+  banners: { title: "Bannières", visible: true, source: "banners", limit: 10 },
+  shorts: { title: "Shorts", visible: true, source: "shorts", limit: 12 },
+  popular: { title: "Produits populaires", visible: true, source: "popular", limit: 6 },
+  new_restaurants: { title: "Près de chez vous", visible: true, source: "new_restaurants", limit: 6 },
+  new_products: { title: "Offres du moment", visible: true, source: "promos", limit: 6 },
+  shops: { title: "Boutiques", visible: true, source: "shops", limit: 6 },
+  all: { title: "Recommandé pour vous", visible: true, source: "all_restaurants", limit: 6 },
+  free_delivery: { title: "Livraison gratuite", visible: true, source: "free_delivery", limit: 6 },
+  newest: { title: "Nouveautés", visible: true, source: "newest", limit: 6 },
+  support: { title: "Besoin d'aide ?", visible: true, source: "support", limit: 1 },
+};
 
 type HomeCategory = {
   key: string;
@@ -362,7 +393,7 @@ function HomeScreen() {
     queryFn: () => listRecommendedProducts({ limit: 12, sort: "catalog" }),
     staleTime: 60_000,
   });
-  const { refetch: refetchAppConfig } = useQuery({
+  const { data: appConfig, refetch: refetchAppConfig } = useQuery({
     queryKey: ["public-app-config"],
     queryFn: getPublicAppConfig,
     staleTime: 60_000,
@@ -417,6 +448,25 @@ function HomeScreen() {
         .sort((a, b) => a.sortOrder - b.sortOrder),
     [ads],
   );
+  const homeSections = useMemo(
+    () => Object.fromEntries(
+      Object.entries(DEFAULT_HOME_SECTION_CONFIG).map(([key, fallback]) => [
+        key,
+        {
+          ...fallback,
+          ...(appConfig?.homeSections?.[key as HomeSectionKey] ?? {}),
+        },
+      ]),
+    ) as Record<HomeSectionKey, HomeSectionViewConfig>,
+    [appConfig?.homeSections],
+  );
+  const homeOrder = useMemo(() => {
+    const configured = Array.isArray(appConfig?.homeOrder) ? appConfig.homeOrder : [];
+    const valid = configured.filter((key): key is HomeSectionKey =>
+      DEFAULT_HOME_ORDER.includes(key as HomeSectionKey),
+    );
+    return [...new Set([...valid, ...DEFAULT_HOME_ORDER])];
+  }, [appConfig?.homeOrder]);
   const freeDeliveryProducts = useMemo(
     () => (popularProducts ?? []).filter((product) => product.deliveryFee === 0),
     [popularProducts],
@@ -470,6 +520,211 @@ function HomeScreen() {
       void Linking.openURL(link);
     } else {
       router.push("/restaurants" as any);
+    }
+  };
+
+  const renderHomeSection = (key: HomeSectionKey): React.ReactNode => {
+    const config = homeSections[key];
+    if (!config?.visible) return null;
+    const limit = Math.max(1, Number(config.limit) || 1);
+    const productsFor = (source: string) => {
+      if (source === "promos") return promoProducts;
+      if (source === "newest") return newestProducts;
+      return popularProducts;
+    };
+
+    switch (key) {
+      case "categories":
+        return (
+          <View style={styles.categorySection}>
+            <CategoryRow categories={categories.slice(0, limit)} onPress={openCategory} />
+          </View>
+        );
+      case "banners":
+        return (
+          <BannerCarousel
+            ads={activeBanners.slice(0, limit)}
+            loading={adsLoading}
+            error={adsError}
+            width={width}
+            onPress={openAd}
+          />
+        );
+      case "shorts":
+        return (
+          <View style={styles.section}>
+            {shortsLoading || shortsError ? (
+              <LoadingOrEmpty
+                loading={shortsLoading}
+                error={shortsError}
+                empty="Aucun Short disponible pour le moment"
+                onRetry={() => refetchShorts()}
+              />
+            ) : shorts.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalCards}
+                nestedScrollEnabled
+              >
+                {shorts.slice(0, limit).map((short, index) => (
+                  <ShortCard
+                    key={short.id}
+                    short={short}
+                    width={SHORT_WIDTH}
+                    variant="home"
+                    avatarUrl={
+                      short.restaurantLogoUrl ??
+                      (short.restaurantId != null ? restaurantLogoById.get(short.restaurantId) : null)
+                    }
+                    onPress={() => openShort(index)}
+                  />
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.empty}>Aucun Short disponible pour le moment</Text>
+            )}
+          </View>
+        );
+      case "popular":
+        return (
+          <View style={styles.popularSection}>
+            <WaveEdge color={SECTION_TINT} height={28} position="top" />
+            <SectionHeader
+              title={config.title}
+              onPress={() => router.push("/restaurants" as any)}
+              testID="section-popular-products"
+            />
+            <ProductRail
+              products={productsFor(config.source)?.slice(0, limit)}
+              loading={config.source === "promos" ? promoProductsLoading : config.source === "newest" ? newestProductsLoading : popularProductsLoading}
+              error={config.source === "promos" ? promoProductsError : config.source === "newest" ? newestProductsError : popularProductsError}
+              empty="Aucun produit populaire pour le moment"
+              onRetry={() => void (config.source === "promos" ? refetchPromoProducts() : config.source === "newest" ? refetchNewestProducts() : refetchPopularProducts())}
+              width={PRODUCT_GRID_WIDTH}
+              onProductPress={openProduct}
+              variant="home-compact"
+              keyPrefix="popular"
+            />
+            <WaveEdge color={SECTION_TINT} height={28} />
+          </View>
+        );
+      case "new_restaurants":
+      case "shops":
+        return (
+          <View style={styles.restaurantSection}>
+            <SectionHeader
+              title={config.title}
+              onPress={() => router.push("/restaurants" as any)}
+              testID={`section-${key}`}
+            />
+            {restaurantsLoading || restaurantsError ? (
+              <LoadingOrEmpty
+                loading={restaurantsLoading}
+                error={restaurantsError}
+                empty="Aucun commerce disponible pour le moment"
+                onRetry={() => refetchRestaurants()}
+              />
+            ) : restaurantStores.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.promoProductGrid} nestedScrollEnabled>
+                {restaurantStores.slice(0, limit).map((restaurant) => (
+                  <StoreCard
+                    key={`${key}-${restaurant.id}`}
+                    restaurant={restaurant}
+                    width={SCREEN_WIDTH * 0.65}
+                    variant="home"
+                    badgeLabel={
+                      key === "new_restaurants" && promoProducts?.some((product) => product.restaurantId === restaurant.id)
+                        ? "Promo"
+                        : undefined
+                    }
+                    onPress={() => router.push({ pathname: "/restaurant/[id]", params: { id: String(restaurant.id) } })}
+                  />
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.empty}>Aucun commerce disponible pour le moment</Text>
+            )}
+          </View>
+        );
+      case "new_products":
+        return (
+          <View style={styles.promoSection}>
+            <SectionHeader title={config.title} onPress={() => router.push("/restaurants" as any)} testID="section-promo-products" />
+            <ProductRail
+              products={productsFor(config.source)?.slice(0, limit)}
+              loading={config.source === "newest" ? newestProductsLoading : config.source === "popular" ? popularProductsLoading : promoProductsLoading}
+              error={config.source === "newest" ? newestProductsError : config.source === "popular" ? popularProductsError : promoProductsError}
+              empty="Aucun produit en promotion pour le moment"
+              onRetry={() => void (config.source === "newest" ? refetchNewestProducts() : config.source === "popular" ? refetchPopularProducts() : refetchPromoProducts())}
+              width={SCREEN_WIDTH * 0.75}
+              onProductPress={openProduct}
+              variant="home-offer"
+              keyPrefix="offer"
+            />
+          </View>
+        );
+      case "all":
+        return (
+          <View style={styles.restaurantSection}>
+            <SectionHeader title={config.title} onPress={() => router.push("/restaurants" as any)} testID="section-recommended" />
+            {restaurantsLoading || restaurantsError ? (
+              <LoadingOrEmpty loading={restaurantsLoading} error={restaurantsError} empty="Aucun restaurant disponible pour le moment" onRetry={() => refetchRestaurants()} />
+            ) : restaurantStores.length > 2 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promoProductGrid} nestedScrollEnabled>
+                {restaurantStores.slice(2, 2 + limit).map((restaurant) => (
+                  <StoreCard
+                    key={`rec-${restaurant.id}`}
+                    restaurant={restaurant}
+                    width={140}
+                    variant="home"
+                    showFee
+                    onPress={() => router.push({ pathname: "/restaurant/[id]", params: { id: String(restaurant.id) } })}
+                  />
+                ))}
+              </ScrollView>
+            ) : <Text style={styles.empty}>Aucun restaurant disponible pour le moment</Text>}
+          </View>
+        );
+      case "free_delivery":
+        return (
+          <View style={styles.freeDeliverySection}>
+            <SectionHeader title={config.title} onPress={() => router.push("/restaurants" as any)} testID="section-free-delivery" />
+            <ProductRail
+              products={freeDeliveryProducts.slice(0, limit)}
+              loading={popularProductsLoading}
+              error={popularProductsError}
+              empty="Aucun produit en livraison gratuite pour le moment"
+              onRetry={() => void refetchPopularProducts()}
+              width={120}
+              onProductPress={openProduct}
+              variant="home-free-delivery"
+              keyPrefix="free-delivery"
+            />
+          </View>
+        );
+      case "newest":
+        return (
+          <View style={styles.newestSection}>
+            <SectionHeader title={config.title} onPress={() => router.push("/restaurants" as any)} testID="section-newest" />
+            <ProductRail
+              products={productsFor(config.source)?.slice(0, limit)}
+              loading={config.source === "popular" ? popularProductsLoading : config.source === "promos" ? promoProductsLoading : newestProductsLoading}
+              error={config.source === "popular" ? popularProductsError : config.source === "promos" ? promoProductsError : newestProductsError}
+              empty="Aucun nouveau produit pour le moment"
+              onRetry={() => void (config.source === "popular" ? refetchPopularProducts() : config.source === "promos" ? refetchPromoProducts() : refetchNewestProducts())}
+              width={PROMO_PRODUCT_WIDTH}
+              onProductPress={openProduct}
+              variant="home-compact"
+              keyPrefix="newest"
+            />
+          </View>
+        );
+      case "support":
+        return <View style={styles.supportSection}><HomeSupportCard /></View>;
+      default:
+        return null;
     }
   };
 
@@ -584,231 +839,9 @@ function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PINK} />
         }
       >
-        {/* 1. Catégories */}
-        <View style={styles.categorySection}>
-          <CategoryRow categories={categories} onPress={openCategory} />
-        </View>
-
-        {/* 2. Shorts */}
-        <View style={styles.section}>
-          {shortsLoading || shortsError ? (
-            <LoadingOrEmpty
-              loading={shortsLoading}
-              error={shortsError}
-              empty="Aucun Short disponible pour le moment"
-              onRetry={() => refetchShorts()}
-            />
-          ) : shorts.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalCards}
-              nestedScrollEnabled
-            >
-              {shorts.map((short, index) => (
-                <ShortCard
-                  key={short.id}
-                  short={short}
-                  width={SHORT_WIDTH}
-                  variant="home"
-                  avatarUrl={
-                    short.restaurantLogoUrl ??
-                    (short.restaurantId != null ? restaurantLogoById.get(short.restaurantId) : null)
-                  }
-                  onPress={() => openShort(index)}
-                />
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={styles.empty}>Aucun Short disponible pour le moment</Text>
-          )}
-        </View>
-
-        {/* 3. Produits populaires */}
-        <View style={styles.popularSection}>
-          <WaveEdge color={SECTION_TINT} height={28} position="top" />
-          <SectionHeader
-            title="Produits populaires"
-            onPress={() => router.push("/restaurants" as any)}
-            testID="section-popular-products"
-          />
-          {popularProductsLoading || popularProductsError ? (
-            <LoadingOrEmpty
-              loading={popularProductsLoading}
-              error={popularProductsError}
-              empty="Aucun produit populaire pour le moment"
-              onRetry={() => refetchPopularProducts()}
-            />
-          ) : popularProducts && popularProducts.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.promoProductGrid} nestedScrollEnabled>
-              {popularProducts.map((product) => (
-                <ProductCard
-                  key={`popular-${product.restaurantId}-${product.id}`}
-                  product={product}
-                  width={PRODUCT_GRID_WIDTH}
-                  variant="home-compact"
-                  onPress={() => openProduct(product)}
-                />
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={styles.empty}>Aucun produit populaire pour le moment</Text>
-          )}
-          <WaveEdge color={SECTION_TINT} height={28} />
-        </View>
-
-        <BannerCarousel
-          ads={activeBanners}
-          loading={adsLoading}
-          error={adsError}
-          width={width}
-          onPress={openAd}
-        />
-
-        {/* 4. Près de chez vous */}
-        <View style={styles.restaurantSection}>
-          <SectionHeader
-            title="Près de chez vous"
-            onPress={() => router.push("/restaurants" as any)}
-            testID="section-restauration"
-          />
-          {restaurantsLoading || restaurantsError ? (
-            <LoadingOrEmpty
-              loading={restaurantsLoading}
-              error={restaurantsError}
-              empty="Aucun restaurant disponible pour le moment"
-              onRetry={() => refetchRestaurants()}
-            />
-          ) : restaurantStores.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.promoProductGrid} nestedScrollEnabled>
-              {restaurantStores.slice(0, 2).map((restaurant) => (
-                <StoreCard
-                  key={`restaurant-${restaurant.id}`}
-                  restaurant={restaurant}
-                  width={SCREEN_WIDTH * 0.65}
-                  variant="home"
-                  badgeLabel={
-                    promoProducts?.some((product) => product.restaurantId === restaurant.id)
-                      ? "Promo"
-                      : undefined
-                  }
-                  onPress={() =>
-                    router.push({
-                      pathname: "/restaurant/[id]",
-                      params: { id: String(restaurant.id) },
-                    })
-                  }
-                />
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={styles.empty}>Aucun restaurant disponible pour le moment</Text>
-          )}
-        </View>
-
-        {/* 5. Offres du moment */}
-        <View style={styles.promoSection}>
-          <SectionHeader
-            title="Offres du moment"
-            onPress={() => router.push("/restaurants" as any)}
-            testID="section-promo-products"
-          />
-          <ProductRail
-            products={promoProducts}
-            loading={promoProductsLoading}
-            error={promoProductsError}
-            empty="Aucun produit en promotion pour le moment"
-            onRetry={() => void refetchPromoProducts()}
-            width={SCREEN_WIDTH * 0.75}
-            onProductPress={openProduct}
-            variant="home-offer"
-            keyPrefix="promo"
-          />
-        </View>
-
-        {/* 6. Recommandé pour vous */}
-        <View style={styles.restaurantSection}>
-          <SectionHeader
-            title="Recommandé pour vous"
-            onPress={() => router.push("/restaurants" as any)}
-            testID="section-recommended"
-          />
-          {restaurantsLoading || restaurantsError ? (
-            <LoadingOrEmpty
-              loading={restaurantsLoading}
-              error={restaurantsError}
-              empty="Aucun restaurant disponible pour le moment"
-              onRetry={() => refetchRestaurants()}
-            />
-          ) : restaurantStores.length > 2 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.promoProductGrid} nestedScrollEnabled>
-              {restaurantStores.slice(2, 5).map((restaurant) => (
-                <StoreCard
-                  key={`rec-${restaurant.id}`}
-                  restaurant={restaurant}
-                  width={140}
-                  variant="home"
-                  showFee={true}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/restaurant/[id]",
-                      params: { id: String(restaurant.id) },
-                    })
-                  }
-                />
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={styles.empty}>Aucun restaurant disponible pour le moment</Text>
-          )}
-        </View>
-
-        {/* 7. Livraison gratuite */}
-        <View style={styles.freeDeliverySection}>
-          <SectionHeader
-            title="Livraison gratuite"
-            onPress={() => router.push("/restaurants" as any)}
-            testID="section-free-delivery"
-          />
-          <ProductRail
-            products={freeDeliveryProducts}
-            loading={popularProductsLoading}
-            error={popularProductsError}
-            empty="Aucun produit en livraison gratuite pour le moment"
-            onRetry={() => void refetchPopularProducts()}
-            width={120}
-            onProductPress={openProduct}
-            variant="home-free-delivery"
-            keyPrefix="free-delivery"
-          />
-        </View>
-
-        {/* 8. Nouveautés */}
-        <View style={styles.newestSection}>
-          <SectionHeader
-            title="Nouveautés"
-            onPress={() => router.push("/restaurants" as any)}
-            testID="section-newest"
-          />
-          <ProductRail
-            products={newestProducts}
-            loading={newestProductsLoading}
-            error={newestProductsError}
-            empty="Aucun nouveau produit pour le moment"
-            onRetry={() => void refetchNewestProducts()}
-            width={PROMO_PRODUCT_WIDTH}
-            onProductPress={openProduct}
-            variant="home-compact"
-            keyPrefix="newest"
-          />
-        </View>
-
-        <View style={styles.supportSection}>
-          <HomeSupportCard />
-        </View>
+        {homeOrder.map((key) => (
+          <React.Fragment key={key}>{renderHomeSection(key)}</React.Fragment>
+        ))}
       </ScrollView>
 
       <AddressQuickPicker visible={addressPickerOpen} onClose={() => setAddressPickerOpen(false)} />
@@ -960,7 +993,7 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     minHeight: 18,
-    color: NAVY,
+    color: "#274C77",
     fontSize: 11,
     lineHeight: 14,
     textAlign: "center",

@@ -6,10 +6,17 @@ import { z } from "@workspace/api-zod";
  * /api/app-config, even when the app_config table has not been seeded yet.
  */
 export const HOME_SECTION_KEYS = [
+  "categories",
+  "banners",
+  "shorts",
   "popular",
-  "new_products",
   "new_restaurants",
+  "new_products",
   "shops",
+  "all",
+  "free_delivery",
+  "newest",
+  "support",
 ] as const;
 
 export type HomeSectionKey = (typeof HOME_SECTION_KEYS)[number];
@@ -21,17 +28,38 @@ const baseHomeSectionSchema = z.object({
 });
 
 export const homeSectionsSchema = z.object({
+  categories: baseHomeSectionSchema.extend({
+    source: z.literal("categories"),
+  }).strict(),
+  banners: baseHomeSectionSchema.extend({
+    source: z.literal("banners"),
+  }).strict(),
+  shorts: baseHomeSectionSchema.extend({
+    source: z.literal("shorts"),
+  }).strict(),
   popular: baseHomeSectionSchema.extend({
     source: z.enum(["popular", "newest", "promos"]),
-  }).strict(),
-  new_products: baseHomeSectionSchema.extend({
-    source: z.enum(["newest", "popular", "promos"]),
   }).strict(),
   new_restaurants: baseHomeSectionSchema.extend({
     source: z.enum(["new_restaurants", "all_restaurants"]),
   }).strict(),
+  new_products: baseHomeSectionSchema.extend({
+    source: z.enum(["newest", "popular", "promos"]),
+  }).strict(),
   shops: baseHomeSectionSchema.extend({
     source: z.enum(["shops", "all_restaurants"]),
+  }).strict(),
+  all: baseHomeSectionSchema.extend({
+    source: z.literal("all_restaurants"),
+  }).strict(),
+  free_delivery: baseHomeSectionSchema.extend({
+    source: z.literal("free_delivery"),
+  }).strict(),
+  newest: baseHomeSectionSchema.extend({
+    source: z.literal("newest"),
+  }).strict(),
+  support: baseHomeSectionSchema.extend({
+    source: z.literal("support"),
   }).strict(),
 }).strict();
 
@@ -40,15 +68,37 @@ export const HOME_ORDER_KEYS = [
   "categories",
   "banners",
   "shorts",
-  "new_products",
-  "new_restaurants",
   "popular",
+  "new_restaurants",
+  "new_products",
+  "shops",
   "all",
+  "free_delivery",
+  "newest",
+  "support",
 ] as const;
 export const homeOrderSchema = z.array(z.enum(HOME_ORDER_KEYS)).min(1).max(HOME_ORDER_KEYS.length)
   .refine((keys) => new Set(keys).size === keys.length, "homeOrder cannot contain duplicate sections");
 
 export const DEFAULT_HOME_SECTIONS: HomeSectionsConfig = {
+  categories: {
+    title: "Catégories",
+    visible: true,
+    source: "categories",
+    limit: 4,
+  },
+  banners: {
+    title: "Bannières",
+    visible: true,
+    source: "banners",
+    limit: 10,
+  },
+  shorts: {
+    title: "Shorts",
+    visible: true,
+    source: "shorts",
+    limit: 12,
+  },
   popular: {
     title: "Produits populaires",
     visible: true,
@@ -56,7 +106,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSectionsConfig = {
     limit: 6,
   },
   new_products: {
-    title: "Promos",
+    title: "Offres du moment",
     visible: true,
     source: "promos",
     limit: 6,
@@ -72,6 +122,30 @@ export const DEFAULT_HOME_SECTIONS: HomeSectionsConfig = {
     visible: false,
     source: "shops",
     limit: 6,
+  },
+  all: {
+    title: "Recommandé pour vous",
+    visible: true,
+    source: "all_restaurants",
+    limit: 6,
+  },
+  free_delivery: {
+    title: "Livraison gratuite",
+    visible: true,
+    source: "free_delivery",
+    limit: 6,
+  },
+  newest: {
+    title: "Nouveautés",
+    visible: true,
+    source: "newest",
+    limit: 6,
+  },
+  support: {
+    title: "Besoin d'aide ?",
+    visible: true,
+    source: "support",
+    limit: 1,
   },
 };
 

@@ -22,6 +22,7 @@ interface MenuItem {
   name: string;
   description?: string | null;
   price: number;
+  compareAtPrice?: number | null;
   imageUrl?: string | null;
 }
 
@@ -166,7 +167,12 @@ export function MenuItemDetailModal({ visible, item, initialQty = 0, restaurantO
               {/* Title row */}
               <View style={styles.titleRow}>
                 <Text style={[styles.name, { color: colors.heading }]}>{item.name}</Text>
-                <Text style={[styles.price, { color: colors.primary }]}>{formatMad(item.price)} MAD</Text>
+                <View style={styles.detailPriceBlock}>
+                  {item.compareAtPrice != null && item.compareAtPrice > item.price ? (
+                    <Text style={[styles.detailCompareAtPrice, { color: colors.mutedForeground }]}>{formatMad(item.compareAtPrice)} MAD</Text>
+                  ) : null}
+                  <Text style={[styles.price, { color: colors.primary }]}>{formatMad(item.price)} MAD</Text>
+                </View>
               </View>
 
               {/* Description */}
@@ -370,6 +376,8 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 12 },
   name: { fontSize: 22, fontFamily: "Inter_700Bold", letterSpacing: -0.4, lineHeight: 28, flex: 1 },
   price: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  detailPriceBlock: { alignItems: "flex-end", minHeight: 42, justifyContent: "center" },
+  detailCompareAtPrice: { fontSize: 12, textDecorationLine: "line-through", fontFamily: "Inter_500Medium" },
 
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
   metaChip: {

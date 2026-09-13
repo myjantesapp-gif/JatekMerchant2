@@ -601,7 +601,7 @@ export default function RestaurantScreen() {
                 {section.items.map((item: any) => (
                    <MenuItemGridCard
                     key={item.id}
-                    item={item}
+                      item={item}
                      width={menuCardWidth}
                     quantity={getQty(item.id)}
                     restaurantOpen={isOpen}

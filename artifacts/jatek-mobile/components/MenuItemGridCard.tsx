@@ -15,6 +15,7 @@ interface Props {
     id: number;
     name: string;
     price: number;
+    compareAtPrice?: number | null;
     imageUrl?: string | null;
     isAvailable?: boolean | null;
   };
@@ -77,10 +78,15 @@ export function MenuItemGridCard({ item, quantity, width, onPressCard, onAdd, re
         </View>
         <View style={styles.body}>
           <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={2}>{item.name}</Text>
-          <Text style={[styles.price, { color: colors.foreground }]}>
-            <Text style={[styles.currency, { color: colors.mutedForeground }]}>MAD </Text>
-            {formatMad(item.price)}
-          </Text>
+          <View style={styles.priceBlock}>
+            {item.compareAtPrice != null && item.compareAtPrice > item.price ? (
+              <Text style={styles.compareAtPrice}>{formatMad(item.compareAtPrice)} MAD</Text>
+            ) : null}
+            <Text style={[styles.price, { color: colors.foreground }]}>
+              <Text style={[styles.currency, { color: colors.mutedForeground }]}>MAD </Text>
+              {formatMad(item.price)}
+            </Text>
+          </View>
         </View>
       </Animated.View>
     </Pressable>
@@ -122,4 +128,6 @@ const styles = StyleSheet.create({
   name: { fontSize: 13, fontFamily: "Inter_600SemiBold", lineHeight: 17 },
   price: { fontSize: 14, fontFamily: "Inter_700Bold" },
   currency: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  priceBlock: { minHeight: 31, justifyContent: "flex-end" },
+  compareAtPrice: { color: "#9CA3AF", fontSize: 11, textDecorationLine: "line-through", fontFamily: "Inter_500Medium" },
 });

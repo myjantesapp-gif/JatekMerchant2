@@ -27,7 +27,7 @@ import { apiFetch } from "@/lib/api";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { buildProductListParams, isProductSort, type ProductAvailability, type ProductSort } from "@/lib/productListQuery";
 
-const EMPTY = { name: "", description: "", price: "", compareAtPrice: "", category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "", sortOrder: "0" };
+const EMPTY = { name: "", description: "", price: "", compareAtPrice: "", promotionEnabled: false, category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "", sortOrder: "0" };
 
 type ProductCat = { id: number; restaurantId: number | null; name: string; isActive: boolean; productCount?: number };
 function useProductCategories(restaurantId: string | number | undefined) {
@@ -303,7 +303,9 @@ export default function Products() {
     name: f.name,
     description: f.description || undefined,
     price: Number(String(f.price).replace(",", ".")),
-    compareAtPrice: f.compareAtPrice ? Number(String(f.compareAtPrice).replace(",", ".")) : null,
+    compareAtPrice: f.promotionEnabled && f.compareAtPrice
+      ? Number(String(f.compareAtPrice).replace(",", "."))
+      : null,
      category: f.category || undefined,
      menuItemCategoryId: f.menuItemCategoryId ? Number(f.menuItemCategoryId) : undefined,
     imageUrl: f.imageUrl || undefined,
@@ -316,10 +318,25 @@ export default function Products() {
      sortOrder: Number(f.sortOrder) || 0,
   });
 
+  const validateProductForm = (f: typeof EMPTY) => {
+    const price = Number(String(f.price).replace(",", "."));
+    const compareAtPrice = Number(String(f.compareAtPrice).replace(",", "."));
+    if (!Number.isFinite(price) || price < 0) {
+      toast({ title: "Prix invalide", description: "Saisissez un prix facturé positif ou nul.", variant: "destructive" });
+      return false;
+    }
+    if (f.promotionEnabled && (!Number.isFinite(compareAtPrice) || compareAtPrice <= price)) {
+      toast({ title: "Promotion invalide", description: "Le prix de base doit être supérieur au prix promotionnel.", variant: "destructive" });
+      return false;
+    }
+    return true;
+  };
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopId) { toast({ title: "Choisissez une boutique", variant: "destructive" }); return; }
     if (!form.menuItemCategoryId) { toast({ title: "Choisissez une catégorie produit", variant: "destructive" }); return; }
+    if (!validateProductForm(form)) return;
     createMutation.mutate({ restaurantId: Number(shopId), ...buildProductPayload(form) });
   };
 
@@ -327,6 +344,7 @@ export default function Products() {
     setEditing(p);
     setEditForm({
        name: p.name, description: p.description ?? "", price: String(p.price), compareAtPrice: p.compareAtPrice ? String(p.compareAtPrice) : "",
+       promotionEnabled: Number(p.compareAtPrice ?? 0) > Number(p.price ?? 0),
       category: p.category, menuItemCategoryId: p.menuItemCategoryId ? String(p.menuItemCategoryId) : "", imageUrl: p.imageUrl ?? "",
       isAvailable: p.isAvailable, isPopular: p.isPopular,
       allergens: p.allergens ?? "",
@@ -344,6 +362,7 @@ export default function Products() {
       toast({ title: "Choisissez une catégorie produit", variant: "destructive" });
       return;
     }
+    if (!validateProductForm(editForm)) return;
     updateMutation.mutate({ id: editing.id, data: buildProductPayload(editForm) });
   };
 
@@ -1022,10 +1041,34 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
             </p>
           )}
         </Field>
-        <Field label="Prix (DH) *"><Input required type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" step="0.01" value={form.price} onChange={(e: any) => set("price", e.target.value)} /></Field>
-        <Field label="Ancien prix barré (DH)">
-          <Input type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" step="0.01" value={form.compareAtPrice} onChange={(e: any) => set("compareAtPrice", e.target.value)} placeholder="Optionnel, supérieur au prix actuel" />
+        <Field label={form.promotionEnabled ? "Prix promotionnel facturé (DH) *" : "Prix facturé (DH) *"}>
+          <Input required type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" step="0.01" value={form.price} onChange={(e: any) => set("price", e.target.value)} />
         </Field>
+        <div className="space-y-2 rounded-lg border p-3 sm:col-span-2">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Label className="font-medium">Type de mise en avant</Label>
+              <p className="text-xs text-muted-foreground">Une promotion affiche le prix de base barré et facture le prix promotionnel.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{form.promotionEnabled ? "Promotion" : "Recommandé"}</span>
+              <Switch
+                checked={form.promotionEnabled}
+                onCheckedChange={(enabled: boolean) => setForm({
+                  ...form,
+                  promotionEnabled: enabled,
+                  compareAtPrice: enabled ? form.compareAtPrice : "",
+                })}
+                aria-label="Activer la promotion"
+              />
+            </div>
+          </div>
+          {form.promotionEnabled && (
+            <Field label="Prix de base (DH) *">
+              <Input required type="text" inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" step="0.01" value={form.compareAtPrice} onChange={(e: any) => set("compareAtPrice", e.target.value)} placeholder="Supérieur au prix promotionnel" />
+            </Field>
+          )}
+        </div>
         <Field label="Ordre personnalisé">
           <Input type="number" step="1" value={form.sortOrder} onChange={(e: any) => set("sortOrder", e.target.value)} />
         </Field>
@@ -1070,7 +1113,7 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
       </div>
       <div className="flex items-center gap-6 pt-1">
         <label className="flex items-center gap-2 text-sm cursor-pointer"><Switch checked={form.isAvailable} onCheckedChange={(v: any) => set("isAvailable", v)} /> Disponible</label>
-        <label className="flex items-center gap-2 text-sm cursor-pointer"><Switch checked={form.isPopular} onCheckedChange={(v: any) => set("isPopular", v)} /> Populaire</label>
+        <label className="flex items-center gap-2 text-sm cursor-pointer"><Switch checked={form.isPopular} onCheckedChange={(v: any) => set("isPopular", v)} /> Recommandé</label>
       </div>
     </>
   );

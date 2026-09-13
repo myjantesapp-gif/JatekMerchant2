@@ -115,7 +115,10 @@ export function ProductCard({
           <Text style={styles.fdName} numberOfLines={1}>{product.name}</Text>
           <Text style={styles.fdQty}>1 kg</Text> 
           <View style={styles.fdBottomRow}>
-            <Text style={styles.fdPrice}>{formatMad(product.price)} DH</Text>
+            <View style={styles.fdPriceBlock}>
+              {hasPromotion ? <Text style={styles.fdOldPrice}>{formatMad(originalPrice!)} DH</Text> : null}
+              <Text style={styles.fdPrice}>{formatMad(product.price)} DH</Text>
+            </View>
             <Pressable hitSlop={8} style={styles.addBtn} onPress={(e) => { e.stopPropagation(); onPress(); }}>
               <Ionicons name="add" size={16} color="#fff" />
             </Pressable>
@@ -156,7 +159,10 @@ export function ProductCard({
         <View style={styles.compactBody}>
           <Text style={styles.compactName} numberOfLines={1}>{product.name}</Text>
           <View style={styles.compactBottomRow}>
-            <Text style={styles.compactPrice}>{formatMad(product.price)} DH</Text>
+            <View style={styles.compactPriceBlock}>
+              {hasPromotion ? <Text style={styles.compactOldPrice}>{formatMad(originalPrice!)} DH</Text> : null}
+              <Text style={styles.compactPrice}>{formatMad(product.price)} DH</Text>
+            </View>
             <Pressable hitSlop={8} style={styles.addBtn} onPress={(e) => { e.stopPropagation(); onPress(); }}>
               <Ionicons name="add" size={16} color="#fff" />
             </Pressable>
@@ -492,6 +498,17 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_700Bold",
     color: "#E91E63",
   },
+  compactPriceBlock: {
+    minHeight: 27,
+    justifyContent: "flex-end",
+  },
+  compactOldPrice: {
+    color: "#9CA3AF",
+    fontSize: 9,
+    lineHeight: 11,
+    textDecorationLine: "line-through",
+    fontFamily: "Poppins_500Medium",
+  },
   addBtn: {
     width: 24,
     height: 24,
@@ -619,5 +636,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Poppins_700Bold",
     color: "#E91E63",
+  },
+  fdPriceBlock: {
+    minHeight: 28,
+    justifyContent: "flex-end",
+  },
+  fdOldPrice: {
+    color: "#9CA3AF",
+    fontSize: 9,
+    lineHeight: 11,
+    textDecorationLine: "line-through",
+    fontFamily: "Poppins_500Medium",
   },
 });

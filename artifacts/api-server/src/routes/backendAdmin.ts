@@ -973,7 +973,7 @@ const DEFAULT_APP_CONFIG = {
   defaultLanguage: "fr",
   maintenanceMode: false,
   featuredCount: 6,
-  homeOrder: ["categories", "banners", "shorts", "new_products", "popular", "all"],
+  homeOrder: ["categories", "banners", "shorts", "popular", "new_restaurants", "new_products", "shops", "all", "free_delivery", "newest", "support"],
   welcomeMessage: "Bienvenue sur Jatek !",
   homeSections: getDefaultHomeSections(),
 } satisfies AppConfig;
@@ -986,11 +986,28 @@ async function getAppConfig(): Promise<AppConfig> {
   }
   // Validate persisted JSON as well as writes. This prevents a malformed
   // admin value from being exposed to every mobile client.
-  const parsedHomeSections = homeSectionsSchema.safeParse(config.homeSections);
+  const savedHomeSections = config.homeSections && typeof config.homeSections === "object"
+    ? config.homeSections as Record<string, unknown>
+    : {};
+  const defaultHomeSections = getDefaultHomeSections();
+  const mergedHomeSections = Object.fromEntries(
+    Object.entries(defaultHomeSections).map(([key, value]) => [
+      key,
+      savedHomeSections[key] && typeof savedHomeSections[key] === "object"
+        ? { ...value, ...(savedHomeSections[key] as Record<string, unknown>) }
+        : value,
+    ]),
+  );
+  const parsedHomeSections = homeSectionsSchema.safeParse(mergedHomeSections);
   if (!parsedHomeSections.success) {
     throw new Error("Stored homeSections configuration is invalid");
   }
-  return { ...config, homeSections: parsedHomeSections.data } as AppConfig;
+  const parsedHomeOrder = homeOrderSchema.safeParse(config.homeOrder);
+  return {
+    ...config,
+    homeOrder: parsedHomeOrder.success ? parsedHomeOrder.data : DEFAULT_APP_CONFIG.homeOrder,
+    homeSections: parsedHomeSections.data,
+  } as AppConfig;
 }
 
 /** Public endpoint read by the mobile app at startup (no auth required). */

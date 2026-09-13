@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   
   // Home Variant Styles
   homeCard: {
-    height: 172,
+    height: 182,
     borderRadius: 16,
     overflow: "hidden",
     position: "relative",
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(15,23,42,0.42)",
+    backgroundColor: "rgba(15,23,42,0.22)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.65)",
   },
