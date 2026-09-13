@@ -448,13 +448,11 @@ function HomeScreen() {
 
         {/* 1. Catégories */}
         <View style={styles.categorySection}>
-          <SectionHeader title="Catégories" accent={false} />
           <CategoryRow categories={categories} onPress={openCategory} />
         </View>
 
         {/* 2. Bannières administrables, avec visuels locaux de secours */}
         <View style={styles.bannerSection}>
-          <SectionHeader title="Bannières" accent={false} />
           <ScrollView
             horizontal
             pagingEnabled
@@ -776,8 +774,8 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   categorySection: {
-    paddingTop: 0,
-    paddingBottom: 14,
+    paddingTop: 12,
+    paddingBottom: 18,
     backgroundColor: WHITE,
   },
   categoryRow: {
@@ -810,6 +808,7 @@ const styles = StyleSheet.create({
     backgroundColor: WHITE,
   },
   bannerSection: {
+    paddingTop: 10,
     paddingBottom: 40,
     backgroundColor: WHITE,
   },

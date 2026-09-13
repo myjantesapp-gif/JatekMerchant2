@@ -333,8 +333,8 @@ test("app applies the Poppins family to text by default", () => {
 
 test("home renders the requested strict section order", () => {
   const page = source("app/(tabs)/index.tsx");
-  const categories = page.indexOf('title="Catégories"');
-  const banners = page.indexOf('title="Bannières"');
+  const categories = page.indexOf("{/* 1. Catégories */}");
+  const banners = page.indexOf("{/* 2. Bannières");
   const promos = page.indexOf('title="PROMOS"');
   const videos = page.indexOf('title="Shorts"');
   const popular = page.indexOf('title="Produits populaires"');
@@ -346,6 +346,16 @@ test("home renders the requested strict section order", () => {
   assert.ok(videos < popular);
   assert.ok(popular < newest);
   assert.ok(newest < restaurants);
+});
+
+test("home keeps whitespace between the header, categories, and banners without section titles", () => {
+  const page = source("app/(tabs)/index.tsx");
+
+  assert.doesNotMatch(page, /<SectionHeader title="Catégories"/);
+  assert.doesNotMatch(page, /<SectionHeader title="Bannières"/);
+  assert.match(page, /categorySection:\s*\{[\s\S]*paddingTop: 12/);
+  assert.match(page, /categorySection:\s*\{[\s\S]*paddingBottom: 18/);
+  assert.match(page, /bannerSection:\s*\{[\s\S]*paddingTop: 10/);
 });
 
 test("home shows products in the compact four-column reference grid", () => {
