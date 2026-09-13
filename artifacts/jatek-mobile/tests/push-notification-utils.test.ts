@@ -64,6 +64,27 @@ test("serializes registration before detach across identity changes", async () =
   assert.deepEqual(events, ["register:start", "register:end", "detach"]);
 });
 
+test("rejects malformed push order identifiers instead of opening a different order", () => {
+  for (const orderId of [true, false, [], [42], {}, null, undefined, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.equal(orderIdFromNotificationResponse({
+      notification: { request: { content: { data: { orderId } } } },
+    }), null);
+  }
+});
+
+test("push registration respects permissions and the installed EAS project", () => {
+  const source = readFileSync(resolve(testDirectory, "../hooks/usePushNotifications.ts"), "utf8");
+  const fetchStart = source.indexOf("async function fetchExpoPushToken");
+  const fetchEnd = source.indexOf("async function fetchAndRegisterPushToken");
+  const fetchSource = source.slice(fetchStart, fetchEnd);
+  assert.ok(fetchSource.indexOf("getPermissionsAsync") < fetchSource.indexOf("getExpoPushTokenAsync"));
+  assert.ok(fetchSource.indexOf("Constants.easConfig?.projectId") < fetchSource.indexOf("process.env.EXPO_PUBLIC_PROJECT_ID"));
+  assert.match(source, /addPushTokenListener/);
+  assert.match(source, /router\.push\("\/profile\/notifications"\)/);
+  assert.match(source, /clearLastNotificationResponseAsync/);
+  assert.match(source, /channelId: "order-status"/);
+});
+
 test("uses a manual abort timer compatible with React Native 0.81", async () => {
   await assert.rejects(
     withManualAbortTimeout(

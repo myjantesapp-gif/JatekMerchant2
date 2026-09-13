@@ -8,3 +8,7 @@ Expo Android builds and Expo Push Service use different credential paths. The ap
 **Why:** A successful EAS build and a registered `ExponentPushToken[...]` do not prove that Android remote delivery is configured. The failure occurs after token registration, inside Expo's FCM handoff.
 
 **How to apply:** When Android Expo pushes fail with `InvalidCredentials` or an FCM server-key message, configure or repair the project's FCM v1 credential in EAS/Firebase before changing the mobile token-registration flow. Treat per-ticket errors as delivery failures even when the Expo API returns HTTP 200.
+
+Prefer the installed app's EAS project identity over shared workspace environment defaults when obtaining an Expo push token.
+
+**Why:** This workspace hosts both customer and driver apps; an environment default can point to a different project than the installed binary and its push credentials.

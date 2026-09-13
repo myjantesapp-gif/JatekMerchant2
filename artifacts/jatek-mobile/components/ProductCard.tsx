@@ -1,6 +1,11 @@
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
+import { useFriendlyAlert } from "@/components/FriendlyAlert";
+import { listFavorites, addFavorite, removeFavorite } from "@/lib/api";
 
 import type { RecommendedProduct } from "@/lib/api";
 import { formatMad } from "@/lib/money";
@@ -15,6 +20,26 @@ type Props = {
 };
 
 export function ProductCard({ product, width, onPress, compact = false }: Props) {
+  const { token, user } = useAuth();
+  const alert = useFriendlyAlert();
+  const queryClient = useQueryClient();
+  const favoritesKey = ["home-favorites", user?.id];
+  const { data: favorites, isLoading: favoritesLoading, isError: favoritesError, refetch } = useQuery({
+    queryKey: favoritesKey,
+    queryFn: listFavorites,
+    enabled: !!token,
+    staleTime: 15_000,
+  });
+  const isFavorite = favorites?.some((favorite) => favorite.restaurantId === product.restaurantId) ?? false;
+  const favoriteMutation = useMutation({
+    mutationFn: () => isFavorite ? removeFavorite(product.restaurantId) : addFavorite(product.restaurantId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: favoritesKey }),
+    onError: () => alert.show({
+      tone: "error", title: "Favoris",
+      message: "Impossible de mettre à jour vos favoris. Réessayez.",
+      hideSecondary: true,
+    }),
+  });
   const originalPrice = product.originalPrice ?? product.oldPrice ?? product.compareAtPrice ?? null;
   const hasPromotion = typeof originalPrice === "number" && originalPrice > product.price;
   const imageUrl = resolveMediaUrl(product.imageUrl);
@@ -50,12 +75,26 @@ export function ProductCard({ product, width, onPress, compact = false }: Props)
             </Text>
           )}
         </View>
-        <View style={[styles.favoriteButton, compact && styles.favoriteButtonCompact]}>
-          <Ionicons name="heart-outline" size={compact ? 13 : 17} color="#E91E63" />
-        </View>
-        <View style={[styles.addButton, compact && styles.addButtonCompact]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${isFavorite ? "Retirer" : "Ajouter"} ${product.restaurantName} des favoris`}
+          accessibilityState={{ selected: isFavorite, disabled: favoriteMutation.isPending }}
+          disabled={favoriteMutation.isPending || (!!token && favoritesLoading)}
+          hitSlop={4}
+          onPress={(event) => {
+            event.stopPropagation();
+            if (!token) { router.push("/(auth)/login"); return; }
+            if (favoritesError) { void refetch(); return; }
+            favoriteMutation.mutate();
+          }}
+          style={[styles.favoriteButton, compact && styles.favoriteButtonCompact]}>
+          <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={compact ? 13 : 17} color="#E91E63" />
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Choisir ${product.name}`}
+          hitSlop={4} onPress={(event) => { event.stopPropagation(); onPress(); }}
+          style={[styles.addButton, compact && styles.addButtonCompact]}>
           <Ionicons name="add" size={compact ? 16 : 19} color="#FFFFFF" />
-        </View>
+        </Pressable>
       </View>
       <View style={[styles.body, compact && styles.bodyCompact]}>
         <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={2}>

@@ -19,11 +19,9 @@ import { notificationResponseKey, orderIdFromNotificationResponse } from "@/lib/
 import { pushOperationQueue, withManualAbortTimeout } from "@/lib/pushOperationQueue";
 
 /**
- * Expo Go on SDK 53+ no longer ships the native `expo-notifications` module.
- * Calling ANY Notifications API (even `setNotificationHandler` at module
- * top-level) crashes the JS bundle on Android with a blank blue screen.
- * Gate every call on this flag so the app boots cleanly in Expo Go (without
- * push) and works fully in development builds / production.
+ * Remote push needs the installed app's native credentials. Android Expo Go
+ * does not support remote push on SDK 53+. Keep this preview path disabled;
+ * use a development build or a release to test the app's own credentials.
  */
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 const pushSupported = Platform.OS !== "web" && !isExpoGo;
@@ -59,6 +57,11 @@ async function configureAndroidNotificationChannels(): Promise<void> {
   if (Platform.OS !== "android" || !pushSupported) return;
 
   await Promise.all([
+    Notifications.setNotificationChannelAsync("default", {
+      name: "Notifications Jatek",
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: "default",
+    }),
     Notifications.setNotificationChannelAsync("order-status", {
       name: "Suivi des commandes",
       importance: Notifications.AndroidImportance.MAX,
@@ -78,11 +81,17 @@ async function configureAndroidNotificationChannels(): Promise<void> {
 
 async function fetchExpoPushToken(): Promise<string | null> {
   if (!pushSupported) return null;
-  if (cachedExpoPushToken) return cachedExpoPushToken;
   try {
+    await configureAndroidNotificationChannels();
+    const permission = await Notifications.getPermissionsAsync();
+    const allowed = permission.granted ||
+      permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+    if (!allowed) return null;
+    if (cachedExpoPushToken) return cachedExpoPushToken;
     const projectId =
-      process.env.EXPO_PUBLIC_PROJECT_ID ??
-      Constants.expoConfig?.extra?.eas?.projectId;
+      Constants.easConfig?.projectId ||
+      Constants.expoConfig?.extra?.eas?.projectId ||
+      process.env.EXPO_PUBLIC_PROJECT_ID;
     if (!projectId) {
       console.warn("[push] Expo project ID is missing");
       return null;
@@ -215,14 +224,19 @@ export function useNotificationSetup(
     const responseKey = notificationResponseKey(response);
     if (handledResponseKeysRef.current.has(responseKey)) return;
     const orderId = orderIdFromNotificationResponse(response);
-    if (!orderId) return;
     try {
-      router.push({ pathname: "/order/[id]", params: { id: String(orderId) } });
+      if (orderId) {
+        router.push({ pathname: "/order/[id]", params: { id: String(orderId) } });
+      } else {
+        router.push("/profile/notifications");
+      }
       // Only dedupe after a response was actually actionable and handed to
       // the mounted root navigator. Invalid/unauthenticated intents remain
       // pending for the next authenticated session.
       handledResponseKeysRef.current.add(responseKey);
       pendingResponseRef.current = null;
+      void Notifications.clearLastNotificationResponseAsync()
+        .catch((error) => console.warn("[push] could not clear handled response:", error));
     } catch (error) {
       pendingResponseRef.current = response;
       console.warn("[push] could not navigate from notification response:", error);
@@ -254,15 +268,18 @@ export function useNotificationSetup(
     (async () => {
       try {
         await configureAndroidNotificationChannels();
-        const { status: existing } = await Notifications.getPermissionsAsync();
-        let status = existing;
-        if (status !== "granted") {
-          const { status: asked } = await Notifications.requestPermissionsAsync();
-          status = asked;
+        let permission = await Notifications.getPermissionsAsync();
+        const provisional = permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+        if (!permission.granted && !provisional && permission.canAskAgain) {
+          permission = await Notifications.requestPermissionsAsync({
+            ios: { allowAlert: true, allowBadge: true, allowSound: true },
+          });
         }
         // After permission is resolved, re-trigger backend registration using the
         // current auth token in case login and permission happened in either order.
-        if (status === "granted" && authTokenRef.current) {
+        if ((permission.granted ||
+            permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) &&
+            authTokenRef.current) {
           void registerPushTokenWithBackend();
         }
       } catch (err) {
@@ -281,7 +298,18 @@ export function useNotificationSetup(
       listenerRef.current?.remove();
       listenerRef.current = null;
     };
-  }, [routeNotificationResponse]);
+  }, [routeNotificationResponse, registerPushTokenWithBackend]);
+
+  // Native tokens can rotate while the app is open. An old cached Expo token
+  // must not prevent registering the current device token with the remote API.
+  useEffect(() => {
+    if (!pushSupported) return;
+    const subscription = Notifications.addPushTokenListener(() => {
+      cachedExpoPushToken = null;
+      void registerPushTokenWithBackend();
+    });
+    return () => subscription.remove();
+  }, [registerPushTokenWithBackend]);
 
   // A user may grant push permission later from the system settings.
   // Re-checking on foreground makes the registration self-healing.
@@ -290,8 +318,11 @@ export function useNotificationSetup(
     const subscription = AppState.addEventListener("change", (state) => {
       if (state !== "active" || !authTokenRef.current) return;
       void Notifications.getPermissionsAsync()
-        .then(({ status }) => {
-          if (status === "granted") void registerPushTokenWithBackend();
+        .then((permission) => {
+          if (permission.granted ||
+              permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) {
+            void registerPushTokenWithBackend();
+          }
         })
         .catch((err) => console.warn("[push] permission refresh failed:", err));
     });
@@ -325,8 +356,9 @@ export async function scheduleOrderStatusNotification(status: string, orderId: n
         data: { orderId },
         sound: true,
       },
-      trigger: null,
+      trigger: Platform.OS === "android" ? { channelId: "order-status" } : null,
     });
-  } catch {
+  } catch (error) {
+    console.warn("[push] local order notification failed:", error);
   }
 }

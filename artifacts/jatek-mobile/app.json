@@ -31,6 +31,7 @@
       "edgeToEdgeEnabled": true,
       "googleServicesFile": "./google-services.json",
       "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
@@ -61,6 +62,7 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#E91E63",
+          "defaultChannel": "default",
           "androidMode": "default"
         }
       ]
