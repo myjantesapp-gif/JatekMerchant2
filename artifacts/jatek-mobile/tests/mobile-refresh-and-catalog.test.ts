@@ -171,7 +171,7 @@ test("home renders discovery videos as a horizontal 9:16 card rail", () => {
   const page = source("app/(tabs)/index.tsx");
   const card = source("components/ShortCard.tsx");
 
-  assert.match(page, /title="Découvrir en vidéo"/);
+  assert.match(page, /title="Shorts"/);
   assert.match(page, /shorts\.map\(\(short, index\)/);
   assert.match(page, /<ShortCard/);
   assert.match(card, /height: 238/);
@@ -277,8 +277,8 @@ test("home renders reusable sections and live product recommendations", () => {
   assert.match(code, /listRecommendedProducts/);
   assert.match(code, /productId: String\(product\.id\)/);
   assert.match(code, /title="Produits populaires"/);
-  assert.match(code, /<SectionHeader[\s\S]*title="Découvrir en vidéo"/);
-  assert.match(code, /<SectionHeader[\s\S]*title="Près de chez vous"/);
+  assert.match(code, /<SectionHeader[\s\S]*title="Shorts"/);
+  assert.match(code, /<SectionHeader[\s\S]*title="Nouveautés"/);
   assert.match(code, /<SectionHeader[\s\S]*title="Restauration"/);
   assert.match(code, /<ProductCard/);
   assert.match(code, /<ShortCard/);
@@ -297,18 +297,24 @@ test("home renders reusable sections and live product recommendations", () => {
 
 test("home renders the requested strict section order", () => {
   const page = source("app/(tabs)/index.tsx");
-  const videos = page.indexOf('title="Découvrir en vidéo"');
+  const categories = page.indexOf('title="Catégories"');
+  const banners = page.indexOf('title="Bannières"');
+  const promos = page.indexOf('title="Promos produits"');
+  const videos = page.indexOf('title="Shorts"');
   const popular = page.indexOf('title="Produits populaires"');
-  const nearby = page.indexOf('title="Près de chez vous"');
+  const newest = page.indexOf('title="Nouveautés"');
   const restaurants = page.indexOf('title="Restauration"');
-  assert.ok(videos >= 0 && videos < popular);
-  assert.ok(popular < nearby);
-  assert.ok(nearby < restaurants);
+  assert.ok(categories >= 0 && categories < banners);
+  assert.ok(banners < promos);
+  assert.ok(promos < videos);
+  assert.ok(videos < popular);
+  assert.ok(popular < newest);
+  assert.ok(newest < restaurants);
 });
 
-test("home shows promo products in a three-column grid", () => {
+test("home shows products in the compact four-column reference grid", () => {
   const page = source("app/(tabs)/index.tsx");
-  assert.match(page, /const PROMO_PRODUCT_WIDTH = Math\.max\(100, \(SCREEN_WIDTH - 32 - 20\) \/ 3\)/);
+  assert.match(page, /const PROMO_PRODUCT_WIDTH = Math\.max\(74, \(SCREEN_WIDTH - 32 - 24\) \/ 4\)/);
   assert.match(page, /styles\.promoProductGrid/);
 });
 
@@ -344,7 +350,7 @@ test("home includes every commerce type instead of defaulting to restaurants", (
 
   assert.match(code, /CATEGORY_PRESETS/);
   assert.match(code, /matches: \["pharmacy", "pharmacie", "health", "santé", "sante"\]/);
-  assert.match(code, /Aucun commerce disponible pour le moment/);
+  assert.match(code, /Aucun nouveau commerce pour le moment/);
 });
 
 test("app uses a transparent edge-to-edge system bar while preserving readable icons", () => {

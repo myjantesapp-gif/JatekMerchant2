@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { adsTable, appConfigTable, db, pool } from "@workspace/db";
 
 const banners = [
@@ -6,15 +6,25 @@ const banners = [
     title: "Le mois des mamans",
     subtitle: "Dépensez 150 MAD et obtenez 30 MAD de réduction",
     badge: "PROMO",
-    imageUrl: "/banners/mois-des-mamans.png",
+    legacyImageUrl: "/banners/mois-des-mamans.png",
+    imageUrl: "/api/banners/mois-des-mamans.png",
     sortOrder: 0,
   },
   {
-    title: "C'est la rentrée",
+    title: "C'est la rentrée — turquoise",
     subtitle: "Dépensez 20 MAD et obtenez 10 MAD de réduction",
     badge: "PROMO",
-    imageUrl: "/banners/c-est-la-rentree.png",
+    legacyImageUrl: "/banners/c-est-la-rentree.png",
+    imageUrl: "/api/banners/c-est-la-rentree.png",
     sortOrder: 1,
+  },
+  {
+    title: "C'est la rentrée — orange",
+    subtitle: "Dépensez 20 MAD et obtenez 10 MAD de réduction",
+    badge: "PROMO",
+    legacyImageUrl: "/banners/c-est-la-rentree-orange.png",
+    imageUrl: "/api/banners/c-est-la-rentree-orange.png",
+    sortOrder: 2,
   },
 ] as const;
 
@@ -22,7 +32,11 @@ for (const banner of banners) {
   const existing = await db
     .select({ id: adsTable.id })
     .from(adsTable)
-    .where(eq(adsTable.imageUrl, banner.imageUrl))
+    .where(or(
+      eq(adsTable.imageUrl, banner.imageUrl),
+      eq(adsTable.imageUrl, banner.legacyImageUrl),
+      eq(adsTable.title, banner.title),
+    ))
     .limit(1);
 
   if (existing.length > 0) {
@@ -57,7 +71,7 @@ const homeSections = {
   new_restaurants: { title: "Restauration", visible: false, source: "new_restaurants", limit: 6 },
   shops: { title: "Boutiques", visible: false, source: "shops", limit: 6 },
 };
-const homeOrder = ["categories", "banners", "shorts", "new_products", "popular", "all"];
+const homeOrder = ["categories", "banners", "new_products", "shorts", "popular", "new_restaurants", "all"];
 
 for (const [key, value] of [
   ["homeSections", homeSections],

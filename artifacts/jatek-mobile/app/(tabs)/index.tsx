@@ -60,11 +60,13 @@ const PROMO_PRODUCT_WIDTH = Math.max(74, (SCREEN_WIDTH - 32 - 24) / 4);
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.min(286, Math.max(260, SCREEN_WIDTH * 0.72));
 const STORE_GRID_WIDTH = Math.max(0, (SCREEN_WIDTH - 48) / 2);
+const BANNER_WIDTH = SCREEN_WIDTH - 32;
 const FALLBACK_PROMO =
   "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=88";
 const LOCAL_PROMO_BANNERS = [
-  require("../../assets/images/banner-rentree.png"),
   require("../../assets/images/banner-mois-mamans.png"),
+  require("../../assets/images/banner-rentree.png"),
+  require("../../assets/images/banner-rentree-orange.png"),
 ];
 
 type HomeCategory = {
@@ -180,10 +182,12 @@ function CategoryRow({
 function PromoBanner({
   ad,
   fallbackSource,
+  width,
   onPress,
 }: {
   ad?: Ad;
   fallbackSource?: number;
+  width: number;
   onPress: () => void;
 }) {
   const imageSource = ad?.imageUrl
@@ -195,7 +199,7 @@ function PromoBanner({
       testID="home-promo-banner"
       accessibilityRole="button"
       accessibilityLabel="Ouvrir les promotions"
-      style={({ pressed }) => [styles.promoBanner, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.promoBanner, { width }, pressed && styles.pressed]}
     >
       <Image source={imageSource} style={styles.promoImage} resizeMode="cover" />
     </Pressable>
@@ -253,6 +257,16 @@ function HomeScreen() {
     queryFn: () => listRecommendedProducts({ limit: 12, sort: "promos" }),
     staleTime: 60_000,
   });
+  const {
+    data: popularProducts,
+    isLoading: popularProductsLoading,
+    isError: popularProductsError,
+    refetch: refetchPopularProducts,
+  } = useQuery({
+    queryKey: ["home-products-popular"],
+    queryFn: () => listRecommendedProducts({ limit: 12, sort: "catalog" }),
+    staleTime: 60_000,
+  });
   const { refetch: refetchAppConfig } = useQuery({
     queryKey: ["public-app-config"],
     queryFn: getPublicAppConfig,
@@ -282,6 +296,17 @@ function HomeScreen() {
   }, [apiCategories]);
 
   const shorts = useMemo<Short[]>(() => shortsData ?? [], [shortsData]);
+  const bannerAds = useMemo<Ad[]>(
+    () =>
+      ((ads ?? []) as Ad[])
+        .filter(
+          (ad) =>
+            ["vip_banner", "promo_banner", "hero"].includes(ad.type) &&
+            typeof ad.imageUrl === "string" &&
+            ad.imageUrl.trim().length > 0,
+        ),
+    [ads],
+  );
   const newestStores = useMemo<Restaurant[]>(
     () =>
       [...(restaurants ?? [])]
@@ -316,6 +341,7 @@ function HomeScreen() {
         refetchRestaurants,
         refetchFeaturedRestaurants,
         refetchPromoProducts,
+        refetchPopularProducts,
         refetchAppConfig,
       ]);
     } finally {
@@ -417,15 +443,53 @@ function HomeScreen() {
           </View>
         </View>
 
-         {/* 1. Produits populaires : contenu remisé piloté depuis le dashboard */}
+        {/* 1. Catégories */}
+        <View style={styles.categorySection}>
+          <SectionHeader title="Catégories" accent={false} />
+          <CategoryRow categories={categories} onPress={openCategory} />
+        </View>
+
+        {/* 2. Bannières administrables, avec visuels locaux de secours */}
+        <View style={styles.bannerSection}>
+          <SectionHeader title="Bannières" accent={false} />
+          <ScrollView
+            horizontal
+            pagingEnabled
+            snapToInterval={BANNER_WIDTH + 12}
+            decelerationRate="fast"
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bannerRail}
+            nestedScrollEnabled
+          >
+            {bannerAds.length > 0
+              ? bannerAds.map((ad) => (
+                  <PromoBanner
+                    key={ad.id}
+                    ad={ad}
+                    width={BANNER_WIDTH}
+                    onPress={() => openAd(ad)}
+                  />
+                ))
+              : LOCAL_PROMO_BANNERS.map((source, index) => (
+                  <PromoBanner
+                    key={`fallback-banner-${index}`}
+                    fallbackSource={source}
+                    width={BANNER_WIDTH}
+                    onPress={() => router.push("/restaurants" as any)}
+                  />
+                ))}
+          </ScrollView>
+        </View>
+
+        {/* 3. Produits réellement remisés, pilotés depuis le dashboard */}
         <View style={styles.promoSection}>
           <WaveEdge color={SECTION_TINT} position="top" height={30} />
           <SectionHeader
-            title="Produits populaires"
+             title="Promos produits"
             buttonLabel="Voir plus"
             accent={false}
             onPress={() => router.push("/restaurants" as any)}
-            testID="section-popular-products"
+             testID="section-promo-products"
           />
           {promoProductsLoading || promoProductsError ? (
             <LoadingOrEmpty
@@ -449,56 +513,13 @@ function HomeScreen() {
           ) : (
             <Text style={styles.empty}>Aucun produit en promotion pour le moment</Text>
           )}
-          <WaveEdge color={WHITE} height={34} />
+          <WaveEdge color={SECTION_TINT} height={34} />
         </View>
 
-         {/* 2. Commerces proches */}
-        <View style={styles.newestSection}>
-          <SectionHeader
-            title="Près de chez vous"
-            buttonLabel="Voir plus"
-            accent={false}
-            onPress={() => router.push("/restaurants" as any)}
-            testID="section-nearby"
-          />
-          {restaurantsLoading || restaurantsError ? (
-            <LoadingOrEmpty
-              loading={restaurantsLoading}
-              error={restaurantsError}
-              empty="Aucun commerce disponible pour le moment"
-              onRetry={() => refetchRestaurants()}
-            />
-          ) : newestStores.length > 0 ? (
-            <View style={styles.storeGrid}>
-              {newestStores.slice(0, 2).map((restaurant, index) => (
-                <StoreCard
-                  key={restaurant.id}
-                  restaurant={restaurant}
-                  width={STORE_GRID_WIDTH}
-                  compact
-                  badgeLabel={index === 0 ? "Nouveau" : "Promo"}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/restaurant/[id]",
-                      params: { id: String(restaurant.id) },
-                    })
-                  }
-                />
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.empty}>Aucun commerce disponible pour le moment</Text>
-          )}
-        </View>
-
-         <View style={styles.categorySection}>
-           <CategoryRow categories={categories} onPress={openCategory} />
-         </View>
-
-         {/* 3. Vidéos courtes */}
+         {/* 4. Shorts */}
          <View style={styles.section}>
            <SectionHeader
-             title="Découvrir en vidéo"
+             title="Shorts"
              buttonLabel="Voir plus"
              accent={false}
              onPress={() => openShort(0)}
@@ -536,7 +557,81 @@ function HomeScreen() {
            )}
          </View>
 
-         {/* 4. Restauration */}
+        {/* 5. Produits populaires */}
+        <View style={styles.popularSection}>
+          <WaveEdge color={SECTION_TINT} position="top" height={30} />
+          <SectionHeader
+            title="Produits populaires"
+            buttonLabel="Voir plus"
+            accent={false}
+            onPress={() => router.push("/restaurants" as any)}
+            testID="section-popular-products"
+          />
+          {popularProductsLoading || popularProductsError ? (
+            <LoadingOrEmpty
+              loading={popularProductsLoading}
+              error={popularProductsError}
+              empty="Aucun produit populaire pour le moment"
+              onRetry={() => refetchPopularProducts()}
+            />
+          ) : popularProducts && popularProducts.length > 0 ? (
+            <View style={styles.promoProductGrid}>
+              {popularProducts.slice(0, 4).map((product) => (
+                <ProductCard
+                  key={`popular-${product.restaurantId}-${product.id}`}
+                  product={product}
+                  width={PROMO_PRODUCT_WIDTH}
+                  compact
+                  onPress={() => openProduct(product)}
+                />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.empty}>Aucun produit populaire pour le moment</Text>
+          )}
+          <WaveEdge color={SECTION_TINT} height={34} />
+        </View>
+
+        {/* 6. Nouveautés */}
+        <View style={styles.newestSection}>
+          <SectionHeader
+            title="Nouveautés"
+            buttonLabel="Voir plus"
+            accent={false}
+            onPress={() => router.push("/restaurants" as any)}
+            testID="section-newest"
+          />
+          {restaurantsLoading || restaurantsError ? (
+            <LoadingOrEmpty
+              loading={restaurantsLoading}
+              error={restaurantsError}
+              empty="Aucun nouveau commerce pour le moment"
+              onRetry={() => refetchRestaurants()}
+            />
+          ) : newestStores.length > 0 ? (
+            <View style={styles.storeGrid}>
+              {newestStores.slice(0, 2).map((restaurant, index) => (
+                <StoreCard
+                  key={restaurant.id}
+                  restaurant={restaurant}
+                  width={STORE_GRID_WIDTH}
+                  compact
+                  badgeLabel={index === 0 ? "Nouveau" : "Promo"}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/restaurant/[id]",
+                      params: { id: String(restaurant.id) },
+                    })
+                  }
+                />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.empty}>Aucun nouveau commerce pour le moment</Text>
+          )}
+        </View>
+
+         {/* 7. Restauration */}
         <View style={styles.restaurantSection}>
           <SectionHeader
             title="Restauration"
@@ -574,7 +669,7 @@ function HomeScreen() {
           ) : (
             <Text style={styles.empty}>Aucun restaurant disponible pour le moment</Text>
           )}
-          <WaveEdge color={WHITE} height={34} />
+          <WaveEdge color={SECTION_TINT} height={34} />
         </View>
 
       </ScrollView>
@@ -672,8 +767,8 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   categorySection: {
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingTop: 0,
+    paddingBottom: 14,
     backgroundColor: WHITE,
   },
   categoryRow: {
@@ -702,10 +797,21 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 0,
-    paddingBottom: 19,
+    paddingBottom: 28,
+    backgroundColor: WHITE,
+  },
+  bannerSection: {
+    paddingBottom: 40,
     backgroundColor: WHITE,
   },
   promoSection: {
+    marginTop: 0,
+    paddingTop: 2,
+    paddingBottom: 35,
+    position: "relative",
+    backgroundColor: SECTION_TINT,
+  },
+  popularSection: {
     marginTop: 0,
     paddingTop: 2,
     paddingBottom: 35,
@@ -724,7 +830,6 @@ const styles = StyleSheet.create({
   },
   promoBanner: {
     height: Math.min(190, Math.max(148, SCREEN_WIDTH * 0.43)),
-    marginHorizontal: 16,
     borderRadius: 22,
     overflow: "hidden",
     backgroundColor: PINK_SOFT,

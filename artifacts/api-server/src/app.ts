@@ -28,6 +28,7 @@ app.use(
 app.use(compression());
 if (existsSync(bannerAssetsDir)) {
   app.use("/banners", express.static(bannerAssetsDir, { maxAge: "1d" }));
+  app.use("/api/banners", express.static(bannerAssetsDir, { maxAge: "1d" }));
 }
 
 // In production, restrict CORS to known origins. Set ALLOWED_ORIGINS as a
