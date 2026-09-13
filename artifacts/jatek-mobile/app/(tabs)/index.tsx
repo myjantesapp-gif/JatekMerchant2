@@ -626,7 +626,7 @@ function HomeScreen() {
 
         {/* 3. Produits populaires */}
         <View style={styles.popularSection}>
-          <WaveEdge color={SECTION_TINT} height={48} position="top" />
+          <WaveEdge color={SECTION_TINT} height={40} position="top" />
           <SectionHeader
             title="Produits populaires"
             onPress={() => router.push("/restaurants" as any)}
@@ -655,7 +655,7 @@ function HomeScreen() {
           ) : (
             <Text style={styles.empty}>Aucun produit populaire pour le moment</Text>
           )}
-          <WaveEdge color={SECTION_TINT} height={48} />
+          <WaveEdge color={SECTION_TINT} height={40} />
         </View>
 
         <BannerCarousel
@@ -979,8 +979,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   popularSection: {
-    marginTop: 30,
-    marginBottom: 22,
+    marginTop: 26,
+    marginBottom: 18,
     paddingTop: 0,
     paddingBottom: 12,
     position: "relative",

@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   },
   compactName: {
     fontSize: 12,
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: "Poppins_700Bold",
     color: "#1f2937",
     marginBottom: 8,
   },

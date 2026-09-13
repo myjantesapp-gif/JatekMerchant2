@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   
   // Home Variant Styles
   homeCard: {
-    height: 184,
+    height: 172,
     borderRadius: 16,
     overflow: "hidden",
     position: "relative",
@@ -205,17 +205,15 @@ const styles = StyleSheet.create({
   },
   homePlayBadge: {
     position: "absolute",
-    top: "50%",
-    left: "50%",
-    width: 46,
-    height: 46,
-    marginTop: -23,
-    marginLeft: -23,
-    borderRadius: 23,
+    left: 9,
+    bottom: 9,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(233,30,99,0.92)",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+    backgroundColor: "rgba(15,23,42,0.42)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.65)",
   },
 });
