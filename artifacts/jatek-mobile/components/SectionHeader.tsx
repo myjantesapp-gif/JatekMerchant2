@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    color: "#0F172A",
+    color: "#274C77",
     fontSize: 19,
     lineHeight: 24,
     letterSpacing: -0.15,
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   },
   homeTitle: {
     flex: 1,
-    color: "#0F172A",
+    color: "#274C77",
     fontSize: 22,
     lineHeight: 28,
     letterSpacing: -0.5,
