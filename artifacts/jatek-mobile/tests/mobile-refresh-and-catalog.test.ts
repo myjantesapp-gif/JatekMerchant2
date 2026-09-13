@@ -306,7 +306,8 @@ test("home renders reusable sections and live product recommendations", () => {
   assert.match(code, /styles\.newestSection/);
   assert.match(code, /const SECTION_TINT/);
   assert.match(code, /WaveEdge/);
-  assert.match(code, /sort: "promos"/);
+  assert.match(code, /sort: "catalog"/);
+  assert.match(code, /PROMO_DISCOUNT_RATE = 0\.25/);
   assert.match(productCard, /compareAtPrice/);
   assert.ok(
     productCard.indexOf("formatMad(product.compareAtPrice!)") <
@@ -378,10 +379,19 @@ test("home promo banner displays artwork without overlay text", () => {
   const productCard = source("components/ProductCard.tsx");
 
   assert.match(code, /LOCAL_PROMO_BANNERS/);
+  assert.match(code, /banner-mois-mamans\.png/);
+  assert.match(code, /banner-rentree\.png/);
+  assert.match(code, /banner-rentree-orange\.png/);
   assert.match(code, /function PromoBanner/);
   assert.match(code, /promoImage/);
   assert.doesNotMatch(code, /ad\.title/);
   assert.match(productCard, /textDecorationLine: "line-through"/);
+});
+
+test("home promo section shows the first three products only", () => {
+  const code = source("app/(tabs)/index.tsx");
+
+  assert.match(code, /promoProducts\.slice\(0, 3\)/);
 });
 
 test("product deep links only open currently available menu items", () => {

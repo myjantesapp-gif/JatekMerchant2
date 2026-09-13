@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
-  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -26,15 +25,13 @@ import {
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import { useAds, useShorts } from "@/hooks/useContent";
+import { useShorts } from "@/hooks/useContent";
 import {
   getPublicAppConfig,
   listRecommendedProducts,
-  type Ad,
   type Short,
   type RecommendedProduct,
 } from "@/lib/api";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { getApiBaseSafe } from "@/lib/apiBase";
 import { refreshAll } from "@/lib/mobileRefresh";
 import { AddressQuickPicker } from "@/components/AddressQuickPicker";
@@ -63,8 +60,8 @@ const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.min(286, Math.max(260, SCREEN_WIDTH * 0.72));
 const STORE_GRID_WIDTH = Math.max(0, (SCREEN_WIDTH - 48) / 2);
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
-const FALLBACK_PROMO =
-  "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=88";
+const PROMO_PRODUCT_COUNT = 3;
+const PROMO_DISCOUNT_RATE = 0.25;
 const LOCAL_PROMO_BANNERS = [
   require("../../assets/images/banner-mois-mamans.png"),
   require("../../assets/images/banner-rentree.png"),
@@ -182,19 +179,14 @@ function CategoryRow({
 }
 
 function PromoBanner({
-  ad,
   fallbackSource,
   width,
   onPress,
 }: {
-  ad?: Ad;
-  fallbackSource?: number;
+  fallbackSource: number;
   width: number;
   onPress: () => void;
 }) {
-  const imageSource = ad?.imageUrl
-    ? { uri: resolveMediaUrl(ad.imageUrl) ?? FALLBACK_PROMO }
-    : fallbackSource ?? { uri: FALLBACK_PROMO };
   return (
     <Pressable
       onPress={onPress}
@@ -203,16 +195,9 @@ function PromoBanner({
       accessibilityLabel="Ouvrir les promotions"
       style={({ pressed }) => [styles.promoBanner, { width }, pressed && styles.pressed]}
     >
-      <Image source={imageSource} style={styles.promoImage} resizeMode="cover" />
+      <Image source={fallbackSource} style={styles.promoImage} resizeMode="cover" />
     </Pressable>
   );
-}
-
-function openAd(ad?: Ad) {
-  const link = ad?.linkUrl?.trim();
-  if (!link) return;
-  if (link.startsWith("/")) router.push(link as any);
-  else Linking.openURL(link).catch(() => {});
 }
 
 function HomeScreen() {
@@ -229,10 +214,6 @@ function HomeScreen() {
   const [initialShort, setInitialShort] = useState(0);
 
   const { data: apiCategories, refetch: refetchCategories } = useListCategories();
-  const {
-    data: ads,
-    refetch: refetchAds,
-  } = useAds();
   const {
     data: shortsData,
     isLoading: shortsLoading,
@@ -256,7 +237,24 @@ function HomeScreen() {
     refetch: refetchPromoProducts,
   } = useQuery({
     queryKey: ["home-products-promos"],
-    queryFn: () => listRecommendedProducts({ limit: 12, sort: "promos" }),
+    queryFn: async () => {
+      const products = await listRecommendedProducts({ limit: PROMO_PRODUCT_COUNT, sort: "catalog" });
+
+      return products.slice(0, PROMO_PRODUCT_COUNT).map((product) => {
+        const originalPrice =
+          typeof product.compareAtPrice === "number" && product.compareAtPrice > product.price
+            ? product.compareAtPrice
+            : product.price;
+        const discountedPrice =
+          Math.round(originalPrice * (1 - PROMO_DISCOUNT_RATE) * 100) / 100;
+
+        return {
+          ...product,
+          price: discountedPrice,
+          compareAtPrice: originalPrice,
+        };
+      });
+    },
     staleTime: 60_000,
   });
   const {
@@ -298,17 +296,6 @@ function HomeScreen() {
   }, [apiCategories]);
 
   const shorts = useMemo<Short[]>(() => shortsData ?? [], [shortsData]);
-  const bannerAds = useMemo<Ad[]>(
-    () =>
-      ((ads ?? []) as Ad[])
-        .filter(
-          (ad) =>
-            ["vip_banner", "promo_banner", "hero"].includes(ad.type) &&
-            typeof ad.imageUrl === "string" &&
-            ad.imageUrl.trim().length > 0,
-        ),
-    [ads],
-  );
   const newestStores = useMemo<Restaurant[]>(
     () =>
       [...(restaurants ?? [])]
@@ -338,7 +325,6 @@ function HomeScreen() {
     try {
       await refreshAll([
         refetchCategories,
-        refetchAds,
         refetchShorts,
         refetchRestaurants,
         refetchFeaturedRestaurants,
@@ -451,7 +437,7 @@ function HomeScreen() {
           <CategoryRow categories={categories} onPress={openCategory} />
         </View>
 
-        {/* 2. Bannières administrables, avec visuels locaux de secours */}
+         {/* 2. Bannières promotionnelles locales */}
         <View style={styles.bannerSection}>
           <ScrollView
             horizontal
@@ -462,23 +448,14 @@ function HomeScreen() {
             contentContainerStyle={styles.bannerRail}
             nestedScrollEnabled
           >
-            {bannerAds.length > 0
-              ? bannerAds.map((ad) => (
-                  <PromoBanner
-                    key={ad.id}
-                    ad={ad}
-                    width={BANNER_WIDTH}
-                    onPress={() => openAd(ad)}
-                  />
-                ))
-              : LOCAL_PROMO_BANNERS.map((source, index) => (
-                  <PromoBanner
-                    key={`fallback-banner-${index}`}
-                    fallbackSource={source}
-                    width={BANNER_WIDTH}
-                    onPress={() => router.push("/restaurants" as any)}
-                  />
-                ))}
+            {LOCAL_PROMO_BANNERS.map((source, index) => (
+              <PromoBanner
+                key={`local-banner-${index}`}
+                fallbackSource={source}
+                width={BANNER_WIDTH}
+                onPress={() => router.push("/restaurants" as any)}
+              />
+            ))}
           </ScrollView>
         </View>
 
@@ -501,7 +478,7 @@ function HomeScreen() {
             />
           ) : promoProducts && promoProducts.length > 0 ? (
             <View style={styles.promoProductGrid}>
-               {promoProducts.slice(0, 4).map((product) => (
+               {promoProducts.slice(0, 3).map((product) => (
                 <ProductCard
                   key={`${product.restaurantId}-${product.id}`}
                   product={product}

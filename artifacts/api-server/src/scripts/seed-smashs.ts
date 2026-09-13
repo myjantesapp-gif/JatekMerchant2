@@ -348,21 +348,32 @@ async function main() {
     const categoryIds = new Map(insertedCategories.map((category) => [category.name, category.id]));
 
     const promotionalCompareAtPrices = [50, 65, 60, 80];
-    const menuRows = products.map(({ category, product }, index) => ({
-      restaurantId: restaurant.id,
-      name: product.name.trim(),
-      description: product.description?.trim() || null,
-      price: Number(product.price),
-      compareAtPrice: promotionalCompareAtPrices[index] ?? null,
-      imageUrl: product.image
-        ? productImageUrls.get(product.image) ?? null
-        : productImageUrls.get(product.name) ?? null,
-      category,
-      menuItemCategoryId: categoryIds.get(category) ?? null,
-      isAvailable: product.available !== false,
-      isPopular: index < 8,
-      prepTimeMinutes: null,
-    }));
+    const promoProductCount = 3;
+    const promoDiscountRate = 0.25;
+    const menuRows = products.map(({ category, product }, index) => {
+      const compareAtPrice =
+        index < promoProductCount ? promotionalCompareAtPrices[index] ?? null : null;
+      const price =
+        index < promoProductCount && compareAtPrice !== null
+          ? Math.round(compareAtPrice * (1 - promoDiscountRate) * 100) / 100
+          : Number(product.price);
+
+      return {
+        restaurantId: restaurant.id,
+        name: product.name.trim(),
+        description: product.description?.trim() || null,
+        price,
+        compareAtPrice,
+        imageUrl: product.image
+          ? productImageUrls.get(product.image) ?? null
+          : productImageUrls.get(product.name) ?? null,
+        category,
+        menuItemCategoryId: categoryIds.get(category) ?? null,
+        isAvailable: product.available !== false,
+        isPopular: index < 8,
+        prepTimeMinutes: null,
+      };
+    });
 
     const insertedItems = await tx
       .insert(menuItemsTable)
