@@ -10,6 +10,7 @@ import {
   Pressable,
   FlatList,
   Keyboard,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -252,9 +253,12 @@ export default function WelcomeScreen() {
       {/* Bottom card — address summary + confirm button */}
       <View style={[styles.bottomCard, { backgroundColor: colors.background, paddingBottom: insets.bottom + 14 }]}>
         <View style={styles.brandRow}>
-          <Text style={[styles.brand, { color: colors.heading }]}>
-            Jatek<Text style={{ color: PRIMARY }}>.</Text>
-          </Text>
+          <Image
+            source={require("../../assets/images/jatek-wordmark.png")}
+            style={styles.brandLogo}
+            resizeMode="contain"
+            accessibilityLabel="Jatek"
+          />
           <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>Oujda · Livraison rapide</Text>
         </View>
 
@@ -335,8 +339,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 14, gap: 12,
     shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 12,
   },
-  brandRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-  brand: { fontSize: 22, fontFamily: "Inter_900Black", letterSpacing: -1, fontStyle: "italic" },
+  brandRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  brandLogo: { width: 96, height: 38, borderRadius: 7 },
   brandSub: { fontSize: 11, fontFamily: "Inter_500Medium" },
 
   addrCard: {

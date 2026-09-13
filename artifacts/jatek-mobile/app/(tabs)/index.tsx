@@ -55,6 +55,8 @@ const NAVY = colors.light.heading;
 const MUTED = colors.light.mutedForeground;
 const WHITE = colors.light.background;
 const SECTION_TINT = colors.light.pinkBg;
+const HEADER_PINK = "#CF346E";
+const HEADER_ACCENT = "#F1B4D1";
 const CATEGORY_WIDTH = 82;
 const PROMO_PRODUCT_WIDTH = Math.max(74, (SCREEN_WIDTH - 32 - 24) / 4);
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
@@ -388,21 +390,16 @@ function HomeScreen() {
               accessibilityLabel="Ouvrir le menu"
               style={styles.headerIcon}
             >
-            <Ionicons name="menu" size={24} color={NAVY} />
+              <Ionicons name="menu" size={24} color={WHITE} />
             </Pressable>
-            <Pressable
-              onPress={() => setAddressPickerOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel={`Adresse de livraison : ${addressLabel}`}
-              style={styles.identity}
-            >
-                <Text style={styles.greeting} numberOfLines={1}>{greeting}</Text>
-              <View style={styles.addressRow}>
-                  <Ionicons name="location" size={14} color={PINK} />
-                <Text style={styles.address} numberOfLines={1}>{addressLabel}</Text>
-                  <Ionicons name="chevron-down" size={15} color={MUTED} />
-              </View>
-            </Pressable>
+            <View style={styles.headerBrand} pointerEvents="none">
+              <Image
+                source={require("../../assets/images/jatek-wordmark.png")}
+                style={styles.headerLogo}
+                resizeMode="contain"
+                accessibilityLabel="Jatek"
+              />
+            </View>
             <View style={styles.headerActions}>
               <Pressable
                 onPress={() => setCartSheetVisible(true)}
@@ -410,7 +407,7 @@ function HomeScreen() {
                 accessibilityLabel="Ouvrir le panier"
                 style={styles.headerIcon}
               >
-                <Ionicons name="bag-handle-outline" size={22} color={NAVY} />
+                <Ionicons name="bag-handle-outline" size={22} color={WHITE} />
               </Pressable>
               <Pressable
                 onPress={() => router.push("/(tabs)/profile" as any)}
@@ -418,10 +415,23 @@ function HomeScreen() {
                 accessibilityLabel="Ouvrir le profil"
                 style={styles.headerIcon}
               >
-                <Ionicons name="person-circle-outline" size={24} color={NAVY} />
+                <Ionicons name="person-circle-outline" size={24} color={WHITE} />
               </Pressable>
             </View>
           </View>
+          <Pressable
+            onPress={() => setAddressPickerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Adresse de livraison : ${addressLabel}`}
+            style={styles.identity}
+          >
+            <Text style={styles.greeting} numberOfLines={1}>{greeting}</Text>
+            <View style={styles.addressRow}>
+              <Ionicons name="location" size={14} color={HEADER_ACCENT} />
+              <Text style={styles.address} numberOfLines={1}>{addressLabel}</Text>
+              <Ionicons name="chevron-down" size={15} color={WHITE} />
+            </View>
+          </Pressable>
           <View style={styles.searchBox}>
             <Ionicons name="search" size={18} color={MUTED} />
             <TextInput
@@ -441,6 +451,7 @@ function HomeScreen() {
               </Pressable>
             ) : null}
           </View>
+          <WaveEdge color={HEADER_PINK} height={36} />
         </View>
 
         {/* 1. Catégories */}
@@ -700,14 +711,30 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 10,
-    backgroundColor: WHITE,
+    paddingBottom: 12,
+    marginBottom: 35,
+    backgroundColor: HEADER_PINK,
   },
   headerTopRow: {
     minHeight: 52,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: 6,
+    position: "relative",
+  },
+  headerBrand: {
+    position: "absolute",
+    left: 72,
+    right: 72,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerLogo: {
+    width: 126,
+    height: 50,
   },
   headerIcon: {
     width: 38,
@@ -717,31 +744,34 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   identity: {
-    flex: 1,
-    minWidth: 0,
-    marginHorizontal: 4,
+    alignSelf: "center",
+    alignItems: "center",
+    maxWidth: "88%",
+    marginTop: 3,
   },
   greeting: {
-    color: NAVY,
-    fontSize: 16,
+    color: WHITE,
+    fontSize: 15,
     lineHeight: 20,
     fontFamily: "Inter_700Bold",
   },
   addressRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 4,
     marginTop: 2,
   },
   address: {
-    flex: 1,
-    color: MUTED,
+    flexShrink: 1,
+    color: "rgba(255,255,255,0.88)",
     fontSize: 12,
     fontFamily: "Inter_500Medium",
   },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
+    zIndex: 2,
   },
   searchBox: {
     height: 48,
@@ -751,12 +781,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: SECTION_TINT,
-    shadowColor: NAVY,
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0,
+    backgroundColor: WHITE,
+    shadowColor: "#7A163E",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
