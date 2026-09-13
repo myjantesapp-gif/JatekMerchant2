@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleProp, StyleSheet, Text, TextStyle, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 type Props = {
@@ -11,6 +11,21 @@ type Props = {
   variant?: "default" | "home";
 };
 
+function ColoredTitle({ title, style }: { title: string; style: StyleProp<TextStyle> }) {
+  return (
+    <Text style={style} numberOfLines={1}>
+      {Array.from(title).map((character, index) => (
+        <Text
+          key={`${character}-${index}`}
+          style={/[eéèêë]/i.test(character) ? styles.magentaLetter : undefined}
+        >
+          {character}
+        </Text>
+      ))}
+    </Text>
+  );
+}
+
 export function SectionHeader({
   title,
   onPress,
@@ -20,9 +35,7 @@ export function SectionHeader({
   if (variant === "home") {
     return (
       <View style={styles.homeRow}>
-        <Text style={styles.homeTitle} numberOfLines={1}>
-          {title}
-        </Text>
+        <ColoredTitle title={title} style={styles.homeTitle} />
         {onPress ? (
           <Pressable
             onPress={onPress}
@@ -43,9 +56,7 @@ export function SectionHeader({
 
   return (
     <View style={styles.row}>
-      <Text style={styles.title} numberOfLines={1}>
-        {title}
-      </Text>
+      <ColoredTitle title={title} style={styles.title} />
       {onPress ? (
         <Pressable
           onPress={onPress}
@@ -71,8 +82,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 6,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   title: {
     flex: 1,
@@ -112,6 +123,9 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     letterSpacing: -0.5,
     fontFamily: "Poppins_700Bold",
+  },
+  magentaLetter: {
+    color: "#E91E63",
   },
   homeArrow: {
     width: 28,
