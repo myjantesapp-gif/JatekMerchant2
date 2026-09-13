@@ -256,10 +256,10 @@ test("home keeps pull-to-refresh without a header refresh button", () => {
   assert.doesNotMatch(code, /RefreshButton/);
 });
 
-test("home header uses the supplied Jatek wordmark and retains its actions", () => {
+test("home header omits the wordmark while retaining its actions and pink wave", () => {
   const code = source("app/(tabs)/index.tsx");
 
-  assert.match(code, /jatek-wordmark\.png/);
+  assert.doesNotMatch(code, /styles\.headerLogo|styles\.headerBrand/);
   assert.match(code, /const HEADER_PINK = "#CF346E"/);
   assert.match(code, /<WaveEdge color=\{HEADER_PINK\} height=\{36\} \/>/);
   assert.match(code, /accessibilityLabel="Ouvrir le menu"/);

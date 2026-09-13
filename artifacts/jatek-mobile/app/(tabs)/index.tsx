@@ -392,14 +392,6 @@ function HomeScreen() {
             >
               <Ionicons name="menu" size={24} color={WHITE} />
             </Pressable>
-            <View style={styles.headerBrand} pointerEvents="none">
-              <Image
-                source={require("../../assets/images/jatek-wordmark.png")}
-                style={styles.headerLogo}
-                resizeMode="contain"
-                accessibilityLabel="Jatek"
-              />
-            </View>
             <View style={styles.headerActions}>
               <Pressable
                 onPress={() => setCartSheetVisible(true)}
@@ -722,19 +714,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 6,
     position: "relative",
-  },
-  headerBrand: {
-    position: "absolute",
-    left: 72,
-    right: 72,
-    top: 0,
-    bottom: 0,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerLogo: {
-    width: 126,
-    height: 50,
   },
   headerIcon: {
     width: 38,
