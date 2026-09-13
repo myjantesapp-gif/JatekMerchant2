@@ -55,11 +55,10 @@ const SECTION_TINT = colors.light.pinkBg;
 const HEADER_PINK = "#CF346E";
 const HEADER_ACCENT = "#F1B4D1";
 const CATEGORY_WIDTH = 82;
-const PROMO_PRODUCT_WIDTH = Math.max(96, (SCREEN_WIDTH - 32 - 16) / 3);
+const PROMO_PRODUCT_WIDTH = (SCREEN_WIDTH - 32 - 16) / 3;
 const PRODUCT_GRID_WIDTH = Math.max(74, (SCREEN_WIDTH - 32 - 24) / 4);
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.min(286, Math.max(260, SCREEN_WIDTH * 0.72));
-const STORE_GRID_WIDTH = Math.max(0, (SCREEN_WIDTH - 48) / 2);
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
 const HORIZONTAL_PRODUCT_LIMIT = 12;
 const LOCAL_PROMO_BANNERS = [
@@ -315,7 +314,7 @@ function HomeScreen() {
         refetchRestaurants,
         refetchFeaturedRestaurants,
         refetchPromoProducts,
-         refetchNewestProducts,
+        refetchNewestProducts,
         refetchPopularProducts,
         refetchAppConfig,
       ]);

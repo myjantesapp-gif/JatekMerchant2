@@ -361,7 +361,7 @@ test("home keeps whitespace between the header, categories, and banners without 
 
 test("home shows three products at once in one horizontal row for promos and nouveautés", () => {
   const page = source("app/(tabs)/index.tsx");
-  assert.match(page, /const PROMO_PRODUCT_WIDTH = Math\.max\(96, \(SCREEN_WIDTH - 32 - 16\) \/ 3\)/);
+  assert.match(page, /const PROMO_PRODUCT_WIDTH = \(SCREEN_WIDTH - 32 - 16\) \/ 3/);
   assert.match(page, /styles\.promoProductGrid/);
   assert.match(page, /queryKey: \["home-products-newest"\]/);
   assert.match(page, /newestProducts\.map/);
@@ -409,7 +409,7 @@ test("home includes every commerce type instead of defaulting to restaurants", (
 
   assert.match(code, /CATEGORY_PRESETS/);
   assert.match(code, /matches: \["pharmacy", "pharmacie", "health", "santé", "sante"\]/);
-  assert.match(code, /Aucun nouveau commerce pour le moment/);
+  assert.match(code, /Aucun nouveau produit pour le moment/);
 });
 
 test("app uses a transparent edge-to-edge system bar while preserving readable icons", () => {
