@@ -101,9 +101,9 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   title: {
-    color: "#0F172A",
+    color: "#274C77",
     fontSize: 20,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Poppins_700Bold",
     marginBottom: 4,
     letterSpacing: -0.4,
   },

@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
   compactName: {
     fontSize: 12,
     fontFamily: "Poppins_900Black",
-    color: "#1f2937",
+    color: "#274C77",
     marginBottom: 8,
   },
   compactBottomRow: {
@@ -557,8 +557,8 @@ const styles = StyleSheet.create({
   },
   offerName: {
     fontSize: 13,
-    fontFamily: "Poppins_600SemiBold",
-    color: "#111827",
+    fontFamily: "Poppins_700Bold",
+    color: "#274C77",
     marginBottom: 6,
   },
   offerPriceRow: {
@@ -618,8 +618,8 @@ const styles = StyleSheet.create({
   },
   fdName: {
     fontSize: 12,
-    fontFamily: "Poppins_600SemiBold",
-    color: "#111827",
+    fontFamily: "Poppins_700Bold",
+    color: "#274C77",
   },
   fdQty: {
     fontSize: 10,

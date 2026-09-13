@@ -593,6 +593,7 @@ function HomeScreen() {
             <WaveEdge color={SECTION_TINT} height={28} position="top" />
             <SectionHeader
               title={config.title}
+              variant="home"
               onPress={() => router.push("/restaurants" as any)}
               testID="section-popular-products"
             />
@@ -616,6 +617,7 @@ function HomeScreen() {
           <View style={styles.restaurantSection}>
             <SectionHeader
               title={config.title}
+              variant="home"
               onPress={() => router.push("/restaurants" as any)}
               testID={`section-${key}`}
             />
@@ -652,7 +654,7 @@ function HomeScreen() {
       case "new_products":
         return (
           <View style={styles.promoSection}>
-            <SectionHeader title={config.title} onPress={() => router.push("/restaurants" as any)} testID="section-promo-products" />
+            <SectionHeader title={config.title} variant="home" onPress={() => router.push("/restaurants" as any)} testID="section-promo-products" />
             <ProductRail
               products={productsFor(config.source)?.slice(0, limit)}
               loading={config.source === "newest" ? newestProductsLoading : config.source === "popular" ? popularProductsLoading : promoProductsLoading}
@@ -669,7 +671,7 @@ function HomeScreen() {
       case "all":
         return (
           <View style={styles.restaurantSection}>
-            <SectionHeader title={config.title} onPress={() => router.push("/restaurants" as any)} testID="section-recommended" />
+            <SectionHeader title={config.title} variant="home" onPress={() => router.push("/restaurants" as any)} testID="section-recommended" />
             {restaurantsLoading || restaurantsError ? (
               <LoadingOrEmpty loading={restaurantsLoading} error={restaurantsError} empty="Aucun restaurant disponible pour le moment" onRetry={() => refetchRestaurants()} />
             ) : restaurantStores.length > 2 ? (
@@ -691,7 +693,7 @@ function HomeScreen() {
       case "free_delivery":
         return (
           <View style={styles.freeDeliverySection}>
-            <SectionHeader title={config.title} onPress={() => router.push("/restaurants" as any)} testID="section-free-delivery" />
+            <SectionHeader title={config.title} variant="home" onPress={() => router.push("/restaurants" as any)} testID="section-free-delivery" />
             <ProductRail
               products={freeDeliveryProducts.slice(0, limit)}
               loading={popularProductsLoading}
@@ -708,7 +710,7 @@ function HomeScreen() {
       case "newest":
         return (
           <View style={styles.newestSection}>
-            <SectionHeader title={config.title} onPress={() => router.push("/restaurants" as any)} testID="section-newest" />
+            <SectionHeader title={config.title} variant="home" onPress={() => router.push("/restaurants" as any)} testID="section-newest" />
             <ProductRail
               products={productsFor(config.source)?.slice(0, limit)}
               loading={config.source === "popular" ? popularProductsLoading : config.source === "promos" ? promoProductsLoading : newestProductsLoading}
@@ -997,7 +999,7 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     minHeight: 17,
-    color: NAVY,
+    color: "#274C77",
     fontSize: 12,
     lineHeight: 16,
     textAlign: "center",
