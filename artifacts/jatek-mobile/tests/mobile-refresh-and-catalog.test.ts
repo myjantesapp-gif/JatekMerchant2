@@ -299,7 +299,7 @@ test("home renders the requested strict section order", () => {
   const page = source("app/(tabs)/index.tsx");
   const categories = page.indexOf('title="Catégories"');
   const banners = page.indexOf('title="Bannières"');
-  const promos = page.indexOf('title="Promos produits"');
+  const promos = page.indexOf('title="PROMOS"');
   const videos = page.indexOf('title="Shorts"');
   const popular = page.indexOf('title="Produits populaires"');
   const newest = page.indexOf('title="Nouveautés"');

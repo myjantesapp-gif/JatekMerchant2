@@ -485,7 +485,7 @@ function HomeScreen() {
         <View style={styles.promoSection}>
           <WaveEdge color={SECTION_TINT} position="top" height={30} />
           <SectionHeader
-             title="Promos produits"
+             title="PROMOS"
             buttonLabel="Voir plus"
             accent={false}
             onPress={() => router.push("/restaurants" as any)}
