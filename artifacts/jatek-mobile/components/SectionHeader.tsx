@@ -2,8 +2,6 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import colors from "@/constants/colors";
-
 type Props = {
   title: string;
   onPress?: () => void;
@@ -16,7 +14,6 @@ export function SectionHeader({
   title,
   onPress,
   testID,
-  buttonLabel,
 }: Props) {
   return (
     <View style={styles.row}>
@@ -30,15 +27,11 @@ export function SectionHeader({
           accessibilityRole="button"
           accessibilityLabel={`Ouvrir la section ${title}`}
           style={({ pressed }) => [
-            buttonLabel ? styles.moreButton : styles.arrow,
-            pressed && (buttonLabel ? styles.moreButtonPressed : styles.arrowPressed),
+            styles.arrow,
+            pressed && styles.arrowPressed,
           ]}
         >
-          {buttonLabel ? (
-            <Text style={styles.moreButtonText}>{buttonLabel}</Text>
-          ) : (
-            <Ionicons name="arrow-forward" size={19} color={colors.light.primaryForeground} />
-          )}
+          <Ionicons name="chevron-forward" size={20} color="#E91E63" />
         </Pressable>
       ) : null}
     </View>
@@ -57,46 +50,24 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    color: colors.light.heading,
-    fontSize: 23,
-    lineHeight: 28,
-    letterSpacing: -0.45,
+    color: "#0F172A",
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: -0.25,
     fontFamily: "Inter_700Bold",
   },
   arrow: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.light.primary,
-    shadowColor: colors.light.primary,
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    backgroundColor: "#FFF7FA",
+    borderWidth: 1,
+    borderColor: "#F5B4CC",
   },
   arrowPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.94 }],
-  },
-  moreButton: {
-    minWidth: 83,
-    height: 34,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.light.primary,
-  },
-  moreButtonPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.97 }],
-  },
-  moreButtonText: {
-    color: colors.light.primaryForeground,
-    fontSize: 12,
-    lineHeight: 16,
-    fontFamily: "Inter_700Bold",
   },
 });

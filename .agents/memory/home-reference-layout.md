@@ -3,8 +3,8 @@ name: Home reference layout
 description: The approved mobile Home visual direction based on the supplied reference screenshots.
 ---
 
-The Home reference uses Poppins, a navy-and-hot-pink palette on a light background, soft pink wave sections, “Voir plus” pill buttons, three compact product cards visible in one horizontal rail for Promos and Nouveautés, and four compact cards in the Produits populaires grid. Its fixed section order is: Catégories, Bannières, Promos produits, Shorts, Produits populaires, Nouveautés, Restauration.
+The current Home direction supersedes the old screenshot layout: Poppins, magenta #E91E63, navy #0F172A, circular section chevrons rather than “Voir plus” pills, Shorts above popular products, a structured food promotion card below popular products, and two-column nearby merchants. Keep the live Promos and Nouveautés feeds.
 
-**Why:** The supplied screenshots are the visual source of truth for the Home, and the user explicitly confirmed both the full component styling and this exact section order.
+**Why:** The user's later explicit delta replaces the prior image-banner and three-tab direction without authorizing removal of working feeds or navigation.
 
-**How to apply:** Preserve the existing live API data and interactions, but keep Home typography, spacing, colors, wave treatment, section labels, and card proportions aligned with this direction. Keep Promos and Nouveautés as single-row horizontal rails rather than wrapping grids.
+**How to apply:** Preserve API data and interactions. The five navigation positions are Jatek, Accueil, Commandes (live badge), Explorer, Compte. Missing view counts must not be presented as measured zeroes.

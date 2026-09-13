@@ -23,7 +23,6 @@ import {
   type Restaurant,
 } from "@workspace/api-client-react";
 
-import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useShorts } from "@/hooks/useContent";
 import {
@@ -32,7 +31,6 @@ import {
   type Short,
   type RecommendedProduct,
 } from "@/lib/api";
-import { getApiBaseSafe } from "@/lib/apiBase";
 import { refreshAll } from "@/lib/mobileRefresh";
 import { AddressQuickPicker } from "@/components/AddressQuickPicker";
 import { CartPreviewSheet } from "@/components/CartPreviewSheet";
@@ -46,26 +44,19 @@ import { WaveEdge } from "@/components/WaveEdge";
 import colors from "@/constants/colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const PINK = colors.light.primary;
-const PINK_SOFT = colors.light.primarySoft;
-const NAVY = colors.light.heading;
+const PINK = "#E91E63";
+const NAVY = "#0F172A";
 const MUTED = colors.light.mutedForeground;
 const WHITE = colors.light.background;
-const SECTION_TINT = colors.light.pinkBg;
-const HEADER_PINK = "#CF346E";
-const HEADER_ACCENT = "#F1B4D1";
-const CATEGORY_WIDTH = 82;
+const SECTION_TINT = "#F8F9FA";
+const HEADER_PINK = "#E91E63";
+const HEADER_ACCENT = "#FFD0E0";
+const CATEGORY_WIDTH = (SCREEN_WIDTH - 32 - 24) / 4;
 const PROMO_PRODUCT_WIDTH = (SCREEN_WIDTH - 32 - 16) / 3;
 const PRODUCT_GRID_WIDTH = Math.max(74, (SCREEN_WIDTH - 32 - 24) / 4);
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
-const STORE_WIDTH = Math.min(286, Math.max(260, SCREEN_WIDTH * 0.72));
-const BANNER_WIDTH = SCREEN_WIDTH - 32;
+const STORE_WIDTH = Math.max(0, (SCREEN_WIDTH - 32 - 12) / 2);
 const HORIZONTAL_PRODUCT_LIMIT = 12;
-const LOCAL_PROMO_BANNERS = [
-  require("../../assets/images/banner-mois-mamans.png"),
-  require("../../assets/images/banner-rentree.png"),
-  require("../../assets/images/banner-rentree-orange.png"),
-];
 
 type HomeCategory = {
   key: string;
@@ -84,31 +75,31 @@ const CATEGORY_PRESETS: Array<{
 }> = [
   {
     key: "restaurant",
-    label: "Restauration",
-    icon: "restaurant-outline",
-    accent: "#F28CB7",
+    label: "Restaurants",
+    icon: "restaurant",
+    accent: "#E91E63",
     matches: ["restaurant", "restauration", "food"],
   },
   {
     key: "grocery",
-    label: "Épicerie",
-    icon: "basket-outline",
-    accent: "#F4A261",
+    label: "Courses",
+    icon: "basket",
+    accent: "#55B89A",
     matches: ["grocery", "épicerie", "epicerie"],
   },
   {
     key: "health",
-    label: "Santé",
-    icon: "medkit-outline",
-    accent: "#55B9A5",
+    label: "Pharmacie",
+    icon: "medkit",
+    accent: "#00A5B5",
     matches: ["pharmacy", "pharmacie", "health", "santé", "sante"],
   },
   {
-    key: "supermarket",
-    label: "Supermarché",
-    icon: "cart-outline",
-    accent: "#7F8CE3",
-    matches: ["supermarket", "supermarché", "supermarche", "market"],
+    key: "more",
+    label: "Plus",
+    icon: "apps",
+    accent: "#9B7FEA",
+    matches: ["supermarket", "supermarché", "supermarche", "market", "shop", "boutique"],
   },
 ];
 
@@ -177,24 +168,32 @@ function CategoryRow({
   );
 }
 
-function PromoBanner({
-  fallbackSource,
-  width,
-  onPress,
-}: {
-  fallbackSource: number;
-  width: number;
-  onPress: () => void;
-}) {
+function PromotionalCard({ onPress, imageUrl }: { onPress: () => void; imageUrl?: string }) {
   return (
     <Pressable
       onPress={onPress}
-      testID="home-promo-banner"
+      testID="home-promo-card"
       accessibilityRole="button"
-      accessibilityLabel="Ouvrir les promotions"
-      style={({ pressed }) => [styles.promoBanner, { width }, pressed && styles.pressed]}
+      accessibilityLabel="Ouvrir les offres promotionnelles"
+      style={({ pressed }) => [styles.promoCard, pressed && styles.pressed]}
     >
-      <Image source={fallbackSource} style={styles.promoImage} resizeMode="cover" />
+      <View style={styles.promoCopy}>
+        <Text style={styles.promoEyebrow}>OFFRE DU MOMENT</Text>
+        <Text style={styles.promoTitle}>Des saveurs du quotidien</Text>
+        <Text style={styles.promoSubtitle}>Les bons produits, au bon prix.</Text>
+        <View style={styles.promoCta}>
+          <Text style={styles.promoCtaText}>Découvrir</Text>
+          <Ionicons name="arrow-forward" size={14} color={PINK} />
+        </View>
+      </View>
+      <Image
+        source={imageUrl ? { uri: imageUrl } : require("../../assets/images/cat-burgers.jpg")}
+        style={styles.promoFoodImage}
+        resizeMode="cover"
+      />
+      <View style={styles.promoBadge}>
+        <Text style={styles.promoBadgeText}>Jusqu'à -30%</Text>
+      </View>
     </Pressable>
   );
 }
@@ -202,7 +201,6 @@ function PromoBanner({
 function HomeScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const { user } = useAuth();
   const { selectedAddress } = useCart();
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -280,9 +278,9 @@ function HomeScreen() {
       return {
         key: preset.key,
         label: preset.label,
-        icon: (match?.icon as HomeCategory["icon"]) || preset.icon,
-        accent: match?.accentColor || preset.accent,
-        slug: match?.slug,
+        icon: preset.icon,
+        accent: preset.accent,
+        slug: preset.key === "more" ? undefined : match?.slug,
       };
     });
   }, [apiCategories]);
@@ -302,8 +300,7 @@ function HomeScreen() {
       ),
     [featuredRestaurants],
   );
-  const greeting = user?.name?.trim() ? `Bonjour, ${user.name.trim()}` : "Bonjour";
-  const addressLabel = selectedAddress || "Choisir une adresse";
+  const addressLabel = selectedAddress || "Oujda";
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -370,7 +367,6 @@ function HomeScreen() {
               accessibilityLabel={`Adresse de livraison : ${addressLabel}`}
               style={styles.identity}
             >
-              <Text style={styles.greeting} numberOfLines={1}>{greeting}</Text>
               <View style={styles.addressRow}>
                 <Ionicons name="location" size={13} color={HEADER_ACCENT} />
                 <Text style={styles.address} numberOfLines={1}>{addressLabel}</Text>
@@ -423,37 +419,13 @@ function HomeScreen() {
           <CategoryRow categories={categories} onPress={openCategory} />
         </View>
 
-         {/* 2. Bannières promotionnelles locales */}
-        <View style={styles.bannerSection}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            snapToInterval={BANNER_WIDTH + 12}
-            decelerationRate="fast"
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bannerRail}
-            nestedScrollEnabled
-          >
-            {LOCAL_PROMO_BANNERS.map((source, index) => (
-              <PromoBanner
-                key={`local-banner-${index}`}
-                fallbackSource={source}
-                width={BANNER_WIDTH}
-                onPress={() => router.push("/restaurants" as any)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* 3. Produits réellement remisés, pilotés depuis le dashboard */}
+        {/* 2. Produits réellement remisés, pilotés depuis le dashboard */}
         <View style={styles.promoSection}>
           <WaveEdge color={SECTION_TINT} position="top" height={30} />
           <SectionHeader
-             title="PROMOS"
-            buttonLabel="Voir plus"
-            accent={false}
+            title="Promos"
             onPress={() => router.push("/restaurants" as any)}
-             testID="section-promo-products"
+            testID="section-promo-products"
           />
           {promoProductsLoading || promoProductsError ? (
             <LoadingOrEmpty
@@ -486,54 +458,50 @@ function HomeScreen() {
           <WaveEdge color={SECTION_TINT} height={34} />
         </View>
 
-         {/* 4. Shorts */}
-         <View style={styles.section}>
-           <SectionHeader
-             title="Shorts"
-             buttonLabel="Voir plus"
-             accent={false}
-             onPress={() => openShort(0)}
-             testID="section-videos"
-           />
-           {shortsLoading || shortsError ? (
-             <LoadingOrEmpty
-               loading={shortsLoading}
-               error={shortsError}
-               empty="Aucun Short disponible pour le moment"
-               onRetry={() => refetchShorts()}
-             />
-           ) : shorts.length > 0 ? (
-             <ScrollView
-               horizontal
-               showsHorizontalScrollIndicator={false}
-               contentContainerStyle={styles.horizontalCards}
-               nestedScrollEnabled
-             >
-               {shorts.map((short, index) => (
-                 <ShortCard
-                   key={short.id}
-                   short={short}
-                   width={SHORT_WIDTH}
-                   avatarUrl={
-                     short.restaurantLogoUrl ??
-                     (short.restaurantId != null ? restaurantLogoById.get(short.restaurantId) : null)
-                   }
-                   onPress={() => openShort(index)}
-                 />
-               ))}
-             </ScrollView>
-           ) : (
-             <Text style={styles.empty}>Aucun Short disponible pour le moment</Text>
-           )}
-         </View>
+        {/* 3. Shorts — placed before popular products in the target layout */}
+        <View style={styles.section}>
+          <SectionHeader
+            title="Shorts"
+            onPress={() => openShort(0)}
+            testID="section-videos"
+          />
+          {shortsLoading || shortsError ? (
+            <LoadingOrEmpty
+              loading={shortsLoading}
+              error={shortsError}
+              empty="Aucun Short disponible pour le moment"
+              onRetry={() => refetchShorts()}
+            />
+          ) : shorts.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalCards}
+              nestedScrollEnabled
+            >
+              {shorts.map((short, index) => (
+                <ShortCard
+                  key={short.id}
+                  short={short}
+                  width={SHORT_WIDTH}
+                  avatarUrl={
+                    short.restaurantLogoUrl ??
+                    (short.restaurantId != null ? restaurantLogoById.get(short.restaurantId) : null)
+                  }
+                  onPress={() => openShort(index)}
+                />
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.empty}>Aucun Short disponible pour le moment</Text>
+          )}
+        </View>
 
-        {/* 5. Produits populaires */}
+        {/* 4. Produits populaires */}
         <View style={styles.popularSection}>
           <WaveEdge color={SECTION_TINT} position="top" height={30} />
           <SectionHeader
             title="Produits populaires"
-            buttonLabel="Voir plus"
-            accent={false}
             onPress={() => router.push("/restaurants" as any)}
             testID="section-popular-products"
           />
@@ -545,12 +513,12 @@ function HomeScreen() {
               onRetry={() => refetchPopularProducts()}
             />
           ) : popularProducts && popularProducts.length > 0 ? (
-             <View style={styles.productGrid}>
+            <View style={styles.productGrid}>
               {popularProducts.slice(0, 4).map((product) => (
                 <ProductCard
                   key={`popular-${product.restaurantId}-${product.id}`}
                   product={product}
-                   width={PRODUCT_GRID_WIDTH}
+                  width={PRODUCT_GRID_WIDTH}
                   compact
                   onPress={() => openProduct(product)}
                 />
@@ -562,49 +530,52 @@ function HomeScreen() {
           <WaveEdge color={SECTION_TINT} height={34} />
         </View>
 
+        {/* 5. Structured promotion card replaces the old image banners */}
+        <View style={styles.offerSection}>
+          <PromotionalCard onPress={() => router.push("/restaurants" as any)} />
+        </View>
+
         {/* 6. Nouveautés */}
         <View style={styles.newestSection}>
           <SectionHeader
             title="Nouveautés"
-            buttonLabel="Voir plus"
-            accent={false}
             onPress={() => router.push("/restaurants" as any)}
             testID="section-newest"
           />
-           {newestProductsLoading || newestProductsError ? (
+          {newestProductsLoading || newestProductsError ? (
             <LoadingOrEmpty
-               loading={newestProductsLoading}
-               error={newestProductsError}
-               empty="Aucun nouveau produit pour le moment"
-               onRetry={() => refetchNewestProducts()}
+              loading={newestProductsLoading}
+              error={newestProductsError}
+              empty="Aucun nouveau produit pour le moment"
+              onRetry={() => refetchNewestProducts()}
             />
-           ) : newestProducts && newestProducts.length > 0 ? (
-             <ScrollView
-               horizontal
-               showsHorizontalScrollIndicator={false}
-               contentContainerStyle={styles.promoProductGrid}
-               nestedScrollEnabled
-               scrollEnabled={newestProducts.length > 0}
-             >
-               {newestProducts.map((product) => (
-                 <ProductCard
-                   key={`newest-${product.restaurantId}-${product.id}`}
-                   product={product}
-                   width={PROMO_PRODUCT_WIDTH}
-                   compact
-                   onPress={() => openProduct(product)}
-                 />
+          ) : newestProducts && newestProducts.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.promoProductGrid}
+              nestedScrollEnabled
+              scrollEnabled={newestProducts.length > 0}
+            >
+              {newestProducts.map((product) => (
+                <ProductCard
+                  key={`newest-${product.restaurantId}-${product.id}`}
+                  product={product}
+                  width={PROMO_PRODUCT_WIDTH}
+                  compact
+                  onPress={() => openProduct(product)}
+                />
               ))}
-             </ScrollView>
+            </ScrollView>
           ) : (
-             <Text style={styles.empty}>Aucun nouveau produit pour le moment</Text>
+            <Text style={styles.empty}>Aucun nouveau produit pour le moment</Text>
           )}
         </View>
 
-         {/* 7. Restauration */}
+        {/* 7. Près de chez vous */}
         <View style={styles.restaurantSection}>
           <SectionHeader
-            title="Restauration"
+            title="Près de chez vous"
             onPress={() => router.push("/restaurants" as any)}
             testID="section-restauration"
           />
@@ -616,17 +587,20 @@ function HomeScreen() {
               onRetry={() => refetchRestaurants()}
             />
           ) : restaurantStores.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalCards}
-              nestedScrollEnabled
-            >
+            <View style={styles.storeGrid}>
               {restaurantStores.map((restaurant) => (
                 <StoreCard
                   key={`restaurant-${restaurant.id}`}
                   restaurant={restaurant}
                   width={STORE_WIDTH}
+                  badgeLabel={
+                    promoProducts?.some((product) => product.restaurantId === restaurant.id)
+                      ? "Promo"
+                      : Date.now() - Date.parse(restaurant.createdAt) >= 0 &&
+                          Date.now() - Date.parse(restaurant.createdAt) < 14 * 24 * 60 * 60 * 1000
+                        ? "Nouveau"
+                        : undefined
+                  }
                   onPress={() =>
                     router.push({
                       pathname: "/restaurant/[id]",
@@ -635,7 +609,7 @@ function HomeScreen() {
                   }
                 />
               ))}
-            </ScrollView>
+            </View>
           ) : (
             <Text style={styles.empty}>Aucun restaurant disponible pour le moment</Text>
           )}
@@ -662,7 +636,7 @@ export default HomeScreen;
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: WHITE,
+    backgroundColor: "#F8F9FA",
   },
   scroll: {
     flex: 1,
@@ -673,6 +647,9 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     marginBottom: 27,
     backgroundColor: HEADER_PINK,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: "hidden",
   },
   headerTopRow: {
     minHeight: 44,
@@ -693,13 +670,8 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     alignItems: "center",
-    marginHorizontal: 4,
-  },
-  greeting: {
-    color: WHITE,
-    fontSize: 13,
-    lineHeight: 17,
-    fontFamily: "Inter_700Bold",
+    marginLeft: 40,
+    marginRight: 4,
   },
   addressRow: {
     flexDirection: "row",
@@ -710,9 +682,10 @@ const styles = StyleSheet.create({
   },
   address: {
     flexShrink: 1,
-    color: "rgba(255,255,255,0.88)",
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
+    color: WHITE,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: "Inter_700Bold",
   },
   headerActions: {
     flexDirection: "row",
@@ -743,12 +716,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   categorySection: {
-    paddingTop: 12,
+    paddingTop: 6,
     paddingBottom: 18,
     backgroundColor: WHITE,
   },
   categoryRow: {
-    gap: 13,
+    gap: 8,
     paddingHorizontal: 16,
   },
   categoryItem: {
@@ -773,13 +746,8 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 0,
-    paddingBottom: 28,
-    backgroundColor: WHITE,
-  },
-  bannerSection: {
-    paddingTop: 10,
-    paddingBottom: 40,
-    backgroundColor: WHITE,
+    paddingBottom: 24,
+    backgroundColor: "#F8F9FA",
   },
   promoSection: {
     marginTop: 0,
@@ -795,34 +763,107 @@ const styles = StyleSheet.create({
     position: "relative",
     backgroundColor: SECTION_TINT,
   },
+  offerSection: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 24,
+    backgroundColor: "#F8F9FA",
+  },
   newestSection: {
     marginTop: 0,
     paddingBottom: 27,
-    backgroundColor: WHITE,
+    backgroundColor: "#F8F9FA",
   },
   restaurantSection: {
     marginTop: 0,
     paddingBottom: 40,
     backgroundColor: SECTION_TINT,
   },
-  promoBanner: {
-    height: Math.min(190, Math.max(148, SCREEN_WIDTH * 0.43)),
-    borderRadius: 22,
+  promoCard: {
+    minHeight: 176,
+    borderRadius: 20,
     overflow: "hidden",
-    backgroundColor: PINK_SOFT,
-    shadowColor: PINK,
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
+    flexDirection: "row",
+    position: "relative",
+    backgroundColor: "#FFEBF2",
+    shadowColor: "#C41A54",
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
     elevation: 3,
   },
-  promoImage: {
-    width: "100%",
-    height: "100%",
-  },
-  bannerRail: {
-    gap: 12,
+  promoCopy: {
+    flex: 1,
+    zIndex: 2,
     paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 16,
+    paddingRight: 4,
+  },
+  promoEyebrow: {
+    color: PINK,
+    fontSize: 9,
+    letterSpacing: 0.8,
+    fontFamily: "Inter_700Bold",
+  },
+  promoTitle: {
+    maxWidth: 170,
+    marginTop: 7,
+    color: NAVY,
+    fontSize: 19,
+    lineHeight: 24,
+    letterSpacing: -0.35,
+    fontFamily: "Inter_700Bold",
+  },
+  promoSubtitle: {
+    maxWidth: 160,
+    marginTop: 6,
+    color: "#64748B",
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: "Inter_500Medium",
+  },
+  promoCta: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 12,
+  },
+  promoCtaText: {
+    color: PINK,
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+  },
+  promoFoodImage: {
+    position: "absolute",
+    right: -13,
+    bottom: -20,
+    width: 154,
+    height: 154,
+    borderRadius: 28,
+    transform: [{ rotate: "8deg" }],
+  },
+  promoBadge: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    zIndex: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: PINK,
+    transform: [{ rotate: "-5deg" }],
+    shadowColor: PINK,
+    shadowOpacity: 0.22,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  promoBadgeText: {
+    color: WHITE,
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
   },
   promoProductGrid: {
     paddingHorizontal: 16,
@@ -842,7 +883,9 @@ const styles = StyleSheet.create({
   },
   storeGrid: {
     flexDirection: "row",
-    gap: 16,
+    flexWrap: "wrap",
+    columnGap: 12,
+    rowGap: 12,
     paddingHorizontal: 16,
   },
   loader: {

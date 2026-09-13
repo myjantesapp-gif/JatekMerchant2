@@ -4,7 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "EXPO_TOKEN= EXPO_PUBLIC_REPL_ID=$REPL_ID EXPO_PUBLIC_PROJECT_ID=$EXPO_PUBLIC_PROJECT_ID EXPO_PUBLIC_GOOGLE_MAPS_KEY=$GOOGLE_API_KEY EXPO_PUBLIC_GOOGLE_PLACES_KEY=$GOOGLE_API_KEY pnpm exec expo start --tunnel --port $PORT",
+    "dev": "EXPO_TOKEN= EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID EXPO_PUBLIC_PROJECT_ID=$EXPO_PUBLIC_PROJECT_ID EXPO_PUBLIC_GOOGLE_MAPS_KEY=$GOOGLE_API_KEY EXPO_PUBLIC_GOOGLE_PLACES_KEY=$GOOGLE_API_KEY pnpm exec expo start --lan --port $PORT",
     "build": "node scripts/build.js",
     "build:expo": "pnpm run build",
     "build:eas": "bash scripts/eas-build.sh",

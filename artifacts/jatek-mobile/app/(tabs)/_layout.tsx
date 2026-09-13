@@ -9,8 +9,8 @@ import FloatingChatBot from "@/components/FloatingChatBot";
 import { ACTIVE_ORDER_STATUSES } from "@/lib/orderStatus";
 
 const PINK = "#E91E63";
-const INACTIVE = "#B5B5B5";
-const TAB_H = Platform.OS === "web" ? 84 : 72;
+const INACTIVE = "#94A3B8";
+const TAB_H = Platform.OS === "web" ? 84 : 74;
 
 function useActiveOrdersCount(): number {
   const { token, user } = useAuth();
@@ -42,7 +42,7 @@ const JATEK_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="8 46 56
 
 function JatekTabIcon({ focused }: { focused: boolean }) {
   return (
-    <View style={[s.jLogo, { opacity: focused ? 1 : 0.38 }]}>
+    <View style={[s.jLogo, { opacity: focused ? 1 : 0.85 }]}>
       <SvgXml xml={JATEK_LOGO_SVG} width="100%" height="100%" />
     </View>
   );
@@ -79,7 +79,7 @@ function OrdersTabIcon({ focused, count }: { focused: boolean; count: number }) 
   const color = focused ? PINK : INACTIVE;
   return (
     <Animated.View style={[s.iconWrap, { transform: [{ scale: pulse }] }]}>
-      <Ionicons name={focused || count > 0 ? "receipt" : "receipt-outline"} size={26} color={color} />
+      <Ionicons name={focused || count > 0 ? "bag-handle" : "bag-handle-outline"} size={25} color={color} />
       {count > 0 && (
         <View style={s.badge}>
           <Text style={s.badgeTxt}>{count > 9 ? "9+" : count}</Text>
@@ -95,12 +95,18 @@ export default function TabLayout() {
   return (
     <View style={{ flex: 1 }}>
     <Tabs
+      initialRouteName="index"
       screenOptions={{
         tabBarActiveTintColor: PINK,
         tabBarInactiveTintColor: INACTIVE,
         headerShown: false,
-        tabBarShowLabel: false,
-        tabBarItemStyle: { paddingTop: 6 },
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontFamily: "Inter_600SemiBold",
+          fontSize: 10,
+          marginBottom: Platform.OS === "web" ? 5 : 3,
+        },
+        tabBarItemStyle: { paddingTop: 4 },
         tabBarStyle: {
           backgroundColor: "#FFFFFF",
           borderTopWidth: StyleSheet.hairlineWidth,
@@ -110,11 +116,20 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
+        name="brand"
+        options={{
+          title: "Jatek",
+          tabBarLabel: () => null,
+          tabBarIcon: ({ focused }) => <JatekTabIcon focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="index"
         options={{
           title: "Accueil",
-          tabBarLabel: () => null,
-          tabBarIcon: ({ focused }) => <JatekTabIcon focused={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -125,14 +140,24 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="restaurants"
+        options={{
+          title: "Explorer",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "grid" : "grid-outline"} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
-          title: "Profil",
-          tabBarIcon: ({ color }) => <Ionicons name="person-circle-outline" size={26} color={color} />,
+          title: "Compte",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
+          ),
         }}
       />
       {/* Hidden screens — kept for navigation but excluded from the tab bar */}
-      <Tabs.Screen name="restaurants" options={{ href: null }} />
       <Tabs.Screen name="favoris" options={{ href: null }} />
       <Tabs.Screen name="deliver" options={{ href: null }} />
       <Tabs.Screen name="manage" options={{ href: null }} />
@@ -144,7 +169,7 @@ export default function TabLayout() {
 
 const s = StyleSheet.create({
   jLogo: {
-    width: 72,
+    width: 58,
     height: 28,
     alignItems: "center",
     justifyContent: "center",

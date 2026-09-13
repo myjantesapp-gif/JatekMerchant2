@@ -50,8 +50,11 @@ export function ProductCard({ product, width, onPress, compact = false }: Props)
             </Text>
           )}
         </View>
+        <View style={[styles.favoriteButton, compact && styles.favoriteButtonCompact]}>
+          <Ionicons name="heart-outline" size={compact ? 13 : 17} color="#E91E63" />
+        </View>
         <View style={[styles.addButton, compact && styles.addButtonCompact]}>
-          <Ionicons name="add" size={compact ? 16 : 19} color={colors.light.primary} />
+          <Ionicons name="add" size={compact ? 16 : 19} color="#FFFFFF" />
         </View>
       </View>
       <View style={[styles.body, compact && styles.bodyCompact]}>
@@ -59,14 +62,14 @@ export function ProductCard({ product, width, onPress, compact = false }: Props)
           {product.name}
         </Text>
         <View style={styles.priceBlock}>
+          <Text style={[styles.price, compact && styles.priceCompact, hasPromotion && styles.promoPrice]}>
+            {formatMad(product.price)} DH
+          </Text>
           {hasPromotion ? (
             <Text style={[styles.compareAtPrice, compact && styles.compareAtPriceCompact]}>
               {formatMad(originalPrice!)} DH
             </Text>
           ) : null}
-          <Text style={[styles.price, compact && styles.priceCompact, hasPromotion && styles.promoPrice]}>
-            {formatMad(product.price)} DH
-          </Text>
         </View>
       </View>
     </Pressable>
@@ -80,9 +83,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.light.border,
-    shadowColor: colors.light.heading,
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
@@ -144,6 +147,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_700Bold",
   },
+  favoriteButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.94)",
+  },
+  favoriteButtonCompact: {
+    top: 6,
+    right: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
   addButton: {
     position: "absolute",
     right: 10,
@@ -153,9 +174,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.light.card,
-    shadowColor: colors.light.heading,
-    shadowOpacity: 0.16,
+    backgroundColor: "#E91E63",
+    shadowColor: "#E91E63",
+    shadowOpacity: 0.24,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
@@ -196,7 +217,7 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   price: {
-    color: colors.light.primary,
+    color: "#E91E63",
     fontSize: 15,
     fontFamily: "Inter_700Bold",
   },
@@ -204,7 +225,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   compareAtPrice: {
-    color: colors.light.mutedForeground,
+    color: "#9CA3AF",
     fontSize: 12,
     textDecorationLine: "line-through",
     fontFamily: "Inter_500Medium",

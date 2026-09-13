@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 import type { Short } from "@/lib/api";
 import { getYouTubeThumbnailUrl, resolveMediaUrl } from "@/lib/mediaUrl";
@@ -28,6 +29,10 @@ export function ShortCard({ short, width, avatarUrl, onPress }: Props) {
   const source = sources[Math.min(sourceIndex, sources.length - 1)] ?? FALLBACK_SHORT_IMAGE;
   const merchantName = short.restaurantName?.trim() || "Jatek";
   const initials = merchantName.charAt(0).toUpperCase() || "J";
+  const shortWithViews = short as Short & { views?: number; viewCount?: number };
+  const viewCount = shortWithViews.viewCount ?? shortWithViews.views;
+  const formattedViews =
+    viewCount == null ? "—" : viewCount >= 1000 ? `${(viewCount / 1000).toFixed(viewCount >= 10000 ? 0 : 1)}k` : String(viewCount);
 
   return (
     <Pressable
@@ -51,9 +56,26 @@ export function ShortCard({ short, width, avatarUrl, onPress }: Props) {
           <Text style={styles.avatarInitial}>{initials}</Text>
         )}
       </View>
-      <View style={styles.playBadge}>
-        <Ionicons name="play" size={13} color={colors.light.primaryForeground} />
-      </View>
+      <LinearGradient
+        colors={["transparent", "rgba(0,0,0,0.62)"]}
+        style={styles.bottomOverlay}
+        pointerEvents="none"
+      >
+        <View style={styles.shortMeta}>
+          <View style={styles.shortCopy}>
+            <Text style={styles.shortTitle} numberOfLines={2}>
+              {short.title || "Le goût qui fait parler !"}
+            </Text>
+            <View style={styles.views}>
+              <Ionicons name="eye-outline" size={13} color="#FFFFFF" />
+              <Text style={styles.viewsText}>{formattedViews}</Text>
+            </View>
+          </View>
+          <View style={styles.playBadge}>
+            <Ionicons name="play" size={14} color="#FFFFFF" />
+          </View>
+        </View>
+      </LinearGradient>
     </Pressable>
   );
 }
@@ -76,7 +98,7 @@ const styles = StyleSheet.create({
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(10,27,61,0.12)",
+    backgroundColor: "rgba(10,27,61,0.08)",
   },
   avatar: {
     position: "absolute",
@@ -99,19 +121,53 @@ const styles = StyleSheet.create({
     borderRadius: 99,
   },
   avatarInitial: {
-    color: colors.light.primary,
+    color: "#E91E63",
     fontSize: 15,
     fontFamily: "Inter_700Bold",
   },
   playBadge: {
-    position: "absolute",
-    right: 10,
-    bottom: 10,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(10,27,61,0.52)",
+    backgroundColor: "#E91E63",
+  },
+  bottomOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 104,
+    justifyContent: "flex-end",
+    paddingHorizontal: 11,
+    paddingBottom: 11,
+  },
+  shortMeta: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  shortCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 5,
+  },
+  shortTitle: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    lineHeight: 16,
+    fontFamily: "Inter_700Bold",
+  },
+  views: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  viewsText: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
   },
 });

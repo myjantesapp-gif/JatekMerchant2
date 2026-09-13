@@ -26,6 +26,7 @@ export function StoreCard({
   badgeLabel,
 }: Props) {
   const imageUrl = resolveMediaUrl(restaurant.imageUrl || restaurant.coverImageUrl) ?? FALLBACK_STORE_IMAGE;
+  const rating = (restaurant as Restaurant & { rating?: number | null }).rating;
   const time = restaurant.deliveryTime != null
     ? `${restaurant.deliveryTime} - ${restaurant.deliveryTime + 10} min`
     : "20 - 30 min";
@@ -52,7 +53,7 @@ export function StoreCard({
         />
         {badgeLabel ? (
           <View style={[styles.badge, badgeLabel === "Promo" && styles.badgePromo]}>
-            <Text style={styles.badgeText}>{badgeLabel}</Text>
+            <Text style={[styles.badgeText, badgeLabel === "Promo" && { color: "#FFFFFF" }]}>{badgeLabel}</Text>
           </View>
         ) : null}
         {compact ? (
@@ -92,6 +93,14 @@ export function StoreCard({
             {restaurant.name}
           </Text>
           <View style={styles.metaRow}>
+            {rating != null ? (
+              <View style={styles.metaItem}>
+                <Ionicons name="star" size={compact ? 12 : 14} color="#F4D03F" />
+                <Text style={[styles.metaText, compact && styles.metaTextCompact, styles.ratingText]}>
+                  {rating.toFixed(1)}
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.metaItem}>
               <Ionicons name="time-outline" size={compact ? 12 : 14} color={colors.light.mutedForeground} />
               <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{time}</Text>
@@ -109,7 +118,7 @@ export function StoreCard({
 
 const styles = StyleSheet.create({
   card: {
-    height: 206,
+    minHeight: 236,
     borderRadius: 14,
     overflow: "hidden",
     backgroundColor: colors.light.card,
@@ -143,17 +152,17 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: "absolute",
-    left: 9,
-    top: 9,
+    left: 10,
+    top: 10,
     paddingHorizontal: 10,
     height: 24,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.light.success,
+    backgroundColor: "#4ADE80",
   },
   badgePromo: {
-    backgroundColor: colors.light.primary,
+    backgroundColor: "#E91E63",
   },
   badgeText: {
     color: colors.light.heading,
@@ -190,8 +199,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 10,
     paddingBottom: 8,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: "column",
+    alignItems: "flex-start",
     gap: 9,
     borderRadius: 14,
     backgroundColor: colors.light.card,
@@ -239,7 +248,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   copy: {
-    flex: 1,
+    width: "100%",
     minWidth: 0,
     gap: 6,
   },
@@ -271,5 +280,9 @@ const styles = StyleSheet.create({
   },
   metaTextCompact: {
     fontSize: 8,
+  },
+  ratingText: {
+    color: "#475569",
+    fontFamily: "Inter_700Bold",
   },
 });
