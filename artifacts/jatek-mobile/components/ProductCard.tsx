@@ -17,9 +17,16 @@ type Props = {
   width: number;
   onPress: () => void;
   compact?: boolean;
+  emphasizeImage?: boolean;
 };
 
-export function ProductCard({ product, width, onPress, compact = false }: Props) {
+export function ProductCard({
+  product,
+  width,
+  onPress,
+  compact = false,
+  emphasizeImage = false,
+}: Props) {
   const { token, user } = useAuth();
   const alert = useFriendlyAlert();
   const queryClient = useQueryClient();
@@ -58,7 +65,13 @@ export function ProductCard({ product, width, onPress, compact = false }: Props)
       ]}
     >
       <View style={[styles.imageWrap, compact && styles.imageWrapCompact]}>
-        {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={[styles.image, emphasizeImage && styles.emphasizedImage]}
+            resizeMode="contain"
+          />
+        )
           : <View style={[styles.image, { alignItems: "center", justifyContent: "center" }]}>
               <Ionicons name="image-outline" size={24} color="#9CA3AF" />
             </View>}
@@ -151,6 +164,9 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+  },
+  emphasizedImage: {
+    transform: [{ scale: 1.1 }],
   },
   restaurantLogo: {
     position: "absolute",
