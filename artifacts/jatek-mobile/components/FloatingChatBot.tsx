@@ -96,11 +96,10 @@ const WELCOME: Msg = {
 };
 
 // ─── Component ──────────────────────────────────────────────────────────────
-const TAB_H = Platform.OS === "web" ? 84 : 74;
+const TAB_H = Platform.OS === "web" ? 84 : 72;
 const FAB_SIZE = 52;
 const FAB_BOTTOM = TAB_H + 16;
 const FAB_RIGHT = 18;
-const FAB_PINK = "#E91E63";
 
 export default function FloatingChatBot() {
   const colors = useColors();
@@ -395,7 +394,7 @@ function makeStyles(colors: ReturnType<typeof import("@/hooks/useColors").useCol
       width: FAB_SIZE,
       height: FAB_SIZE,
       borderRadius: FAB_SIZE / 2,
-      backgroundColor: FAB_PINK,
+      backgroundColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",
     },
