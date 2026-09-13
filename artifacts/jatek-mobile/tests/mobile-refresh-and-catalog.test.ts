@@ -273,7 +273,7 @@ test("home header omits the wordmark while retaining its actions and pink wave",
 test("welcome address picker uses the official Jatek wordmark", () => {
   const code = source("app/(auth)/welcome.tsx");
 
-  assert.match(code, /jatek-wordmark\.png/);
+  assert.match(code, /jatek-wordmark-transparent\.png/);
   assert.match(code, /style=\{styles\.brandLogo\}/);
   assert.doesNotMatch(code, /Jatek<Text/);
 });

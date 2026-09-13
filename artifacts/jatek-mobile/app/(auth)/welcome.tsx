@@ -254,7 +254,7 @@ export default function WelcomeScreen() {
       <View style={[styles.bottomCard, { backgroundColor: colors.background, paddingBottom: insets.bottom + 14 }]}>
         <View style={styles.brandRow}>
           <Image
-            source={require("../../assets/images/jatek-wordmark.png")}
+            source={require("../../assets/images/jatek-wordmark-transparent.png")}
             style={styles.brandLogo}
             resizeMode="contain"
             accessibilityLabel="Jatek"
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 12,
   },
   brandRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  brandLogo: { width: 96, height: 38, borderRadius: 7 },
+  brandLogo: { width: 96, height: 38 },
   brandSub: { fontSize: 11, fontFamily: "Inter_500Medium" },
 
   addrCard: {
