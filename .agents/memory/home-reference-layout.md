@@ -8,3 +8,7 @@ The current Home direction supersedes the old screenshot layout: Poppins, magent
 **Why:** The user's later explicit delta replaces the prior image-banner and three-tab direction without authorizing removal of working feeds or navigation.
 
 **How to apply:** Preserve API data and interactions. The five navigation positions are Jatek, Accueil, Commandes (live badge), Explorer, Compte. Missing view counts must not be presented as measured zeroes.
+
+All three product feeds use horizontal rails with three visible cards. Promotional copy, badges and imagery must come from the remote API, not from the earlier sample headline or discount.
+
+**Why:** The user explicitly clarified that the target's promotional text was not authorization to invent live offers; remote content takes precedence over sample design copy.

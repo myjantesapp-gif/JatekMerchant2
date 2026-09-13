@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,11 +29,14 @@ import { useCart } from "@/contexts/CartContext";
 import { useShorts } from "@/hooks/useContent";
 import {
   getPublicAppConfig,
+  listAds,
+  type Ad,
   listRecommendedProducts,
   type Short,
   type RecommendedProduct,
 } from "@/lib/api";
 import { refreshAll } from "@/lib/mobileRefresh";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { AddressQuickPicker } from "@/components/AddressQuickPicker";
 import { CartPreviewSheet } from "@/components/CartPreviewSheet";
 import { SideMenu } from "@/components/SideMenu";
@@ -52,8 +57,6 @@ const SECTION_TINT = "#F8F9FA";
 const HEADER_PINK = "#E91E63";
 const HEADER_ACCENT = "#FFD0E0";
 const CATEGORY_WIDTH = (SCREEN_WIDTH - 32 - 24) / 4;
-const PROMO_PRODUCT_WIDTH = (SCREEN_WIDTH - 32 - 16) / 3;
-const PRODUCT_GRID_WIDTH = Math.max(74, (SCREEN_WIDTH - 32 - 24) / 4);
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.max(0, (SCREEN_WIDTH - 32 - 12) / 2);
 const HORIZONTAL_PRODUCT_LIMIT = 12;
@@ -168,7 +171,8 @@ function CategoryRow({
   );
 }
 
-function PromotionalCard({ onPress, imageUrl }: { onPress: () => void; imageUrl?: string }) {
+function PromotionalCard({ onPress, ad }: { onPress: () => void; ad: Ad }) {
+  const imageUrl = resolveMediaUrl(ad.imageUrl);
   return (
     <Pressable
       onPress={onPress}
@@ -179,26 +183,29 @@ function PromotionalCard({ onPress, imageUrl }: { onPress: () => void; imageUrl?
     >
       <View style={styles.promoCopy}>
         <Text style={styles.promoEyebrow}>OFFRE DU MOMENT</Text>
-        <Text style={styles.promoTitle}>Des saveurs du quotidien</Text>
-        <Text style={styles.promoSubtitle}>Les bons produits, au bon prix.</Text>
+        <Text style={styles.promoTitle}>{ad.title}</Text>
+        {ad.subtitle ? <Text style={styles.promoSubtitle}>{ad.subtitle}</Text> : null}
         <View style={styles.promoCta}>
           <Text style={styles.promoCtaText}>Découvrir</Text>
           <Ionicons name="arrow-forward" size={14} color={PINK} />
         </View>
       </View>
-      <Image
-        source={imageUrl ? { uri: imageUrl } : require("../../assets/images/cat-burgers.jpg")}
+      {imageUrl ? <Image
+        source={{ uri: imageUrl }}
         style={styles.promoFoodImage}
         resizeMode="cover"
-      />
-      <View style={styles.promoBadge}>
-        <Text style={styles.promoBadgeText}>Jusqu'à -30%</Text>
-      </View>
+      /> : null}
+      {ad.badge ? <View style={styles.promoBadge}>
+        <Text style={styles.promoBadgeText}>{ad.badge}</Text>
+      </View> : null}
     </Pressable>
   );
 }
 
 function HomeScreen() {
+  const { width } = useWindowDimensions();
+  const PROMO_PRODUCT_WIDTH = (width - 48) / 3;
+  const PRODUCT_GRID_WIDTH = PROMO_PRODUCT_WIDTH;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const { selectedAddress } = useCart();
@@ -209,6 +216,11 @@ function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [shortsVisible, setShortsVisible] = useState(false);
   const [initialShort, setInitialShort] = useState(0);
+  const { data: ads, isLoading: adsLoading, isError: adsError, refetch: refetchAds } = useQuery({
+    queryKey: ["home-promo-ads"],
+    queryFn: () => listAds("promo_banner"),
+    staleTime: 60_000,
+  });
 
   const { data: apiCategories, refetch: refetchCategories } = useListCategories();
   const {
@@ -306,6 +318,7 @@ function HomeScreen() {
     setRefreshing(true);
     try {
       await refreshAll([
+        refetchAds,
         refetchCategories,
         refetchShorts,
         refetchRestaurants,
@@ -513,8 +526,9 @@ function HomeScreen() {
               onRetry={() => refetchPopularProducts()}
             />
           ) : popularProducts && popularProducts.length > 0 ? (
-            <View style={styles.productGrid}>
-              {popularProducts.slice(0, 4).map((product) => (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.promoProductGrid} nestedScrollEnabled>
+              {popularProducts.map((product) => (
                 <ProductCard
                   key={`popular-${product.restaurantId}-${product.id}`}
                   product={product}
@@ -523,7 +537,7 @@ function HomeScreen() {
                   onPress={() => openProduct(product)}
                 />
               ))}
-            </View>
+            </ScrollView>
           ) : (
             <Text style={styles.empty}>Aucun produit populaire pour le moment</Text>
           )}
@@ -532,7 +546,21 @@ function HomeScreen() {
 
         {/* 5. Structured promotion card replaces the old image banners */}
         <View style={styles.offerSection}>
-          <PromotionalCard onPress={() => router.push("/restaurants" as any)} />
+          {adsLoading || adsError ? (
+            <LoadingOrEmpty loading={adsLoading} error={adsError}
+              empty="Aucune offre pour le moment" onRetry={() => refetchAds()} />
+          ) : ads?.filter((ad) => ad.isActive).map((ad) => (
+            <PromotionalCard key={ad.id} ad={ad} onPress={() => {
+              const link = ad.linkUrl?.trim();
+              if (link?.startsWith("/") && !link.startsWith("//")) {
+                router.push(link as any);
+              } else if (link && /^https?:\/\//i.test(link)) {
+                void Linking.openURL(link);
+              } else {
+                router.push("/restaurants" as any);
+              }
+            }} />
+          ))}
         </View>
 
         {/* 6. Nouveautés */}
@@ -764,6 +792,7 @@ const styles = StyleSheet.create({
     backgroundColor: SECTION_TINT,
   },
   offerSection: {
+    gap: 12,
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 24,
@@ -798,7 +827,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 16,
-    paddingRight: 4,
+    paddingRight: 120,
   },
   promoEyebrow: {
     color: PINK,
@@ -866,6 +895,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   promoProductGrid: {
+    paddingVertical: 8,
     paddingHorizontal: 16,
     flexDirection: "row",
     gap: 8,

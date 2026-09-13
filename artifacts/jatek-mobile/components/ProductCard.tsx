@@ -7,9 +7,6 @@ import { formatMad } from "@/lib/money";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import colors from "@/constants/colors";
 
-const FALLBACK_PRODUCT_IMAGE =
-  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=720&q=85";
-
 type Props = {
   product: RecommendedProduct;
   width: number;
@@ -20,7 +17,7 @@ type Props = {
 export function ProductCard({ product, width, onPress, compact = false }: Props) {
   const originalPrice = product.originalPrice ?? product.oldPrice ?? product.compareAtPrice ?? null;
   const hasPromotion = typeof originalPrice === "number" && originalPrice > product.price;
-  const imageUrl = resolveMediaUrl(product.imageUrl) ?? FALLBACK_PRODUCT_IMAGE;
+  const imageUrl = resolveMediaUrl(product.imageUrl);
 
   return (
     <Pressable
@@ -36,7 +33,10 @@ export function ProductCard({ product, width, onPress, compact = false }: Props)
       ]}
     >
       <View style={[styles.imageWrap, compact && styles.imageWrapCompact]}>
-        <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+        {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+          : <View style={[styles.image, { alignItems: "center", justifyContent: "center" }]}>
+              <Ionicons name="image-outline" size={24} color="#9CA3AF" />
+            </View>}
         <View style={[styles.restaurantLogo, compact && styles.restaurantLogoCompact]}>
           {product.restaurantLogoUrl ? (
             <Image
@@ -103,7 +103,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.muted,
   },
   imageWrapCompact: {
-    height: 92,
+    height: undefined,
+    aspectRatio: 1.05,
   },
   image: {
     width: "100%",
@@ -208,11 +209,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   nameCompact: {
-    minHeight: 31,
+    height: 32,
     fontSize: 11,
     lineHeight: 15,
   },
   priceBlock: {
+    minHeight: 40,
     alignItems: "flex-start",
     gap: 1,
   },
