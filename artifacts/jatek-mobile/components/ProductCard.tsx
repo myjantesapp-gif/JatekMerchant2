@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   name: {
     minHeight: 34,
     color: colors.light.cardForeground,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 19,
     fontWeight: "bold",
     fontFamily: "Inter_700Bold",
@@ -401,9 +401,9 @@ const styles = StyleSheet.create({
   },
   price: {
     color: "#EC176B",
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: "bold",
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Montserrat_800ExtraBold",
   },
   priceCompact: {
     fontSize: 12,
@@ -486,9 +486,9 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   compactName: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: "bold",
-    fontFamily: "Nunito_700Bold",
+    fontFamily: "Montserrat_700Bold",
     color: "#08244A",
     marginBottom: 8,
   },
@@ -498,9 +498,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   compactPrice: {
-    fontSize: 12,
+    fontSize: 18,
     fontWeight: "bold",
-    fontFamily: "Nunito_800ExtraBold",
+    fontFamily: "Montserrat_800ExtraBold",
     color: "#EC176B",
   },
   compactPriceBlock: {
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   offerNewPrice: {
     fontSize: 14,
     fontWeight: "bold",
-    fontFamily: "Nunito_800ExtraBold",
+    fontFamily: "Montserrat_800ExtraBold",
     color: "#EC176B",
   },
 
@@ -641,9 +641,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   fdPrice: {
-    fontSize: 12,
+    fontSize: 18,
     fontWeight: "bold",
-    fontFamily: "Nunito_800ExtraBold",
+    fontFamily: "Montserrat_800ExtraBold",
     color: "#EC176B",
   },
   fdPriceBlock: {

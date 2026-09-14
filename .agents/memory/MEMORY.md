@@ -32,7 +32,7 @@
 - [Android opaque status bar](android-opaque-status-bar.md) — edge-to-edge can ignore StatusBar colors; keep a real safe-area backdrop for OTA compatibility.
 - [Mobile release verification](mobile-release-verification.md) — separate browser checks, Expo acceptance and actual device delivery; deploy new API contracts before the mobile client.
 - [Production database pause](production-database-pause.md) — a frozen production database makes OTP signup return 500; unpause it in Replit Database before changing auth code.
-- [Jatek brand typography](jatek-brand-typography.md) — the logo is an image wordmark; use Nunito weights 400–900 for app copy while preserving semantic font aliases.
+- [Jatek brand typography](jatek-brand-typography.md) — the logo is an image wordmark; use Montserrat weights 400–800 for app copy while preserving semantic font aliases.
 - [Home promotional content](home-promotional-content.md) — admin-managed promo ads and discounted products take priority, with bundled banner fallbacks for an empty content feed.
 - [Home reference layout](home-reference-layout.md) — screenshot direction uses Poppins, navy/pink styling, soft waves, three product columns, and compact nearby-store cards.
 - [Mobile content source](mobile-content-source.md) — Home content, metadata, and section navigation must come from dashboard/API data, never local live-content samples.

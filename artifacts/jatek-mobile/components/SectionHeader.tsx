@@ -77,10 +77,10 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     color: "#08244A",
-    fontSize: 22,
-    lineHeight: 26,
-    letterSpacing: -0.6,
-    fontFamily: "Nunito_800ExtraBold",
+    fontSize: 27,
+    lineHeight: 30,
+    letterSpacing: -0.7,
+    fontFamily: "Montserrat_800ExtraBold",
   },
   arrow: {
     width: 32,
@@ -108,10 +108,10 @@ const styles = StyleSheet.create({
   homeTitle: {
     flex: 1,
     color: "#08244A",
-    fontSize: 24,
-    lineHeight: 28,
-    letterSpacing: -0.6,
-    fontFamily: "Nunito_800ExtraBold",
+    fontSize: 27,
+    lineHeight: 30,
+    letterSpacing: -0.7,
+    fontFamily: "Montserrat_800ExtraBold",
   },
   homeArrow: {
     width: 28,

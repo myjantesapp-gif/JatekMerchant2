@@ -425,9 +425,9 @@ const styles = StyleSheet.create({
   },
   homeName: {
     color: "#08244A",
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: "bold",
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Montserrat_700Bold",
   },
   homeMetaRow: {
     flexDirection: "row",
