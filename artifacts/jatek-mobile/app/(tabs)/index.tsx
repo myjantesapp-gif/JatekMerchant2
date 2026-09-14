@@ -594,7 +594,7 @@ function HomeScreen() {
       case "popular":
         return (
           <View style={styles.popularSection}>
-            <WaveEdge color={SECTION_TINT} height={28} position="top" />
+            <WaveEdge color={SECTION_TINT} height={18} position="top" />
             <SectionHeader
               title={config.title}
               variant="home"
@@ -612,7 +612,7 @@ function HomeScreen() {
               variant="home-compact"
               keyPrefix="popular"
             />
-            <WaveEdge color={SECTION_TINT} height={28} />
+            <WaveEdge color={SECTION_TINT} height={20} />
           </View>
         );
       case "new_restaurants":
@@ -1022,7 +1022,7 @@ const styles = StyleSheet.create({
   section: {
     marginTop: 0,
     paddingBottom: 2,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: SECTION_TINT,
   },
   promoSection: {
     marginTop: 2,
@@ -1032,8 +1032,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   popularSection: {
-    marginTop: 16,
-    marginBottom: 16,
+    marginTop: 8,
+    marginBottom: 12,
     paddingTop: 0,
     paddingBottom: 8,
     position: "relative",
@@ -1063,11 +1063,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   bannerSlot: {
-    marginVertical: 2,
-    paddingHorizontal: 16,
+    marginVertical: 0,
+    paddingVertical: 6,
+    paddingHorizontal: 0,
+    backgroundColor: SECTION_TINT,
   },
   bannerCarouselContent: {
-    gap: 12,
+    gap: 8,
     paddingHorizontal: 16,
   },
   supportSection: {
