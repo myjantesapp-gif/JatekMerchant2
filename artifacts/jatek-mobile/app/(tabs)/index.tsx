@@ -559,7 +559,7 @@ function HomeScreen() {
                 onRetry={() => void refetchCategories()}
               />
             ) : categories.length > 0 ? (
-              <CategoryRow categories={categories.slice(0, limit)} onPress={openCategory} />
+              <CategoryRow categories={categories} onPress={openCategory} />
             ) : (
               <Text style={styles.empty}>Aucune catégorie disponible</Text>
             )}
@@ -1007,11 +1007,10 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   categorySection: {
-    marginTop: 12,
-    marginHorizontal: 10,
-    marginBottom: 12,
-    paddingTop: 10,
-    paddingBottom: 10,
+    marginTop: 6,
+    marginBottom: 6,
+    paddingTop: 6,
+    paddingBottom: 6,
     position: "relative",
     backgroundColor: SECTION_TINT,
     zIndex: 2,
