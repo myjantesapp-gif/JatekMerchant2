@@ -486,12 +486,12 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   compactName: {
-    fontSize: 15,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 16,
     fontWeight: "bold",
     fontFamily: "Montserrat_700Bold",
     color: "#08244A",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   compactBottomRow: {
     flexDirection: "row",
@@ -499,8 +499,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   compactPrice: {
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 19,
     fontWeight: "bold",
     fontFamily: "Montserrat_800ExtraBold",
     color: "#EC176B",

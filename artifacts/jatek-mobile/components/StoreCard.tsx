@@ -425,7 +425,8 @@ const styles = StyleSheet.create({
   },
   homeName: {
     color: "#08244A",
-    fontSize: 15,
+    fontSize: 13,
+    lineHeight: 16,
     fontWeight: "bold",
     fontFamily: "Montserrat_700Bold",
   },
@@ -436,12 +437,14 @@ const styles = StyleSheet.create({
   },
   homeMetaTextBold: {
     color: "#08244A",
-    fontSize: 10,
+    fontSize: 9,
+    lineHeight: 12,
     fontFamily: "Poppins_700Bold",
   },
   homeMetaTextLight: {
     color: "#6b7280",
-    fontSize: 10,
+    fontSize: 9,
+    lineHeight: 12,
     fontFamily: "Poppins_400Regular",
   },
 });
