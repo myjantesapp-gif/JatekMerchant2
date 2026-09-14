@@ -42,7 +42,7 @@ function getVideoHtml(url: string): string {
   const youtubeUrl = getYouTubeEmbedUrl(url);
   if (youtubeUrl) {
     const safeUrl = JSON.stringify(youtubeUrl).replace(/</g, "\\u003c");
-    return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="referrer" content="strict-origin-when-cross-origin"><base href="https://www.youtube-nocookie.com/"><style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:#000}</style></head><body><iframe src=${safeUrl} referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></body></html>`;
+    return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="referrer" content="strict-origin-when-cross-origin"><base href="https://www.youtube-nocookie.com/"><style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:#000}</style></head><body><iframe id="short-youtube" src=${safeUrl} referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe><script>(function(){var origin="https://www.youtube-nocookie.com";function send(func,args){var f=document.getElementById("short-youtube");if(f&&f.contentWindow){f.contentWindow.postMessage(JSON.stringify({event:"command",func:func,args:args||[]}),origin)}}window.setShortSound=function(enabled){if(enabled){send("unMute",[]);send("setVolume",[100]);send("playVideo",[])}else{send("mute",[])}}})();</script></body></html>`;
   }
   const safeUrl = JSON.stringify(resolveVideoUrl(url)).replace(/</g, "\\u003c");
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>html,body,video{margin:0;width:100%;height:100%;background:#000;object-fit:cover}video{position:fixed;inset:0}</style></head><body><video id="short-video" autoplay muted loop playsinline controls></video><script>(function(){var v=document.getElementById("short-video");v.onerror=function(){window.ReactNativeWebView&&window.ReactNativeWebView.postMessage("short-video-error")};v.src=${safeUrl};v.load();})();</script></body></html>`;
@@ -50,8 +50,7 @@ function getVideoHtml(url: string): string {
 
 function buildSoundScript(soundEnabled: boolean): string {
   const muted = soundEnabled ? "false" : "true";
-  const command = soundEnabled ? "unMute" : "mute";
-  return `(function(){var v=document.getElementById('short-video');if(v){v.muted=${muted};if(!v.muted){var p=v.play();if(p&&p.catch){p.catch(function(){})}}}var f=document.querySelector('iframe');if(f&&f.contentWindow){f.contentWindow.postMessage(JSON.stringify({event:'command',func:'${command}',args:[]}), '*')}})();true;`;
+  return `(function(){var v=document.getElementById('short-video');if(v){v.muted=${muted};if(!v.muted){var p=v.play();if(p&&p.catch){p.catch(function(){})}}}if(window.setShortSound){window.setShortSound(${soundEnabled})}else{var f=document.querySelector('iframe');if(f&&f.contentWindow){var o='https://www.youtube-nocookie.com';var send=function(func,args){f.contentWindow.postMessage(JSON.stringify({event:'command',func:func,args:args||[]}),o)};${soundEnabled ? "send('unMute',[]);send('setVolume',[100]);send('playVideo',[])" : "send('mute',[])"}}}})();true;`;
 }
 
 interface Props {
@@ -329,14 +328,22 @@ function ShortVideo({
     if (Platform.OS === "web") {
       const target = youtubeUrl ? webFrameRef.current : webVideoRef.current;
       if (youtubeUrl) {
-        target?.contentWindow?.postMessage(
-          JSON.stringify({
-            event: "command",
-            func: soundEnabled ? "unMute" : "mute",
-            args: [],
-          }),
-          "*",
-        );
+        const sendSoundCommands = () => {
+          if (!target?.contentWindow) return;
+          const origin = "https://www.youtube-nocookie.com";
+          const send = (func: string, args: unknown[] = []) =>
+            target.contentWindow.postMessage(JSON.stringify({ event: "command", func, args }), origin);
+          if (soundEnabled) {
+            send("unMute");
+            send("setVolume", [100]);
+            send("playVideo");
+          } else {
+            send("mute");
+          }
+        };
+        sendSoundCommands();
+        const retry = setTimeout(sendSoundCommands, 300);
+        return () => clearTimeout(retry);
       } else if (target) {
         target.muted = !soundEnabled;
         if (soundEnabled) void target.play?.().catch?.(() => {});
