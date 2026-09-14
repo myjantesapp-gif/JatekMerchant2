@@ -7,9 +7,6 @@ import type { Short } from "@/lib/api";
 import { getYouTubeThumbnailUrl, resolveMediaUrl } from "@/lib/mediaUrl";
 import colors from "@/constants/colors";
 
-const FALLBACK_SHORT_IMAGE =
-  "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=520&q=85";
-
 type Props = {
   short: Short;
   width: number;
@@ -22,16 +19,19 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
   const [sourceIndex, setSourceIndex] = useState(0);
   const sources = useMemo(
     () =>
-      [resolveMediaUrl(short.imageUrl), getYouTubeThumbnailUrl(short.videoUrl), FALLBACK_SHORT_IMAGE].filter(
+      [resolveMediaUrl(short.imageUrl), getYouTubeThumbnailUrl(short.videoUrl)].filter(
         (value): value is string => Boolean(value),
       ),
     [short.imageUrl, short.videoUrl],
   );
-  const source = sources[Math.min(sourceIndex, sources.length - 1)] ?? FALLBACK_SHORT_IMAGE;
-  const merchantName = short.restaurantName?.trim() || "Jatek";
-  const initials = merchantName.charAt(0).toUpperCase() || "J";
+  const merchantName = short.restaurantName?.trim() || "";
+  const initials = merchantName.charAt(0).toUpperCase();
   const shortWithViews = short as Short & { views?: number; viewCount?: number };
   const viewCount = shortWithViews.viewCount ?? shortWithViews.views;
+
+  if (sources.length === 0) return null;
+
+  const source = sources[Math.min(sourceIndex, sources.length - 1)];
   
   if (variant === "home") {
     return (

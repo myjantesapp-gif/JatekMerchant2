@@ -7,9 +7,6 @@ import { formatMad } from "@/lib/money";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import colors from "@/constants/colors";
 
-const FALLBACK_STORE_IMAGE =
-  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85";
-
 type Props = {
   restaurant: Restaurant;
   width: number;
@@ -29,15 +26,14 @@ export function StoreCard({
   variant = "default",
   showFee = false,
 }: Props) {
-  const imageUrl = resolveMediaUrl(restaurant.imageUrl || restaurant.coverImageUrl) ?? FALLBACK_STORE_IMAGE;
+  const imageUrl = resolveMediaUrl(restaurant.imageUrl || restaurant.coverImageUrl);
   const rating = (restaurant as Restaurant & { rating?: number | null }).rating;
   const time = restaurant.deliveryTime != null
     ? `${restaurant.deliveryTime}-${restaurant.deliveryTime + 10} min`
-    : "15-25 min";
-  const fee = restaurant.deliveryFee != null ? `${formatMad(restaurant.deliveryFee)} DH` : "12,00 DH";
+    : null;
+  const fee = restaurant.deliveryFee != null ? `${formatMad(restaurant.deliveryFee)} DH` : null;
 
   if (variant === "home") {
-    const homeRating = rating ?? 4.5;
     return (
       <Pressable
         onPress={onPress}
@@ -49,11 +45,13 @@ export function StoreCard({
         ]}
       >
         <View style={styles.homeCoverWrap}>
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.homeCover}
-            resizeMode="cover"
-          />
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.homeCover} resizeMode="cover" />
+          ) : (
+            <View style={[styles.homeCover, styles.imagePlaceholder]}>
+              <Ionicons name="storefront-outline" size={32} color={colors.light.mutedForeground} />
+            </View>
+          )}
           <View style={styles.homeLogoCircle}>
             {restaurant.logoUrl ? (
               <Image
@@ -63,7 +61,7 @@ export function StoreCard({
               />
             ) : (
               <Text style={styles.homeLogoInitial}>
-                {restaurant.name.charAt(0).toUpperCase() || "J"}
+                {restaurant.name.charAt(0).toUpperCase()}
               </Text>
             )}
           </View>
@@ -77,30 +75,30 @@ export function StoreCard({
           </Text>
           {showFee ? (
             <>
-              <View style={styles.homeMetaRow}>
-                <Ionicons name="star" size={10} color="#F4D03F" />
-                <Text style={styles.homeMetaTextBold}>{homeRating.toFixed(1)}</Text>
-                <Text style={styles.homeMetaTextLight}>(500+)</Text>
-              </View>
-              <Text style={styles.homeMetaTextLight}>{time}</Text>
-              <Text style={styles.homeMetaTextLight}>1,5 km • {fee}</Text>
+              {rating != null ? (
+                <View style={styles.homeMetaRow}>
+                  <Ionicons name="star" size={10} color="#F4D03F" />
+                  <Text style={styles.homeMetaTextBold}>{rating.toFixed(1)}</Text>
+                </View>
+              ) : null}
+              {time ? <Text style={styles.homeMetaTextLight}>{time}</Text> : null}
+              {fee ? <Text style={styles.homeMetaTextLight}>{fee}</Text> : null}
             </>
           ) : (
             <View style={styles.homeMetaRow}>
-              <Ionicons name="star" size={10} color="#F4D03F" />
-              <Text style={styles.homeMetaTextBold}>{homeRating.toFixed(1)}</Text>
-              <Text style={styles.homeMetaTextLight}>(500+) • {time} • 1,2 km</Text>
+              {rating != null ? (
+                <>
+                  <Ionicons name="star" size={10} color="#F4D03F" />
+                  <Text style={styles.homeMetaTextBold}>{rating.toFixed(1)}</Text>
+                </>
+              ) : null}
+              {time ? <Text style={styles.homeMetaTextLight}>{time}</Text> : null}
             </View>
           )}
         </View>
       </Pressable>
     );
   }
-
-  const oldTime = restaurant.deliveryTime != null
-    ? `${restaurant.deliveryTime} - ${restaurant.deliveryTime + 10} min`
-    : "20 - 30 min";
-  const oldFee = restaurant.deliveryFee != null ? `${formatMad(restaurant.deliveryFee)} MAD` : "10,00 MAD";
 
   return (
     <Pressable
@@ -116,11 +114,17 @@ export function StoreCard({
       ]}
     >
       <View style={styles.coverWrap}>
-        <Image
-          source={{ uri: imageUrl }}
-          style={[styles.cover, compact && styles.coverCompact]}
-          resizeMode="cover"
-        />
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={[styles.cover, compact && styles.coverCompact]}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.cover, compact && styles.coverCompact, styles.imagePlaceholder]}>
+            <Ionicons name="storefront-outline" size={32} color={colors.light.mutedForeground} />
+          </View>
+        )}
         {badgeLabel ? (
           <View style={[styles.badge, badgeLabel === "Promo" && styles.badgePromo]}>
             <Text style={[styles.badgeText, badgeLabel === "Promo" && { color: "#FFFFFF" }]}>{badgeLabel}</Text>
@@ -153,7 +157,7 @@ export function StoreCard({
               />
             ) : (
               <Text style={[styles.logoInitial, compact && styles.logoInitialCompact]}>
-                {restaurant.name.charAt(0).toUpperCase() || "J"}
+                {restaurant.name.charAt(0).toUpperCase()}
               </Text>
             )}
           </View>
@@ -171,14 +175,18 @@ export function StoreCard({
                 </Text>
               </View>
             ) : null}
-            <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={compact ? 12 : 14} color={colors.light.mutedForeground} />
-              <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{oldTime}</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Ionicons name="location-outline" size={compact ? 12 : 14} color={colors.light.mutedForeground} />
-              <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{oldFee}</Text>
-            </View>
+            {time ? (
+              <View style={styles.metaItem}>
+                <Ionicons name="time-outline" size={compact ? 12 : 14} color={colors.light.mutedForeground} />
+                <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{time}</Text>
+              </View>
+            ) : null}
+            {fee ? (
+              <View style={styles.metaItem}>
+                <Ionicons name="location-outline" size={compact ? 12 : 14} color={colors.light.mutedForeground} />
+                <Text style={[styles.metaText, compact && styles.metaTextCompact]}>{fee}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
       </View>
@@ -219,6 +227,11 @@ const styles = StyleSheet.create({
   },
   coverCompact: {
     height: 83,
+  },
+  imagePlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.light.muted,
   },
   badge: {
     position: "absolute",

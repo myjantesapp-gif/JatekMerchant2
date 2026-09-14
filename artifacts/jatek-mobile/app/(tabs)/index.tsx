@@ -70,86 +70,37 @@ const CATEGORY_WIDTH = (SCREEN_WIDTH - 32 - CATEGORY_GAP * 3) / 4;
 const SHORT_WIDTH = Math.min(138, Math.max(120, SCREEN_WIDTH * 0.32));
 const STORE_WIDTH = Math.max(0, (SCREEN_WIDTH - 32 - 12) / 2);
 const HORIZONTAL_PRODUCT_LIMIT = 12;
-const DEFAULT_HOME_ORDER: HomeSectionKey[] = [
-  "categories",
-  "banners",
-  "shorts",
-  "popular",
-  "new_restaurants",
-  "new_products",
-  "shops",
-  "all",
-  "free_delivery",
-  "newest",
-  "support",
-];
-
 type HomeSectionViewConfig = Omit<HomeSectionConfig, "key">;
-
-const DEFAULT_HOME_SECTION_CONFIG: Record<HomeSectionKey, HomeSectionViewConfig> = {
-  categories: { title: "Catégories", visible: true, source: "categories", limit: 4 },
-  banners: { title: "Bannières", visible: true, source: "banners", limit: 10 },
-  shorts: { title: "Shorts", visible: true, source: "shorts", limit: 12 },
-  popular: { title: "Produits populaires", visible: true, source: "popular", limit: 6 },
-  new_restaurants: { title: "Près de chez vous", visible: true, source: "new_restaurants", limit: 6 },
-  new_products: { title: "Offres du moment", visible: true, source: "promos", limit: 6 },
-  shops: { title: "Boutiques", visible: true, source: "shops", limit: 6 },
-  all: { title: "Recommandé pour vous", visible: true, source: "all_restaurants", limit: 6 },
-  free_delivery: { title: "Livraison gratuite", visible: true, source: "free_delivery", limit: 6 },
-  newest: { title: "Nouveautés", visible: true, source: "newest", limit: 6 },
-  support: { title: "Besoin d'aide ?", visible: true, source: "support", limit: 1 },
-};
 
 type HomeCategory = {
   key: string;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   accent: string;
-  slug?: string;
+  slug: string;
+  businessType?: string;
 };
-
-const CATEGORY_PRESETS: Array<{
-  key: string;
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  accent: string;
-  matches: string[];
-}> = [
-  {
-    key: "restaurant",
-    label: "Restaurants",
-    icon: "restaurant",
-    accent: "#E91E63",
-    matches: ["restaurant", "restauration", "food"],
-  },
-  {
-    key: "grocery",
-    label: "Courses",
-    icon: "basket",
-    accent: "#55B89A",
-    matches: ["grocery", "épicerie", "epicerie"],
-  },
-  {
-    key: "health",
-    label: "Pharmacie",
-    icon: "medkit",
-    accent: "#00A5B5",
-    matches: ["pharmacy", "pharmacie", "health", "santé", "sante"],
-  },
-  {
-    key: "more",
-    label: "Plus",
-    icon: "apps",
-    accent: "#9B7FEA",
-    matches: ["supermarket", "supermarché", "supermarche", "market", "shop", "boutique"],
-  },
-];
 
 function normalize(value: unknown): string {
   return String(value ?? "")
     .toLocaleLowerCase("fr-FR")
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
+}
+
+function getCategoryIcon(category: any): keyof typeof Ionicons.glyphMap {
+  const configuredIcon = typeof category?.icon === "string" ? category.icon : "";
+  if (configuredIcon in Ionicons.glyphMap) {
+    return configuredIcon as keyof typeof Ionicons.glyphMap;
+  }
+  const categoryText = normalize(`${category?.slug} ${category?.name} ${category?.businessType}`);
+  if (categoryText.includes("pharm") || categoryText.includes("sant")) return "medkit";
+  if (categoryText.includes("market") || categoryText.includes("grocery") || categoryText.includes("épicer")) return "basket";
+  if (categoryText.includes("shop") || categoryText.includes("boutique")) return "bag-handle";
+  if (categoryText.includes("restaurant") || categoryText.includes("restauration") || categoryText.includes("food")) {
+    return "restaurant";
+  }
+  return "grid";
 }
 
 function LoadingOrEmpty({
@@ -374,7 +325,12 @@ function HomeScreen() {
     staleTime: 60_000,
   });
 
-  const { data: apiCategories, refetch: refetchCategories } = useListCategories();
+  const {
+    data: apiCategories,
+    isLoading: categoriesLoading,
+    isError: categoriesError,
+    refetch: refetchCategories,
+  } = useListCategories();
   const {
     data: shortsData,
     isLoading: shortsLoading,
@@ -428,25 +384,17 @@ function HomeScreen() {
   });
 
   const categories = useMemo<HomeCategory[]>(() => {
-    const source = (apiCategories ?? []).filter(
-      (category: any) =>
-        category.parentId == null && category.isActive !== false,
-    );
-    return CATEGORY_PRESETS.map((preset) => {
-      const match = source.find((category: any) => {
-        const haystack = normalize(
-          `${category.slug} ${category.name} ${category.businessType}`,
-        );
-        return preset.matches.some((term) => haystack.includes(normalize(term)));
-      });
-      return {
-        key: preset.key,
-        label: preset.label,
-        icon: preset.icon,
-        accent: preset.accent,
-        slug: preset.key === "more" ? undefined : match?.slug,
-      };
-    });
+    return (apiCategories ?? [])
+      .filter((category: any) => category.parentId == null && category.isActive !== false)
+      .map((category: any) => ({
+        key: String(category.id ?? category.slug),
+        label: String(category.name ?? "").trim(),
+        icon: getCategoryIcon(category),
+        accent: category.accentColor || PINK,
+        slug: String(category.slug ?? "").trim(),
+        businessType: category.businessType,
+      }))
+      .filter((category) => category.label.length > 0 && category.slug.length > 0);
   }, [apiCategories]);
 
   const shorts = useMemo<Short[]>(() => shortsData ?? [], [shortsData]);
@@ -477,29 +425,18 @@ function HomeScreen() {
     [ads],
   );
   const homeSections = useMemo(
-    () => Object.fromEntries(
-      Object.entries(DEFAULT_HOME_SECTION_CONFIG).map(([key, fallback]) => [
-        key,
-        {
-          ...fallback,
-          ...(appConfig?.homeSections?.[key as HomeSectionKey] ?? {}),
-        },
-      ]),
-    ) as Record<HomeSectionKey, HomeSectionViewConfig>,
+    () => (appConfig?.homeSections ?? {}) as Partial<Record<HomeSectionKey, HomeSectionViewConfig>>,
     [appConfig?.homeSections],
   );
   const homeOrder = useMemo(() => {
     const configured = Array.isArray(appConfig?.homeOrder) ? appConfig.homeOrder : [];
-    const valid = configured.filter((key): key is HomeSectionKey =>
-      DEFAULT_HOME_ORDER.includes(key as HomeSectionKey),
-    );
-    return [...new Set([...valid, ...DEFAULT_HOME_ORDER])];
+    return [...new Set(configured.filter((key): key is HomeSectionKey => typeof key === "string"))];
   }, [appConfig?.homeOrder]);
   const freeDeliveryProducts = useMemo(
     () => (popularProducts ?? []).filter((product) => product.deliveryFee === 0),
     [popularProducts],
   );
-  const addressLabel = selectedAddress || "Oujda";
+  const addressLabel = selectedAddress || "Choisir une adresse";
   const customerFirstName = user?.name?.trim().split(/\s+/)[0] || "";
   const greetingLabel = customerFirstName ? `Bonjour ${customerFirstName}` : "Bonjour";
 
@@ -523,11 +460,12 @@ function HomeScreen() {
   };
 
   const openCategory = (category: HomeCategory) => {
-    if (category.slug) {
-      router.push({ pathname: "/category/[slug]", params: { slug: category.slug } });
-      return;
-    }
-    router.push("/restaurants" as any);
+    router.push({ pathname: "/category/[slug]", params: { slug: category.slug } });
+  };
+
+  const openSection = (key: HomeSectionKey) => {
+    if (!homeSections[key]) return;
+    router.push({ pathname: "/home-section/[key]", params: { key } });
   };
 
   const openProduct = (product: RecommendedProduct) => {
@@ -548,8 +486,6 @@ function HomeScreen() {
       router.push(link as any);
     } else if (link && /^https?:\/\//i.test(link)) {
       void Linking.openURL(link);
-    } else {
-      router.push("/restaurants" as any);
     }
   };
 
@@ -567,7 +503,18 @@ function HomeScreen() {
       case "categories":
         return (
           <View style={styles.categorySection}>
-            <CategoryRow categories={categories.slice(0, limit)} onPress={openCategory} />
+            {categoriesLoading || categoriesError ? (
+              <LoadingOrEmpty
+                loading={categoriesLoading}
+                error={categoriesError}
+                empty="Aucune catégorie disponible"
+                onRetry={() => void refetchCategories()}
+              />
+            ) : categories.length > 0 ? (
+              <CategoryRow categories={categories.slice(0, limit)} onPress={openCategory} />
+            ) : (
+              <Text style={styles.empty}>Aucune catégorie disponible</Text>
+            )}
           </View>
         );
       case "banners":
@@ -623,7 +570,7 @@ function HomeScreen() {
             <SectionHeader
               title={config.title}
               variant="home"
-              onPress={() => router.push("/restaurants" as any)}
+              onPress={() => openSection(key)}
               testID="section-popular-products"
             />
             <ProductRail
@@ -647,7 +594,7 @@ function HomeScreen() {
             <SectionHeader
               title={config.title}
               variant="home"
-              onPress={() => router.push("/restaurants" as any)}
+              onPress={() => openSection(key)}
               testID={`section-${key}`}
             />
             {restaurantsLoading || restaurantsError ? (
@@ -683,7 +630,7 @@ function HomeScreen() {
       case "new_products":
         return (
           <View style={styles.promoSection}>
-            <SectionHeader title={config.title} variant="home" onPress={() => router.push("/restaurants" as any)} testID="section-promo-products" />
+            <SectionHeader title={config.title} variant="home" onPress={() => openSection(key)} testID="section-promo-products" />
             <ProductRail
               products={productsFor(config.source)?.slice(0, limit)}
               loading={config.source === "newest" ? newestProductsLoading : config.source === "popular" ? popularProductsLoading : promoProductsLoading}
@@ -700,7 +647,7 @@ function HomeScreen() {
       case "all":
         return (
           <View style={styles.restaurantSection}>
-            <SectionHeader title={config.title} variant="home" onPress={() => router.push("/restaurants" as any)} testID="section-recommended" />
+            <SectionHeader title={config.title} variant="home" onPress={() => openSection(key)} testID="section-recommended" />
             {restaurantsLoading || restaurantsError ? (
               <LoadingOrEmpty loading={restaurantsLoading} error={restaurantsError} empty="Aucun restaurant disponible pour le moment" onRetry={() => refetchRestaurants()} />
             ) : restaurantStores.length > 2 ? (
@@ -722,7 +669,7 @@ function HomeScreen() {
       case "free_delivery":
         return (
           <View style={styles.freeDeliverySection}>
-            <SectionHeader title={config.title} variant="home" onPress={() => router.push("/restaurants" as any)} testID="section-free-delivery" />
+            <SectionHeader title={config.title} variant="home" onPress={() => openSection(key)} testID="section-free-delivery" />
             <ProductRail
               products={freeDeliveryProducts.slice(0, limit)}
               loading={popularProductsLoading}
@@ -739,7 +686,7 @@ function HomeScreen() {
       case "newest":
         return (
           <View style={styles.newestSection}>
-            <SectionHeader title={config.title} variant="home" onPress={() => router.push("/restaurants" as any)} testID="section-newest" />
+            <SectionHeader title={config.title} variant="home" onPress={() => openSection(key)} testID="section-newest" />
             <ProductRail
               products={productsFor(config.source)?.slice(0, limit)}
               loading={config.source === "popular" ? popularProductsLoading : config.source === "promos" ? promoProductsLoading : newestProductsLoading}

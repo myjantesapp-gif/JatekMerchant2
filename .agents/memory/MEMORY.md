@@ -35,3 +35,4 @@
 - [Jatek brand typography](jatek-brand-typography.md) — the logo is an image wordmark; use the bundled Poppins family for app copy while preserving semantic font aliases.
 - [Home promotional content](home-promotional-content.md) — admin-managed promo ads and discounted products take priority, with bundled banner fallbacks for an empty content feed.
 - [Home reference layout](home-reference-layout.md) — screenshot direction uses Poppins, navy/pink styling, soft waves, three product columns, and compact nearby-store cards.
+- [Mobile content source](mobile-content-source.md) — Home content, metadata, and section navigation must come from dashboard/API data, never local live-content samples.
