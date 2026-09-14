@@ -1,11 +1,12 @@
 import { useFonts } from "expo-font";
 import {
-  Poppins_400Regular,
-  Poppins_500Medium,
-  Poppins_600SemiBold,
-  Poppins_700Bold,
-  Poppins_900Black,
-} from "@expo-google-fonts/poppins";
+  Nunito_400Regular,
+  Nunito_500Medium,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+  Nunito_900Black,
+} from "@expo-google-fonts/nunito";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons, FontAwesome, FontAwesome5 } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -51,12 +52,12 @@ function applyDefaultFont(component: typeof Text | typeof TextInput) {
   const currentStyle = target.defaultProps?.style;
   target.defaultProps = {
     ...target.defaultProps,
-    style: [{ fontFamily: "Inter_400Regular" }, currentStyle].filter(Boolean),
+    style: [{ fontFamily: "Nunito_400Regular" }, currentStyle].filter(Boolean),
   };
 }
 
 // Explicit weight styles still override this value. Text without a dedicated
-// style now also uses Poppins instead of the native system font.
+// style now also uses Nunito instead of the native system font.
 applyDefaultFont(Text);
 applyDefaultFont(TextInput);
 
@@ -117,22 +118,32 @@ function SessionExpiryRedirect() {
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    // Keep the existing semantic names so every screen and shared component
-    // automatically uses the Jatek brand typeface without a risky mass rename.
-    Inter_400Regular: Poppins_400Regular,
-    Inter_500Medium: Poppins_500Medium,
-    Inter_600SemiBold: Poppins_600SemiBold,
-    Inter_700Bold: Poppins_700Bold,
-    Inter_900Black: Poppins_900Black,
+    Nunito_400Regular,
+    Nunito_500Medium,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
+    Nunito_900Black,
+    // Keep legacy semantic names as aliases so every existing screen and
+    // shared component switches to Nunito without changing its layout.
+    Inter_400Regular: Nunito_400Regular,
+    Inter_500Medium: Nunito_500Medium,
+    Inter_600SemiBold: Nunito_600SemiBold,
+    Inter_700Bold: Nunito_700Bold,
+    Inter_900Black: Nunito_900Black,
+    Poppins_400Regular: Nunito_400Regular,
+    Poppins_500Medium: Nunito_500Medium,
+    Poppins_600SemiBold: Nunito_600SemiBold,
+    Poppins_700Bold: Nunito_700Bold,
+    Poppins_900Black: Nunito_900Black,
     ...Ionicons.font,
     ...MaterialCommunityIcons.font,
     ...MaterialIcons.font,
     ...FontAwesome.font,
     ...FontAwesome5.font,
   });
-  // Hide the splash as soon as fonts are ready OR a 1.5 s safety timeout
-  // elapses — whichever comes first. Without this fallback, a slow bundle
-  // would leave the splash visible forever ("écran bleu" in production).
+  // Keep the splash visible until Nunito is ready so the system font is never
+  // shown temporarily. A real font error is allowed to render the fallback.
   useEffect(() => {
     let cancelled = false;
     const hide = () => {
@@ -144,16 +155,14 @@ export default function RootLayout() {
       hide();
       return;
     }
-    const timer = setTimeout(hide, 1500);
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
   }, [fontsLoaded, fontError]);
 
-  // Render the tree immediately — system fonts are used as a fallback until
-  // Inter finishes loading. Never return null here as that caused the splash
-  // to hang indefinitely ("écran bleu") in production.
+  // Do not render the application while Nunito is still loading. This keeps
+  // the first visible frame consistent on native and web.
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>

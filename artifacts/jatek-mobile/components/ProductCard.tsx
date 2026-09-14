@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   price: {
-    color: "#E91E63",
+    color: "#EC176B",
     fontSize: 15,
     fontWeight: "bold",
     fontFamily: "Inter_700Bold",
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
   },
   promoPrice: {
-    color: "#E91E63",
+    color: "#EC176B",
   },
   
   // Home Variants Styles
@@ -488,8 +488,8 @@ const styles = StyleSheet.create({
   compactName: {
     fontSize: 12,
     fontWeight: "bold",
-    fontFamily: "Poppins_900Black",
-    color: "#274C77",
+    fontFamily: "Nunito_700Bold",
+    color: "#08244A",
     marginBottom: 8,
   },
   compactBottomRow: {
@@ -500,8 +500,8 @@ const styles = StyleSheet.create({
   compactPrice: {
     fontSize: 12,
     fontWeight: "bold",
-    fontFamily: "Poppins_700Bold",
-    color: "#E91E63",
+    fontFamily: "Nunito_800ExtraBold",
+    color: "#EC176B",
   },
   compactPriceBlock: {
     minHeight: 27,
@@ -581,8 +581,8 @@ const styles = StyleSheet.create({
   offerNewPrice: {
     fontSize: 14,
     fontWeight: "bold",
-    fontFamily: "Poppins_700Bold",
-    color: "#E91E63",
+    fontFamily: "Nunito_800ExtraBold",
+    color: "#EC176B",
   },
 
   // Free Delivery
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
-    color: "#274C77",
+    color: "#08244A",
   },
   fdQty: {
     fontSize: 10,
@@ -643,8 +643,8 @@ const styles = StyleSheet.create({
   fdPrice: {
     fontSize: 12,
     fontWeight: "bold",
-    fontFamily: "Poppins_700Bold",
-    color: "#E91E63",
+    fontFamily: "Nunito_800ExtraBold",
+    color: "#EC176B",
   },
   fdPriceBlock: {
     minHeight: 28,

@@ -915,7 +915,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   cartBadgeText: {
-    color: "#E91E63",
+    color: "#EC176B",
     fontSize: 10,
     fontFamily: "Poppins_700Bold",
   },
@@ -1012,7 +1012,7 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     minHeight: 15,
-    color: "#274C77",
+    color: "#08244A",
     fontSize: 12,
     lineHeight: 15,
     textAlign: "center",

@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
     borderRadius: 99,
   },
   homeLogoInitial: {
-    color: "#E91E63",
+    color: "#EC176B",
     fontSize: 14,
     fontFamily: "Poppins_700Bold",
   },
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   homeName: {
-    color: "#274C77",
+    color: "#08244A",
     fontSize: 13,
     fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   homeMetaTextBold: {
-    color: "#274C77",
+    color: "#08244A",
     fontSize: 10,
     fontFamily: "Poppins_700Bold",
   },

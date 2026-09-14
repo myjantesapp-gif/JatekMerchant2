@@ -2,24 +2,24 @@
 // Hot pink primary, sunny yellow promos, turquoise info/highlights.
 const colors = {
   light: {
-    text: "#0A1B3D",
-    tint: "#E91E8C",
+    text: "#08244A",
+    tint: "#EC176B",
     background: "#FFFFFF",
-    foreground: "#0A1B3D",
-    heading: "#0A1B3D",
+    foreground: "#08244A",
+    heading: "#08244A",
     card: "#FFFFFF",
-    cardForeground: "#0A1B3D",
+    cardForeground: "#08244A",
 
     // Primary — rose magenta (Talabat-inspired)
-    primary: "#E91E8C",
+    primary: "#EC176B",
     primaryForeground: "#FFFFFF",
     primarySoft: "#FDE8F4",
-    primarySoftForeground: "#E91E8C",
+    primarySoftForeground: "#EC176B",
     pinkBg: "#FFF0F8",
 
     // Yellow — promos, ratings, discount pills
     yellow: "#FFD400",
-    yellowForeground: "#0A1B3D",
+    yellowForeground: "#08244A",
     yellowSoft: "#FFF6CC",
 
     // Turquoise — status / info / secondary highlights
@@ -28,9 +28,9 @@ const colors = {
     turquoiseSoft: "#D6F5F6",
 
     secondary: "#F5F5F5",
-    secondaryForeground: "#0A1B3D",
+    secondaryForeground: "#08244A",
     muted: "#F5F5F5",
-    mutedForeground: "#6B7280",
+    mutedForeground: "#667085",
     accent: "#FFE5F0",
     accentForeground: "#B0004F",
     destructive: "#EF4444",
