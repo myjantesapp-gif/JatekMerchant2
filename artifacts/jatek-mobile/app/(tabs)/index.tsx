@@ -344,6 +344,18 @@ function HomeScreen() {
     refetch: refetchRestaurants,
   } = useListRestaurants({});
   const {
+    data: restaurantBusinesses,
+    isLoading: restaurantBusinessesLoading,
+    isError: restaurantBusinessesError,
+    refetch: refetchRestaurantBusinesses,
+  } = useListRestaurants({ businessType: "restaurant" });
+  const {
+    data: shopBusinesses,
+    isLoading: shopBusinessesLoading,
+    isError: shopBusinessesError,
+    refetch: refetchShopBusinesses,
+  } = useListRestaurants({ businessType: "shop" });
+  const {
     data: featuredRestaurants,
     refetch: refetchFeaturedRestaurants,
   } = useGetFeaturedRestaurants();
@@ -402,6 +414,14 @@ function HomeScreen() {
     () => (featuredRestaurants?.length ? featuredRestaurants : restaurants ?? []).slice(0, 8),
     [featuredRestaurants, restaurants],
   );
+  const restaurantOnlyStores = useMemo<Restaurant[]>(
+    () => (restaurantBusinesses ?? []).slice(0, 8),
+    [restaurantBusinesses],
+  );
+  const shopStores = useMemo<Restaurant[]>(
+    () => (shopBusinesses ?? []).slice(0, 8),
+    [shopBusinesses],
+  );
   const restaurantLogoById = useMemo(
     () =>
       new Map(
@@ -448,6 +468,8 @@ function HomeScreen() {
         refetchCategories,
         refetchShorts,
         refetchRestaurants,
+         refetchRestaurantBusinesses,
+         refetchShopBusinesses,
         refetchFeaturedRestaurants,
         refetchPromoProducts,
         refetchNewestProducts,
@@ -589,6 +611,11 @@ function HomeScreen() {
         );
       case "new_restaurants":
       case "shops":
+        {
+        const sectionStores = key === "shops" ? shopStores : restaurantOnlyStores;
+        const sectionLoading = key === "shops" ? shopBusinessesLoading : restaurantBusinessesLoading;
+        const sectionError = key === "shops" ? shopBusinessesError : restaurantBusinessesError;
+        const sectionRetry = key === "shops" ? refetchShopBusinesses : refetchRestaurantBusinesses;
         return (
           <View style={styles.restaurantSection}>
             <SectionHeader
@@ -597,17 +624,17 @@ function HomeScreen() {
               onPress={() => openSection(key)}
               testID={`section-${key}`}
             />
-            {restaurantsLoading || restaurantsError ? (
+            {sectionLoading || sectionError ? (
               <LoadingOrEmpty
-                loading={restaurantsLoading}
-                error={restaurantsError}
+                loading={sectionLoading}
+                error={sectionError}
                 empty="Aucun commerce disponible pour le moment"
-                onRetry={() => refetchRestaurants()}
+                onRetry={() => sectionRetry()}
               />
-            ) : restaurantStores.length > 0 ? (
+            ) : sectionStores.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.promoProductGrid} nestedScrollEnabled>
-                {restaurantStores.slice(0, limit).map((restaurant) => (
+                {sectionStores.slice(0, limit).map((restaurant) => (
                   <StoreCard
                     key={`${key}-${restaurant.id}`}
                     restaurant={restaurant}
@@ -627,6 +654,7 @@ function HomeScreen() {
             )}
           </View>
         );
+        }
       case "new_products":
         return (
           <View style={styles.promoSection}>

@@ -52,6 +52,7 @@ function isProductSection(source?: string): boolean {
 }
 
 function findBusinessCategory(categories: any[], source?: string) {
+  if (source === "all_restaurants") return undefined;
   const roots = categories.filter((category) => category.parentId == null && category.isActive !== false);
   const matches = (category: any, terms: string[]) => {
     const value = normalize(`${category.businessType} ${category.slug} ${category.name}`);
@@ -133,7 +134,11 @@ export default function HomeSectionScreen() {
     isError: restaurantsError,
   } = useListRestaurants(
     { businessType },
-    { query: { enabled: restaurantSection && Boolean(businessType) } } as any,
+    {
+      query: {
+        enabled: restaurantSection && (source === "all_restaurants" || Boolean(businessType)),
+      },
+    } as any,
   );
   const productSort = source === "promos" ? "promos" : source === "newest" ? "newest" : "catalog";
   const {
