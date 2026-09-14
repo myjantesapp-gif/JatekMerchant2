@@ -27,6 +27,7 @@ import {
 } from "@workspace/api-client-react";
 
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useShorts } from "@/hooks/useContent";
 import {
   getPublicAppConfig,
@@ -334,6 +335,7 @@ function HomeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const scrollY = useRef(new Animated.Value(0)).current;
   const { selectedAddress, itemCount } = useCart();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [addressPickerOpen, setAddressPickerOpen] = useState(false);
@@ -473,6 +475,8 @@ function HomeScreen() {
     [popularProducts],
   );
   const addressLabel = selectedAddress || "Oujda";
+  const customerFirstName = user?.name?.trim().split(/\s+/)[0] || "";
+  const greetingLabel = customerFirstName ? `Bonjour ${customerFirstName}` : "Bonjour";
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -739,8 +743,8 @@ function HomeScreen() {
               styles.headerTopRowClip,
               {
                 height: scrollY.interpolate({
-                  inputRange: [0, 72],
-                  outputRange: [44, 0],
+                  inputRange: [0, 80],
+                  outputRange: [60, 0],
                   extrapolate: "clamp",
                 }),
                 opacity: scrollY.interpolate({
@@ -750,8 +754,8 @@ function HomeScreen() {
                 }),
                 transform: [{
                   translateY: scrollY.interpolate({
-                    inputRange: [0, 72],
-                    outputRange: [0, -18],
+                    inputRange: [0, 80],
+                    outputRange: [0, -24],
                     extrapolate: "clamp",
                   }),
                 }],
@@ -773,10 +777,11 @@ function HomeScreen() {
               accessibilityLabel={`Adresse de livraison : ${addressLabel}`}
               style={styles.identity}
             >
+              <Text style={styles.greeting} numberOfLines={1}>{greetingLabel}</Text>
               <View style={styles.addressRow}>
-                <Ionicons name="location" size={13} color={HEADER_ACCENT} />
+                <Ionicons name="location" size={12} color={HEADER_ACCENT} />
                 <Text style={styles.address} numberOfLines={1}>{addressLabel}</Text>
-                <Ionicons name="chevron-down" size={14} color={WHITE} />
+                <Ionicons name="chevron-down" size={13} color={WHITE} />
               </View>
             </Pressable>
             <View style={styles.headerActions}>
@@ -875,12 +880,12 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     zIndex: 10,
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingBottom: 12,
     backgroundColor: HEADER_PINK,
     overflow: "visible",
   },
   headerTopRow: {
-    minHeight: 44,
+    minHeight: 60,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -917,23 +922,31 @@ const styles = StyleSheet.create({
   identity: {
     flex: 1,
     minWidth: 0,
-    alignItems: "center",
-    marginLeft: 40,
-    marginRight: 4,
+    alignItems: "flex-start",
+    marginLeft: 4,
+    marginRight: 6,
+  },
+  greeting: {
+    maxWidth: "100%",
+    color: WHITE,
+    fontSize: 13,
+    lineHeight: 17,
+    fontFamily: "Poppins_700Bold",
   },
   addressRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     gap: 4,
-    marginTop: 0,
+    width: "100%",
+    marginTop: 1,
   },
   address: {
     flexShrink: 1,
     color: WHITE,
-    fontSize: 13,
-    lineHeight: 18,
-    fontFamily: "Inter_700Bold",
+    fontSize: 11,
+    lineHeight: 15,
+    fontFamily: "Poppins_500Medium",
   },
   headerActions: {
     flexDirection: "row",
