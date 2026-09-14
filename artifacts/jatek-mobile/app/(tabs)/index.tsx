@@ -1046,7 +1046,7 @@ const styles = StyleSheet.create({
   newestSection: {
     marginTop: 2,
     paddingBottom: 2,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: SECTION_TINT,
   },
   restaurantSection: {
     marginTop: 2,

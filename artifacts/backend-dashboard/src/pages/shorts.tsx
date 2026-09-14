@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Pencil, Trash2, Loader2, Film, PlayCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Film, Play, PlayCircle, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -246,20 +246,45 @@ export default function Shorts() {
           <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">
             Aperçu des shorts actifs ({activeShorts.length})
           </p>
-          <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="flex gap-4 overflow-x-auto pb-3">
             {activeShorts.map((s) => (
-              <div key={s.id} className="shrink-0 relative rounded-xl overflow-hidden w-32 h-52 bg-zinc-900 shadow-md">
-                 {s.videoUrl
-                   ? getYouTubeEmbedUrl(s.videoUrl)
-                     ? <iframe src={getYouTubeEmbedUrl(s.videoUrl) ?? undefined} title={`Aperçu YouTube — ${s.title}`} className="absolute inset-0 h-full w-full border-0" allow="encrypted-media; picture-in-picture" />
-                      : <video src={s.videoUrl} className="absolute inset-0 h-full w-full object-cover" muted playsInline preload="metadata" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+              <div
+                key={s.id}
+                className="relative shrink-0 overflow-hidden rounded-[22px] bg-zinc-900 shadow-lg ring-1 ring-black/5"
+                style={{ width: "min(44vw, 360px)", aspectRatio: "0.69" }}
+              >
+                {s.videoUrl
+                  ? getYouTubeEmbedUrl(s.videoUrl)
+                    ? <iframe src={getYouTubeEmbedUrl(s.videoUrl) ?? undefined} title={`Aperçu YouTube — ${s.title}`} className="absolute inset-0 h-full w-full border-0" allow="autoplay; encrypted-media; picture-in-picture" />
+                    : <video src={s.videoUrl} className="absolute inset-0 h-full w-full object-cover" muted playsInline preload="metadata" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                   : s.imageUrl
-                    ? <img src={s.imageUrl} alt={s.title} className="absolute inset-0 w-full h-full object-cover" />
-                    : <div className="absolute inset-0 flex items-center justify-center"><Film className="h-8 w-8 text-zinc-600" /></div>
+                    ? <img src={s.imageUrl} alt={s.title} className="absolute inset-0 h-full w-full object-cover" />
+                    : <div className="absolute inset-0 flex items-center justify-center"><Film className="h-10 w-10 text-zinc-600" /></div>
                 }
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent" />
-                <PlayCircle className="absolute top-2 right-2 h-5 w-5 text-white/80" />
-                <p className="absolute bottom-2 left-2 right-2 text-white text-xs font-semibold leading-tight line-clamp-2">{s.title}</p>
+                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent via-55% to-black/80" />
+
+                <div
+                  className="absolute left-4 top-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-[3px] border-[#ec176b] bg-white shadow-md sm:h-[76px] sm:w-[76px]"
+                  title={s.restaurantName || "Jatek"}
+                >
+                  <span className="text-center text-sm font-extrabold leading-none text-[#08244a] sm:text-lg">
+                    {(s.restaurantName || "Jatek").trim().charAt(0).toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="absolute inset-x-4 bottom-4">
+                  <p className="line-clamp-2 text-sm font-extrabold leading-tight text-white drop-shadow sm:text-xl">
+                    {s.title}
+                  </p>
+                  <div className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-white/90 sm:text-sm">
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                    <span>Aperçu</span>
+                  </div>
+                </div>
+
+                <div className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full border-2 border-white/90 bg-black/20 text-white shadow-md backdrop-blur-sm sm:h-14 sm:w-14">
+                  <Play className="ml-0.5 h-5 w-5 fill-white sm:h-7 sm:w-7" aria-hidden="true" />
+                </div>
               </div>
             ))}
           </div>
