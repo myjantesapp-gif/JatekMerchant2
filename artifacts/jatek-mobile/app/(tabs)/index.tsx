@@ -571,6 +571,7 @@ function HomeScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.horizontalCards}
                 nestedScrollEnabled
+                decelerationRate="normal"
               >
                 {shorts.slice(0, limit).map((short, index) => (
                   <ShortCard

@@ -83,7 +83,7 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
               </View>
             </View>
             <View style={styles.homePlayBadge}>
-              <Ionicons name="play" size={16} color="#FFFFFF" style={{ marginLeft: 2 }} />
+              <Ionicons name="play" size={14} color="#FFFFFF" style={{ marginLeft: 2 }} />
             </View>
           </View>
         </LinearGradient>
@@ -191,9 +191,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#E91E63",
   },
   homePlayBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.16)",
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   // Home Variant Styles
   homeCard: {
     height: 200,
-    borderRadius: 22,
+    borderRadius: 16,
     overflow: "hidden",
     position: "relative",
     backgroundColor: colors.light.heading,

@@ -104,7 +104,7 @@ export function ShortPlayerModal({ visible, shorts, initialIndex, onClose }: Pro
             pagingEnabled
             showsVerticalScrollIndicator={false}
             snapToInterval={screenHeight}
-            decelerationRate="fast"
+            decelerationRate="normal"
             onScroll={onScroll}
             scrollEventThrottle={16}
             getItemLayout={(_, i) => ({ length: screenHeight, offset: screenHeight * i, index: i })}
