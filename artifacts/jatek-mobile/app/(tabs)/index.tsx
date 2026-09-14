@@ -578,7 +578,7 @@ function HomeScreen() {
         );
       case "shorts":
         return (
-          <View style={styles.section}>
+          <View style={styles.shortsSection}>
             {shortsLoading || shortsError ? (
               <LoadingOrEmpty
                 loading={shortsLoading}
@@ -1060,6 +1060,11 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 0,
+    paddingBottom: 0,
+    backgroundColor: WHITE,
+  },
+  shortsSection: {
+    marginTop: 18,
     paddingBottom: 0,
     backgroundColor: WHITE,
   },
