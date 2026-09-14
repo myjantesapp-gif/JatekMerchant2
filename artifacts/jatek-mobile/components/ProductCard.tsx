@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   compactImageWrap: {
-    height: 110,
+    height: 96,
     width: "100%",
     position: "relative",
   },
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   offerImageWrap: {
-    height: 120,
+    height: 104,
     width: "100%",
     position: "relative",
   },
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "-15deg" }],
   },
   offerBody: {
-    padding: 10,
+    padding: 8,
   },
   offerName: {
     fontSize: 13,
