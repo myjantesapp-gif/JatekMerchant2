@@ -719,6 +719,7 @@ function HomeScreen() {
       case "newest":
         return (
           <View style={styles.newestSection}>
+            <WaveEdge color={SECTION_TINT} height={22} position="top" />
             <SectionHeader title={config.title} variant="home" onPress={() => openSection(key)} testID="section-newest" />
             <ProductRail
               products={productsFor(config.source)?.slice(0, limit)}
@@ -731,6 +732,7 @@ function HomeScreen() {
               variant="home-compact"
               keyPrefix="newest"
             />
+            <WaveEdge color={SECTION_TINT} height={24} />
           </View>
         );
       case "support":
@@ -1054,9 +1056,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   newestSection: {
-    marginTop: 2,
-    paddingBottom: 2,
+    marginTop: 16,
+    marginBottom: 12,
+    paddingTop: 0,
+    paddingBottom: 4,
+    position: "relative",
     backgroundColor: SECTION_TINT,
+    zIndex: 2,
+    elevation: 2,
   },
   restaurantSection: {
     marginTop: 2,
