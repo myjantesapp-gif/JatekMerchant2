@@ -29,20 +29,20 @@ async function seedCategories() {
   const boutiqueId = parents.find((p) => p.slug === "boutiques")!.id;
 
   await db.insert(categoriesTable).values([
-    { name: "Burgers", slug: "burgers", icon: "fast-food", accentColor: "#F57C00", parentId: restaurationId, businessType: "restaurant", sortOrder: 0 },
-    { name: "Pizza", slug: "pizza", icon: "pizza", accentColor: "#D32F2F", parentId: restaurationId, businessType: "restaurant", sortOrder: 1 },
-    { name: "Sushi", slug: "sushi", icon: "fish", accentColor: "#0288D1", parentId: restaurationId, businessType: "restaurant", sortOrder: 2 },
-    { name: "Tacos", slug: "tacos", icon: "restaurant", accentColor: "#F9A825", parentId: restaurationId, businessType: "restaurant", sortOrder: 3 },
-    { name: "Poulet", slug: "poulet", icon: "restaurant", accentColor: "#F57C00", parentId: restaurationId, businessType: "restaurant", sortOrder: 4 },
-    { name: "Sandwichs", slug: "sandwichs", icon: "restaurant", accentColor: "#6D4C41", parentId: restaurationId, businessType: "restaurant", sortOrder: 5 },
-    { name: "Salades", slug: "salades", icon: "leaf", accentColor: "#388E3C", parentId: restaurationId, businessType: "restaurant", sortOrder: 6 },
-    { name: "Desserts", slug: "desserts", icon: "cafe", accentColor: "#7B1FA2", parentId: restaurationId, businessType: "restaurant", sortOrder: 7 },
-    { name: "Fruits & Légumes", slug: "fruits-legumes", icon: "nutrition", accentColor: "#388E3C", parentId: epicerieId, businessType: "grocery", sortOrder: 0 },
-    { name: "Boissons", slug: "boissons", icon: "water", accentColor: "#0277BD", parentId: epicerieId, businessType: "grocery", sortOrder: 1 },
-    { name: "Snacks", slug: "snacks", icon: "fast-food", accentColor: "#EF6C00", parentId: epicerieId, businessType: "grocery", sortOrder: 2 },
-    { name: "Mode", slug: "mode", icon: "shirt", accentColor: "#AD1457", parentId: boutiqueId, businessType: "shop", sortOrder: 0 },
-    { name: "Électronique", slug: "electronique", icon: "phone-portrait", accentColor: "#1565C0", parentId: boutiqueId, businessType: "shop", sortOrder: 1 },
-    { name: "Beauté", slug: "beaute", icon: "sparkles", accentColor: "#6A1B9A", parentId: boutiqueId, businessType: "shop", sortOrder: 2 },
+    { name: "Burgers", slug: "burgers", icon: "fast-food", accentColor: "#F57C00", parentId: restaurationId, businessType: "restaurant", type: "subcategory", sortOrder: 0 },
+    { name: "Pizza", slug: "pizza", icon: "pizza", accentColor: "#D32F2F", parentId: restaurationId, businessType: "restaurant", type: "subcategory", sortOrder: 1 },
+    { name: "Sushi", slug: "sushi", icon: "fish", accentColor: "#0288D1", parentId: restaurationId, businessType: "restaurant", type: "subcategory", sortOrder: 2 },
+    { name: "Tacos", slug: "tacos", icon: "restaurant", accentColor: "#F9A825", parentId: restaurationId, businessType: "restaurant", type: "subcategory", sortOrder: 3 },
+    { name: "Poulet", slug: "poulet", icon: "restaurant", accentColor: "#F57C00", parentId: restaurationId, businessType: "restaurant", type: "subcategory", sortOrder: 4 },
+    { name: "Sandwichs", slug: "sandwichs", icon: "restaurant", accentColor: "#6D4C41", parentId: restaurationId, businessType: "restaurant", type: "subcategory", sortOrder: 5 },
+    { name: "Salades", slug: "salades", icon: "leaf", accentColor: "#388E3C", parentId: restaurationId, businessType: "restaurant", type: "subcategory", sortOrder: 6 },
+    { name: "Desserts", slug: "desserts", icon: "cafe", accentColor: "#7B1FA2", parentId: restaurationId, businessType: "restaurant", type: "subcategory", sortOrder: 7 },
+    { name: "Fruits & Légumes", slug: "fruits-legumes", icon: "nutrition", accentColor: "#388E3C", parentId: epicerieId, businessType: "grocery", type: "subcategory", sortOrder: 0 },
+    { name: "Boissons", slug: "boissons", icon: "water", accentColor: "#0277BD", parentId: epicerieId, businessType: "grocery", type: "subcategory", sortOrder: 1 },
+    { name: "Snacks", slug: "snacks", icon: "fast-food", accentColor: "#EF6C00", parentId: epicerieId, businessType: "grocery", type: "subcategory", sortOrder: 2 },
+    { name: "Mode", slug: "mode", icon: "shirt", accentColor: "#AD1457", parentId: boutiqueId, businessType: "shop", type: "subcategory", sortOrder: 0 },
+    { name: "Électronique", slug: "electronique", icon: "phone-portrait", accentColor: "#1565C0", parentId: boutiqueId, businessType: "shop", type: "subcategory", sortOrder: 1 },
+    { name: "Beauté", slug: "beaute", icon: "sparkles", accentColor: "#6A1B9A", parentId: boutiqueId, businessType: "shop", type: "subcategory", sortOrder: 2 },
   ]);
 
   console.log("✅ Categories seeded");

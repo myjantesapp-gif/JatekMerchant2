@@ -103,7 +103,11 @@ async function resolveShopCategory(input: {
     const [subcategory] = await db.select().from(categoriesTable)
       .where(eq(categoriesTable.id, subcategoryId))
       .limit(1);
-    if (!subcategory || !subcategory.parentId || subcategory.type !== "subcategory") {
+    // parentId is the canonical hierarchy relationship. Older seeded/imported
+    // child rows can still carry the categories table default type ("category"),
+    // so do not reject an otherwise valid child solely because that legacy
+    // discriminator was not backfilled.
+    if (!subcategory || !subcategory.parentId) {
       return { ok: false, error: "Sous-catégorie invalide" };
     }
 
