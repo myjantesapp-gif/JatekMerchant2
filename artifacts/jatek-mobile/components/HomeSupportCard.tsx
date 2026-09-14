@@ -103,6 +103,7 @@ const styles = StyleSheet.create({
   title: {
     color: "#274C77",
     fontSize: 20,
+    fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
     marginBottom: 4,
     letterSpacing: -0.4,
@@ -128,7 +129,8 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#FFFFFF",
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "bold",
+    fontFamily: "Poppins_700Bold",
   },
   illustrationContainer: {
     width: 90,
