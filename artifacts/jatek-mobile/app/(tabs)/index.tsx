@@ -90,18 +90,37 @@ function normalize(value: unknown): string {
 }
 
 function getCategoryIcon(category: any): keyof typeof Ionicons.glyphMap {
+  const categoryText = normalize(`${category?.slug} ${category?.name} ${category?.businessType}`);
+  if (categoryText.includes("pharm") || categoryText.includes("sant")) return "add-circle";
+  if (categoryText.includes("market") || categoryText.includes("grocery") || categoryText.includes("épicer")) return "basket";
+  if (categoryText.includes("restaurant") || categoryText.includes("restauration") || categoryText.includes("food")) {
+    return "restaurant";
+  }
+  if (categoryText.includes("plus") || categoryText.includes("autre")) return "apps";
+
   const configuredIcon = typeof category?.icon === "string" ? category.icon : "";
   if (configuredIcon in Ionicons.glyphMap) {
     return configuredIcon as keyof typeof Ionicons.glyphMap;
   }
-  const categoryText = normalize(`${category?.slug} ${category?.name} ${category?.businessType}`);
-  if (categoryText.includes("pharm") || categoryText.includes("sant")) return "medkit";
-  if (categoryText.includes("market") || categoryText.includes("grocery") || categoryText.includes("épicer")) return "basket";
   if (categoryText.includes("shop") || categoryText.includes("boutique")) return "bag-handle";
-  if (categoryText.includes("restaurant") || categoryText.includes("restauration") || categoryText.includes("food")) {
-    return "restaurant";
-  }
   return "grid";
+}
+
+function getCategoryAccent(category: any): string {
+  const categoryText = normalize(`${category?.slug} ${category?.name} ${category?.businessType}`);
+  if (categoryText.includes("restaurant") || categoryText.includes("restauration") || categoryText.includes("food")) {
+    return "#E50068";
+  }
+  if (categoryText.includes("market") || categoryText.includes("grocery") || categoryText.includes("épicer")) {
+    return "#0DAF87";
+  }
+  if (categoryText.includes("pharm") || categoryText.includes("sant")) {
+    return "#2D6FE8";
+  }
+  if (categoryText.includes("plus") || categoryText.includes("autre")) {
+    return "#7828E8";
+  }
+  return category?.accentColor || PINK;
 }
 
 function LoadingOrEmpty({
@@ -408,7 +427,7 @@ function HomeScreen() {
         key: String(category.id ?? category.slug),
         label: String(category.name ?? "").trim(),
         icon: getCategoryIcon(category),
-        accent: category.accentColor || PINK,
+        accent: getCategoryAccent(category),
         slug: String(category.slug ?? "").trim(),
         businessType: category.businessType,
       }))
@@ -531,7 +550,6 @@ function HomeScreen() {
       case "categories":
         return (
           <View style={styles.categorySection}>
-            <WaveEdge color={SECTION_TINT} height={22} position="top" />
             {categoriesLoading || categoriesError ? (
               <LoadingOrEmpty
                 loading={categoriesLoading}
@@ -544,7 +562,6 @@ function HomeScreen() {
             ) : (
               <Text style={styles.empty}>Aucune catégorie disponible</Text>
             )}
-            <WaveEdge color={SECTION_TINT} height={22} />
           </View>
         );
       case "banners":
@@ -988,43 +1005,45 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   categorySection: {
-    position: "relative",
-    marginTop: 8,
-    marginBottom: 8,
-    paddingTop: 18,
-    paddingBottom: 18,
+    marginTop: 6,
+    marginHorizontal: 10,
+    marginBottom: 6,
+    paddingVertical: 10,
     backgroundColor: SECTION_TINT,
-    zIndex: 1,
-    elevation: 1,
+    borderRadius: 26,
   },
   categoryRow: {
     gap: CATEGORY_GAP,
-    paddingHorizontal: 16,
-    justifyContent: "space-between",
+    paddingHorizontal: 6,
   },
   categoryItem: {
     width: CATEGORY_WIDTH,
-    minHeight: 78,
-    paddingTop: 5,
-    paddingBottom: 6,
-    paddingHorizontal: 3,
+    minHeight: 90,
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 2,
     alignItems: "center",
     justifyContent: "flex-start",
-    gap: 1,
-    borderRadius: 18,
-    backgroundColor: "transparent",
+    gap: 2,
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#C38AA4",
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   categoryIcon: {
     width: "100%",
-    height: 45,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },
   categoryLabel: {
-    minHeight: 14,
+    minHeight: 16,
     color: "#08244A",
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     textAlign: "center",
     fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
