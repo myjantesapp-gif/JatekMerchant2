@@ -25,6 +25,8 @@ interface Short {
   videoUrl?: string | null;
   restaurantId?: number | null;
   restaurantName?: string | null;
+  viewCount?: number | null;
+  views?: number | null;
   isActive: boolean;
   sortOrder: number;
   createdAt: string;
@@ -33,6 +35,7 @@ interface Short {
 interface Shop {
   id: number;
   name: string;
+  logoUrl?: string | null;
 }
 
 const EMPTY = {
@@ -44,6 +47,15 @@ const EMPTY = {
   isActive: true,
   sortOrder: 0,
 };
+
+function formatShortViews(short: Short): string {
+  const value = short.viewCount ?? short.views;
+  if (value == null) return "— vues";
+  if (value >= 1000) {
+    return `${(value / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}K vues`;
+  }
+  return `${value.toLocaleString("fr-FR")} vues`;
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <div className="space-y-1"><Label className="text-xs font-medium">{label}</Label>{children}</div>;
@@ -157,6 +169,7 @@ export default function Shorts() {
   const shops: Shop[] = Array.isArray(shopsData)
     ? shopsData
     : (shopsData as any)?.shops ?? [];
+  const shopById = new Map(shops.map((shop) => [shop.id, shop]));
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/backend/shorts"] });
 
@@ -264,21 +277,29 @@ export default function Shorts() {
                 <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent via-55% to-black/80" />
 
                 <div
-                  className="absolute left-4 top-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-[3px] border-[#ec176b] bg-white shadow-md sm:h-[76px] sm:w-[76px]"
+                  className="absolute left-4 top-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-[3px] border-[#ec176b] bg-white shadow-md sm:h-20 sm:w-20"
                   title={s.restaurantName || "Jatek"}
                 >
-                  <span className="text-center text-sm font-extrabold leading-none text-[#08244a] sm:text-lg">
-                    {(s.restaurantName || "Jatek").trim().charAt(0).toUpperCase()}
-                  </span>
+                  {s.restaurantId && shopById.get(s.restaurantId)?.logoUrl ? (
+                    <img
+                      src={shopById.get(s.restaurantId)?.logoUrl ?? undefined}
+                      alt=""
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-center text-sm font-extrabold leading-none text-[#08244a] sm:text-lg">
+                      {(s.restaurantName || "Jatek").trim().charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
 
                 <div className="absolute inset-x-4 bottom-4">
-                  <p className="line-clamp-2 text-sm font-extrabold leading-tight text-white drop-shadow sm:text-xl">
+                  <p className="line-clamp-2 text-sm font-extrabold leading-tight text-white drop-shadow sm:text-2xl">
                     {s.title}
                   </p>
-                  <div className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-white/90 sm:text-sm">
+                  <div className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-white/90 sm:text-base">
                     <Eye className="h-4 w-4" aria-hidden="true" />
-                    <span>Aperçu</span>
+                    <span>{formatShortViews(s)}</span>
                   </div>
                 </div>
 

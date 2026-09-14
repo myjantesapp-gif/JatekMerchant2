@@ -151,7 +151,7 @@ test("restaurant category navigation stays sticky and tracks visible sections", 
   assert.match(code, /testID=\{`restaurant-category-\$\{cat\.id\}`\}/);
 });
 
-test("restaurant page keeps the safe-area header and renders a three-column product grid", () => {
+test("restaurant page keeps the safe-area header and renders a two-column product grid", () => {
   const page = source("app/restaurant/[id].tsx");
   const gridCard = source("components/MenuItemGridCard.tsx");
 
@@ -160,7 +160,7 @@ test("restaurant page keeps the safe-area header and renders a three-column prod
   assert.match(page, /paddingTop: insets\.top/);
   assert.match(page, /<MenuItemGridCard/);
   assert.match(page, /width=\{menuCardWidth\}/);
-  assert.match(page, /MENU_GRID_GAP \* 2\) \/ 3/);
+  assert.match(page, /MENU_GRID_GAP\) \/ 2/);
   assert.match(page, /menuList:\s*\{[\s\S]*flexDirection: "row"[\s\S]*flexWrap: "wrap"/);
   assert.match(page, /const MENU_GRID_GAP/);
   assert.doesNotMatch(page, /section\.items\.length.*articles/);

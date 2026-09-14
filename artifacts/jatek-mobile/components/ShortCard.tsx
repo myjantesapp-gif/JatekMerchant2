@@ -33,6 +33,13 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
 
   const source = sources[Math.min(sourceIndex, sources.length - 1)];
   
+  const formattedViews =
+    viewCount == null
+      ? "— vues"
+      : viewCount >= 1000
+        ? `${(viewCount / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}K vues`
+        : `${viewCount.toLocaleString("fr-FR")} vues`;
+
   if (variant === "home") {
     return (
       <Pressable
@@ -40,7 +47,11 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
         testID={`short-card-${short.id}`}
         accessibilityRole="button"
         accessibilityLabel={`Short ${short.title || merchantName}`}
-        style={({ pressed }) => [styles.homeCard, { width }, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.homeCard,
+          { width, height: Math.round(width * 1.42) },
+          pressed && styles.pressed,
+        ]}
       >
         <Image
           source={{ uri: source }}
@@ -48,15 +59,37 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
           resizeMode="cover"
           onError={() => setSourceIndex((index) => Math.min(index + 1, sources.length - 1))}
         />
-        <View style={styles.homePlayBadge}>
-          <Ionicons name="play" size={18} color="#FFFFFF" style={{ marginLeft: 2 }} />
+        <View style={styles.scrim} />
+        <View style={styles.avatar}>
+          {avatarUrl ? (
+            <Image source={{ uri: resolveMediaUrl(avatarUrl) }} style={styles.avatarImage} resizeMode="contain" />
+          ) : (
+            <Text style={styles.avatarInitial}>{initials || "J"}</Text>
+          )}
         </View>
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.76)"]}
+          style={styles.bottomOverlay}
+          pointerEvents="none"
+        >
+          <View style={styles.shortMeta}>
+            <View style={styles.shortCopy}>
+              <Text style={styles.shortTitle} numberOfLines={2}>
+                {short.title || "Découvrez ce Short"}
+              </Text>
+              <View style={styles.views}>
+                <Ionicons name="eye" size={15} color="#FFFFFF" />
+                <Text style={styles.viewsText}>{formattedViews}</Text>
+              </View>
+            </View>
+            <View style={styles.playBadge}>
+              <Ionicons name="play" size={22} color="#FFFFFF" style={{ marginLeft: 2 }} />
+            </View>
+          </View>
+        </LinearGradient>
       </Pressable>
     );
   }
-
-  const formattedViews =
-    viewCount == null ? "—" : viewCount >= 1000 ? `${(viewCount / 1000).toFixed(viewCount >= 10000 ? 0 : 1)}k` : String(viewCount);
 
   return (
     <Pressable
@@ -197,23 +230,10 @@ const styles = StyleSheet.create({
   
   // Home Variant Styles
   homeCard: {
-    height: 190,
-    borderRadius: 16,
+    height: 200,
+    borderRadius: 22,
     overflow: "hidden",
     position: "relative",
     backgroundColor: colors.light.heading,
-  },
-  homePlayBadge: {
-    position: "absolute",
-    left: 9,
-    bottom: 9,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(15,23,42,0.22)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.65)",
   },
 });
