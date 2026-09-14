@@ -619,7 +619,7 @@ function HomeScreen() {
       case "popular":
         return (
           <View style={styles.popularSection}>
-            <WaveEdge color={SECTION_TINT} height={18} position="top" />
+            <WaveEdge color={SECTION_TINT} height={22} position="top" />
             <SectionHeader
               title={config.title}
               variant="home"
@@ -637,7 +637,7 @@ function HomeScreen() {
               variant="home-compact"
               keyPrefix="popular"
             />
-            <WaveEdge color={SECTION_TINT} height={20} />
+            <WaveEdge color={SECTION_TINT} height={24} />
           </View>
         );
       case "new_restaurants":
@@ -1046,23 +1046,25 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 0,
-    paddingBottom: 2,
-    backgroundColor: SECTION_TINT,
+    paddingBottom: 0,
+    backgroundColor: WHITE,
   },
   promoSection: {
     marginTop: 2,
     paddingTop: 0,
-    paddingBottom: 4,
+    paddingBottom: 2,
     position: "relative",
     backgroundColor: "#FFFFFF",
   },
   popularSection: {
-    marginTop: 8,
+    marginTop: 16,
     marginBottom: 12,
     paddingTop: 0,
-    paddingBottom: 8,
+    paddingBottom: 4,
     position: "relative",
     backgroundColor: SECTION_TINT,
+    zIndex: 2,
+    elevation: 2,
   },
   offerSection: {
     marginTop: 46,
@@ -1074,24 +1076,24 @@ const styles = StyleSheet.create({
   },
   newestSection: {
     marginTop: 2,
-    paddingBottom: 4,
+    paddingBottom: 2,
     backgroundColor: "#FFFFFF",
   },
   restaurantSection: {
     marginTop: 2,
-    paddingBottom: 4,
+    paddingBottom: 2,
     backgroundColor: "#FFFFFF",
   },
   freeDeliverySection: {
     marginTop: 2,
-    paddingBottom: 4,
+    paddingBottom: 2,
     backgroundColor: "#FFFFFF",
   },
   bannerSlot: {
     marginVertical: 0,
     paddingVertical: 6,
     paddingHorizontal: 0,
-    backgroundColor: SECTION_TINT,
+    backgroundColor: WHITE,
   },
   bannerCarouselContent: {
     gap: 8,
