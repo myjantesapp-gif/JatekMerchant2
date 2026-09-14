@@ -487,6 +487,7 @@ const styles = StyleSheet.create({
   },
   compactName: {
     fontSize: 15,
+    lineHeight: 18,
     fontWeight: "bold",
     fontFamily: "Montserrat_700Bold",
     color: "#08244A",
@@ -499,6 +500,7 @@ const styles = StyleSheet.create({
   },
   compactPrice: {
     fontSize: 18,
+    lineHeight: 22,
     fontWeight: "bold",
     fontFamily: "Montserrat_800ExtraBold",
     color: "#EC176B",

@@ -108,8 +108,8 @@ const styles = StyleSheet.create({
   homeTitle: {
     flex: 1,
     color: "#08244A",
-    fontSize: 27,
-    lineHeight: 30,
+    fontSize: 28,
+    lineHeight: 32,
     letterSpacing: -0.7,
     fontFamily: "Montserrat_800ExtraBold",
   },
