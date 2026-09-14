@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   
   // Home Variant Styles
   homeCard: {
-    height: 182,
+    height: 190,
     borderRadius: 16,
     overflow: "hidden",
     position: "relative",

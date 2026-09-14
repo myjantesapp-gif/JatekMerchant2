@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -252,14 +252,35 @@ function BannerCarousel({
   width: number;
   onPress: (ad: Ad) => void;
 }) {
-  if (loading || error || ads.length === 0) return null;
-
+  const bannerScrollRef = useRef<ScrollView>(null);
+  const currentIndexRef = useRef(0);
   const cardWidth = Math.max(0, width - 32);
   const snapInterval = cardWidth + 12;
+
+  useEffect(() => {
+    currentIndexRef.current = 0;
+    bannerScrollRef.current?.scrollTo({ x: 0, animated: false });
+
+    if (ads.length <= 1) return;
+
+    const timer = setInterval(() => {
+      const nextIndex = (currentIndexRef.current + 1) % ads.length;
+      currentIndexRef.current = nextIndex;
+      bannerScrollRef.current?.scrollTo({
+        x: nextIndex * snapInterval,
+        animated: true,
+      });
+    }, 4500);
+
+    return () => clearInterval(timer);
+  }, [ads.length, snapInterval]);
+
+  if (loading || error || ads.length === 0) return null;
 
   return (
     <View style={styles.bannerSlot}>
       <ScrollView
+        ref={bannerScrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.bannerCarouselContent}
@@ -268,6 +289,10 @@ function BannerCarousel({
         snapToAlignment="start"
         decelerationRate="fast"
         disableIntervalMomentum
+        onMomentumScrollEnd={(event) => {
+          const index = Math.round(event.nativeEvent.contentOffset.x / snapInterval);
+          currentIndexRef.current = Math.max(0, Math.min(index, ads.length - 1));
+        }}
       >
         {ads.map((ad) => (
           <PromotionalCard

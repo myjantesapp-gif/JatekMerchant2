@@ -400,6 +400,7 @@ const styles = StyleSheet.create({
   price: {
     color: "#E91E63",
     fontSize: 15,
+    fontWeight: "bold",
     fontFamily: "Inter_700Bold",
   },
   priceCompact: {
@@ -495,6 +496,7 @@ const styles = StyleSheet.create({
   },
   compactPrice: {
     fontSize: 12,
+    fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
     color: "#E91E63",
   },
@@ -574,6 +576,7 @@ const styles = StyleSheet.create({
   },
   offerNewPrice: {
     fontSize: 14,
+    fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
     color: "#E91E63",
   },
@@ -634,6 +637,7 @@ const styles = StyleSheet.create({
   },
   fdPrice: {
     fontSize: 12,
+    fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
     color: "#E91E63",
   },
