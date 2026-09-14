@@ -413,6 +413,7 @@ const styles = StyleSheet.create({
   homeName: {
     color: "#274C77",
     fontSize: 13,
+    fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
   },
   homeMetaRow: {

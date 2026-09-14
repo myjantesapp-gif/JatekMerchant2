@@ -1003,6 +1003,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     textAlign: "center",
+    fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
   },
   section: {
