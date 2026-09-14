@@ -550,6 +550,7 @@ function HomeScreen() {
       case "categories":
         return (
           <View style={styles.categorySection}>
+            <WaveEdge color={SECTION_TINT} height={22} position="top" />
             {categoriesLoading || categoriesError ? (
               <LoadingOrEmpty
                 loading={categoriesLoading}
@@ -562,6 +563,7 @@ function HomeScreen() {
             ) : (
               <Text style={styles.empty}>Aucune catégorie disponible</Text>
             )}
+            <WaveEdge color={SECTION_TINT} height={24} />
           </View>
         );
       case "banners":
@@ -1005,12 +1007,15 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   categorySection: {
-    marginTop: 6,
+    marginTop: 12,
     marginHorizontal: 10,
-    marginBottom: 6,
-    paddingVertical: 10,
+    marginBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
+    position: "relative",
     backgroundColor: SECTION_TINT,
-    borderRadius: 26,
+    zIndex: 2,
+    elevation: 2,
   },
   categoryRow: {
     gap: CATEGORY_GAP,
@@ -1040,10 +1045,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   categoryLabel: {
-    minHeight: 16,
+    minHeight: 13,
     color: "#08244A",
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: -0.15,
     textAlign: "center",
     fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
