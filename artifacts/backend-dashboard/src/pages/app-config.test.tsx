@@ -10,12 +10,13 @@ vi.mock("@/lib/api", () => ({
     defaultLanguage: "fr",
     maintenanceMode: false,
     featuredCount: 6,
-    homeOrder: ["banners", "categories", "featured", "all", "popular", "new_products", "new_restaurants", "shops"],
+        homeOrder: ["banners", "categories", "featured", "all", "popular", "new_products", "new_restaurants", "supermarkets", "shops"],
     welcomeMessage: "Test Welcome",
     homeSections: {
       popular: { visible: true, title: "Populaires", source: "popular", limit: 10 },
       new_products: { visible: true, title: "Nouveautés", source: "newest", limit: 10 },
       new_restaurants: { visible: true, title: "Nouveaux restaurants", source: "new_restaurants", limit: 10 },
+        supermarkets: { visible: true, title: "Supermarchés", source: "supermarkets", limit: 10 },
       shops: { visible: true, title: "Boutiques", source: "shops", limit: 10 },
     }
   })
@@ -42,8 +43,9 @@ describe("AppConfig", () => {
     expect(await screen.findByText("Paramètres des sections dynamiques")).toBeDefined();
     
     // Check if labels for the new sections exist
-    expect(screen.getAllByText("Nouveaux produits").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Offres du moment").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Boutiques").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Supermarchés près de chez vous").length).toBeGreaterThan(0);
     
     // Check if configuration inputs are rendered
     expect(screen.getAllByText("Titre affiché").length).toBeGreaterThan(0);

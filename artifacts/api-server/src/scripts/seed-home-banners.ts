@@ -69,9 +69,10 @@ const homeSections = {
   popular: { title: "Produits populaires", visible: true, source: "popular", limit: 6 },
   new_products: { title: "Promos", visible: true, source: "promos", limit: 6 },
   new_restaurants: { title: "Restauration", visible: false, source: "new_restaurants", limit: 6 },
+  supermarkets: { title: "Supermarché", visible: true, source: "supermarkets", limit: 6 },
   shops: { title: "Boutiques", visible: false, source: "shops", limit: 6 },
 };
-const homeOrder = ["categories", "banners", "new_products", "shorts", "popular", "new_restaurants", "all"];
+const homeOrder = ["categories", "banners", "new_products", "shorts", "popular", "new_restaurants", "supermarkets", "all"];
 
 for (const [key, value] of [
   ["homeSections", homeSections],

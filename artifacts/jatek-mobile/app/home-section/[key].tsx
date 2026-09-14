@@ -44,7 +44,7 @@ function normalize(value: unknown): string {
 }
 
 function isRestaurantSection(source?: string): boolean {
-  return source === "new_restaurants" || source === "all_restaurants" || source === "shops";
+  return source === "new_restaurants" || source === "supermarkets" || source === "all_restaurants" || source === "shops";
 }
 
 function isProductSection(source?: string): boolean {
@@ -62,6 +62,9 @@ function findBusinessCategory(categories: any[], source?: string) {
   if (source === "shops") {
     return roots.find((category) => matches(category, ["shop", "boutique", "store", "market"]))
       ?? roots.find((category) => !matches(category, ["restaurant", "restauration", "food"]));
+  }
+  if (source === "supermarkets") {
+    return roots.find((category) => matches(category, ["supermarket", "supermarché", "market"]));
   }
 
   return roots.find((category) => matches(category, ["restaurant", "restauration", "food"]));

@@ -375,6 +375,12 @@ function HomeScreen() {
     refetch: refetchRestaurantBusinesses,
   } = useListRestaurants({ businessType: "restaurant" });
   const {
+    data: supermarketBusinesses,
+    isLoading: supermarketBusinessesLoading,
+    isError: supermarketBusinessesError,
+    refetch: refetchSupermarketBusinesses,
+  } = useListRestaurants({ businessType: "supermarket" });
+  const {
     data: shopBusinesses,
     isLoading: shopBusinessesLoading,
     isError: shopBusinessesError,
@@ -443,6 +449,10 @@ function HomeScreen() {
     () => (restaurantBusinesses ?? []).slice(0, 8),
     [restaurantBusinesses],
   );
+  const supermarketStores = useMemo<Restaurant[]>(
+    () => (supermarketBusinesses ?? []).slice(0, 8),
+    [supermarketBusinesses],
+  );
   const shopStores = useMemo<Restaurant[]>(
     () => (shopBusinesses ?? []).slice(0, 8),
     [shopBusinesses],
@@ -494,6 +504,7 @@ function HomeScreen() {
         refetchShorts,
         refetchRestaurants,
          refetchRestaurantBusinesses,
+         refetchSupermarketBusinesses,
          refetchShopBusinesses,
         refetchFeaturedRestaurants,
         refetchPromoProducts,
@@ -638,12 +649,29 @@ function HomeScreen() {
           </View>
         );
       case "new_restaurants":
+      case "supermarkets":
       case "shops":
         {
-        const sectionStores = key === "shops" ? shopStores : restaurantOnlyStores;
-        const sectionLoading = key === "shops" ? shopBusinessesLoading : restaurantBusinessesLoading;
-        const sectionError = key === "shops" ? shopBusinessesError : restaurantBusinessesError;
-        const sectionRetry = key === "shops" ? refetchShopBusinesses : refetchRestaurantBusinesses;
+        const sectionStores = key === "shops"
+          ? shopStores
+          : key === "supermarkets"
+            ? supermarketStores
+            : restaurantOnlyStores;
+        const sectionLoading = key === "shops"
+          ? shopBusinessesLoading
+          : key === "supermarkets"
+            ? supermarketBusinessesLoading
+            : restaurantBusinessesLoading;
+        const sectionError = key === "shops"
+          ? shopBusinessesError
+          : key === "supermarkets"
+            ? supermarketBusinessesError
+            : restaurantBusinessesError;
+        const sectionRetry = key === "shops"
+          ? refetchShopBusinesses
+          : key === "supermarkets"
+            ? refetchSupermarketBusinesses
+            : refetchRestaurantBusinesses;
         return (
           <View style={styles.restaurantSection}>
             <SectionHeader
@@ -656,7 +684,7 @@ function HomeScreen() {
               <LoadingOrEmpty
                 loading={sectionLoading}
                 error={sectionError}
-                empty="Aucun commerce disponible pour le moment"
+                empty={key === "supermarkets" ? "Aucun supermarché disponible pour le moment" : "Aucun commerce disponible pour le moment"}
                 onRetry={() => sectionRetry()}
               />
             ) : sectionStores.length > 0 ? (

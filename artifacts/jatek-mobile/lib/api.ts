@@ -492,6 +492,7 @@ export type HomeSectionKey =
   | "shorts"
   | "popular"
   | "new_restaurants"
+  | "supermarkets"
   | "new_products"
   | "shops"
   | "all"
@@ -506,6 +507,7 @@ export type HomeSectionSource =
   | "newest"
   | "promos"
   | "new_restaurants"
+  | "supermarkets"
   | "all_restaurants"
   | "shops"
   | "free_delivery"
@@ -537,6 +539,7 @@ const DEFAULT_HOME_ORDER: HomeSectionKey[] = [
   "shorts",
   "popular",
   "new_restaurants",
+  "supermarkets",
   "new_products",
   "shops",
   "all",
@@ -551,6 +554,7 @@ const DEFAULT_HOME_SECTIONS: Record<HomeSectionKey, Omit<HomeSectionConfig, "key
   shorts: { title: "Shorts", visible: true, source: "shorts", limit: 12 },
   popular: { title: "Produits populaires", visible: true, source: "popular", limit: 6 },
   new_restaurants: { title: "Restauration", visible: true, source: "new_restaurants", limit: 6 },
+  supermarkets: { title: "Supermarché", visible: true, source: "supermarkets", limit: 6 },
   new_products: { title: "Offres du moment", visible: true, source: "promos", limit: 6 },
   shops: { title: "Boutiques", visible: true, source: "shops", limit: 6 },
   all: { title: "Recommandé pour vous", visible: true, source: "all_restaurants", limit: 6 },

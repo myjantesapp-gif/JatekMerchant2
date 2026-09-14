@@ -11,6 +11,7 @@ export const HOME_SECTION_KEYS = [
   "shorts",
   "popular",
   "new_restaurants",
+  "supermarkets",
   "new_products",
   "shops",
   "all",
@@ -43,6 +44,9 @@ export const homeSectionsSchema = z.object({
   new_restaurants: baseHomeSectionSchema.extend({
     source: z.enum(["new_restaurants", "all_restaurants"]),
   }).strict(),
+  supermarkets: baseHomeSectionSchema.extend({
+    source: z.enum(["supermarkets", "all_restaurants"]),
+  }).strict(),
   new_products: baseHomeSectionSchema.extend({
     source: z.enum(["newest", "popular", "promos"]),
   }).strict(),
@@ -70,6 +74,7 @@ export const HOME_ORDER_KEYS = [
   "shorts",
   "popular",
   "new_restaurants",
+  "supermarkets",
   "new_products",
   "shops",
   "all",
@@ -115,6 +120,12 @@ export const DEFAULT_HOME_SECTIONS: HomeSectionsConfig = {
     title: "Restauration",
     visible: false,
     source: "new_restaurants",
+    limit: 6,
+  },
+  supermarkets: {
+    title: "Supermarché",
+    visible: true,
+    source: "supermarkets",
     limit: 6,
   },
   shops: {

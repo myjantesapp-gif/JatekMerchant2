@@ -973,7 +973,7 @@ const DEFAULT_APP_CONFIG = {
   defaultLanguage: "fr",
   maintenanceMode: false,
   featuredCount: 6,
-  homeOrder: ["categories", "banners", "shorts", "popular", "new_restaurants", "new_products", "shops", "all", "free_delivery", "newest", "support"],
+  homeOrder: ["categories", "banners", "shorts", "popular", "new_restaurants", "supermarkets", "new_products", "shops", "all", "free_delivery", "newest", "support"],
   welcomeMessage: "Bienvenue sur Jatek !",
   homeSections: getDefaultHomeSections(),
 } satisfies AppConfig;
