@@ -200,8 +200,24 @@ VAPID_SUBJECT = "mailto:admin@jatek.ma"
 defaultBucketID = "replit-objstore-898cc773-7f15-46f4-b56c-32e16f57bc20"
 
 [[ports]]
+localPort = 3000
+externalPort = 3002
+
+[[ports]]
 localPort = 3001
 externalPort = 3001
+
+[[ports]]
+localPort = 5000
+externalPort = 6000
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
 
 [[ports]]
 localPort = 8082
@@ -212,12 +228,24 @@ localPort = 8090
 externalPort = 5000
 
 [[ports]]
+localPort = 8099
+externalPort = 8099
+
+[[ports]]
 localPort = 18244
 externalPort = 3000
 
 [[ports]]
 localPort = 18245
 externalPort = 4200
+
+[[ports]]
+localPort = 19167
+externalPort = 80
+
+[[ports]]
+localPort = 25896
+externalPort = 6800
 
 [[ports]]
 localPort = 25897
