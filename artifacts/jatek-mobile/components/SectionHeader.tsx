@@ -111,6 +111,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     letterSpacing: -0.5,
+    fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
   },
   homeArrow: {
