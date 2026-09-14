@@ -531,6 +531,7 @@ function HomeScreen() {
       case "categories":
         return (
           <View style={styles.categorySection}>
+            <WaveEdge color={SECTION_TINT} height={22} position="top" />
             {categoriesLoading || categoriesError ? (
               <LoadingOrEmpty
                 loading={categoriesLoading}
@@ -543,6 +544,7 @@ function HomeScreen() {
             ) : (
               <Text style={styles.empty}>Aucune catégorie disponible</Text>
             )}
+            <WaveEdge color={SECTION_TINT} height={22} />
           </View>
         );
       case "banners":
@@ -667,11 +669,11 @@ function HomeScreen() {
           <View style={styles.promoSection}>
             <SectionHeader title={config.title} variant="home" onPress={() => openSection(key)} testID="section-promo-products" />
             <ProductRail
-              products={productsFor(config.source)?.slice(0, limit)}
-              loading={config.source === "newest" ? newestProductsLoading : config.source === "popular" ? popularProductsLoading : promoProductsLoading}
-              error={config.source === "newest" ? newestProductsError : config.source === "popular" ? popularProductsError : promoProductsError}
+              products={promoProducts?.slice(0, limit)}
+              loading={promoProductsLoading}
+              error={promoProductsError}
               empty="Aucun produit en promotion pour le moment"
-              onRetry={() => void (config.source === "newest" ? refetchNewestProducts() : config.source === "popular" ? refetchPopularProducts() : refetchPromoProducts())}
+              onRetry={() => void refetchPromoProducts()}
               width={SCREEN_WIDTH * 0.75}
               onProductPress={openProduct}
               variant="home-offer"
@@ -724,11 +726,11 @@ function HomeScreen() {
             <WaveEdge color={SECTION_TINT} height={22} position="top" />
             <SectionHeader title={config.title} variant="home" onPress={() => openSection(key)} testID="section-newest" />
             <ProductRail
-              products={productsFor(config.source)?.slice(0, limit)}
-              loading={config.source === "popular" ? popularProductsLoading : config.source === "promos" ? promoProductsLoading : newestProductsLoading}
-              error={config.source === "popular" ? popularProductsError : config.source === "promos" ? promoProductsError : newestProductsError}
+              products={newestProducts?.slice(0, limit)}
+              loading={newestProductsLoading}
+              error={newestProductsError}
               empty="Aucun nouveau produit pour le moment"
-              onRetry={() => void (config.source === "popular" ? refetchPopularProducts() : config.source === "promos" ? refetchPromoProducts() : refetchNewestProducts())}
+              onRetry={() => void refetchNewestProducts()}
               width={PROMO_PRODUCT_WIDTH}
               onProductPress={openProduct}
               variant="home-compact"
@@ -986,9 +988,14 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   categorySection: {
-    paddingTop: 4,
-    paddingBottom: 4,
-    marginBottom: 2,
+    position: "relative",
+    marginTop: 8,
+    marginBottom: 8,
+    paddingTop: 18,
+    paddingBottom: 18,
+    backgroundColor: SECTION_TINT,
+    zIndex: 1,
+    elevation: 1,
   },
   categoryRow: {
     gap: CATEGORY_GAP,

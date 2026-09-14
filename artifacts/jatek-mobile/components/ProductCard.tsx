@@ -570,9 +570,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   offerPriceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+    alignItems: "flex-start",
+    gap: 1,
   },
   offerOldPrice: {
     fontSize: 12,

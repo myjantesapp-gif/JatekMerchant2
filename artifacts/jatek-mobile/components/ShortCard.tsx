@@ -49,7 +49,7 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
         accessibilityLabel={`Short ${short.title || merchantName}`}
         style={({ pressed }) => [
           styles.homeCard,
-          { width, height: Math.round(width * 1.5) },
+          { width, height: Math.round(width * 1.7) },
           pressed && styles.pressed,
         ]}
       >
@@ -228,8 +228,8 @@ const styles = StyleSheet.create({
   },
   shortTitle: {
     color: "#FFFFFF",
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 14,
     fontFamily: "Inter_700Bold",
   },
   views: {
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   // Home Variant Styles
   homeCard: {
     height: 200,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: "hidden",
     position: "relative",
     backgroundColor: colors.light.heading,
