@@ -385,12 +385,14 @@ const styles = StyleSheet.create({
     color: colors.light.cardForeground,
     fontSize: 14,
     lineHeight: 19,
+    fontWeight: "bold",
     fontFamily: "Inter_700Bold",
   },
   nameCompact: {
     minHeight: 28,
     fontSize: 10,
     lineHeight: 14,
+    fontWeight: "bold",
   },
   priceBlock: {
     minHeight: 40,
@@ -485,6 +487,7 @@ const styles = StyleSheet.create({
   },
   compactName: {
     fontSize: 12,
+    fontWeight: "bold",
     fontFamily: "Poppins_900Black",
     color: "#274C77",
     marginBottom: 8,
@@ -559,6 +562,7 @@ const styles = StyleSheet.create({
   },
   offerName: {
     fontSize: 13,
+    fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
     color: "#274C77",
     marginBottom: 6,
@@ -621,6 +625,7 @@ const styles = StyleSheet.create({
   },
   fdName: {
     fontSize: 12,
+    fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
     color: "#274C77",
   },
