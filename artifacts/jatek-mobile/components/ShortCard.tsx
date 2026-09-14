@@ -49,7 +49,7 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
         accessibilityLabel={`Short ${short.title || merchantName}`}
         style={({ pressed }) => [
           styles.homeCard,
-          { width, height: Math.round(width * 1.42) },
+          { width, height: Math.round(width * 1.5) },
           pressed && styles.pressed,
         ]}
       >
@@ -83,7 +83,7 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
               </View>
             </View>
             <View style={styles.homePlayBadge}>
-              <Ionicons name="play" size={18} color="#FFFFFF" style={{ marginLeft: 2 }} />
+              <Ionicons name="play" size={16} color="#FFFFFF" style={{ marginLeft: 2 }} />
             </View>
           </View>
         </LinearGradient>
@@ -191,9 +191,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#E91E63",
   },
   homePlayBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.16)",
