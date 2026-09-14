@@ -152,7 +152,12 @@ function CategoryRow({
           <View style={styles.categoryIcon}>
             <Ionicons name={category.icon} size={33} color={category.accent} />
           </View>
-          <Text style={styles.categoryLabel} numberOfLines={2}>
+          <Text
+            style={[styles.categoryLabel, normalize(category.label).includes("supermarche") && styles.categoryLabelCompact]}
+            numberOfLines={normalize(category.label).includes("supermarche") ? 1 : 2}
+            adjustsFontSizeToFit={normalize(category.label).includes("supermarche")}
+            minimumFontScale={0.85}
+          >
             {category.label}
           </Text>
         </Pressable>
@@ -1012,6 +1017,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
+  },
+  categoryLabelCompact: {
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: -0.15,
   },
   section: {
     marginTop: 0,
