@@ -226,8 +226,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const applyPricing = useCallback((pricing?: RestaurantPricing) => {
     if (!pricing) return;
-    if (typeof pricing.deliveryFee === "number") setDeliveryFee(pricing.deliveryFee);
-    if (typeof pricing.freeDeliveryThreshold === "number") setFreeDeliveryThreshold(pricing.freeDeliveryThreshold);
+    if (typeof pricing.deliveryFee === "number" && Number.isFinite(pricing.deliveryFee) && pricing.deliveryFee >= 0) {
+      setDeliveryFee(pricing.deliveryFee);
+    }
+    if (
+      typeof pricing.freeDeliveryThreshold === "number"
+      && Number.isFinite(pricing.freeDeliveryThreshold)
+      && pricing.freeDeliveryThreshold >= 0
+    ) {
+      setFreeDeliveryThreshold(pricing.freeDeliveryThreshold);
+    }
     if (typeof pricing.commissionRate === "number" && pricing.commissionRate >= 0 && pricing.commissionRate <= 1) {
       setCommissionRate(pricing.commissionRate);
     }
@@ -289,7 +297,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [_addOrSet]);
 
   const addItemWithQty = useCallback((rId: number, rName: string, item: Omit<CartItem, "quantity">, qty: number, pricing?: RestaurantPricing) => {
-    _addOrSet(rId, rName, item, Math.max(1, qty), pricing);
+    const safeQty = Number.isFinite(qty) ? Math.max(1, Math.floor(qty)) : 1;
+    _addOrSet(rId, rName, item, safeQty, pricing);
   }, [_addOrSet]);
 
   const removeItem = useCallback((cartLineId: string) => {
@@ -313,7 +322,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateQuantity = useCallback((cartLineId: string, quantity: number) => {
     cartMutationVersion.current += 1;
     if (quantity <= 0) { removeItem(cartLineId); return; }
-    setItems((prev) => prev.map((i) => i.cartLineId === cartLineId ? { ...i, quantity } : i));
+    const safeQuantity = Number.isFinite(quantity) ? Math.floor(quantity) : 1;
+    if (safeQuantity <= 0) { removeItem(cartLineId); return; }
+    setItems((prev) => prev.map((i) => i.cartLineId === cartLineId ? { ...i, quantity: safeQuantity } : i));
   }, [removeItem]);
 
   const clearCart = useCallback(() => {

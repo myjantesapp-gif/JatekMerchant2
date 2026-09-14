@@ -525,8 +525,61 @@ export interface PublicAppConfig {
   [key: string]: unknown;
 }
 
+/**
+ * Older API deployments can return only the sections that were explicitly
+ * saved in the dashboard. The Home still needs a complete, valid section
+ * model so a partial response does not silently remove half of the screen.
+ * Server-provided values always win; defaults only fill missing entries.
+ */
+const DEFAULT_HOME_ORDER: HomeSectionKey[] = [
+  "categories",
+  "banners",
+  "shorts",
+  "popular",
+  "new_restaurants",
+  "new_products",
+  "shops",
+  "all",
+  "free_delivery",
+  "newest",
+  "support",
+];
+
+const DEFAULT_HOME_SECTIONS: Record<HomeSectionKey, Omit<HomeSectionConfig, "key">> = {
+  categories: { title: "Catégories", visible: true, source: "categories", limit: 4 },
+  banners: { title: "Bannières", visible: true, source: "banners", limit: 10 },
+  shorts: { title: "Shorts", visible: true, source: "shorts", limit: 12 },
+  popular: { title: "Produits populaires", visible: true, source: "popular", limit: 6 },
+  new_restaurants: { title: "Restauration", visible: true, source: "new_restaurants", limit: 6 },
+  new_products: { title: "Offres du moment", visible: true, source: "promos", limit: 6 },
+  shops: { title: "Boutiques", visible: true, source: "shops", limit: 6 },
+  all: { title: "Recommandé pour vous", visible: true, source: "all_restaurants", limit: 6 },
+  free_delivery: { title: "Livraison gratuite", visible: true, source: "free_delivery", limit: 6 },
+  newest: { title: "Nouveautés", visible: true, source: "newest", limit: 6 },
+  support: { title: "Besoin d'aide ?", visible: true, source: "support", limit: 1 },
+};
+
+export function normalizePublicAppConfig(config: PublicAppConfig): PublicAppConfig {
+  const configuredSections: Partial<Record<HomeSectionKey, Omit<HomeSectionConfig, "key">>> =
+    config.homeSections ?? {};
+  const homeSections = Object.fromEntries(
+    DEFAULT_HOME_ORDER.map((key) => [
+      key,
+      { ...DEFAULT_HOME_SECTIONS[key], ...(configuredSections[key] ?? {}) },
+    ]),
+  ) as PublicAppConfig["homeSections"];
+
+  const configuredOrder = Array.isArray(config.homeOrder)
+    ? config.homeOrder.filter((key): key is HomeSectionKey => DEFAULT_HOME_ORDER.includes(key as HomeSectionKey))
+    : [];
+  const homeOrder = [...new Set([...configuredOrder, ...DEFAULT_HOME_ORDER])];
+
+  return { ...config, homeSections, homeOrder };
+}
+
 export async function getPublicAppConfig(): Promise<PublicAppConfig> {
-  return jsonFetch("/api/app-config");
+  const config = await jsonFetch<PublicAppConfig>("/api/app-config");
+  return normalizePublicAppConfig(config);
 }
 
 export async function listRecommendedProducts(params?: {

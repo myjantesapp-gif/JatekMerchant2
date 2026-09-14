@@ -36,3 +36,4 @@
 - [Home promotional content](home-promotional-content.md) — admin-managed promo ads and discounted products take priority, with bundled banner fallbacks for an empty content feed.
 - [Home reference layout](home-reference-layout.md) — screenshot direction uses Poppins, navy/pink styling, soft waves, three product columns, and compact nearby-store cards.
 - [Mobile content source](mobile-content-source.md) — Home content, metadata, and section navigation must come from dashboard/API data, never local live-content samples.
+- [Home config normalization](home-config-normalization.md) — partial public app-config responses must be completed client-side before rendering Home sections.

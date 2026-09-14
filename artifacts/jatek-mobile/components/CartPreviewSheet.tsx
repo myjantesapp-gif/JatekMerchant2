@@ -168,8 +168,11 @@ export function CartPreviewSheet({ visible, onClose }: Props) {
     }
   }, [visible, overlayOpacity, slideY]);
 
+  // A threshold of 0 means that the restaurant has not configured a
+  // free-delivery threshold. Keep the fee in that case; otherwise every
+  // non-empty cart would incorrectly appear free in the quick preview.
   const baseDeliveryFee =
-    subtotal > 0 && subtotal >= freeDeliveryThreshold ? 0 : deliveryFee;
+    freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold ? 0 : deliveryFee;
   const effectiveDeliveryFee = freeDeliveryCoupon ? 0 : baseDeliveryFee;
   const discountedSubtotal = Math.max(0, subtotal - itemsDiscount);
   const serviceFee = Math.round(discountedSubtotal * commissionRate * 100) / 100;
