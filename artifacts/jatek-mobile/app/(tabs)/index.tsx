@@ -67,7 +67,8 @@ const HEADER_PINK = "#E91E63";
 const HEADER_ACCENT = "#FFD0E0";
 const CATEGORY_GAP = 8;
 const CATEGORY_WIDTH = (SCREEN_WIDTH - 32 - CATEGORY_GAP * 3) / 4;
-const SHORT_WIDTH = Math.min(205, Math.max(150, (SCREEN_WIDTH - 44) / 2));
+const SHORT_GAP = 8;
+const SHORT_WIDTH = (SCREEN_WIDTH - 32 - SHORT_GAP * 2) / 3;
 const STORE_WIDTH = Math.max(0, (SCREEN_WIDTH - 32 - 12) / 2);
 const HORIZONTAL_PRODUCT_LIMIT = 12;
 type HomeSectionViewConfig = Omit<HomeSectionConfig, "key">;
@@ -1121,7 +1122,7 @@ const styles = StyleSheet.create({
     rowGap: 10,
   },
   horizontalCards: {
-    gap: 8,
+    gap: SHORT_GAP,
     paddingHorizontal: 16,
   },
   storeGrid: {
