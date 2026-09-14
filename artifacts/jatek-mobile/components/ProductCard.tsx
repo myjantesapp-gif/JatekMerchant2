@@ -486,8 +486,8 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   compactName: {
-    fontSize: 13,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 15,
     fontWeight: "bold",
     fontFamily: "Montserrat_700Bold",
     color: "#08244A",
@@ -499,8 +499,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   compactPrice: {
-    fontSize: 16,
-    lineHeight: 19,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: "bold",
     fontFamily: "Montserrat_800ExtraBold",
     color: "#EC176B",

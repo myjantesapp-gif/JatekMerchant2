@@ -979,7 +979,6 @@ const styles = StyleSheet.create({
   categorySection: {
     paddingTop: 4,
     paddingBottom: 4,
-    backgroundColor: "#FFF3F8",
     marginBottom: 2,
   },
   categoryRow: {
@@ -997,12 +996,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     gap: 1,
     borderRadius: 18,
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#D58BA9",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    backgroundColor: "transparent",
   },
   categoryIcon: {
     width: "100%",
@@ -1011,10 +1005,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   categoryLabel: {
-    minHeight: 15,
+    minHeight: 14,
     color: "#08244A",
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 11,
+    lineHeight: 14,
     textAlign: "center",
     fontWeight: "bold",
     fontFamily: "Poppins_700Bold",
