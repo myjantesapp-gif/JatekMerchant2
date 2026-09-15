@@ -104,7 +104,7 @@ function extractArchive(archivePath: string): { root: string; cleanup: () => voi
 async function verifyAndUploadPhotos(
   root: string,
   rows: CatalogRow[],
-  objectStorage: ReplitObjectStorageClient,
+  objectStorage: ReplitObjectStorageClient = new ReplitObjectStorageClient(),
 ): Promise<void> {
   const uniquePhotos = [...new Map(rows.map((row) => [row.photo.objectName, row.photo])).values()];
   const photoRoot = join(root, "photos");
@@ -144,7 +144,7 @@ async function upsertConfig(key: string, value: unknown): Promise<void> {
   });
 }
 
-async function main(): Promise<void> {
+async function seedCatalog(): Promise<void> {
   const archivePath = process.argv.includes("--archive")
     ? process.argv[process.argv.indexOf("--archive") + 1]
     : DEFAULT_ARCHIVE;
@@ -160,6 +160,17 @@ async function main(): Promise<void> {
     if (rows.length < 50) throw new Error(`Catalog is unexpectedly small: ${rows.length} products`);
     if (new Set(rows.map((row) => row.product.name)).size !== rows.length) {
       throw new Error("Catalog contains duplicate product names");
+    }
+
+    const [existingCatalog] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(menuItemsTable);
+    if (Number(existingCatalog?.count ?? 0) > 0) {
+      console.log(
+        `[seed:jatek] Catalog already contains ${existingCatalog?.count ?? 0} products; ` +
+        "skipping the uploaded seed.",
+      );
+      return;
     }
 
     await verifyAndUploadPhotos(root, rows, new ReplitObjectStorageClient({ bucketId }));
@@ -313,6 +324,506 @@ async function main(): Promise<void> {
               sortOrder: extra.sortOrder,
               isAvailable: extra.isAvailable,
             }))
+          : [];
+      });
+      if (sizeRows.length) await tx.insert(menuItemSizesTable).values(sizeRows);
+      if (extraRows.length) await tx.insert(menuItemExtrasTable).values(extraRows);
+
+      const shortRows = rows.slice(0, 8).map((row, sortOrder) => ({
+        title: `${row.product.name.trim()} — ${archiveRestaurant.name}`,
+        imageUrl: objectUrl(row.photo.objectName),
+        videoUrl: null,
+        restaurantId: targetRestaurant.id,
+        restaurantName: archiveRestaurant.name,
+        isActive: true,
+        sortOrder,
+      }));
+      await tx.insert(shortsTable).values(shortRows);
+
+      const adRows = rows.slice(0, 3).map((row, sortOrder) => ({
+        type: "vip_banner",
+        title: sortOrder === 0 ? "Les offres Smash's" : row.product.name.trim(),
+        subtitle: sortOrder === 0
+          ? "Découvrez les nouveautés et les prix du moment"
+          : `À partir de ${row.product.price} MAD`,
+        badge: "PROMO",
+        bgColor: ["#F8DDE6", "#E8F2FF", "#FFF0D9"][sortOrder] ?? "#F8DDE6",
+        accentColor: ["#E91E63", "#1976D2", "#EF6C00"][sortOrder] ?? "#E91E63",
+        icon: "gift",
+        imageUrl: objectUrl(row.photo.objectName),
+        isActive: true,
+        sortOrder,
+      }));
+      await tx.insert(adsTable).values(adRows);
+    });
+
+    await upsertConfig("homeSections", {
+      categories: { title: "Catégories", visible: true, source: "categories", limit: 4 },
+      banners: { title: "Promotions", visible: true, source: "banners", limit: 3 },
+      shorts: { title: "Shorts", visible: true, source: "shorts", limit: 8 },
+      popular: { title: "Produits populaires", visible: true, source: "popular", limit: 6 },
+      new_restaurants: { title: "Restauration", visible: false, source: "new_restaurants", limit: 6 },
+      supermarkets: { title: "Supermarché", visible: false, source: "supermarkets", limit: 6 },
+      new_products: { title: "Offres du moment", visible: true, source: "promos", limit: 6 },
+      shops: { title: "Boutiques", visible: false, source: "shops", limit: 6 },
+      all: { title: "Recommandé pour vous", visible: true, source: "all_restaurants", limit: 6 },
+      free_delivery: { title: "Livraison gratuite", visible: false, source: "free_delivery", limit: 6 },
+      newest: { title: "Nouveautés", visible: true, source: "newest", limit: 6 },
+      support: { title: "Besoin d'aide ?", visible: true, source: "support", limit: 1 },
+    });
+    await upsertConfig("homeOrder", [
+      "categories",
+      "banners",
+      "shorts",
+      "new_products",
+      "popular",
+      "all",
+      "newest",
+      "support",
+    ]);
+
+    const [counts] = await db
+      .select({
+        products: sql<number>`count(*)`,
+      })
+      .from(menuItemsTable)
+      .where(eq(menuItemsTable.restaurantId, targetRestaurant.id));
+    console.log(
+      `[import:jatek] Completed catalog replacement for restaurant ${targetRestaurant.id}: ` +
+      `${counts?.products ?? 0} products, ${rows.reduce((total, row) => total + row.sizes.length, 0)} sizes, ` +
+      `${rows.reduce((total, row) => total + row.extras.length, 0)} extras, 8 shorts and 3 ads.`,
+    );
+  } finally {
+    cleanup();
+  }
+}
+async function importCatalog(): Promise<void> {
+  const archivePath = process.argv.includes("--archive")
+    ? process.argv[process.argv.indexOf("--archive") + 1]
+    : DEFAULT_ARCHIVE;
+  const bucketId = process.argv.includes("--bucket-id")
+    ? process.argv[process.argv.indexOf("--bucket-id") + 1]
+    : process.env.JATEK_APP_STORAGE_BUCKET_ID || process.env.DEFAULT_OBJECT_STORAGE_ID;
+  if (!archivePath) throw new Error("--archive requires a file path");
+  if (!bucketId) throw new Error("No App Storage bucket configured; pass --bucket-id or set JATEK_APP_STORAGE_BUCKET_ID");
+
+  const { root, cleanup } = extractArchive(resolve(archivePath));
+  try {
+    const rows = readJson<CatalogRow[]>(root, "data/catalog-complete.json");
+    if (rows.length < 50) throw new Error(`Catalog is unexpectedly small: ${rows.length} products`);
+    if (new Set(rows.map((row) => row.product.name)).size !== rows.length) {
+      throw new Error("Catalog contains duplicate product names");
+    }
+
+    await verifyAndUploadPhotos(root, rows, new ReplitObjectStorageClient({ bucketId }));
+
+    const [targetRestaurant] = await db
+      .select()
+      .from(restaurantsTable)
+      .where(and(
+        eq(restaurantsTable.ownerId, rows[0].restaurant.ownerId),
+        eq(restaurantsTable.businessType, "restaurant"),
+      ))
+      .orderBy(asc(restaurantsTable.id))
+      .limit(1);
+    if (!targetRestaurant) {
+      throw new Error(`No existing restaurant belongs to catalog owner ${rows[0].restaurant.ownerId}`);
+    }
+
+    const [activeCart] = await db.select({ id: cartItemsTable.id }).from(cartItemsTable).limit(1);
+    if (activeCart) {
+      throw new Error(
+        `Refusing catalog replacement because cart item ${activeCart.id} still references live catalog data`,
+      );
+    }
+
+    const archiveRestaurant = rows[0].restaurant;
+    const restaurantCategory = await db
+      .select({ id: categoriesTable.id })
+      .from(categoriesTable)
+      .where(eq(categoriesTable.slug, rows[0].shopCategory.slug))
+      .limit(1);
+    const restaurantSubcategoryId = restaurantCategory[0]?.id ?? targetRestaurant.subcategoryId;
+
+    const promoProductIds = new Set(
+      rows
+        .slice()
+        .sort((a, b) => a.product.id - b.product.id)
+        .slice(0, 6)
+        .map((row) => row.product.id),
+    );
+
+    await db.transaction(async (tx) => {
+      // These are catalog/content tables only. Users, orders, order_items,
+      // payment records, notifications, favorites, and drivers are untouched.
+      await tx.delete(menuItemExtrasTable);
+      await tx.delete(menuItemSizesTable);
+      await tx.delete(menuItemsTable);
+      await tx.delete(menuItemCategoriesTable);
+      await tx.delete(shortsTable);
+      await tx.delete(adsTable);
+
+      await tx
+        .update(restaurantsTable)
+        .set({
+          name: archiveRestaurant.name,
+          description: archiveRestaurant.description,
+          address: archiveRestaurant.address,
+          phone: archiveRestaurant.phone,
+          imageUrl: archiveRestaurant.imageUrl,
+          coverImageUrl: archiveRestaurant.coverImageUrl,
+          logoUrl: archiveRestaurant.logoUrl,
+          category: archiveRestaurant.category,
+          businessType: archiveRestaurant.businessType,
+          isLocal: archiveRestaurant.isLocal,
+          isOpen: archiveRestaurant.isOpen,
+          deliveryTime: archiveRestaurant.deliveryTime,
+          deliveryFee: archiveRestaurant.deliveryFee,
+          minimumOrder: archiveRestaurant.minimumOrder,
+          freeDeliveryThreshold: archiveRestaurant.freeDeliveryThreshold,
+          commissionRate: archiveRestaurant.commissionRate,
+          rating: archiveRestaurant.rating,
+          reviewCount: archiveRestaurant.reviewCount,
+          isVerified: archiveRestaurant.isVerified,
+          latitude: archiveRestaurant.latitude,
+          longitude: archiveRestaurant.longitude,
+          isFeatured: archiveRestaurant.isFeatured,
+          subcategoryId: restaurantSubcategoryId,
+          updatedAt: new Date(),
+        })
+        .where(eq(restaurantsTable.id, targetRestaurant.id));
+
+      // Keep legacy shops with their order history, but remove them from public
+      // recommendations when the archive contains a single live restaurant.
+      await tx
+        .update(restaurantsTable)
+        .set({ isOpen: false, isVerified: false, isFeatured: false, updatedAt: new Date() })
+        .where(sql`${restaurantsTable.id} <> ${targetRestaurant.id}`);
+
+      const categoryNames = [...new Map(
+        rows.map((row) => [row.productCategory.name, row.productCategory]),
+      ).values()]
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+      const insertedCategories = await tx
+        .insert(menuItemCategoriesTable)
+        .values(categoryNames.map((category, sortOrder) => ({
+          restaurantId: null,
+          name: category.name,
+          sortOrder,
+          isActive: category.isActive,
+        })))
+        .returning({ id: menuItemCategoriesTable.id, name: menuItemCategoriesTable.name });
+      const categoryIds = new Map(insertedCategories.map((category) => [category.name, category.id]));
+
+      const menuRows = rows.map((row, index) => {
+        const product = row.product;
+        const compareAtPrice = promoProductIds.has(product.id)
+          ? roundMoney(product.price * 1.25)
+          : null;
+        return {
+          restaurantId: targetRestaurant.id,
+          name: product.name.trim(),
+          description: product.description?.trim() || null,
+          price: product.price,
+          compareAtPrice,
+          imageUrl: objectUrl(row.photo.objectName),
+          category: product.category,
+          isAvailable: product.isAvailable,
+          isPopular: product.isPopular || index < 8,
+          tags: product.tags,
+          allergens: product.allergens,
+          prepTimeMinutes: product.prepTimeMinutes,
+          calories: product.calories,
+          menuItemCategoryId: categoryIds.get(row.productCategory.name) ?? null,
+          sortOrder: index,
+        };
+      });
+      const insertedItems = await tx.insert(menuItemsTable).values(menuRows).returning({
+        id: menuItemsTable.id,
+        name: menuItemsTable.name,
+      });
+      const itemIds = new Map(insertedItems.map((item) => [item.name, item.id]));
+
+      const sizeRows = rows.flatMap((row) => {
+        const menuItemId = itemIds.get(row.product.name);
+        return menuItemId
+          ? row.sizes.map((size) => ({
+            menuItemId,
+            name: size.name,
+            priceAdjustment: size.priceAdjustment,
+            sortOrder: size.sortOrder,
+            isAvailable: size.isAvailable,
+          }))
+          : [];
+      });
+      const extraRows = rows.flatMap((row) => {
+        const menuItemId = itemIds.get(row.product.name);
+        return menuItemId
+          ? row.extras.map((extra) => ({
+            menuItemId,
+            name: extra.name,
+            price: extra.price,
+            sortOrder: extra.sortOrder,
+            isAvailable: extra.isAvailable,
+          }))
+          : [];
+      });
+      if (sizeRows.length) await tx.insert(menuItemSizesTable).values(sizeRows);
+      if (extraRows.length) await tx.insert(menuItemExtrasTable).values(extraRows);
+
+      const shortRows = rows.slice(0, 8).map((row, sortOrder) => ({
+        title: `${row.product.name.trim()} — ${archiveRestaurant.name}`,
+        imageUrl: objectUrl(row.photo.objectName),
+        videoUrl: null,
+        restaurantId: targetRestaurant.id,
+        restaurantName: archiveRestaurant.name,
+        isActive: true,
+        sortOrder,
+      }));
+      await tx.insert(shortsTable).values(shortRows);
+
+      const adRows = rows.slice(0, 3).map((row, sortOrder) => ({
+        type: "vip_banner",
+        title: sortOrder === 0 ? "Les offres Smash's" : row.product.name.trim(),
+        subtitle: sortOrder === 0
+          ? "Découvrez les nouveautés et les prix du moment"
+          : `À partir de ${row.product.price} MAD`,
+        badge: "PROMO",
+        bgColor: ["#F8DDE6", "#E8F2FF", "#FFF0D9"][sortOrder] ?? "#F8DDE6",
+        accentColor: ["#E91E63", "#1976D2", "#EF6C00"][sortOrder] ?? "#E91E63",
+        icon: "gift",
+        imageUrl: objectUrl(row.photo.objectName),
+        isActive: true,
+        sortOrder,
+      }));
+      await tx.insert(adsTable).values(adRows);
+    });
+
+    await upsertConfig("homeSections", {
+      categories: { title: "Catégories", visible: true, source: "categories", limit: 4 },
+      banners: { title: "Promotions", visible: true, source: "banners", limit: 3 },
+      shorts: { title: "Shorts", visible: true, source: "shorts", limit: 8 },
+      popular: { title: "Produits populaires", visible: true, source: "popular", limit: 6 },
+      new_restaurants: { title: "Restauration", visible: false, source: "new_restaurants", limit: 6 },
+      supermarkets: { title: "Supermarché", visible: false, source: "supermarkets", limit: 6 },
+      new_products: { title: "Offres du moment", visible: true, source: "promos", limit: 6 },
+      shops: { title: "Boutiques", visible: false, source: "shops", limit: 6 },
+      all: { title: "Recommandé pour vous", visible: true, source: "all_restaurants", limit: 6 },
+      free_delivery: { title: "Livraison gratuite", visible: false, source: "free_delivery", limit: 6 },
+      newest: { title: "Nouveautés", visible: true, source: "newest", limit: 6 },
+      support: { title: "Besoin d'aide ?", visible: true, source: "support", limit: 1 },
+    });
+    await upsertConfig("homeOrder", [
+      "categories",
+      "banners",
+      "shorts",
+      "new_products",
+      "popular",
+      "all",
+      "newest",
+      "support",
+    ]);
+
+    const [counts] = await db
+      .select({
+        products: sql<number>`count(*)`,
+      })
+      .from(menuItemsTable)
+      .where(eq(menuItemsTable.restaurantId, targetRestaurant.id));
+    console.log(
+      `[import:jatek] Completed catalog replacement for restaurant ${targetRestaurant.id}: ` +
+      `${counts?.products ?? 0} products, ${rows.reduce((total, row) => total + row.sizes.length, 0)} sizes, ` +
+      `${rows.reduce((total, row) => total + row.extras.length, 0)} extras, 8 shorts and 3 ads.`,
+    );
+  } finally {
+    cleanup();
+  }
+}
+async function main(): Promise<void> {
+  if (process.argv.includes("--seed")) {
+    return seedCatalog();
+  }
+  return importCatalog();
+}
+async function legacyImportMain(): Promise<void> {
+  const archivePath = process.argv.includes("--archive")
+    ? process.argv[process.argv.indexOf("--archive") + 1]
+    : DEFAULT_ARCHIVE;
+  const seedOnly = process.argv.includes("--seed");
+  if (!archivePath) throw new Error("--archive requires a file path");
+
+  const { root, cleanup } = extractArchive(resolve(archivePath));
+  try {
+    const rows = readJson<CatalogRow[]>(root, "data/catalog-complete.json");
+    if (rows.length < 50) throw new Error(`Catalog is unexpectedly small: ${rows.length} products`);
+    if (new Set(rows.map((row) => row.product.name)).size !== rows.length) {
+      throw new Error("Catalog contains duplicate product names");
+    }
+
+    if (seedOnly) {
+      const [existingCatalog] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(menuItemsTable);
+      if (Number(existingCatalog?.count ?? 0) > 0) {
+        console.log(
+          `[seed:jatek] Catalog already contains ${existingCatalog?.count ?? 0} products; ` +
+          "skipping the uploaded seed.",
+        );
+        return;
+      }
+    }
+
+    await verifyAndUploadPhotos(root, rows);
+
+    const [targetRestaurant] = await db
+      .select()
+      .from(restaurantsTable)
+      .where(and(
+        eq(restaurantsTable.ownerId, rows[0].restaurant.ownerId),
+        eq(restaurantsTable.businessType, "restaurant"),
+      ))
+      .orderBy(asc(restaurantsTable.id))
+      .limit(1);
+    if (!targetRestaurant) {
+      throw new Error(`No existing restaurant belongs to catalog owner ${rows[0].restaurant.ownerId}`);
+    }
+
+    const [activeCart] = await db.select({ id: cartItemsTable.id }).from(cartItemsTable).limit(1);
+    if (activeCart) {
+      throw new Error(
+        `Refusing catalog replacement because cart item ${activeCart.id} still references live catalog data`,
+      );
+    }
+
+    const archiveRestaurant = rows[0].restaurant;
+    const restaurantCategory = await db
+      .select({ id: categoriesTable.id })
+      .from(categoriesTable)
+      .where(eq(categoriesTable.slug, rows[0].shopCategory.slug))
+      .limit(1);
+    const restaurantSubcategoryId = restaurantCategory[0]?.id ?? targetRestaurant.subcategoryId;
+
+    const promoProductIds = new Set(
+      rows
+        .slice()
+        .sort((a, b) => a.product.id - b.product.id)
+        .slice(0, 6)
+        .map((row) => row.product.id),
+    );
+
+    await db.transaction(async (tx) => {
+      // These are catalog/content tables only. Users, orders, order_items,
+      // payment records, notifications, favorites, and drivers are untouched.
+      await tx.delete(menuItemExtrasTable);
+      await tx.delete(menuItemSizesTable);
+      await tx.delete(menuItemsTable);
+      await tx.delete(menuItemCategoriesTable);
+      await tx.delete(shortsTable);
+      await tx.delete(adsTable);
+
+      await tx
+        .update(restaurantsTable)
+        .set({
+          name: archiveRestaurant.name,
+          description: archiveRestaurant.description,
+          address: archiveRestaurant.address,
+          phone: archiveRestaurant.phone,
+          imageUrl: archiveRestaurant.imageUrl,
+          coverImageUrl: archiveRestaurant.coverImageUrl,
+          logoUrl: archiveRestaurant.logoUrl,
+          category: archiveRestaurant.category,
+          businessType: archiveRestaurant.businessType,
+          isLocal: archiveRestaurant.isLocal,
+          isOpen: archiveRestaurant.isOpen,
+          deliveryTime: archiveRestaurant.deliveryTime,
+          deliveryFee: archiveRestaurant.deliveryFee,
+          minimumOrder: archiveRestaurant.minimumOrder,
+          freeDeliveryThreshold: archiveRestaurant.freeDeliveryThreshold,
+          commissionRate: archiveRestaurant.commissionRate,
+          rating: archiveRestaurant.rating,
+          reviewCount: archiveRestaurant.reviewCount,
+          isVerified: archiveRestaurant.isVerified,
+          latitude: archiveRestaurant.latitude,
+          longitude: archiveRestaurant.longitude,
+          isFeatured: archiveRestaurant.isFeatured,
+          subcategoryId: restaurantSubcategoryId,
+          updatedAt: new Date(),
+        })
+        .where(eq(restaurantsTable.id, targetRestaurant.id));
+
+      // Keep legacy shops with their order history, but remove them from public
+      // recommendations when the archive contains a single live restaurant.
+      await tx
+        .update(restaurantsTable)
+        .set({ isOpen: false, isVerified: false, isFeatured: false, updatedAt: new Date() })
+        .where(sql`${restaurantsTable.id} <> ${targetRestaurant.id}`);
+
+      const categoryNames = [...new Map(
+        rows.map((row) => [row.productCategory.name, row.productCategory]),
+      ).values()]
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+      const insertedCategories = await tx
+        .insert(menuItemCategoriesTable)
+        .values(categoryNames.map((category, sortOrder) => ({
+          restaurantId: null,
+          name: category.name,
+          sortOrder,
+          isActive: category.isActive,
+        })))
+        .returning({ id: menuItemCategoriesTable.id, name: menuItemCategoriesTable.name });
+      const categoryIds = new Map(insertedCategories.map((category) => [category.name, category.id]));
+
+      const menuRows = rows.map((row, index) => {
+        const product = row.product;
+        const compareAtPrice = promoProductIds.has(product.id)
+          ? roundMoney(product.price * 1.25)
+          : null;
+        return {
+          restaurantId: targetRestaurant.id,
+          name: product.name.trim(),
+          description: product.description?.trim() || null,
+          price: product.price,
+          compareAtPrice,
+          imageUrl: objectUrl(row.photo.objectName),
+          category: product.category,
+          isAvailable: product.isAvailable,
+          isPopular: product.isPopular || index < 8,
+          tags: product.tags,
+          allergens: product.allergens,
+          prepTimeMinutes: product.prepTimeMinutes,
+          calories: product.calories,
+          menuItemCategoryId: categoryIds.get(row.productCategory.name) ?? null,
+          sortOrder: index,
+        };
+      });
+      const insertedItems = await tx.insert(menuItemsTable).values(menuRows).returning({
+        id: menuItemsTable.id,
+        name: menuItemsTable.name,
+      });
+      const itemIds = new Map(insertedItems.map((item) => [item.name, item.id]));
+
+      const sizeRows = rows.flatMap((row) => {
+        const menuItemId = itemIds.get(row.product.name);
+        return menuItemId
+          ? row.sizes.map((size) => ({
+            menuItemId,
+            name: size.name,
+            priceAdjustment: size.priceAdjustment,
+            sortOrder: size.sortOrder,
+            isAvailable: size.isAvailable,
+          }))
+          : [];
+      });
+      const extraRows = rows.flatMap((row) => {
+        const menuItemId = itemIds.get(row.product.name);
+        return menuItemId
+          ? row.extras.map((extra) => ({
+            menuItemId,
+            name: extra.name,
+            price: extra.price,
+            sortOrder: extra.sortOrder,
+            isAvailable: extra.isAvailable,
+          }))
           : [];
       });
       if (sizeRows.length) await tx.insert(menuItemSizesTable).values(sizeRows);
