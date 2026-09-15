@@ -36,21 +36,24 @@ export default function SplashOverlay({ duration = 1800, onFinish }: Props) {
       true,
     );
 
-    // Schedule fade-out
+    // Schedule fade-out. Keep the JS unmount timer separate from the
+    // animation callback: Reanimated's completion callback is not reliable
+    // on web, and a stuck overlay hides the actual remote-data state.
     const t = setTimeout(() => {
       containerOpacity.value = withTiming(
         0,
         { duration: 500, easing: Easing.out(Easing.quad) },
-        (finished) => {
-          if (finished) {
-            runOnJS(setMounted)(false);
-            if (onFinish) runOnJS(onFinish)();
-          }
-        },
       );
     }, duration);
+    const unmountTimer = setTimeout(() => {
+      setMounted(false);
+      onFinish?.();
+    }, duration + 550);
 
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(unmountTimer);
+    };
   }, [duration, onFinish, containerOpacity, bgScale]);
 
   const containerStyle = useAnimatedStyle(() => ({ opacity: containerOpacity.value }));

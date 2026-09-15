@@ -139,11 +139,30 @@ function LoadingOrEmpty({
     return (
       <Pressable onPress={onRetry} style={styles.retry} accessibilityRole="button">
         <Ionicons name="cloud-offline-outline" size={20} color={MUTED} />
-        <Text style={styles.retryText}>Impossible de charger. Réessayer</Text>
+        <Text style={styles.retryText}>Données distantes indisponibles. Réessayer</Text>
       </Pressable>
     );
   }
   return <Text style={styles.empty}>{empty}</Text>;
+}
+
+function RemoteBackendNotice({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View style={styles.remoteNotice} accessibilityRole="alert">
+      <View style={styles.remoteNoticeIcon}>
+        <Ionicons name="cloud-offline-outline" size={20} color={PINK} />
+      </View>
+      <View style={styles.remoteNoticeCopy}>
+        <Text style={styles.remoteNoticeTitle}>Service Jatek indisponible</Text>
+        <Text style={styles.remoteNoticeText}>
+          Le catalogue et les contenus doivent venir de ma.jatek.app. Aucun contenu local n’est affiché.
+        </Text>
+      </View>
+      <Pressable onPress={onRetry} accessibilityRole="button" style={styles.remoteNoticeRetry}>
+        <Text style={styles.remoteNoticeRetryText}>Réessayer</Text>
+      </Pressable>
+    </View>
+  );
 }
 
 function CategoryRow({
@@ -420,7 +439,11 @@ function HomeScreen() {
     queryFn: () => listRecommendedProducts({ limit: 12, sort: "catalog" }),
     staleTime: 60_000,
   });
-  const { data: appConfig, refetch: refetchAppConfig } = useQuery({
+  const {
+    data: appConfig,
+    isError: appConfigError,
+    refetch: refetchAppConfig,
+  } = useQuery({
     queryKey: ["public-app-config"],
     queryFn: getPublicAppConfig,
     staleTime: 60_000,
@@ -905,6 +928,7 @@ function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PINK} />
         }
       >
+        {appConfigError ? <RemoteBackendNotice onRetry={() => void refetchAppConfig()} /> : null}
         {homeOrder.map((key) => (
           <React.Fragment key={key}>{renderHomeSection(key)}</React.Fragment>
         ))}
@@ -1218,6 +1242,50 @@ const styles = StyleSheet.create({
     color: MUTED,
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+  },
+  remoteNotice: {
+    marginHorizontal: 16,
+    marginBottom: 18,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#FBCFE8",
+    backgroundColor: "#FFF7FB",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  remoteNoticeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FCE7F3",
+  },
+  remoteNoticeCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  remoteNoticeTitle: {
+    color: NAVY,
+    fontSize: 13,
+    fontFamily: "Montserrat_700Bold",
+  },
+  remoteNoticeText: {
+    color: MUTED,
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: "Montserrat_400Regular",
+  },
+  remoteNoticeRetry: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  remoteNoticeRetryText: {
+    color: PINK,
+    fontSize: 12,
+    fontFamily: "Montserrat_700Bold",
   },
   pressed: {
     opacity: 0.86,

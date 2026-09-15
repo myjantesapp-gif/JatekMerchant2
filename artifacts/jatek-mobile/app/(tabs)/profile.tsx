@@ -209,24 +209,6 @@ export default function ProfileScreen() {
         <QuickCard icon="gift" label="Récompenses" accent yellow onPress={() => router.push("/profile/coupons" as any)} />
       </Animated.View>
 
-      {/* Jatek+ premium upsell */}
-      <Animated.View entering={FadeInDown.delay(80).duration(380)}>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          style={[styles.premiumCard, { backgroundColor: "#0A1B3D" }]}
-          onPress={() => router.push({ pathname: "/offer/[key]", params: { key: "pro" } })}
-        >
-          <View style={styles.premiumIcon}>
-            <Ionicons name="sparkles" size={22} color="#FFD700" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.premiumTitle}>Jatek+ <Text style={{ color: "#FFD700" }}>Essai gratuit</Text></Text>
-            <Text style={styles.premiumSub}>Livraison gratuite illimitée et offres exclusives</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
-        </TouchableOpacity>
-      </Animated.View>
-
       <Animated.View entering={FadeInDown.delay(120).duration(380)}>
         <Text style={[styles.sectionHeader, { color: colors.heading }]}>Mon activité</Text>
         <View style={[styles.section, { backgroundColor: colors.card }]}>
@@ -375,16 +357,6 @@ const styles = StyleSheet.create({
   quickRow: { flexDirection: "row", gap: 10, paddingHorizontal: 16, marginTop: 12 },
   quickCard: { flex: 1, minHeight: 80, borderRadius: 16, borderWidth: 1, alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 14, paddingHorizontal: 4, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   quickLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", textAlign: "center", paddingHorizontal: 2 },
-
-  // Premium upsell card
-  premiumCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    marginHorizontal: 16, marginTop: 16, padding: 14, borderRadius: 16,
-    shadowColor: "#0A1B3D", shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 5,
-  },
-  premiumIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,215,0,0.15)", alignItems: "center", justifyContent: "center" },
-  premiumTitle: { color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" },
-  premiumSub: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
 
   // Section
   sectionHeader: { fontSize: 14, fontFamily: "Inter_700Bold", paddingHorizontal: 20, marginTop: 22, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4, color: "#6B7280" },

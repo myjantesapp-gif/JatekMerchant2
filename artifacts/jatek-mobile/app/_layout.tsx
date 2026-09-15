@@ -12,7 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
-import { Text, TextInput } from "react-native";
+import { Platform, Text, TextInput } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -71,7 +71,6 @@ function RootLayoutNav() {
       <Stack.Screen name="home-section/[key]" options={{ headerShown: false }} />
       <Stack.Screen name="cart" options={{ headerShown: false }} />
       <Stack.Screen name="order/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="offer/[key]" options={{ headerShown: false }} />
     </Stack>
   );
 }
@@ -160,7 +159,9 @@ export default function RootLayout() {
 
   // Do not render the application while Montserrat is still loading. This keeps
   // the first visible frame consistent on native and web.
-  if (!fontsLoaded && !fontError) return null;
+  // Web font loading can remain pending in Expo's browser runtime; do not
+  // block the actual app (and its remote-data error state) behind it.
+  if (!fontsLoaded && !fontError && Platform.OS !== "web") return null;
 
   return (
     <SafeAreaProvider>
@@ -179,7 +180,7 @@ export default function RootLayout() {
                       <OrderStatusToast />
                       <CookieConsentBanner />
                     </FriendlyAlertProvider>
-                    <SplashOverlay duration={1800} />
+                    {Platform.OS === "web" ? null : <SplashOverlay duration={1800} />}
                   </KeyboardProvider>
                 </GestureHandlerRootView>
               </CartProvider>
