@@ -197,7 +197,7 @@ VAPID_PUBLIC_KEY = "BKdEq8KVX9EuyJ4hlkeOTiXCgfwLyff2DorTnKQIgJY3YuDamX2kliSO9pyG
 VAPID_SUBJECT = "mailto:admin@jatek.ma"
 
   [objectStorage]
-defaultBucketID = "replit-objstore-898cc773-7f15-46f4-b56c-32e16f57bc20"
+defaultBucketID = "replit-objstore-f5ac68cb-059e-4ebb-a9d9-fe5c9411da99"
 
 [[ports]]
 localPort = 3000
