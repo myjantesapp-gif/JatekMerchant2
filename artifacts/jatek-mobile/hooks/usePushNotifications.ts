@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { deletePushToken, registerPushToken } from "@workspace/api-client-react";
+import { listNotifications } from "@/lib/api";
 import { notificationResponseKey, orderIdFromNotificationResponse } from "@/lib/pushNotificationUtils";
 import { pushOperationQueue, withManualAbortTimeout } from "@/lib/pushOperationQueue";
 
@@ -52,6 +53,41 @@ if (pushSupported) {
  * getExpoPushTokenAsync calls on every auth change.
  */
 let cachedExpoPushToken: string | null = null;
+
+type NotificationRefreshListener = () => void;
+const notificationRefreshListeners = new Set<NotificationRefreshListener>();
+
+/** Subscribe to foreground notification updates (used by the notification inbox). */
+export function subscribeToNotificationRefresh(listener: NotificationRefreshListener): () => void {
+  notificationRefreshListeners.add(listener);
+  return () => notificationRefreshListeners.delete(listener);
+}
+
+/**
+ * Refresh the local notification inbox and native app badge after a push is
+ * received while the app is in the foreground. Remote pushes do not update
+ * the OS badge automatically on every platform, so set it from the server's
+ * unread count instead of assuming the previous count.
+ */
+export async function refreshNotificationClientState(): Promise<void> {
+  notificationRefreshListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch (error) {
+      console.warn("[push] notification refresh listener failed:", error);
+    }
+  });
+  try {
+    const result = await listNotifications();
+    if (pushSupported) {
+      await Notifications.setBadgeCountAsync(result.unreadCount);
+    }
+  } catch (error) {
+    // The foreground notification has still been displayed; a temporary API
+    // failure must not interfere with tap routing or app interaction.
+    console.warn("[push] could not refresh notification badge:", error);
+  }
+}
 
 async function configureAndroidNotificationChannels(): Promise<void> {
   if (Platform.OS !== "android" || !pushSupported) return;
@@ -204,6 +240,7 @@ export function useNotificationSetup(
   navigatorReady = true,
 ) {
   const listenerRef = useRef<Notifications.EventSubscription | null>(null);
+  const receivedListenerRef = useRef<Notifications.EventSubscription | null>(null);
   // Keep a ref to the latest authToken so the async permission callback can
   // access it without capturing a stale closure value.
   const authTokenRef = useRef<string | null>(authToken);
@@ -288,6 +325,9 @@ export function useNotificationSetup(
     })();
 
     listenerRef.current = Notifications.addNotificationResponseReceivedListener(routeNotificationResponse);
+    receivedListenerRef.current = Notifications.addNotificationReceivedListener(() => {
+      if (authTokenRef.current) void refreshNotificationClientState();
+    });
     void Notifications.getLastNotificationResponseAsync()
       .then((response) => {
         if (response) routeNotificationResponse(response);
@@ -297,6 +337,8 @@ export function useNotificationSetup(
     return () => {
       listenerRef.current?.remove();
       listenerRef.current = null;
+      receivedListenerRef.current?.remove();
+      receivedListenerRef.current = null;
     };
   }, [routeNotificationResponse, registerPushTokenWithBackend]);
 

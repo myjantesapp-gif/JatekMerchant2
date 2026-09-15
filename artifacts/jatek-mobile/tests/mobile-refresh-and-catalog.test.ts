@@ -367,33 +367,39 @@ test("home shows three products at once in one horizontal row for promos and nou
   assert.match(page, /newestProducts\.map/);
 });
 
-test("home keeps the four requested categories above the feed", () => {
+test("home renders active top-level categories supplied by the API above the feed", () => {
   const page = source("app/(tabs)/index.tsx");
-  assert.match(page, /label: "Restauration"/);
-  assert.match(page, /label: "Épicerie"/);
-  assert.match(page, /label: "Santé"/);
-  assert.match(page, /label: "Supermarché"/);
+  assert.match(page, /useListCategories/);
+  assert.match(page, /category\.parentId == null && category\.isActive !== false/);
+  assert.match(page, /label: String\(category\.name \?\? ""\)\.trim\(\)/);
   assert.match(page, /<CategoryRow categories=\{categories\}/);
 });
 
-test("home promo banner displays artwork without overlay text", () => {
+test("home promo banner displays API artwork without local content fallbacks", () => {
   const code = source("app/(tabs)/index.tsx");
   const productCard = source("components/ProductCard.tsx");
 
-  assert.match(code, /LOCAL_PROMO_BANNERS/);
-  assert.match(code, /banner-mois-mamans\.png/);
-  assert.match(code, /banner-rentree\.png/);
-  assert.match(code, /banner-rentree-orange\.png/);
-  assert.match(code, /function PromoBanner/);
+  assert.match(code, /queryFn: \(\) => listAds\(\)/);
+  assert.match(code, /function PromotionalCard/);
+  assert.match(code, /resolveMediaUrl\(ad\.imageUrl\)/);
   assert.match(code, /promoImage/);
-  assert.doesNotMatch(code, /ad\.title/);
+  assert.doesNotMatch(code, /LOCAL_PROMO_BANNERS/);
+  assert.doesNotMatch(code, /banner-mois-mamans\.png/);
   assert.match(productCard, /textDecorationLine: "line-through"/);
+});
+
+test("home banner carousel renders every active banner supplied by the API", () => {
+  const code = source("app/(tabs)/index.tsx");
+
+  assert.match(code, /ads=\{activeBanners\}/);
+  assert.doesNotMatch(code, /activeBanners\.slice/);
+  assert.match(code, /ads\.map\(\(ad\) =>/);
 });
 
 test("home promo section keeps all products in a single horizontal rail", () => {
   const code = source("app/(tabs)/index.tsx");
 
-  assert.match(code, /promoProducts\.map/);
+  assert.match(code, /products=\{promoProducts\?\.slice\(0, limit\)\}/);
   assert.doesNotMatch(code, /promoProducts\.slice\(0, 3\)/);
 });
 
@@ -407,8 +413,10 @@ test("product deep links only open currently available menu items", () => {
 test("home includes every commerce type instead of defaulting to restaurants", () => {
   const code = source("app/(tabs)/index.tsx");
 
-  assert.match(code, /CATEGORY_PRESETS/);
-  assert.match(code, /matches: \["pharmacy", "pharmacie", "health", "santé", "sante"\]/);
+  assert.match(code, /useListRestaurants\(\{ businessType: "restaurant" \}\)/);
+  assert.match(code, /useListRestaurants\(\{ businessType: "supermarket" \}\)/);
+  assert.match(code, /useListRestaurants\(\{ businessType: "shop" \}\)/);
+  assert.match(code, /businessType: category\.businessType/);
   assert.match(code, /Aucun nouveau produit pour le moment/);
 });
 

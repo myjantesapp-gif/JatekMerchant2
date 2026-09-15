@@ -1,7 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-
-const PINK_DEEP = "#E91E63";
+import { Image, StyleSheet, View } from "react-native";
 
 export function JatekLogoBadge({ size = 40 }: { size?: number }) {
   return (
@@ -16,20 +14,23 @@ export function JatekLogoBadge({ size = 40 }: { size?: number }) {
       ]}
       accessibilityLabel="Jatek"
     >
-      <Text style={[styles.text, { fontSize: Math.round(size * 0.425) }]}>J.</Text>
+      <Image
+        source={require("../assets/images/jatek-logo.png")}
+        style={styles.image}
+        resizeMode="cover"
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   badge: {
-    backgroundColor: PINK_DEEP + "18",
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
   },
-  text: {
-    fontFamily: "Inter_700Bold",
-    color: PINK_DEEP,
-    fontStyle: "italic",
+  image: {
+    width: "100%",
+    height: "100%",
   },
 });

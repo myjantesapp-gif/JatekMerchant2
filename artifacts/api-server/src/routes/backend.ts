@@ -2328,6 +2328,7 @@ router.post("/backend/notifications/send", requireAuth, async (req: AuthedReques
   const delivery = await dispatchNotificationToUsers(
     recipients.map((recipient) => recipient.id),
     { title: "Message Jatek", body: message.trim(), data: { source: "admin_broadcast" } },
+    { preference: "pushPromos" },
   );
 
   if (recipients.length === 0 && target !== "single") {

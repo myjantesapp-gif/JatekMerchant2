@@ -48,6 +48,8 @@ export type UserNotificationPayload = {
   data: Record<string, unknown>;
 };
 
+type RemotePreference = "pushPromos" | "pushOrders";
+
 /**
  * Persist and deliver a notification to known app users.
  * The in-app row is the source of truth; remote push is best-effort.
@@ -55,6 +57,7 @@ export type UserNotificationPayload = {
 export async function dispatchNotificationToUsers(
   userIds: number[],
   payload: UserNotificationPayload,
+  options: { preference?: RemotePreference } = {},
 ): Promise<{ recipients: number; inAppSaved: number; remoteSent: number; receiptsPending: number }> {
   const uniqueIds = Array.from(new Set(userIds));
   if (uniqueIds.length === 0) {
@@ -65,9 +68,23 @@ export async function dispatchNotificationToUsers(
     .from(usersTable)
     .where(inArray(usersTable.id, uniqueIds));
   const existingIds = users.map((user) => user.id);
-  const prefs = await db.select().from(notificationPrefsTable)
-    .where(inArray(notificationPrefsTable.userId, existingIds));
+  const [prefs, driverTokens] = await Promise.all([
+    db.select().from(notificationPrefsTable)
+      .where(inArray(notificationPrefsTable.userId, existingIds)),
+    db.select({ userId: driversTable.userId, pushToken: driversTable.pushToken })
+      .from(driversTable)
+      .where(inArray(driversTable.userId, existingIds)),
+  ]);
   const prefsByUser = new Map(prefs.map((pref) => [pref.userId, pref]));
+  const driverTokenByUser = new Map(
+    driverTokens
+      .filter((driver) => driver.pushToken)
+      .map((driver) => [driver.userId, driver.pushToken as string]),
+  );
+  // Admin and promotional broadcasts are marketing messages. Users who have
+  // not opened the preferences screen yet have the DEFAULTS (including
+  // pushPromos=true), rather than being silently excluded from remote push.
+  const preference = options.preference ?? "pushPromos";
   let inAppSaved = 0;
   let remoteSent = 0;
   let receiptsPending = 0;
@@ -89,10 +106,11 @@ export async function dispatchNotificationToUsers(
     });
 
     const pref = prefsByUser.get(userId);
-    if (!pref) continue;
-    if (isExpoPushToken(pref.pushToken)) {
+    const pushEnabled = !pref || pref[preference] !== false;
+    const pushToken = pref?.pushToken ?? driverTokenByUser.get(userId) ?? null;
+    if (pushEnabled && pushToken && isExpoPushToken(pushToken)) {
       const result = await sendExpoPush(
-        { to: pref.pushToken, ...payload, sound: "default", priority: "high" },
+        { to: pushToken, ...payload, sound: "default", priority: "high" },
         {
           onInvalidToken: clearInvalidExpoPushToken,
           onReceiptStatus: (status) => {
@@ -104,14 +122,14 @@ export async function dispatchNotificationToUsers(
       );
       if (result.ticketAccepted) remoteSent++;
       if (result.receiptStatus === "pending") receiptsPending++;
-    } else if (pref.pushToken) {
+    } else if (pushEnabled && pushToken) {
       if (await sendFcmPush({
-        token: pref.pushToken,
+        token: pushToken,
         ...payload,
         data: Object.fromEntries(Object.entries(payload.data).map(([key, value]) => [key, String(value)])),
       })) remoteSent++;
     }
-    if (pref.webPushSub) {
+    if (pushEnabled && pref?.webPushSub) {
       await sendWebPush(pref.webPushSub, payload);
     }
   }
@@ -261,7 +279,7 @@ router.post("/notifications/send", requireRole("admin", "super_admin", "manager"
   }
 
   const payload = { title: parsed.data.title, body: parsed.data.body, data: parsed.data.data ?? {} };
-  const delivery = await dispatchNotificationToUsers(existingIds, payload);
+  const delivery = await dispatchNotificationToUsers(existingIds, payload, { preference: "pushPromos" });
 
   res.json({ success: true, ...delivery });
 });

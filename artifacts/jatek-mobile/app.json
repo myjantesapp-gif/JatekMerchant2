@@ -3,9 +3,9 @@
     "name": "Jatek",
     "slug": "jatek",
     "owner": "jatekapp",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/jatek-logo.png",
     "scheme": "jatek",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ma.jatek.app",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Jatek uses your location to autofill your delivery address and confirm you are within our delivery zone in Oujda.",
@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "ma.jatek.app",
-      "versionCode": 14,
+      "versionCode": 15,
       "edgeToEdgeEnabled": true,
       "googleServicesFile": "./google-services.json",
       "permissions": [
@@ -70,7 +70,7 @@
     "updates": {
       "url": "https://u.expo.dev/73e947fb-0a5a-4064-aafe-c856e231c9d4"
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.0.1",
     "experiments": {
       "typedRoutes": true
     },

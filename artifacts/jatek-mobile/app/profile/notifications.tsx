@@ -23,6 +23,7 @@ import { useSSE } from "@/hooks/useSSE";
 import { getApiBase } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { RefreshButton } from "@/components/RefreshButton";
+import { subscribeToNotificationRefresh } from "@/hooks/usePushNotifications";
 
 const PREFS_ROWS: Array<{ key: keyof NotifPrefs; labelKey: TKey; descKey: TKey }> = [
   { key: "pushOrders",       labelKey: "notif_pref_orders",    descKey: "notif_pref_orders_desc" },
@@ -157,6 +158,10 @@ function CenterTab({ refreshSignal = 0 }: { refreshSignal?: number }) {
   useEffect(() => {
     if (refreshSignal > 0) void load(true);
   }, [refreshSignal, load]);
+
+  useEffect(() => subscribeToNotificationRefresh(() => {
+    void load(true);
+  }), [load]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {

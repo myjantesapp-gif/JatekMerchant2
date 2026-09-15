@@ -55,33 +55,6 @@ function isProductTableSort(value: string): value is ProductTableSort {
   return isProductSort(value) || value === "category" || value === "availability" || value === "shop";
 }
 
-function compareProductValues(
-  left: any,
-  right: any,
-  sort: ProductTableSort,
-  shopName: (restaurantId: number | null | undefined) => string,
-): number {
-  if (sort === "price") {
-    return Number(left.price ?? 0) - Number(right.price ?? 0);
-  }
-  if (sort === "availability") {
-    return Number(Boolean(left.isAvailable)) - Number(Boolean(right.isAvailable));
-  }
-  if (sort === "category") {
-    return String(left.category ?? "").localeCompare(String(right.category ?? ""), "fr", { sensitivity: "base" });
-  }
-  if (sort === "shop") {
-    return shopName(left.restaurantId).localeCompare(shopName(right.restaurantId), "fr", { sensitivity: "base" });
-  }
-  if (sort === "createdAt") {
-    return new Date(left.createdAt ?? 0).getTime() - new Date(right.createdAt ?? 0).getTime();
-  }
-  if (sort === "custom") {
-    return Number(left.sortOrder ?? 0) - Number(right.sortOrder ?? 0);
-  }
-  return String(left.name ?? "").localeCompare(String(right.name ?? ""), "fr", { sensitivity: "base" });
-}
-
 function SortableProductHeader({
   sort,
   activeSort,
@@ -171,20 +144,14 @@ export default function Products() {
     return Array.from(names).sort((left, right) => left.localeCompare(right, "fr", { sensitivity: "base" }));
   }, [productCategories, products]);
   const displayedProducts = useMemo(() => {
-    const filtered = Array.isArray(products) ? products : [];
-    return [...filtered].sort((left, right) => {
-      const result = compareProductValues(left, right, sortBy, shopName);
-      return result === 0
-        ? (sortDirection === "asc" ? 1 : -1) * (Number(left.id) - Number(right.id))
-        : (sortDirection === "asc" ? 1 : -1) * result;
-    });
-  }, [products, shopName, sortBy, sortDirection]);
+    return Array.isArray(products) ? products : [];
+  }, [products]);
   const hasFilters = Boolean(search || shopFilter || categoryFilter || availabilityFilter !== "all" || promoFilter !== "all");
   const hasResults = displayedProducts.length > 0;
 
   useEffect(() => {
     setPage(1);
-  }, [search, shopFilter, categoryFilter, availabilityFilter, sortBy, sortDirection]);
+  }, [search, shopFilter, categoryFilter, availabilityFilter, promoFilter, sortBy, sortDirection]);
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
@@ -262,6 +229,13 @@ export default function Products() {
     mutationFn: ({ id, sortOrder }: { id: number; sortOrder: number }) =>
       apiFetch(`/api/backend/products/${id}`, { method: "PATCH", body: JSON.stringify({ sortOrder }) }),
     onSuccess: (_result, variables) => {
+      qc.setQueryData(getListBackendProductsPageQueryKey(productQuery), (old: any) => {
+        if (!old) return old;
+        const items = Array.isArray(old) ? old : old.items;
+        if (!items) return old;
+        const newItems = items.map((p: any) => p.id === variables.id ? { ...p, sortOrder: variables.sortOrder } : p);
+        return Array.isArray(old) ? newItems : { ...old, items: newItems };
+      });
       invalidate();
       setOrderSavingIds((current) => {
         const next = new Set(current);
@@ -413,13 +387,14 @@ export default function Products() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Produits</h1>
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => setImportOpen(true)} data-testid="button-import-products">
-          <FileUp className="h-4 w-4" /> Importer CSV/JSON
-        </Button>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild><Button className="gap-2" data-testid="button-create-product"><Plus className="h-4 w-4" /> Nouveau produit</Button></DialogTrigger>
-          <DialogContent className="sm:max-w-lg max-h-[85dvh] overflow-y-auto">
+        <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Produits</h1>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-2 h-9 shadow-sm" onClick={() => setImportOpen(true)} data-testid="button-import-products">
+            <FileUp className="h-4 w-4" /> Importer CSV/JSON
+          </Button>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild><Button size="sm" className="gap-2 h-9 shadow-sm" data-testid="button-create-product"><Plus className="h-4 w-4" /> Nouveau produit</Button></DialogTrigger>
+            <DialogContent className="sm:max-w-lg max-h-[85dvh] overflow-y-auto">
             <DialogHeader><DialogTitle>Créer un produit</DialogTitle></DialogHeader>
             <form onSubmit={handleCreate} className="space-y-3 pt-4">
               <Field label="Boutique">
@@ -440,6 +415,7 @@ export default function Products() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Tabs defaultValue="produits">
@@ -459,12 +435,12 @@ export default function Products() {
               </AlertDescription>
             </Alert>
           )}
-          <Card>
-            <CardHeader className="space-y-4 pb-4">
+          <Card className="shadow-sm border-border/80">
+            <CardHeader className="space-y-4 pb-4 px-5 pt-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h2 className="text-base font-semibold">Catalogue produits</h2>
-                  <p className="text-xs text-muted-foreground">Modifiez l’ordre personnalisé pour contrôler l’affichage dans l’application.</p>
+                  <h2 className="text-[15px] font-semibold text-foreground leading-tight">Catalogue produits</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Modifiez l’ordre personnalisé pour contrôler l’affichage dans l’application.</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="status-products-count">
                   {isLoading ? "Chargement…" : `${displayedProducts.length} produit${displayedProducts.length === 1 ? "" : "s"} affiché${displayedProducts.length === 1 ? "" : "s"} sur ${totalCount}`}
@@ -544,10 +520,10 @@ export default function Products() {
                 )}
               </div>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <Table>
+            <CardContent className="overflow-x-auto p-0 px-1 pb-1">
+              <Table className="[&_td]:px-4 [&_th]:px-4 text-sm">
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="hover:bg-transparent border-b-border/60">
                     <TableHead><SortableProductHeader sort="name" activeSort={sortBy} direction={sortDirection} onSort={(nextSort) => {
                       if (sortBy === nextSort) setSortDirection((current) => current === "asc" ? "desc" : "asc");
                       else { setSortBy(nextSort); setSortDirection("asc"); }

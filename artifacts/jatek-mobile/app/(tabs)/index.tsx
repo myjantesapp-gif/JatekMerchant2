@@ -580,7 +580,7 @@ function HomeScreen() {
       case "banners":
         return (
           <BannerCarousel
-            ads={activeBanners.slice(0, limit)}
+            ads={activeBanners}
             loading={adsLoading}
             error={adsError}
             width={width}

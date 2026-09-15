@@ -29,6 +29,7 @@ import {
 import { publish } from "../lib/sse";
 import * as tracking from "../lib/trackingService";
 import { pushNotification } from "./notifications";
+import { dispatchNotificationToUsers } from "./notificationPrefs";
 import { isExpoPushToken, notifyDrivers } from "../lib/expoPush";
 import { sendFcmPush } from "../lib/fcmPush";
 import { sendWebPush } from "../lib/vapid";
@@ -1180,13 +1181,15 @@ router.post("/orders/:id/confirm-delivery", requireAuth, async (req: AuthedReque
                 status: "completed",
                 completedAt: new Date(),
               }).where(eq(referralsTable.id, referral.id));
-              pushNotification(
-                referrer.id,
-                "referral",
-                "Parrainage réussi ! 🎉",
-                `Votre ami ${customer.name ?? "un ami"} a reçu sa première commande. ${referral.creditAmount} MAD ont été ajoutés à votre portefeuille !`,
-                { creditAmount: referral.creditAmount },
-              ).catch(() => {});
+              dispatchNotificationToUsers(
+                [referrer.id],
+                {
+                  title: "Parrainage réussi ! 🎉",
+                  body: `Votre ami ${customer.name ?? "un ami"} a reçu sa première commande. ${referral.creditAmount} MAD ont été ajoutés à votre portefeuille !`,
+                  data: { type: "referral", creditAmount: referral.creditAmount },
+                },
+                { preference: "pushPromos" },
+              ).catch((error) => console.warn("[orders] referral notification failed:", error));
             }
           }
         }
@@ -1325,12 +1328,14 @@ router.post("/orders/:id/rate-driver", requireAuth, async (req: AuthedRequest, r
   if (order.driverId) {
     const [drv] = await db.select().from(driversTable).where(eq(driversTable.id, order.driverId)).limit(1);
     if (drv?.userId) {
-      await pushNotification(
-        drv.userId,
-        "system",
-        "Nouvelle évaluation",
-        `Vous avez reçu ${Math.round(rating)}/5 étoiles pour la commande ${order.reference ?? `#CMD${String(order.id).padStart(6, "0")}`}.`,
-        { orderId, rating },
+      await dispatchNotificationToUsers(
+        [drv.userId],
+        {
+          title: "Nouvelle évaluation",
+          body: `Vous avez reçu ${Math.round(rating)}/5 étoiles pour la commande ${order.reference ?? `#CMD${String(order.id).padStart(6, "0")}`}.`,
+          data: { type: "driver_rating", orderId, rating },
+        },
+        { preference: "pushOrders" },
       );
     }
   }

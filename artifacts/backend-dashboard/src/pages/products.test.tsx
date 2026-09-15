@@ -27,8 +27,8 @@ const productsBySort: Record<string, Product[]> = {
     { id: 6, name: "Price second", category: "Menu", price: "25", isAvailable: true, isPopular: false, imageUrl: null },
   ],
   createdAt: [
-    { id: 7, name: "Created first", category: "Menu", price: "14", isAvailable: true, isPopular: false, imageUrl: null },
     { id: 8, name: "Created second", category: "Menu", price: "16", isAvailable: true, isPopular: false, imageUrl: null },
+    { id: 7, name: "Created first", category: "Menu", price: "14", isAvailable: true, isPopular: false, imageUrl: null },
   ],
 };
 
@@ -140,6 +140,73 @@ describe("Products sorting", () => {
       expect(requestUrls).toContain(`/api/backend/products/page?sort=${sort}&sortDirection=${sort === "createdAt" ? "desc" : "asc"}&page=1&pageSize=50`);
       expect(renderedProductNames()).toEqual(expectedNames);
     }
+  });
+});
+
+describe("Products filtering and pagination", () => {
+  const requestUrls: string[] = [];
+  beforeEach(() => {
+    requestUrls.length = 0;
+    notifyManager.setScheduler((callback) => callback());
+    Object.assign(HTMLElement.prototype, {
+      hasPointerCapture: () => false,
+      releasePointerCapture: () => undefined,
+      scrollIntoView: () => undefined,
+      setPointerCapture: () => undefined,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        requestUrls.push(url);
+
+        if (url.includes("/api/backend/products/page")) {
+          return jsonResponse({
+            items: productsBySort.custom,
+            total: 100,
+            page: Number(new URL(url, "http://dashboard.test").searchParams.get("page") ?? 1),
+            pageSize: 50,
+            totalPages: 2
+          });
+        }
+        if (url.includes("/api/backend/me")) return jsonResponse({ user: { role: "admin" }, permissions: [] });
+        if (url.includes("/api/backend/menu-categories") || url.includes("/api/backend/shops")) return jsonResponse([]);
+        return jsonResponse([]);
+      }),
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("changing promo filter resets pagination and clearing filters resets promo", async () => {
+    renderProducts();
+
+    await waitFor(() => {
+      expect(requestUrls).toContain("/api/backend/products/page?sort=custom&sortDirection=asc&page=1&pageSize=50");
+    });
+
+    const nextPageBtn = await screen.findByTestId("button-products-next-page");
+    fireEvent.click(nextPageBtn);
+    await flushQueryUpdate();
+    expect(requestUrls).toContain("/api/backend/products/page?sort=custom&sortDirection=asc&page=2&pageSize=50");
+
+    const promoSelect = screen.getByTestId("select-product-promotion");
+    fireEvent.keyDown(promoSelect, { key: "ArrowDown" });
+    const option = await screen.findByRole("option", { name: "En promotion" });
+    fireEvent.keyDown(option, { key: "Enter" });
+    await flushQueryUpdate();
+
+    expect(requestUrls).toContain("/api/backend/products/page?sort=custom&promo=true&sortDirection=asc&page=1&pageSize=50");
+
+    const clearBtn = await screen.findByTestId("button-clear-product-filters");
+    fireEvent.click(clearBtn);
+    await flushQueryUpdate();
+
+    const urlHasPromo = requestUrls[requestUrls.length - 1].includes("promo=true");
+    expect(urlHasPromo).toBe(false);
   });
 });
 

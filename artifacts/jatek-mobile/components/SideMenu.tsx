@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import {
   Modal,
+  Image,
   StyleSheet,
   Text,
   View,
@@ -99,10 +100,15 @@ export function SideMenu({ visible, onClose }: Props) {
             },
           ]}
         >
-          {/* top: J. logo + close */}
+          {/* top: Jatek logo + close */}
           <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
             <View style={styles.logoBadge}>
-              <Text style={styles.logoText}>J.</Text>
+              <Image
+                source={require("../assets/images/jatek-logo.png")}
+                style={styles.logoImage}
+                resizeMode="cover"
+                accessibilityLabel="Jatek"
+              />
             </View>
             <TouchableOpacity
               onPress={onClose}
@@ -236,15 +242,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 13,
-    backgroundColor: PINK_DEEP + "18",
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
   },
-  logoText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 17,
-    color: PINK_DEEP,
-    fontStyle: "italic",
+  logoImage: {
+    width: "100%",
+    height: "100%",
   },
   closeBtn: {
     width: 28,
