@@ -170,6 +170,7 @@ packages = ["eas-cli", "unzipNLS", "gir-rs"]
   [userenv]
 
   [userenv.shared]
+JATEK_APP_STORAGE_BUCKET_ID = "replit-objstore-f5ac68cb-059e-4ebb-a9d9-fe5c9411da99"
 
   [userenv.development]
   EXPO_PUBLIC_DOMAIN = "ma.jatek.app"

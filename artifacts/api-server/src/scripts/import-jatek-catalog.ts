@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { cpus } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -71,8 +71,6 @@ const DEFAULT_ARCHIVE = resolve(
   fileURLToPath(new URL("../../../../attached_assets", import.meta.url)),
   "jatek-products-with-photos.tar_1789509947347.gz",
 );
-const objectStorage = new ReplitObjectStorageClient();
-
 function readJson<T>(root: string, relativePath: string): T {
   return JSON.parse(readFileSync(join(root, relativePath), "utf8")) as T;
 }
@@ -103,7 +101,11 @@ function extractArchive(archivePath: string): { root: string; cleanup: () => voi
   };
 }
 
-async function verifyAndUploadPhotos(root: string, rows: CatalogRow[]): Promise<void> {
+async function verifyAndUploadPhotos(
+  root: string,
+  rows: CatalogRow[],
+  objectStorage: ReplitObjectStorageClient,
+): Promise<void> {
   const uniquePhotos = [...new Map(rows.map((row) => [row.photo.objectName, row.photo])).values()];
   const photoRoot = join(root, "photos");
 
@@ -146,7 +148,11 @@ async function main(): Promise<void> {
   const archivePath = process.argv.includes("--archive")
     ? process.argv[process.argv.indexOf("--archive") + 1]
     : DEFAULT_ARCHIVE;
+  const bucketId = process.argv.includes("--bucket-id")
+    ? process.argv[process.argv.indexOf("--bucket-id") + 1]
+    : process.env.JATEK_APP_STORAGE_BUCKET_ID || process.env.DEFAULT_OBJECT_STORAGE_ID;
   if (!archivePath) throw new Error("--archive requires a file path");
+  if (!bucketId) throw new Error("No App Storage bucket configured; pass --bucket-id or set JATEK_APP_STORAGE_BUCKET_ID");
 
   const { root, cleanup } = extractArchive(resolve(archivePath));
   try {
@@ -156,7 +162,7 @@ async function main(): Promise<void> {
       throw new Error("Catalog contains duplicate product names");
     }
 
-    await verifyAndUploadPhotos(root, rows);
+    await verifyAndUploadPhotos(root, rows, new ReplitObjectStorageClient({ bucketId }));
 
     const [targetRestaurant] = await db
       .select()

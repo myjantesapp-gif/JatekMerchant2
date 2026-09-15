@@ -27,7 +27,9 @@ export const objectStorageClient = new Storage({
  * Uses Replit's supported App Storage SDK. It resolves the active bucket from
  * the sidecar, rather than relying on a deployment-only bucket identifier.
  */
-const managedObjectStorageClient = new ReplitObjectStorageClient();
+const managedObjectStorageClient = new ReplitObjectStorageClient({
+  bucketId: process.env.JATEK_APP_STORAGE_BUCKET_ID || process.env.DEFAULT_OBJECT_STORAGE_ID,
+});
 
 type ManagedObjectFile = {
   objectName: string;
