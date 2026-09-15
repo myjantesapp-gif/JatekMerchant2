@@ -35,20 +35,21 @@ const CATEGORY_OVERLAY_TOP_GAP = 8;
 const COMPACT_HEADER_HEIGHT = 56;
 const GOOGLE_KEY = (process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY ?? "").trim();
 
-function buildRestaurantMapHtml(lat: number, lng: number, name: string): string {
+function buildRestaurantMapHtml(lat: number, lng: number, name: string, logoUri: string): string {
   const safeName = name.replace(/'/g, "\\'");
+  const safeLogoUri = logoUri.replace(/'/g, "\\'");
   if (GOOGLE_KEY) {
     return `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0}body,html,#map{width:100%;height:100%}</style></head><body><div id="map"></div><script>
 function init(){
   var map=new google.maps.Map(document.getElementById('map'),{center:{lat:${lat},lng:${lng}},zoom:16,disableDefaultUI:true});
-  new google.maps.Marker({position:{lat:${lat},lng:${lng}},map:map,title:'${safeName}',icon:{url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="#E2006A" stroke="#fff" stroke-width="2.5"/><text x="16" y="21" text-anchor="middle" font-size="14">🍽️</text></svg>'),scaledSize:new google.maps.Size(32,32),anchor:new google.maps.Point(16,16)}});
+  new google.maps.Marker({position:{lat:${lat},lng:${lng}},map:map,title:'${safeName}',icon:{url:'${safeLogoUri}',scaledSize:new google.maps.Size(40,40),anchor:new google.maps.Point(20,20)}});
 }
 </script><script src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&callback=init" async defer></script></body></html>`;
   }
   return `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><style>*{margin:0;padding:0}body,html,#map{width:100%;height:100%}</style></head><body><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
 var map=L.map('map',{zoomControl:false,attributionControl:false}).setView([${lat},${lng}],16);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-var icon=L.divIcon({html:'<div style="width:28px;height:28px;background:#E2006A;border-radius:50%;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:14px">🍽️</div>',iconSize:[28,28],iconAnchor:[14,14],className:''});
+var icon=L.divIcon({html:'<img src="${safeLogoUri}" alt="Jatek" style="width:40px;height:40px;border-radius:12px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25);object-fit:cover"/>',iconSize:[40,40],iconAnchor:[20,20],className:''});
 L.marker([${lat},${lng}],{icon:icon}).addTo(map).bindPopup('${safeName}');
 </script></body></html>`;
 }
@@ -745,7 +746,14 @@ export default function RestaurantScreen() {
                       style={styles.miniMapWebView}
                       scrollEnabled={false}
                       pointerEvents="none"
-                      source={{ html: buildRestaurantMapHtml(restaurantCoords.lat, restaurantCoords.lng, restaurant.name ?? "") }}
+                      source={{
+                        html: buildRestaurantMapHtml(
+                          restaurantCoords.lat,
+                          restaurantCoords.lng,
+                          restaurant.name ?? "",
+                          Image.resolveAssetSource(require("../../assets/images/jatek-app-icon.png")).uri,
+                        ),
+                      }}
                       originWhitelist={["*"]}
                     />
                     <TouchableOpacity

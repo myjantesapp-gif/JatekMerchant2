@@ -64,7 +64,12 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
           {avatarUrl ? (
             <Image source={{ uri: resolveMediaUrl(avatarUrl) }} style={styles.avatarImage} resizeMode="contain" />
           ) : (
-            <Text style={styles.avatarInitial}>{initials || "J"}</Text>
+            <Image
+              source={require("../assets/images/jatek-app-icon.png")}
+              style={styles.avatarImage}
+              resizeMode="contain"
+              accessibilityLabel="Logo Jatek"
+            />
           )}
         </View>
         <LinearGradient

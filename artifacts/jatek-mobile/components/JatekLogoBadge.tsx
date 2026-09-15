@@ -15,9 +15,9 @@ export function JatekLogoBadge({ size = 40 }: { size?: number }) {
       accessibilityLabel="Jatek"
     >
       <Image
-        source={require("../assets/images/jatek-logo.png")}
+        source={require("../assets/images/jatek-app-icon.png")}
         style={styles.image}
-        resizeMode="cover"
+        resizeMode="contain"
       />
     </View>
   );

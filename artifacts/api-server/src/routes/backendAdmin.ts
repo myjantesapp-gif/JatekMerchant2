@@ -130,7 +130,7 @@ function toCSV(data: Record<string, unknown>[]): string {
 router.get("/backend/ads", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   if (!isAdmin(req.userRole)) { res.status(403).json({ error: "Forbidden" }); return; }
   try {
-    const ads = await db.select().from(adsTable).orderBy(adsTable.sortOrder);
+     const ads = await db.select().from(adsTable).orderBy(adsTable.sortOrder, adsTable.id);
     res.json(ads.map((ad) => ({
       ...ad,
       imageUrl: resolveLegacyMediaPath(ad.imageUrl, "banners"),
@@ -143,6 +143,10 @@ router.post("/backend/ads", requireAuth, async (req: AuthedRequest, res, next): 
   try {
     const { type, title, subtitle, badge, bgColor, accentColor, icon, imageUrl, linkUrl, isActive, sortOrder } = req.body;
     if (!title) { res.status(400).json({ error: "title requis" }); return; }
+     const parsedSortOrder = sortOrder === undefined ? 0 : Number(sortOrder);
+     if (!Number.isInteger(parsedSortOrder) || parsedSortOrder < 0) {
+       res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" }); return;
+     }
     const [ad] = await db.insert(adsTable).values({
       type: type ?? "vip_banner",
       title,
@@ -154,7 +158,7 @@ router.post("/backend/ads", requireAuth, async (req: AuthedRequest, res, next): 
       imageUrl: normalizeStoredMediaPath(imageUrl) ?? null,
       linkUrl: linkUrl ?? null,
       isActive: isActive ?? true,
-      sortOrder: sortOrder ?? 0,
+       sortOrder: parsedSortOrder,
     }).returning();
     const [u] = await db.select({ name: usersTable.name, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
     await logActivity({ userId: req.userId, userEmail: u?.email, userName: u?.name, action: "create", entity: "ad", entityId: ad.id, ip: req.ip });
@@ -171,6 +175,13 @@ router.patch("/backend/ads/:id", requireAuth, async (req: AuthedRequest, res, ne
     const updates: Record<string, unknown> = {};
     const body = req.body ?? {};
     for (const k of allowed) if (body[k] !== undefined) updates[k] = body[k];
+     if ("sortOrder" in updates) {
+       const parsedSortOrder = Number(updates.sortOrder);
+       if (!Number.isInteger(parsedSortOrder) || parsedSortOrder < 0) {
+         res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" }); return;
+       }
+       updates.sortOrder = parsedSortOrder;
+     }
     if ("imageUrl" in updates) updates.imageUrl = normalizeStoredMediaPath(updates.imageUrl);
     const [ad] = await db.update(adsTable).set(updates as any).where(eq(adsTable.id, id)).returning();
     if (!ad) { res.status(404).json({ error: "Not found" }); return; }

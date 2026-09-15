@@ -714,6 +714,12 @@ router.post("/backend/products", requireAuth, async (req: AuthedRequest, res, ne
     if (!productCategory) {
       res.status(400).json({ error: "Catégorie produit inexistante, inactive ou non disponible pour cette boutique" }); return;
     }
+    if (sortOrder !== undefined) {
+      const parsedSortOrder = Number(sortOrder);
+      if (!Number.isInteger(parsedSortOrder) || parsedSortOrder < 0) {
+        res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" }); return;
+      }
+    }
     const parsedPrice = parseDecimal(price);
     const parsedCompareAtPrice = compareAtPrice === undefined || compareAtPrice === null || compareAtPrice === ""
       ? null
@@ -728,7 +734,7 @@ router.post("/backend/products", requireAuth, async (req: AuthedRequest, res, ne
       imageUrl: normalizeStoredMediaPath(imageUrl) ?? null, isAvailable: isAvailable ?? true,
       isPopular: isPopular ?? false, allergens: allergens ?? null,
       tags: Array.isArray(tags) ? tags : (tags ? [tags] : null),
-       sortOrder: Number.isInteger(Number(sortOrder)) ? Number(sortOrder) : 0,
+       sortOrder: sortOrder === undefined ? 0 : Number(sortOrder),
        prepTimeMinutes: prepTimeMinutes ? parseDecimal(prepTimeMinutes) : null,
        calories: calories ? parseDecimal(calories) : null,
     }).returning();
@@ -793,8 +799,8 @@ router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, re
     if ("calories" in updates) updates.calories = parseDecimal(updates.calories);
     if ("sortOrder" in updates) {
       const nextSortOrder = Number(updates.sortOrder);
-      if (!Number.isInteger(nextSortOrder)) {
-        res.status(400).json({ error: "sortOrder doit être un entier" });
+       if (!Number.isInteger(nextSortOrder) || nextSortOrder < 0) {
+         res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" });
         return;
       }
       updates.sortOrder = nextSortOrder;

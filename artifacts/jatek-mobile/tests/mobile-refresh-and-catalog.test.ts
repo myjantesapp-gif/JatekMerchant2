@@ -171,8 +171,8 @@ test("home renders discovery videos as a horizontal 9:16 card rail", () => {
   const page = source("app/(tabs)/index.tsx");
   const card = source("components/ShortCard.tsx");
 
-  assert.match(page, /title="Shorts"/);
-  assert.match(page, /shorts\.map\(\(short, index\)/);
+  assert.match(page, /case "shorts":/);
+  assert.match(page, /shorts\.slice\(0, limit\)\.map/);
   assert.match(page, /<ShortCard/);
   assert.match(card, /height: 200/);
   assert.match(card, /borderRadius: 18/);
@@ -265,11 +265,12 @@ test("home keeps pull-to-refresh without a header refresh button", () => {
   assert.doesNotMatch(code, /RefreshButton/);
 });
 
-test("home header omits the wordmark while retaining its actions and pink wave", () => {
+test("home header uses the branded logo while retaining its actions and pink wave", () => {
   const code = source("app/(tabs)/index.tsx");
 
-  assert.doesNotMatch(code, /styles\.headerLogo|styles\.headerBrand/);
-  assert.match(code, /const HEADER_PINK = "#CF346E"/);
+  assert.match(code, /<JatekLogoBadge size=\{36\} \/>/);
+  assert.match(code, /style=\{styles\.logoButton\}/);
+  assert.match(code, /const HEADER_PINK = "#E91E63"/);
   assert.match(code, /<WaveEdge color=\{HEADER_PINK\} height=\{28\} \/>/);
   assert.match(code, /accessibilityLabel="Ouvrir le menu"/);
   assert.match(code, /accessibilityLabel="Ouvrir le panier"/);
@@ -294,10 +295,11 @@ test("home renders reusable sections and live product recommendations", () => {
 
   assert.match(code, /listRecommendedProducts/);
   assert.match(code, /productId: String\(product\.id\)/);
-  assert.match(code, /title="Produits populaires"/);
-  assert.match(code, /<SectionHeader[\s\S]*title="Shorts"/);
-  assert.match(code, /<SectionHeader[\s\S]*title="Nouveautés"/);
-  assert.match(code, /<SectionHeader[\s\S]*title="Restauration"/);
+  assert.match(code, /homeSections/);
+  assert.match(code, /<SectionHeader title=\{config\.title\}/);
+  assert.match(code, /case "shorts":/);
+  assert.match(code, /case "new_products":/);
+  assert.match(code, /case "all":/);
   assert.match(code, /<ProductCard/);
   assert.match(code, /<ShortCard/);
   assert.match(code, /<StoreCard/);
@@ -314,7 +316,7 @@ test("home renders reusable sections and live product recommendations", () => {
       productCard.lastIndexOf("formatMad(product.price)"),
     "the crossed-out base price must appear above the promotional price",
   );
-  assert.match(sectionHeader, /arrow-forward/);
+  assert.match(sectionHeader, /chevron-forward/);
   assert.match(sectionHeader, /\{title\}/);
   assert.doesNotMatch(sectionHeader, /titleAccent/);
   const titleStyle = sectionHeader.match(/title:\s*\{([\s\S]*?)\n\s*\},/)?.[1] ?? "";
@@ -323,30 +325,20 @@ test("home renders reusable sections and live product recommendations", () => {
   assert.match(storeCard, /location-outline/);
 });
 
-test("app applies the Poppins family to text by default", () => {
+test("app applies the Montserrat family to text by default", () => {
   const layout = source("app/_layout.tsx");
 
-  assert.match(layout, /Inter_400Regular: Poppins_400Regular/);
-  assert.match(layout, /Inter_700Bold: Poppins_700Bold/);
+  assert.match(layout, /Inter_400Regular: Montserrat_400Regular/);
+  assert.match(layout, /Inter_700Bold: Montserrat_700Bold/);
   assert.match(layout, /applyDefaultFont\(Text\)/);
   assert.match(layout, /applyDefaultFont\(TextInput\)/);
 });
 
-test("home renders the requested strict section order", () => {
+test("home renders sections in the backend-configured order", () => {
   const page = source("app/(tabs)/index.tsx");
-  const categories = page.indexOf("{/* 1. Catégories */}");
-  const banners = page.indexOf("{/* 2. Bannières");
-  const promos = page.indexOf('title="PROMOS"');
-  const videos = page.indexOf('title="Shorts"');
-  const popular = page.indexOf('title="Produits populaires"');
-  const newest = page.indexOf('title="Nouveautés"');
-  const restaurants = page.indexOf('title="Restauration"');
-  assert.ok(categories >= 0 && categories < banners);
-  assert.ok(banners < promos);
-  assert.ok(promos < videos);
-  assert.ok(videos < popular);
-  assert.ok(popular < newest);
-  assert.ok(newest < restaurants);
+  assert.match(page, /const homeOrder = useMemo/);
+  assert.match(page, /homeOrder\.map\(\(key\) =>/);
+  assert.match(page, /renderHomeSection\(key\)/);
 });
 
 test("home keeps whitespace between the header, categories, and banners without section titles", () => {
@@ -354,17 +346,17 @@ test("home keeps whitespace between the header, categories, and banners without 
 
   assert.doesNotMatch(page, /<SectionHeader title="Catégories"/);
   assert.doesNotMatch(page, /<SectionHeader title="Bannières"/);
-  assert.match(page, /categorySection:\s*\{[\s\S]*paddingTop: 12/);
-  assert.match(page, /categorySection:\s*\{[\s\S]*paddingBottom: 18/);
-  assert.match(page, /bannerSection:\s*\{[\s\S]*paddingTop: 10/);
+  assert.match(page, /categorySection:\s*\{[\s\S]*paddingTop: 6/);
+  assert.match(page, /categorySection:\s*\{[\s\S]*paddingBottom: 6/);
+  assert.match(page, /bannerSlot:\s*\{[\s\S]*paddingVertical: 6/);
 });
 
 test("home shows three products at once in one horizontal row for promos and nouveautés", () => {
   const page = source("app/(tabs)/index.tsx");
-  assert.match(page, /const PROMO_PRODUCT_WIDTH = \(SCREEN_WIDTH - 32 - 16\) \/ 3/);
+  assert.match(page, /const PROMO_PRODUCT_WIDTH = \(width - 48\) \/ 3/);
   assert.match(page, /styles\.promoProductGrid/);
   assert.match(page, /queryKey: \["home-products-newest"\]/);
-  assert.match(page, /newestProducts\.map/);
+  assert.match(page, /products=\{newestProducts\?\.slice\(0, limit\)\}/);
 });
 
 test("home renders active top-level categories supplied by the API above the feed", () => {

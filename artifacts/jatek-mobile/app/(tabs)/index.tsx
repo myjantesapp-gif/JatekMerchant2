@@ -51,6 +51,7 @@ import { StoreCard } from "@/components/StoreCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { WaveEdge } from "@/components/WaveEdge";
 import { HomeSupportCard } from "@/components/HomeSupportCard";
+import { JatekLogoBadge } from "@/components/JatekLogoBadge";
 import colors from "@/constants/colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -229,7 +230,16 @@ function PromotionalCard({
     >
       {imageUrl ? (
         <Image source={{ uri: imageUrl }} style={styles.promoImage} resizeMode="cover" />
-      ) : null}
+      ) : (
+        <View style={styles.promoFallback}>
+          <JatekLogoBadge size={48} />
+          <View style={styles.promoFallbackCopy}>
+            {ad.badge ? <Text style={styles.promoBadge}>{ad.badge}</Text> : null}
+            <Text style={styles.promoTitle} numberOfLines={2}>{ad.title || "Découvrez nos offres"}</Text>
+            {ad.subtitle ? <Text style={styles.promoSubtitle} numberOfLines={2}>{ad.subtitle}</Text> : null}
+          </View>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -497,9 +507,9 @@ function HomeScreen() {
           (ad) =>
             ad.isActive &&
             (ad.type.includes("banner") || ad.type === "hero") &&
-            Boolean(resolveMediaUrl(ad.imageUrl)),
+             (Boolean(resolveMediaUrl(ad.imageUrl)) || Boolean(ad.title)),
         )
-        .sort((a, b) => a.sortOrder - b.sortOrder),
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id),
     [ads],
   );
   const homeSections = useMemo(
@@ -845,6 +855,14 @@ function HomeScreen() {
           >
           <View style={styles.headerTopRow}>
             <Pressable
+              onPress={() => router.replace("/(tabs)" as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Retour à l'accueil Jatek"
+              style={styles.logoButton}
+            >
+              <JatekLogoBadge size={36} />
+            </Pressable>
+            <Pressable
               onPress={() => setMenuOpen(true)}
               accessibilityRole="button"
               accessibilityLabel="Ouvrir le menu"
@@ -981,6 +999,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoButton: {
+    width: 38,
+    height: 38,
+    marginRight: 2,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1196,6 +1221,35 @@ const styles = StyleSheet.create({
   promoImage: {
     width: "100%",
     height: "100%",
+  },
+  promoFallback: {
+    flex: 1,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  promoFallbackCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  promoBadge: {
+    alignSelf: "flex-start",
+    color: "#E91E63",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  promoTitle: {
+    color: "#08244A",
+    fontSize: 17,
+    lineHeight: 21,
+    fontWeight: "800",
+  },
+  promoSubtitle: {
+    color: "#475569",
+    fontSize: 11,
+    lineHeight: 15,
   },
   promoProductGrid: {
     paddingVertical: 0,

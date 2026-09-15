@@ -113,7 +113,11 @@ router.get("/ads", async (req, res): Promise<void> => {
   const type = req.query.type as string | undefined;
   const conditions = [eq(adsTable.isActive, true)];
   if (type) conditions.push(eq(adsTable.type, type));
-  const rows = await db.select().from(adsTable).where(and(...conditions)).orderBy(asc(adsTable.sortOrder));
+  const rows = await db
+    .select()
+    .from(adsTable)
+    .where(and(...conditions))
+    .orderBy(asc(adsTable.sortOrder), asc(adsTable.id));
   res.json(rows.map((row) => ({
     ...row,
     imageUrl: resolveLegacyMediaPath(row.imageUrl, "banners"),
