@@ -294,13 +294,25 @@ async function main(): Promise<void> {
       const sizeRows = rows.flatMap((row) => {
         const menuItemId = itemIds.get(row.product.name);
         return menuItemId
-          ? row.sizes.map((size) => ({ ...size, menuItemId }))
+          ? row.sizes.map((size) => ({
+              menuItemId,
+              name: size.name,
+              priceAdjustment: size.priceAdjustment,
+              sortOrder: size.sortOrder,
+              isAvailable: size.isAvailable,
+            }))
           : [];
       });
       const extraRows = rows.flatMap((row) => {
         const menuItemId = itemIds.get(row.product.name);
         return menuItemId
-          ? row.extras.map((extra) => ({ ...extra, menuItemId }))
+          ? row.extras.map((extra) => ({
+              menuItemId,
+              name: extra.name,
+              price: extra.price,
+              sortOrder: extra.sortOrder,
+              isAvailable: extra.isAvailable,
+            }))
           : [];
       });
       if (sizeRows.length) await tx.insert(menuItemSizesTable).values(sizeRows);
