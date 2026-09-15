@@ -81,12 +81,12 @@ artifactId = "artifacts/jatek-mobile"
 task = "shell.exec"
 args = "pnpm --filter @workspace/jatek-mobile run dev"
 cwd = "./artifacts/jatek-mobile"
-waitForPort = 25896
-ensurePreviewReachable = "/status"
+waitForPort = 3000
+ensurePreviewReachable = "/"
 router = "expo-domain"
 
 [workflows.workflow.tasks.env]
-PORT = "25896"
+PORT = "3000"
 BASE_PATH = "/mobile/"
 
 [[workflows.workflow]]
