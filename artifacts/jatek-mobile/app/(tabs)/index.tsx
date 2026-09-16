@@ -861,13 +861,13 @@ function HomeScreen() {
               accessibilityLabel="Retour à l'accueil Jatek"
               style={styles.logoButton}
             >
-              <JatekIcon width={15} height={28} />
+              <JatekIcon width={13} height={24} />
             </Pressable>
             <Pressable
               onPress={() => setMenuOpen(true)}
               accessibilityRole="button"
               accessibilityLabel="Ouvrir le menu"
-              style={styles.headerIcon}
+              style={[styles.headerIcon, styles.menuIcon]}
             >
               <Ionicons name="menu" size={24} color={WHITE} />
             </Pressable>
@@ -1002,6 +1002,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+  },
+  menuIcon: {
+    marginLeft: -6,
   },
   logoButton: {
     width: 38,
