@@ -813,7 +813,7 @@ function HomeScreen() {
               onRetry={() => void refetchNewestProducts()}
               width={PROMO_PRODUCT_WIDTH}
               onProductPress={openProduct}
-              variant="home-compact"
+              variant="home-popular"
               keyPrefix="newest"
             />
             <WaveEdge color={SECTION_TINT} height={24} />
