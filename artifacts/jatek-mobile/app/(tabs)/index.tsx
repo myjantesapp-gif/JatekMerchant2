@@ -861,7 +861,7 @@ function HomeScreen() {
               accessibilityLabel="Retour à l'accueil Jatek"
               style={styles.logoButton}
             >
-              <JatekIcon width={18} height={34} />
+              <JatekIcon width={15} height={28} />
             </Pressable>
             <Pressable
               onPress={() => setMenuOpen(true)}
