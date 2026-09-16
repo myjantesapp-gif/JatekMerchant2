@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   popularCompactBody: {
-    paddingTop: 4,
+    paddingTop: 0,
   },
   compactName: {
     fontSize: 12,
