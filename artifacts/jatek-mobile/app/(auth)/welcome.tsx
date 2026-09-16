@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
-  Image,
   TextInput,
   Pressable,
   FlatList,
@@ -30,8 +29,6 @@ import {
   OUT_OF_ZONE_MESSAGE,
   type PlaceSuggestion,
 } from "@/utils/deliveryZone";
-
-const MAP_BRAND_ICON = require("../../assets/images/jatek-map-icon.png");
 
 export default function WelcomeScreen() {
   const colors = useColors();
@@ -166,14 +163,6 @@ export default function WelcomeScreen() {
           pinColor={PRIMARY}
           zoneColor={TURQUOISE}
         />
-      </View>
-
-      {/* Brand marker for the first map screen, kept clear of the search and GPS controls. */}
-      <View
-        accessibilityLabel="Icône Jatek"
-        style={[styles.mapBrandBadge, { top: insets.top + 82, pointerEvents: "none" }]}
-      >
-        <Image source={MAP_BRAND_ICON} style={styles.mapBrandIcon} resizeMode="contain" />
       </View>
 
       {/* Top floating search pill — Talabat-style */}
@@ -338,14 +327,6 @@ const styles = StyleSheet.create({
     width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center",
     shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 5,
   },
-  mapBrandBadge: {
-    position: "absolute", right: 16, width: 54, height: 50, borderRadius: 16,
-    alignItems: "center", justifyContent: "center", overflow: "hidden", zIndex: 5,
-    backgroundColor: "#fff",
-    shadowColor: "#000", shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 5,
-  },
-  mapBrandIcon: { width: "100%", height: "100%" },
-
   bottomCard: {
     position: "absolute", left: 0, right: 0, bottom: 0,
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
