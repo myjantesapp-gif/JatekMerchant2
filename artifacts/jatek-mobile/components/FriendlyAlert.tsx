@@ -121,7 +121,7 @@ export function FriendlyAlertProvider({ children }: { children: ReactNode }) {
         <Animated.View style={[styles.backdrop, { opacity: fade }]}>
           <Pressable style={StyleSheet.absoluteFillObject} onPress={hide} />
         </Animated.View>
-        <View style={styles.center} pointerEvents="box-none">
+        <View style={[styles.center, { pointerEvents: "box-none" }]}>
           <Animated.View
             style={[
               styles.card,

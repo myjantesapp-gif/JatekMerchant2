@@ -55,7 +55,7 @@ export default function CookieConsentBanner() {
   if (!visible) return null;
 
   return (
-    <View pointerEvents="box-none" style={styles.wrap}>
+    <View style={[styles.wrap, { pointerEvents: "box-none" }]}>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.title, { color: colors.heading }]}>🍪 Vos préférences cookies</Text>
         <Text style={[styles.body, { color: colors.mutedForeground }]}>

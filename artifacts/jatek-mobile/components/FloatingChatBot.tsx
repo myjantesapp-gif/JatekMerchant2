@@ -243,10 +243,13 @@ export default function FloatingChatBot() {
     <>
       {/* ── FAB ── */}
       <Animated.View
-        pointerEvents={kbVisible && !open ? "none" : "auto"}
         style={[
           s.fab,
-          { transform: [{ scale: fabScale }], opacity: fabOpacity },
+          {
+            transform: [{ scale: fabScale }],
+            opacity: fabOpacity,
+            pointerEvents: kbVisible && !open ? "none" : "auto",
+          },
         ]}
       >
         <TouchableOpacity onPress={openChat} activeOpacity={0.85} style={s.fabInner}>

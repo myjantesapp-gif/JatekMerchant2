@@ -135,8 +135,8 @@ export function OrderStatusToast() {
           opacity,
           shadowColor: "#000",
         },
+        { pointerEvents: "box-none" },
       ]}
-      pointerEvents="box-none"
     >
       <View style={styles.iconWrap}>
         <Ionicons

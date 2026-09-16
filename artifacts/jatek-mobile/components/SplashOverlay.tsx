@@ -109,8 +109,7 @@ export default function SplashOverlay() {
 
   return (
     <Animated.View
-      style={[styles.root, overlayStyle]}
-      pointerEvents="none"
+      style={[styles.root, overlayStyle, { pointerEvents: "none" }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >

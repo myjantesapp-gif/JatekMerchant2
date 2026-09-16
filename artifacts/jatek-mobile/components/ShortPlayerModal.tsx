@@ -143,7 +143,7 @@ export function ShortPlayerModal({ visible, shorts, initialIndex, onClose }: Pro
 
         {/* Hint */}
         {index === 0 && (
-          <View style={[styles.hint, { bottom: screenHeight * 0.4 }]} pointerEvents="none">
+          <View style={[styles.hint, { bottom: screenHeight * 0.4, pointerEvents: "none" }]}>
             <Ionicons name="chevron-up" size={18} color="rgba(255,255,255,0.85)" />
             <Text style={styles.hintText}>Glisse vers le haut</Text>
           </View>
@@ -253,8 +253,7 @@ function ShortFrame({
 
       {/* Like burst */}
       <Animated.View
-        pointerEvents="none"
-        style={[styles.burst, { opacity: burstOpacity, transform: [{ scale: burstScale }] }]}
+        style={[styles.burst, { opacity: burstOpacity, transform: [{ scale: burstScale }], pointerEvents: "none" }]}
       >
         <Ionicons name="heart" size={120} color={PINK} />
       </Animated.View>

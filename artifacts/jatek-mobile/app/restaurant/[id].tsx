@@ -622,12 +622,12 @@ export default function RestaurantScreen() {
 
       {categoryPinned && categories.length > 1 && (
         <View
-          pointerEvents="box-none"
           style={[
             styles.categoryOverlay,
             {
               top: insets.top + (headerPinned ? COMPACT_HEADER_HEIGHT : CATEGORY_OVERLAY_TOP_GAP),
             },
+            { pointerEvents: "box-none" },
           ]}
         >
           {renderCategoryBar(true)}
@@ -743,9 +743,8 @@ export default function RestaurantScreen() {
                 {restaurantCoords ? (
                   <View style={styles.miniMapWrap}>
                     <WebView
-                      style={styles.miniMapWebView}
+                      style={[styles.miniMapWebView, { pointerEvents: "none" }]}
                       scrollEnabled={false}
-                      pointerEvents="none"
                       source={{
                         html: buildRestaurantMapHtml(
                           restaurantCoords.lat,

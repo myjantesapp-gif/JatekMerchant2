@@ -74,8 +74,7 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
         </View>
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.76)"]}
-          style={styles.bottomOverlay}
-          pointerEvents="none"
+        style={[styles.bottomOverlay, { pointerEvents: "none" }]}
         >
           <View style={styles.shortMeta}>
             <View style={styles.shortCopy}>
@@ -120,8 +119,7 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
       </View>
       <LinearGradient
         colors={["transparent", "rgba(0,0,0,0.62)"]}
-        style={styles.bottomOverlay}
-        pointerEvents="none"
+        style={[styles.bottomOverlay, { pointerEvents: "none" }]}
       >
         <View style={styles.shortMeta}>
           <View style={styles.shortCopy}>
