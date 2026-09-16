@@ -291,6 +291,13 @@ test("welcome address picker uses the official Jatek wordmark", () => {
   assert.doesNotMatch(code, /JatekLogoBadge/);
 });
 
+test("bottom tab menu uses the same Jatek wordmark", () => {
+  const code = source("app/(tabs)/_layout.tsx");
+
+  assert.match(code, /jatek-wordmark\.png/);
+  assert.doesNotMatch(code, /jatek-wordmark-transparent\.png/);
+});
+
 test("home renders reusable sections and live product recommendations", () => {
   const code = source("app/(tabs)/index.tsx");
   const productCard = source("components/ProductCard.tsx");

@@ -33,7 +33,7 @@ function JatekTabIcon({ focused }: { focused: boolean }) {
   return (
     <View style={[s.jLogo, { opacity: focused ? 1 : 0.38 }]}>
       <Image
-        source={require("../../assets/images/jatek-wordmark-transparent.png")}
+        source={require("../../assets/images/jatek-wordmark.png")}
         style={s.jLogoImage}
         resizeMode="contain"
         accessibilityLabel="Jatek"
