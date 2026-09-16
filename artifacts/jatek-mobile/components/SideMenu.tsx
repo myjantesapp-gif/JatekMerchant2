@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import {
   Modal,
-  Image,
   StyleSheet,
   Text,
   View,
@@ -18,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { JatekWordmark } from "@/components/JatekWordmark";
 
 const PINK      = "#FF4593";
 const PINK_DEEP = "#E91E63";
@@ -102,14 +102,7 @@ export function SideMenu({ visible, onClose }: Props) {
         >
           {/* top: Jatek logo + close */}
           <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-            <View style={styles.logoBadge}>
-              <Image
-                source={require("../assets/images/jatek-logo.png")}
-                style={styles.logoImage}
-                resizeMode="cover"
-                accessibilityLabel="Jatek"
-              />
-            </View>
+            <JatekWordmark width={68} height={26} />
             <TouchableOpacity
               onPress={onClose}
               hitSlop={10}
@@ -237,18 +230,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: 14,
     gap: 10,
-  },
-  logoBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoImage: {
-    width: "100%",
-    height: "100%",
   },
   closeBtn: {
     width: 28,

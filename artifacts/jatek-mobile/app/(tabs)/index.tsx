@@ -52,7 +52,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { WaveEdge } from "@/components/WaveEdge";
 import { HomeSupportCard } from "@/components/HomeSupportCard";
 import { JatekLogoBadge } from "@/components/JatekLogoBadge";
-import { JatekWordmark } from "@/components/JatekWordmark";
+import { JatekIcon } from "@/components/JatekIcon";
 import colors from "@/constants/colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -861,7 +861,7 @@ function HomeScreen() {
               accessibilityLabel="Ouvrir le menu"
               style={styles.logoButton}
             >
-              <JatekWordmark width={68} height={26} tone="white" />
+              <JatekIcon width={13} height={24} />
             </Pressable>
             <Pressable
               onPress={() => setAddressPickerOpen(true)}
@@ -996,7 +996,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   logoButton: {
-    width: 72,
+    width: 38,
     height: 38,
     marginRight: 2,
     alignItems: "center",
