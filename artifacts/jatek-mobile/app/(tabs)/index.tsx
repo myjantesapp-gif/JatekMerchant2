@@ -330,7 +330,7 @@ function ProductRail({
   onRetry: () => void;
   width: number;
   onProductPress: (product: RecommendedProduct) => void;
-  variant?: "default" | "home-compact" | "home-offer" | "home-free-delivery";
+  variant?: "default" | "home-compact" | "home-popular" | "home-offer" | "home-free-delivery";
   keyPrefix: string;
 }) {
   if (loading || error) {
@@ -675,7 +675,7 @@ function HomeScreen() {
               onRetry={() => void (config.source === "promos" ? refetchPromoProducts() : config.source === "newest" ? refetchNewestProducts() : refetchPopularProducts())}
               width={PRODUCT_GRID_WIDTH}
               onProductPress={openProduct}
-              variant="home-compact"
+              variant="home-popular"
               keyPrefix="popular"
             />
             <WaveEdge color={SECTION_TINT} height={24} />

@@ -18,7 +18,7 @@ type Props = {
   onPress: () => void;
   compact?: boolean;
   emphasizeImage?: boolean;
-  variant?: "default" | "home-compact" | "home-offer" | "home-free-delivery";
+  variant?: "default" | "home-compact" | "home-popular" | "home-offer" | "home-free-delivery";
 };
 
 export function ProductCard({
@@ -128,8 +128,9 @@ export function ProductCard({
     );
   }
 
-  if (variant === "home-compact") {
+  if (variant === "home-compact" || variant === "home-popular") {
     // "Produits populaires"
+    const popularCompact = variant === "home-popular";
     return (
       <Pressable
         onPress={onPress}
@@ -157,11 +158,11 @@ export function ProductCard({
           </Pressable>
         </View>
         <View style={styles.compactBody}>
-          <Text style={styles.compactName} numberOfLines={1}>{product.name}</Text>
+          <Text style={[styles.compactName, popularCompact && styles.popularCompactName]} numberOfLines={1}>{product.name}</Text>
           <View style={styles.compactBottomRow}>
             <View style={styles.compactPriceBlock}>
               {hasPromotion ? <Text style={styles.compactOldPrice}>{formatMad(originalPrice!)} DH</Text> : null}
-              <Text style={styles.compactPrice}>{formatMad(product.price)} DH</Text>
+              <Text style={[styles.compactPrice, popularCompact && styles.popularCompactPrice]}>{formatMad(product.price)} DH</Text>
             </View>
             <Pressable hitSlop={8} style={styles.addBtn} onPress={(e) => { e.stopPropagation(); onPress(); }}>
               <Ionicons name="add" size={16} color="#fff" />
@@ -493,6 +494,11 @@ const styles = StyleSheet.create({
     color: "#08244A",
     marginBottom: 6,
   },
+  popularCompactName: {
+    fontSize: 10.5,
+    lineHeight: 13,
+    marginBottom: 2,
+  },
   compactBottomRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -504,6 +510,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontFamily: "Montserrat_800ExtraBold",
     color: "#EC176B",
+  },
+  popularCompactPrice: {
+    fontSize: 10,
+    lineHeight: 12,
   },
   compactPriceBlock: {
     minHeight: 27,

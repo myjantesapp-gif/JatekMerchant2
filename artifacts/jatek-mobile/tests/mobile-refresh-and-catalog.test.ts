@@ -308,6 +308,7 @@ test("home renders reusable sections and live product recommendations", () => {
   assert.match(code, /styles\.promoSection/);
   assert.match(code, /styles\.promoProductGrid/);
   assert.match(code, /styles\.newestSection/);
+  assert.match(code, /variant="home-popular"/);
   assert.match(code, /const SECTION_TINT/);
   assert.match(code, /WaveEdge/);
    assert.match(code, /sort: "promos"/);
