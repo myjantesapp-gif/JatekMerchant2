@@ -1004,7 +1004,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   menuIcon: {
-    marginLeft: -6,
+    marginLeft: -10,
   },
   logoButton: {
     width: 38,
