@@ -253,7 +253,7 @@ export default function WelcomeScreen() {
       {/* Bottom card — address summary + confirm button */}
       <View style={[styles.bottomCard, { backgroundColor: colors.background, paddingBottom: insets.bottom + 14 }]}>
         <View style={styles.brandRow}>
-          <JatekWordmark width={80} height={30} />
+          <JatekWordmark width={68} height={26} />
           <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>Oujda · Livraison rapide</Text>
         </View>
 
