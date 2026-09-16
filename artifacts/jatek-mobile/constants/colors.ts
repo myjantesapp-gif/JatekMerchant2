@@ -16,6 +16,7 @@ const colors = {
     primarySoft: "#FDE8F4",
     primarySoftForeground: "#EC176B",
     pinkBg: "#FFF0F8",
+    introBackground: "#E80868",
 
     // Yellow — promos, ratings, discount pills
     yellow: "#FFD400",
@@ -54,6 +55,7 @@ const colors = {
     primarySoft: "#3D0E26",
     primarySoftForeground: "#FF6BB0",
     pinkBg: "#3D0E26",
+    introBackground: "#E80868",
 
     yellow: "#FFD400",
     yellowForeground: "#0A1B3D",

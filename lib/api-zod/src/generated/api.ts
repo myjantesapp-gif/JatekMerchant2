@@ -587,6 +587,7 @@ export const listBackendOrdersQueryLimitDefault = 50;
 
 export const ListBackendOrdersQueryParams = zod.object({
   "status": zod.coerce.string().optional(),
+  "promo": zod.coerce.boolean().optional(),
   "shopId": zod.coerce.number().int().optional(),
   "search": zod.coerce.string().optional(),
   "limit": zod.coerce.number().int().default(listBackendOrdersQueryLimitDefault)
@@ -650,6 +651,7 @@ export const listBackendProductsQueryPageSizeMax = 200;
 
 export const ListBackendProductsQueryParams = zod.object({
   "status": zod.coerce.string().optional(),
+  "promo": zod.coerce.boolean().optional(),
   "shopId": zod.coerce.number().int().optional(),
   "search": zod.coerce.string().optional(),
   "category": zod.coerce.string().optional(),
@@ -665,6 +667,7 @@ export const ListBackendProductsResponseItem = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "compareAtPrice": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
@@ -687,6 +690,7 @@ export const listBackendProductsPageQueryPageSizeMax = 200;
 
 export const ListBackendProductsPageQueryParams = zod.object({
   "status": zod.coerce.string().optional(),
+  "promo": zod.coerce.boolean().optional(),
   "shopId": zod.coerce.number().int().optional(),
   "search": zod.coerce.string().optional(),
   "category": zod.coerce.string().optional(),
@@ -703,6 +707,7 @@ export const ListBackendProductsPageResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "compareAtPrice": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
@@ -809,6 +814,7 @@ export const ListBackendMenuCategoryProductsResponseItem = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "compareAtPrice": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
@@ -1534,6 +1540,7 @@ export const GetMenuItemResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "compareAtPrice": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
@@ -1556,6 +1563,7 @@ export const UpdateMenuItemBody = zod.object({
   "name": zod.string().optional(),
   "description": zod.string().optional(),
   "price": zod.number().optional(),
+  "compareAtPrice": zod.number().nullish(),
   "imageUrl": zod.string().optional(),
   "category": zod.string().optional(),
   "menuItemCategoryId": zod.number().int().optional(),
@@ -1570,6 +1578,7 @@ export const UpdateMenuItemResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "compareAtPrice": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
@@ -1605,6 +1614,7 @@ export const GetProductOptionsResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "compareAtPrice": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
@@ -1726,8 +1736,8 @@ export const SendNotificationResponse = zod.object({
   "success": zod.boolean(),
   "recipients": zod.number().int(),
   "inAppSaved": zod.number().int(),
-  "remoteSent": zod.number().int(),
-  "receiptsPending": zod.number().int().optional()
+  "remoteSent": zod.number().int().describe('Remote push requests accepted by their provider; Expo ticket acceptance is not device delivery confirmation'),
+  "receiptsPending": zod.number().int().optional().describe('Accepted Expo tickets queued for asynchronous receipt polling')
 })
 
 
@@ -2846,6 +2856,7 @@ export const ListMenuItemsResponseItem = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "compareAtPrice": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),
@@ -2869,6 +2880,7 @@ export const CreateMenuItemBody = zod.object({
   "name": zod.string(),
   "description": zod.string().optional(),
   "price": zod.number(),
+  "compareAtPrice": zod.number().nullish(),
   "imageUrl": zod.string().optional(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().optional(),
@@ -2883,6 +2895,7 @@ export const CreateMenuItemResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "compareAtPrice": zod.number().nullish(),
   "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "menuItemCategoryId": zod.number().int().nullish(),

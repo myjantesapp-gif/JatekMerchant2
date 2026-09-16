@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, Pencil, Trash2, Loader2, Settings2, Tags, Package, FileUp, Download, AlertCircle, ChevronDown, ChevronRight, ArrowDown, ArrowUp, ArrowUpDown, X, RefreshCw, GripVertical, Store } from "lucide-react";
+import { Search, Plus, Minus, Pencil, Trash2, Loader2, Settings2, Tags, Package, FileUp, Download, AlertCircle, ChevronDown, ChevronRight, ArrowDown, ArrowUp, ArrowUpDown, X, RefreshCw, GripVertical, Store } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -27,7 +27,7 @@ import { apiFetch } from "@/lib/api";
 import { ImageUploadField } from "@/components/ImageUploadField";
 import { buildProductListParams, isProductSort, type ProductAvailability, type ProductSort } from "@/lib/productListQuery";
 
-const EMPTY = { name: "", description: "", price: "", compareAtPrice: "", promotionEnabled: false, category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "", sortOrder: "0" };
+const EMPTY = { name: "", description: "", price: "", compareAtPrice: "", promotionEnabled: false, category: "", menuItemCategoryId: "", imageUrl: "", isAvailable: true, isPopular: false, allergens: "", tags: "", prepTimeMinutes: "", calories: "", sortOrder: "" };
 
 type ProductCat = { id: number; restaurantId: number | null; name: string; isActive: boolean; productCount?: number };
 function useProductCategories(restaurantId: string | number | undefined) {
@@ -289,7 +289,9 @@ export default function Products() {
     tags: f.tags || undefined,
     prepTimeMinutes: f.prepTimeMinutes ? Number(f.prepTimeMinutes) : undefined,
     calories: f.calories ? Number(f.calories) : undefined,
-     sortOrder: Number(f.sortOrder) || 0,
+    // The dashboard shows human-friendly positions starting at 1. Leave the
+    // field out for new products so the API puts them at the end by default.
+    sortOrder: f.sortOrder.trim() ? Number(f.sortOrder) - 1 : undefined,
   });
 
   const validateProductForm = (f: typeof EMPTY) => {
@@ -302,6 +304,13 @@ export default function Products() {
     if (f.promotionEnabled && (!Number.isFinite(compareAtPrice) || compareAtPrice <= price)) {
       toast({ title: "Promotion invalide", description: "Le prix de base doit être supérieur au prix promotionnel.", variant: "destructive" });
       return false;
+    }
+    if (f.sortOrder.trim()) {
+      const displayOrder = Number(f.sortOrder);
+      if (!Number.isInteger(displayOrder) || displayOrder < 1) {
+        toast({ title: "Ordre invalide", description: "La position doit être un entier supérieur ou égal à 1.", variant: "destructive" });
+        return false;
+      }
     }
     return true;
   };
@@ -325,7 +334,7 @@ export default function Products() {
       tags: Array.isArray(p.tags) ? p.tags.join(",") : (p.tags ?? ""),
       prepTimeMinutes: p.prepTimeMinutes ? String(p.prepTimeMinutes) : "",
       calories: p.calories ? String(p.calories) : "",
-       sortOrder: String(p.sortOrder ?? 0),
+      sortOrder: String(Number(p.sortOrder ?? 0) + 1),
     });
   };
 
@@ -346,17 +355,18 @@ export default function Products() {
   };
 
   const handleSortOrderChange = (product: any, rawValue: string) => {
-    const nextOrder = Number(rawValue);
-    const currentOrder = Number(product.sortOrder ?? 0);
-    if (!rawValue.trim() || !Number.isInteger(nextOrder) || nextOrder < 0) {
+    const displayOrder = Number(rawValue);
+    const currentDisplayOrder = Number(product.sortOrder ?? 0) + 1;
+    if (!rawValue.trim() || !Number.isInteger(displayOrder) || displayOrder < 1) {
       setOrderDrafts((current) => {
         return { ...current, [product.id]: rawValue };
       });
-      setOrderErrors((current) => ({ ...current, [product.id]: "Saisissez un nombre entier positif ou nul." }));
-      toast({ title: "Ordre invalide", description: "Saisissez un nombre entier positif ou nul.", variant: "destructive" });
+      setOrderErrors((current) => ({ ...current, [product.id]: "Saisissez une position entière supérieure ou égale à 1." }));
+      toast({ title: "Ordre invalide", description: "Saisissez une position entière supérieure ou égale à 1.", variant: "destructive" });
       return;
     }
-    if (nextOrder === currentOrder) {
+    const nextOrder = displayOrder - 1;
+    if (displayOrder === currentDisplayOrder) {
       setOrderDrafts((current) => {
         const next = { ...current };
         delete next[product.id];
@@ -382,6 +392,14 @@ export default function Products() {
       })
       .catch(() => undefined);
     orderQueueRef.current = save;
+  };
+
+  const moveProduct = (product: any, direction: -1 | 1) => {
+    if (sortBy !== "custom" || sortDirection !== "asc" || hasFilters || orderSavingIds.size > 0) return;
+    const currentOrder = Number(product.sortOrder ?? 0);
+    const nextOrder = currentOrder + direction;
+    if (nextOrder < 0 || nextOrder >= totalCount) return;
+    handleSortOrderChange(product, String(nextOrder + 1));
   };
 
   return (
@@ -602,12 +620,40 @@ export default function Products() {
                       <TableCell className="hidden sm:table-cell"><Badge variant="secondary">{p.category}</Badge></TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
+                          <div className="flex flex-col -my-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              title="Remonter le produit"
+                              aria-label={`Remonter ${p.name}`}
+                              disabled={sortBy !== "custom" || sortDirection !== "asc" || hasFilters || Number(p.sortOrder ?? 0) <= 0 || orderSavingIds.size > 0}
+                              onClick={() => moveProduct(p, -1)}
+                              data-testid={`button-product-order-up-${p.id}`}
+                            >
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              title="Descendre le produit"
+                              aria-label={`Descendre ${p.name}`}
+                              disabled={sortBy !== "custom" || sortDirection !== "asc" || hasFilters || Number(p.sortOrder ?? 0) >= totalCount - 1 || orderSavingIds.size > 0}
+                              onClick={() => moveProduct(p, 1)}
+                              data-testid={`button-product-order-down-${p.id}`}
+                            >
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                           <GripVertical className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                           <Input
                             type="number"
-                            min="0"
+                            min="1"
                             step="1"
-                            value={orderDrafts[p.id] ?? String(p.sortOrder ?? 0)}
+                            value={orderDrafts[p.id] ?? String(Number(p.sortOrder ?? 0) + 1)}
                             onChange={(e) => {
                               setOrderDrafts((current) => ({ ...current, [p.id]: e.target.value }));
                               setOrderErrors((current) => {
@@ -618,12 +664,38 @@ export default function Products() {
                             }}
                             onBlur={(e) => handleSortOrderChange(p, e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                            disabled={orderSavingIds.has(p.id)}
+                            disabled={orderSavingIds.size > 0}
                             aria-invalid={Boolean(orderErrors[p.id])}
                             className={`h-8 w-20 ${orderErrors[p.id] ? "border-destructive focus-visible:ring-destructive" : ""}`}
                             aria-label={`Ordre personnalisé de ${p.name}`}
                             data-testid={`input-product-order-${p.id}`}
                           />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-7"
+                            title="Diminuer le numéro"
+                            aria-label={`Diminuer le numéro de ${p.name}`}
+                            disabled={Number(p.sortOrder ?? 0) <= 0 || orderSavingIds.size > 0}
+                            onClick={() => handleSortOrderChange(p, String(Number(p.sortOrder ?? 0)))}
+                            data-testid={`button-product-order-minus-${p.id}`}
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-7"
+                            title="Augmenter le numéro"
+                            aria-label={`Augmenter le numéro de ${p.name}`}
+                            disabled={orderSavingIds.size > 0}
+                            onClick={() => handleSortOrderChange(p, String(Number(p.sortOrder ?? 0) + 2))}
+                            data-testid={`button-product-order-plus-${p.id}`}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
                           {orderSavingIds.has(p.id) && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="Enregistrement de l’ordre" />}
                         </div>
                         {orderErrors[p.id] && <p className="mt-1 max-w-[12rem] text-[11px] text-destructive" role="alert" data-testid={`status-product-order-error-${p.id}`}>{orderErrors[p.id]}</p>}
@@ -1045,8 +1117,16 @@ function ProductFields({ form, setForm, restaurantId }: { form: any; setForm: an
             </Field>
           )}
         </div>
-        <Field label="Ordre personnalisé">
-          <Input type="number" step="1" value={form.sortOrder} onChange={(e: any) => set("sortOrder", e.target.value)} />
+        <Field label="Position d’affichage (optionnelle)">
+          <Input
+            type="number"
+            min="1"
+            step="1"
+            inputMode="numeric"
+            placeholder="Laisser vide = à la fin"
+            value={form.sortOrder}
+            onChange={(e: any) => set("sortOrder", e.target.value)}
+          />
         </Field>
         <ImageUploadField
           label="Image"

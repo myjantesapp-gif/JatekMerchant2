@@ -343,7 +343,7 @@ function extractAssets(timestamp) {
 
   const assetsMap = new Map();
   const assetPattern =
-    /httpServerLocation:"([^"]+)"[^}]*hash:"([^"]+)"[^}]*name:"([^"]+)"[^}]*type:"([^"]+)"/g;
+    /"?httpServerLocation"?\s*:\s*"([^"]+)"[^}]*"?hash"?\s*:\s*"([^"]+)"[^}]*"?name"?\s*:\s*"([^"]+)"[^}]*"?type"?\s*:\s*"([^"]+)"/g;
 
   const extractFromBundle = (bundle, platform) => {
     for (const match of bundle.matchAll(assetPattern)) {
@@ -463,7 +463,7 @@ function updateBundleUrls(timestamp, baseUrl) {
     let bundle = fs.readFileSync(bundlePath, "utf-8");
 
     bundle = bundle.replace(
-      /httpServerLocation:"(\/[^"]+)"/g,
+      /"?httpServerLocation"?\s*:\s*"(\/[^"]+)"/g,
       (_match, capturedPath) => {
         const tempUrl = new URL(`http://localhost:${metroPort}${capturedPath}`);
         const unstablePath = tempUrl.searchParams.get("unstable_path");

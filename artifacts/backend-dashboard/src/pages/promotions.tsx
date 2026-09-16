@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useListBackendAds,
   useCreateBackendAd,
   useUpdateBackendAd,
   useDeleteBackendAd,
+  useListBackendShops,
   getListBackendAdsQueryKey,
+  getListBackendProductsQueryKey,
+  type MenuItem,
   type Ad,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Tags } from "lucide-react";
 import { ImageUploadField } from "@/components/ImageUploadField";
+import { apiFetch } from "@/lib/api";
 
 type AdType = "jatek_offer" | "vip_banner" | "promo_banner";
 
@@ -58,8 +62,13 @@ const AD_TYPE_LABELS: Record<AdType, string> = {
   promo_banner: "Bannière Promo",
 };
 
+type ProductWithPromotion = MenuItem & {
+  compareAtPrice?: number | null;
+};
+
 export default function Promotions() {
   const { data: ads, isLoading } = useListBackendAds({});
+  const { data: shops = [] } = useListBackendShops({});
   const createAd = useCreateBackendAd();
   const updateAd = useUpdateBackendAd();
   const deleteAd = useDeleteBackendAd();
@@ -71,8 +80,50 @@ export default function Promotions() {
   const [form, setForm] = useState<AdForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [promotionShopId, setPromotionShopId] = useState("");
+  const [promotionProductId, setPromotionProductId] = useState("");
+  const [promotionPrice, setPromotionPrice] = useState("");
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListBackendAdsQueryKey() });
+  const promotionProductsQuery = useQuery<ProductWithPromotion[]>({
+    queryKey: ["/api/backend/products", "promotion-editor", promotionShopId],
+    queryFn: () => apiFetch(`/api/backend/products?shopId=${promotionShopId}&sort=custom&sortDirection=asc`),
+    enabled: Boolean(promotionShopId),
+  });
+  const promotionProducts = promotionProductsQuery.data ?? [];
+  const selectedPromotionProduct = useMemo(
+    () => promotionProducts.find((product) => String(product.id) === promotionProductId),
+    [promotionProductId, promotionProducts],
+  );
+  const promotionMutation = useMutation({
+    mutationFn: ({ productId, promoPrice }: { productId: number; promoPrice: number | null }) =>
+      apiFetch(`/api/backend/products/${productId}/promotion`, {
+        method: "PATCH",
+        body: JSON.stringify({ promoPrice }),
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["/api/backend/products", "promotion-editor", promotionShopId] });
+      await qc.invalidateQueries({ queryKey: getListBackendProductsQueryKey() });
+      toast({ title: "Promotion enregistrée" });
+      setPromotionPrice("");
+    },
+    onError: (error: any) => toast({
+      title: "Promotion non enregistrée",
+      description: error?.message ?? "Réessayez.",
+      variant: "destructive",
+    }),
+  });
+
+  useEffect(() => {
+    setPromotionProductId("");
+    setPromotionPrice("");
+  }, [promotionShopId]);
+
+  useEffect(() => {
+    if (!selectedPromotionProduct) return;
+    const hasPromotion = Number(selectedPromotionProduct.compareAtPrice ?? 0) > Number(selectedPromotionProduct.price);
+    setPromotionPrice(hasPromotion ? String(selectedPromotionProduct.price) : "");
+  }, [selectedPromotionProduct]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -142,6 +193,30 @@ export default function Promotions() {
     });
   };
 
+  const saveProductPromotion = () => {
+    if (!selectedPromotionProduct) {
+      toast({ title: "Choisissez un produit", variant: "destructive" });
+      return;
+    }
+    const rawPrice = promotionPrice.trim().replace(",", ".");
+    const promoPrice = Number(rawPrice);
+    const cataloguePrice = Number(selectedPromotionProduct.compareAtPrice ?? selectedPromotionProduct.price);
+    if (!Number.isFinite(promoPrice) || promoPrice < 0 || promoPrice >= cataloguePrice) {
+      toast({
+        title: "Prix promotionnel invalide",
+        description: `Le prix doit être inférieur à ${cataloguePrice.toFixed(2)} DH.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    promotionMutation.mutate({ productId: selectedPromotionProduct.id, promoPrice });
+  };
+
+  const clearProductPromotion = () => {
+    if (!selectedPromotionProduct) return;
+    promotionMutation.mutate({ productId: selectedPromotionProduct.id, promoPrice: null });
+  };
+
   const field = (k: keyof AdForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value }));
 
@@ -154,6 +229,86 @@ export default function Promotions() {
         </div>
         <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Nouvelle publicité</Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Promotion par boutique</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Sélectionnez une boutique, son produit, puis saisissez le prix promotionnel.
+          </p>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-[1fr_1fr_180px_auto] md:items-end">
+          <div className="grid gap-1.5">
+            <Label htmlFor="promotion-shop">Boutique</Label>
+            <Select value={promotionShopId} onValueChange={setPromotionShopId}>
+              <SelectTrigger id="promotion-shop" data-testid="select-promotion-shop">
+                <SelectValue placeholder="Choisir une boutique" />
+              </SelectTrigger>
+              <SelectContent>
+                {shops.map((shop) => (
+                  <SelectItem key={shop.id} value={String(shop.id)}>{shop.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="promotion-product">Produit</Label>
+            <Select
+              value={promotionProductId}
+              onValueChange={setPromotionProductId}
+              disabled={!promotionShopId || promotionProductsQuery.isLoading}
+            >
+              <SelectTrigger id="promotion-product" data-testid="select-promotion-product">
+                <SelectValue placeholder={promotionProductsQuery.isLoading ? "Chargement…" : "Choisir un produit"} />
+              </SelectTrigger>
+              <SelectContent>
+                {promotionProducts.map((product) => (
+                  <SelectItem key={product.id} value={String(product.id)}>
+                    {product.name}{Number(product.compareAtPrice ?? 0) > Number(product.price) ? " · Promo active" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="promotion-price">Prix promo (DH)</Label>
+            <Input
+              id="promotion-price"
+              type="text"
+              inputMode="decimal"
+              value={promotionPrice}
+              onChange={(event) => setPromotionPrice(event.target.value)}
+              placeholder="Ex. 29,90"
+              disabled={!selectedPromotionProduct}
+              data-testid="input-promotion-price"
+            />
+            {selectedPromotionProduct && (
+              <span className="text-xs text-muted-foreground">
+                Prix catalogue : {Number(selectedPromotionProduct.compareAtPrice ?? selectedPromotionProduct.price).toFixed(2)} DH
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              onClick={saveProductPromotion}
+              disabled={!selectedPromotionProduct || !promotionPrice.trim() || promotionMutation.isPending}
+              data-testid="button-save-product-promotion"
+            >
+              {promotionMutation.isPending ? "Enregistrement…" : "Appliquer"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={clearProductPromotion}
+              disabled={!selectedPromotionProduct || Number(selectedPromotionProduct.compareAtPrice ?? 0) <= Number(selectedPromotionProduct.price) || promotionMutation.isPending}
+              data-testid="button-clear-product-promotion"
+            >
+              Retirer
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>Publicités actives ({ads?.length ?? 0})</CardTitle></CardHeader>

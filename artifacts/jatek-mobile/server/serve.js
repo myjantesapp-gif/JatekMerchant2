@@ -45,6 +45,7 @@ const MIME_TYPES = {
   ".woff2": "font/woff2",
   ".ttf": "font/ttf",
   ".otf": "font/otf",
+  ".mp4": "video/mp4",
   ".map": "application/json",
 };
 

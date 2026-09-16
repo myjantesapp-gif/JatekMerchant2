@@ -37,6 +37,49 @@ function parseDecimal(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+/**
+ * Move one product to a position and normalize the complete shop ordering.
+ *
+ * The database intentionally does not rely on a unique index here because
+ * older catalog imports may contain duplicate positions. Normalizing inside
+ * one transaction both repairs those legacy duplicates and makes every later
+ * move deterministic.
+ */
+async function reorderProductWithinRestaurant(
+  productId: number,
+  restaurantId: number,
+  requestedSortOrder: number,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const rows = await tx
+      .select({ id: menuItemsTable.id, sortOrder: menuItemsTable.sortOrder })
+      .from(menuItemsTable)
+      .where(eq(menuItemsTable.restaurantId, restaurantId))
+      .orderBy(asc(menuItemsTable.sortOrder), asc(menuItemsTable.id));
+
+    const currentIndex = rows.findIndex((row) => row.id === productId);
+    if (currentIndex < 0) return;
+
+    const [product] = rows.splice(currentIndex, 1);
+    const targetIndex = Math.max(0, Math.min(requestedSortOrder, rows.length));
+    rows.splice(targetIndex, 0, product);
+
+    // Use unique temporary values so this stays safe if a unique constraint is
+    // added later, then write the final contiguous 0..n-1 positions.
+    await tx
+      .update(menuItemsTable)
+      .set({ sortOrder: sql`-${menuItemsTable.id}` })
+      .where(eq(menuItemsTable.restaurantId, restaurantId));
+
+    for (const [index, row] of rows.entries()) {
+      await tx
+        .update(menuItemsTable)
+        .set({ sortOrder: index })
+        .where(eq(menuItemsTable.id, row.id));
+    }
+  });
+}
+
 function permissionPatternMatches(pattern: string, permission: string): boolean {
   if (pattern === "*") return true;
   if (!pattern.includes("*")) return pattern === permission;
@@ -734,12 +777,87 @@ router.post("/backend/products", requireAuth, async (req: AuthedRequest, res, ne
       imageUrl: normalizeStoredMediaPath(imageUrl) ?? null, isAvailable: isAvailable ?? true,
       isPopular: isPopular ?? false, allergens: allergens ?? null,
       tags: Array.isArray(tags) ? tags : (tags ? [tags] : null),
-       sortOrder: sortOrder === undefined ? 0 : Number(sortOrder),
+      // The helper below applies the requested position after insertion and
+      // shifts the other products instead of creating a duplicate.
+      sortOrder: 0,
        prepTimeMinutes: prepTimeMinutes ? parseDecimal(prepTimeMinutes) : null,
        calories: calories ? parseDecimal(calories) : null,
     }).returning();
-    res.status(201).json(item);
+    await reorderProductWithinRestaurant(item.id, rid, sortOrder === undefined ? Number.MAX_SAFE_INTEGER : Number(sortOrder));
+    const [orderedItem] = await db.select().from(menuItemsTable).where(eq(menuItemsTable.id, item.id)).limit(1);
+    res.status(201).json(orderedItem ?? item);
   } catch (err) { next(err); }
+});
+
+/**
+ * Apply or remove a shop-specific product promotion.
+ *
+ * The product row is already scoped to one restaurant, so keeping the
+ * promotion on that row preserves the existing public menu contract while
+ * still making the shop -> product relationship explicit at the API boundary.
+ * compareAtPrice stores the catalogue price while price stores the active
+ * promotional price. Clearing a promotion restores the catalogue price.
+ */
+router.patch("/backend/products/:id/promotion", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
+  const ctx = await requireBackendUser(req, res);
+  if (!ctx) return;
+  if (!canWriteProducts(ctx)) {
+    res.status(403).json({ error: "Forbidden: products.write required" });
+    return;
+  }
+
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+
+    const [existing] = await db.select().from(menuItemsTable).where(eq(menuItemsTable.id, id)).limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
+    if (scoped !== null && !scoped.includes(existing.restaurantId)) {
+      res.status(403).json({ error: "Forbidden: not your restaurant" });
+      return;
+    }
+
+    const rawPromoPrice = req.body?.promoPrice;
+    const clearPromotion = rawPromoPrice === null || rawPromoPrice === undefined || rawPromoPrice === "";
+    if (clearPromotion) {
+      if (existing.compareAtPrice === null || existing.compareAtPrice === undefined) {
+        res.json(existing);
+        return;
+      }
+      const [item] = await db.update(menuItemsTable)
+        .set({ price: Number(existing.compareAtPrice), compareAtPrice: null })
+        .where(eq(menuItemsTable.id, id))
+        .returning();
+      res.json(item);
+      return;
+    }
+
+    const promoPrice = Number(String(rawPromoPrice).trim().replace(",", "."));
+    const cataloguePrice = existing.compareAtPrice !== null && existing.compareAtPrice !== undefined
+      ? Number(existing.compareAtPrice)
+      : Number(existing.price);
+    if (!Number.isFinite(cataloguePrice) || cataloguePrice < 0
+      || !Number.isFinite(promoPrice) || promoPrice < 0 || promoPrice >= cataloguePrice) {
+      res.status(400).json({ error: "Le prix promotionnel doit être positif ou nul et inférieur au prix catalogue" });
+      return;
+    }
+
+    const [item] = await db.update(menuItemsTable)
+      .set({ price: promoPrice, compareAtPrice: cataloguePrice })
+      .where(eq(menuItemsTable.id, id))
+      .returning();
+    res.json(item);
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
@@ -797,17 +915,27 @@ router.patch("/backend/products/:id", requireAuth, async (req: AuthedRequest, re
     }
     if ("prepTimeMinutes" in updates) updates.prepTimeMinutes = parseDecimal(updates.prepTimeMinutes);
     if ("calories" in updates) updates.calories = parseDecimal(updates.calories);
+    let requestedSortOrder: number | undefined;
     if ("sortOrder" in updates) {
       const nextSortOrder = Number(updates.sortOrder);
        if (!Number.isInteger(nextSortOrder) || nextSortOrder < 0) {
          res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" });
         return;
       }
-      updates.sortOrder = nextSortOrder;
+      requestedSortOrder = nextSortOrder;
+      delete updates.sortOrder;
     }
     if ("imageUrl" in updates) updates.imageUrl = normalizeStoredMediaPath(updates.imageUrl);
-    const [item] = await db.update(menuItemsTable).set(updates as any).where(eq(menuItemsTable.id, id)).returning();
+    const [item] = Object.keys(updates).length > 0
+      ? await db.update(menuItemsTable).set(updates as any).where(eq(menuItemsTable.id, id)).returning()
+      : [existing];
     if (!item) { res.status(404).json({ error: "Not found" }); return; }
+    if (requestedSortOrder !== undefined) {
+      await reorderProductWithinRestaurant(id, existing.restaurantId, requestedSortOrder);
+      const [orderedItem] = await db.select().from(menuItemsTable).where(eq(menuItemsTable.id, id)).limit(1);
+      res.json(orderedItem ?? item);
+      return;
+    }
     res.json(item);
   } catch (err) { next(err); }
 });

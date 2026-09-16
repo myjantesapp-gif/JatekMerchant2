@@ -7,6 +7,8 @@ import {
   Montserrat_800ExtraBold,
 } from "@expo-google-fonts/montserrat";
 import { StatusBar } from "expo-status-bar";
+import * as NavigationBar from "expo-navigation-bar";
+import * as SystemUI from "expo-system-ui";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons, FontAwesome, FontAwesome5 } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router, useRootNavigationState } from "expo-router";
@@ -29,6 +31,9 @@ import { FriendlyAlertProvider } from "@/components/FriendlyAlert";
 import { useFriendlyAlert } from "@/components/FriendlyAlert";
 import { OrderStatusToast } from "@/components/OrderStatusToast";
 import { getApiBaseSafe } from "@/lib/apiBase";
+import colors from "@/constants/colors";
+
+const INTRO_BACKGROUND = colors.light.introBackground;
 
 // Configure the API base URL — robustly resolves from EXPO_PUBLIC_DOMAIN, then
 // expo-constants extra, then Metro hostUri (LAN dev). Never throws at boot.
@@ -139,6 +144,17 @@ export default function RootLayout() {
     ...FontAwesome.font,
     ...FontAwesome5.font,
   });
+
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(INTRO_BACKGROUND).catch(() => {});
+
+    if (Platform.OS === "android") {
+      void NavigationBar.setBackgroundColorAsync(INTRO_BACKGROUND).catch(() => {});
+      void NavigationBar.setButtonStyleAsync("light").catch(() => {});
+      void NavigationBar.setVisibilityAsync("visible").catch(() => {});
+    }
+  }, []);
+
   // Keep the splash visible until Montserrat is ready so the system font is never
   // shown temporarily. A real font error is allowed to render the fallback.
   useEffect(() => {
@@ -165,7 +181,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" backgroundColor="transparent" translucent />
+      <StatusBar style="dark" backgroundColor={colors.light.background} translucent={false} />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
@@ -180,7 +196,7 @@ export default function RootLayout() {
                       <OrderStatusToast />
                       <CookieConsentBanner />
                     </FriendlyAlertProvider>
-                    {Platform.OS === "web" ? null : <SplashOverlay duration={1800} />}
+                    {Platform.OS === "web" ? null : <SplashOverlay />}
                   </KeyboardProvider>
                 </GestureHandlerRootView>
               </CartProvider>

@@ -39,3 +39,4 @@
 - [Mobile content source](mobile-content-source.md) — Home content, metadata, and section navigation must come from dashboard/API data, never local live-content samples.
 - [Home config normalization](home-config-normalization.md) — partial public app-config responses must be completed client-side before rendering Home sections.
 - [Database backup connection](database-backup-connection.md) — managed SQL access can work while shell pg_dump credentials are stale or invalid; verify dumps before presenting them.
+- [Product promotion pricing](product-promotions.md) — active discounts keep the catalogue price in compareAtPrice and restore it when the promotion is removed.

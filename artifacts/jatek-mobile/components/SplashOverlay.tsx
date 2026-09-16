@@ -1,95 +1,165 @@
-import React, { useEffect, useState } from "react";
-import { Image, StyleSheet, Dimensions, Platform } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { router, useRootNavigationState } from "expo-router";
+import { useVideoPlayer, VideoView } from "expo-video";
+import React, { useEffect, useRef, useState } from "react";
+import { AccessibilityInfo, Image, Platform, StyleSheet, View } from "react-native";
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withRepeat,
-  withSequence,
   Easing,
   runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+import colors from "@/constants/colors";
 
-type Props = {
-  /** Hide the overlay after this many ms (default 1800). */
-  duration?: number;
-  /** Called once the fade-out animation finishes. */
-  onFinish?: () => void;
-};
+const INTRO_BACKGROUND = colors.light.introBackground;
+const INTRO_VIDEO = require("../assets/videos/jatek-intro.mp4");
+const INTRO_LOGO = require("../assets/images/jatek-wordmark-transparent.png");
+const REDUCE_MOTION_LOGO_DURATION = 350;
+const FADE_DURATION = 250;
 
-export default function SplashOverlay({ duration = 1800, onFinish }: Props) {
+/**
+ * The intro is mounted once by the root layout. It deliberately has no
+ * AppState listener: returning from background must never restart it.
+ */
+export default function SplashOverlay() {
+  const rootNavigationState = useRootNavigationState();
   const [mounted, setMounted] = useState(true);
+  const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
+  const [playbackFinished, setPlaybackFinished] = useState(false);
+  const [playbackError, setPlaybackError] = useState(false);
+  const transitionStarted = useRef(false);
+  const playbackStarted = useRef(false);
+  const opacity = useSharedValue(1);
 
-  const containerOpacity = useSharedValue(1);
-  const bgScale = useSharedValue(1.04);
+  const player = useVideoPlayer(INTRO_VIDEO, (videoPlayer) => {
+    videoPlayer.loop = false;
+    videoPlayer.muted = true;
+    videoPlayer.audioMixingMode = "auto";
+    videoPlayer.staysActiveInBackground = false;
+    videoPlayer.keepScreenOnWhilePlaying = true;
+  });
+
+  const navigationReady = Boolean(rootNavigationState?.key);
 
   useEffect(() => {
-    // Subtle, continuous "breathing" zoom on the splash background.
-    bgScale.value = withRepeat(
-      withSequence(
-        withTiming(1.0, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
-        withTiming(1.04, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
-      ),
-      -1,
-      true,
-    );
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then(setReduceMotion)
+      .catch(() => setReduceMotion(false));
+  }, []);
 
-    // Schedule fade-out. Keep the JS unmount timer separate from the
-    // animation callback: Reanimated's completion callback is not reliable
-    // on web, and a stuck overlay hides the actual remote-data state.
-    const t = setTimeout(() => {
-      containerOpacity.value = withTiming(
-        0,
-        { duration: 500, easing: Easing.out(Easing.quad) },
-      );
-    }, duration);
-    const unmountTimer = setTimeout(() => {
-      setMounted(false);
-      onFinish?.();
-    }, duration + 550);
+  useEffect(() => {
+    const endSubscription = player.addListener("playToEnd", () => {
+      setPlaybackFinished(true);
+    });
+    const statusSubscription = player.addListener("statusChange", ({ status }) => {
+      if (status === "error") {
+        setPlaybackError(true);
+        setPlaybackFinished(true);
+      }
+    });
 
     return () => {
-      clearTimeout(t);
-      clearTimeout(unmountTimer);
+      endSubscription.remove();
+      statusSubscription.remove();
     };
-  }, [duration, onFinish, containerOpacity, bgScale]);
+  }, [player]);
 
-  const containerStyle = useAnimatedStyle(() => ({ opacity: containerOpacity.value }));
-  const bgStyle = useAnimatedStyle(() => ({ transform: [{ scale: bgScale.value }] }));
+  useEffect(() => {
+    if (reduceMotion !== false || playbackStarted.current || playbackError) return;
+    playbackStarted.current = true;
+    player.play();
+  }, [playbackError, player, reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion !== true) return;
+    const timer = setTimeout(() => setPlaybackFinished(true), REDUCE_MOTION_LOGO_DURATION);
+    return () => clearTimeout(timer);
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    // Preload the tab tree while the local intro asset is playing. The actual
+    // route/data state remains controlled by the existing auth redirect.
+    void router.prefetch("/(tabs)");
+  }, []);
+
+  useEffect(() => {
+    if (!playbackFinished || !navigationReady || transitionStarted.current) return;
+    transitionStarted.current = true;
+
+    if (reduceMotion) {
+      setMounted(false);
+      return;
+    }
+
+    opacity.value = withTiming(
+      0,
+      { duration: FADE_DURATION, easing: Easing.out(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(setMounted)(false);
+      },
+    );
+  }, [navigationReady, opacity, playbackFinished, reduceMotion]);
+
+  const overlayStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const showStaticLogo = reduceMotion !== false || playbackError;
 
   if (!mounted) return null;
 
   return (
-    <Animated.View style={[styles.root, containerStyle]} pointerEvents="none">
-      <Animated.Image
-        source={require("../assets/images/jatek-splash.png")}
-        style={[styles.bg, bgStyle]}
-        resizeMode="cover"
-      />
+    <Animated.View
+      style={[styles.root, overlayStyle]}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <StatusBar style="light" backgroundColor={INTRO_BACKGROUND} translucent={false} />
+      <View style={styles.background}>
+        {showStaticLogo ? (
+          <View style={styles.logoFrame}>
+            <Image source={INTRO_LOGO} style={styles.logo} resizeMode="contain" />
+          </View>
+        ) : (
+          <VideoView
+            player={player}
+            style={StyleSheet.absoluteFill}
+            contentFit="contain"
+            nativeControls={false}
+            allowsFullscreen={false}
+            fullscreenOptions={{ enable: false }}
+            requiresLinearPlayback
+            useExoShutter={false}
+            // TextureView keeps the native video surface compatible with the
+            // 250 ms alpha transition while remaining hardware accelerated.
+            surfaceType={Platform.OS === "android" ? "textureView" : undefined}
+          />
+        )}
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     zIndex: 9999,
     elevation: 9999,
-    backgroundColor: "#E91E63",
-    overflow: "hidden",
-    ...(Platform.OS === "web"
-      ? { width: "100%" as any, height: "100%" as any }
-      : { width: SCREEN_W, height: SCREEN_H }),
+    backgroundColor: INTRO_BACKGROUND,
   },
-  bg: {
+  background: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: INTRO_BACKGROUND,
+  },
+  logoFrame: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 44,
+  },
+  logo: {
     width: "100%",
-    height: "100%",
+    maxWidth: 280,
+    height: 110,
   },
 });

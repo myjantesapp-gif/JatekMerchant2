@@ -485,8 +485,8 @@ function ShortPoster({ short }: { short: Short }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000" },
-  frame: { position: "relative" },
+  root: { flex: 1, width: "100%", height: "100%", backgroundColor: "#000" },
+  frame: { position: "relative", width: "100%", height: "100%" },
   bg: { width: "100%", height: "100%" },
   webMedia: {
     width: "100%",

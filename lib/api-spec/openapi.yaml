@@ -690,6 +690,10 @@ paths:
           in: query
           schema:
             type: string
+        - name: promo
+          in: query
+          schema:
+            type: boolean
         - name: shopId
           in: query
           schema:
@@ -738,6 +742,10 @@ paths:
           in: query
           schema:
             type: string
+        - name: promo
+          in: query
+          schema:
+            type: boolean
         - name: shopId
           in: query
           schema:
@@ -806,6 +814,10 @@ paths:
           in: query
           schema:
             type: string
+        - name: promo
+          in: query
+          schema:
+            type: boolean
         - name: shopId
           in: query
           schema:
@@ -4207,6 +4219,10 @@ components:
             - "null"
         price:
           type: number
+        compareAtPrice:
+          type:
+            - number
+            - "null"
         imageUrl:
           type:
             - string
@@ -4333,6 +4349,10 @@ components:
           type: string
         price:
           type: number
+        compareAtPrice:
+          type:
+            - number
+            - "null"
         imageUrl:
           type: string
         category:
@@ -4358,6 +4378,10 @@ components:
           type: string
         price:
           type: number
+        compareAtPrice:
+          type:
+            - number
+            - "null"
         imageUrl:
           type: string
         category:

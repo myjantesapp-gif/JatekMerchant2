@@ -3,7 +3,7 @@ const path = require("path");
 
 const PLATFORMS = ["ios", "android"];
 const BUNDLE_ASSET_PATTERN =
-  /httpServerLocation:"([^"]+)"[^}]*hash:"([^"]+)"[^}]*name:"([^"]+)"[^}]*type:"([^"]+)"/g;
+  /"?httpServerLocation"?\s*:\s*"([^"]+)"[^}]*"?hash"?\s*:\s*"([^"]+)"[^}]*"?name"?\s*:\s*"([^"]+)"[^}]*"?type"?\s*:\s*"([^"]+)"/g;
 
 function normalizeBasePath(value) {
   const basePath = (value || "/").replace(/\/+$/, "");

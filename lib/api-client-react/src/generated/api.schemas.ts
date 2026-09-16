@@ -57,7 +57,9 @@ export interface SendNotificationResponse {
   success: boolean;
   recipients: number;
   inAppSaved: number;
+  /** Remote push requests accepted by their provider; Expo ticket acceptance is not device delivery confirmation */
   remoteSent: number;
+  /** Accepted Expo tickets queued for asynchronous receipt polling */
   receiptsPending?: number;
 }
 
@@ -93,6 +95,8 @@ export interface MenuItem {
   /** @nullable */
   description?: string | null;
   price: number;
+  /** @nullable */
+  compareAtPrice?: number | null;
   /** @nullable */
   imageUrl?: string | null;
   category: string;
@@ -391,6 +395,8 @@ export interface CreateMenuItemBody {
   name: string;
   description?: string;
   price: number;
+  /** @nullable */
+  compareAtPrice?: number | null;
   imageUrl?: string;
   category: string;
   menuItemCategoryId?: number;
@@ -403,6 +409,8 @@ export interface UpdateMenuItemBody {
   name?: string;
   description?: string;
   price?: number;
+  /** @nullable */
+  compareAtPrice?: number | null;
   imageUrl?: string;
   category?: string;
   menuItemCategoryId?: number;
@@ -1315,6 +1323,7 @@ export const GetBackendDashboardRange = {
 
 export type ListBackendOrdersParams = {
 status?: string;
+promo?: boolean;
 shopId?: number;
 search?: string;
 limit?: number;
@@ -1322,6 +1331,7 @@ limit?: number;
 
 export type ListBackendProductsParams = {
 status?: string;
+promo?: boolean;
 shopId?: number;
 search?: string;
 category?: string;
@@ -1361,7 +1371,7 @@ export const ListBackendProductsSortDirection = {
 
 export type ListBackendProductsPageParams = {
 status?: string;
-  promo?: boolean;
+promo?: boolean;
 shopId?: number;
 search?: string;
 category?: string;
