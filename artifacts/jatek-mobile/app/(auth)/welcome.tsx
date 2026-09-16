@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GoogleMapPicker } from "@/components/GoogleMapPicker";
 import { useFriendlyAlert } from "@/components/FriendlyAlert";
 import { useCart } from "@/contexts/CartContext";
-import { JatekLogoBadge } from "@/components/JatekLogoBadge";
+import { JatekWordmark } from "@/components/JatekWordmark";
 import {
   OUJDA_CENTER,
   checkDeliveryZone,
@@ -253,7 +253,7 @@ export default function WelcomeScreen() {
       {/* Bottom card — address summary + confirm button */}
       <View style={[styles.bottomCard, { backgroundColor: colors.background, paddingBottom: insets.bottom + 14 }]}>
         <View style={styles.brandRow}>
-          <JatekLogoBadge />
+          <JatekWordmark width={96} height={38} />
           <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>Oujda · Livraison rapide</Text>
         </View>
 

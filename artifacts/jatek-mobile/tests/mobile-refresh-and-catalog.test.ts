@@ -284,9 +284,11 @@ test("home header uses the branded logo while retaining its actions and pink wav
 
 test("welcome address picker uses the official Jatek wordmark", () => {
   const code = source("app/(auth)/welcome.tsx");
+  const wordmark = source("components/JatekWordmark.tsx");
 
-  assert.match(code, /<JatekLogoBadge \/>/);
-  assert.doesNotMatch(code, /Jatek<Text/);
+  assert.match(code, /JatekWordmark/);
+  assert.match(wordmark, /jatek-wordmark/);
+  assert.doesNotMatch(code, /JatekLogoBadge/);
 });
 
 test("home renders reusable sections and live product recommendations", () => {
