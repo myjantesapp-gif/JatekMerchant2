@@ -184,6 +184,8 @@ test("short cards keep the merchant logo in a pink circular frame", () => {
   assert.match(card, /borderColor: colors\.light\.primary/);
   assert.match(card, /avatarImage/);
   assert.match(card, /avatarUrl/);
+  assert.match(card, /fontSize: 10/);
+  assert.doesNotMatch(card, /vues/);
 });
 
 test("category search matches both establishment name and category", () => {
