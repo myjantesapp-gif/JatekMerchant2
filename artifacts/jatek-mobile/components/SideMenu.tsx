@@ -102,7 +102,7 @@ export function SideMenu({ visible, onClose }: Props) {
         >
           {/* top: Jatek logo + close */}
           <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-            <JatekWordmark width={68} height={26} />
+            <JatekWordmark width={48} height={18} />
             <TouchableOpacity
               onPress={onClose}
               hitSlop={10}

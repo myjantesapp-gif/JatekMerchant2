@@ -288,7 +288,7 @@ test("home header uses the branded logo while retaining its actions and pink wav
 test("side menu uses the same Jatek wordmark as the bottom tab", () => {
   const code = source("components/SideMenu.tsx");
 
-  assert.match(code, /<JatekWordmark width=\{68\} height=\{26\} \/>/);
+  assert.match(code, /<JatekWordmark width=\{48\} height=\{18\} \/>/);
   assert.doesNotMatch(code, /jatek-logo\.png/);
 });
 
