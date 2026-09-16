@@ -15,7 +15,7 @@ import colors from "@/constants/colors";
 
 const INTRO_BACKGROUND = colors.light.introBackground;
 const INTRO_VIDEO = require("../assets/videos/jatek-intro.mp4");
-const INTRO_LOGO = require("../assets/images/jatek-wordmark-transparent.png");
+const INTRO_LOGO = require("../assets/images/jatek-intro-splash.png");
 const REDUCE_MOTION_LOGO_DURATION = 350;
 const FADE_DURATION = 250;
 

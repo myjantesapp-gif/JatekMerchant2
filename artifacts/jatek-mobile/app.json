@@ -10,7 +10,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/jatek-wordmark-transparent.png",
+      "image": "./assets/images/jatek-intro-splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#E80868"
     },
