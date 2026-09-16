@@ -270,7 +270,7 @@ test("home keeps pull-to-refresh without a header refresh button", () => {
 test("home header uses the branded logo while retaining its actions and pink wave", () => {
   const code = source("app/(tabs)/index.tsx");
 
-  assert.match(code, /<JatekIcon width=\{13\} height=\{24\} \/>/);
+  assert.match(code, /<JatekWordmark width=\{68\} height=\{26\} tone="white" \/>/);
   assert.match(code, /onPress=\{\(\) => setMenuOpen\(true\)\}/);
   assert.doesNotMatch(code, /name="menu"/);
   assert.match(source("components/JatekIcon.tsx"), /jatek-icon-white/);
