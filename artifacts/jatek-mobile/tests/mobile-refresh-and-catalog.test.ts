@@ -271,7 +271,8 @@ test("home header uses the branded logo while retaining its actions and pink wav
   const code = source("app/(tabs)/index.tsx");
 
   assert.match(code, /<JatekIcon width=\{13\} height=\{24\} \/>/);
-  assert.match(code, /styles\.menuIcon/);
+  assert.match(code, /onPress=\{\(\) => setMenuOpen\(true\)\}/);
+  assert.doesNotMatch(code, /name="menu"/);
   assert.match(source("components/JatekIcon.tsx"), /jatek-icon-white/);
   assert.match(code, /style=\{styles\.logoButton\}/);
   assert.match(code, /const HEADER_PINK = "#E91E63"/);
