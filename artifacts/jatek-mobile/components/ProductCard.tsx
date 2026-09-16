@@ -157,7 +157,7 @@ export function ProductCard({
             <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={16} color={isFavorite ? "#E91E63" : "#4b5563"} />
           </Pressable>
         </View>
-        <View style={styles.compactBody}>
+        <View style={[styles.compactBody, popularCompact && styles.popularCompactBody]}>
           <Text style={[styles.compactName, popularCompact && styles.popularCompactName]} numberOfLines={1}>{product.name}</Text>
           <View style={styles.compactBottomRow}>
             <View style={styles.compactPriceBlock}>
@@ -485,6 +485,9 @@ const styles = StyleSheet.create({
   },
   compactBody: {
     padding: 8,
+  },
+  popularCompactBody: {
+    paddingTop: 4,
   },
   compactName: {
     fontSize: 12,
