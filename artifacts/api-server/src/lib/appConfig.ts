@@ -196,4 +196,11 @@ export function validateHomeSections(value: unknown): HomeSectionsConfig {
 
 export type AppConfig = Record<string, unknown> & {
   homeSections: HomeSectionsConfig;
+  splashVideoUrl?: string;
 };
+
+export const splashVideoUrlSchema = z.string().trim().max(2048)
+  .refine(
+    (value) => value === "" || value.startsWith("/api/storage/objects/splash/") || /^https:\/\//i.test(value),
+    "splashVideoUrl must be an HTTPS URL or an App Storage splash path",
+  );

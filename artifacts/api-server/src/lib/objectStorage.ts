@@ -35,7 +35,7 @@ type ManagedObjectFile = {
   objectName: string;
 };
 
-export const MEDIA_FOLDERS = ["images", "logos", "banners", "medias", "shorts"] as const;
+export const MEDIA_FOLDERS = ["images", "logos", "banners", "medias", "shorts", "splash"] as const;
 export type MediaFolder = (typeof MEDIA_FOLDERS)[number];
 const ACCEPTED_OBJECT_ROOTS = new Set<string>([...MEDIA_FOLDERS, "uploads"]);
 
@@ -45,6 +45,7 @@ const MEDIA_FOLDER_BY_KIND = {
   banner: "banners",
   media: "medias",
   short: "shorts",
+  splash: "splash",
 } as const satisfies Record<string, MediaFolder>;
 
 export type MediaKind = keyof typeof MEDIA_FOLDER_BY_KIND;

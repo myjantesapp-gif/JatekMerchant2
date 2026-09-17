@@ -13,6 +13,7 @@ import {
   ListMenuItemsQueryParams,
 } from "@workspace/api-zod";
 import { compareCustomerMenuEntries } from "../lib/productOrdering";
+import { resolveLegacyMediaPath } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -97,7 +98,10 @@ router.get("/restaurants/:restaurantId/menu", async (req, res): Promise<void> =>
     { ...left.item, categorySortOrder: left.categorySortOrder },
     { ...right.item, categorySortOrder: right.categorySortOrder },
   ));
-  res.json(orderedItems.map(({ item }) => item));
+  res.json(orderedItems.map(({ item }) => ({
+    ...item,
+    imageUrl: resolveLegacyMediaPath(item.imageUrl, "medias"),
+  })));
 });
 
 router.post("/restaurants/:restaurantId/menu", requireRole("admin", "restaurant_owner"), async (req: AuthedRequest, res): Promise<void> => {
@@ -160,7 +164,10 @@ router.get("/menu/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(item);
+  res.json({
+    ...item,
+    imageUrl: resolveLegacyMediaPath(item.imageUrl, "medias"),
+  });
 });
 
 router.patch("/menu/:id", requireRole("admin", "restaurant_owner"), async (req: AuthedRequest, res): Promise<void> => {

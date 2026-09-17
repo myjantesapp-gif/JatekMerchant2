@@ -12,6 +12,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 import colors from "@/constants/colors";
+import { getApiBaseSafe } from "@/lib/apiBase";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 const INTRO_BACKGROUND = colors.light.introBackground;
 const INTRO_VIDEO = require("../assets/videos/jatek-intro.mp4");
@@ -29,6 +31,7 @@ export default function SplashOverlay() {
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   const [playbackFinished, setPlaybackFinished] = useState(false);
   const [playbackError, setPlaybackError] = useState(false);
+  const [configuredVideoUrl, setConfiguredVideoUrl] = useState<string | null>(null);
   const transitionStarted = useRef(false);
   const playbackStarted = useRef(false);
   const opacity = useSharedValue(1);
@@ -42,6 +45,25 @@ export default function SplashOverlay() {
   });
 
   const navigationReady = Boolean(rootNavigationState?.key);
+
+  useEffect(() => {
+    let active = true;
+    void fetch(`${getApiBaseSafe()}/api/app-config`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`App config HTTP ${response.status}`);
+        return response.json() as Promise<{ splashVideoUrl?: unknown }>;
+      })
+      .then(async (config) => {
+        const remoteUrl = typeof config.splashVideoUrl === "string"
+          ? resolveMediaUrl(config.splashVideoUrl)
+          : null;
+        if (!active || !remoteUrl) return;
+        await player.replaceAsync(remoteUrl);
+        if (active) setConfiguredVideoUrl(remoteUrl);
+      })
+      .catch((error) => console.warn("[SplashOverlay] using bundled intro:", error));
+    return () => { active = false; };
+  }, [player]);
 
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled()
@@ -69,8 +91,16 @@ export default function SplashOverlay() {
   useEffect(() => {
     if (reduceMotion !== false || playbackStarted.current || playbackError) return;
     playbackStarted.current = true;
-    player.play();
-  }, [playbackError, player, reduceMotion]);
+    // Give the startup config request a brief opportunity to replace the
+    // bundled asset. Network failures still fall back to the local intro.
+    const timer = setTimeout(() => {
+      if (!playbackStarted.current) {
+        playbackStarted.current = true;
+        player.play();
+      }
+    }, configuredVideoUrl ? 0 : 450);
+    return () => clearTimeout(timer);
+  }, [configuredVideoUrl, playbackError, player, reduceMotion]);
 
   useEffect(() => {
     if (reduceMotion !== true) return;

@@ -18,7 +18,7 @@ interface ImageUploadResponse {
   contentType: string;
 }
 
-export type MediaUploadKind = "image" | "logo" | "banner" | "media" | "short";
+export type MediaUploadKind = "image" | "logo" | "banner" | "media" | "short" | "splash";
 
 export function validateImageFile(file: File): string | null {
   const extension = file.name.split(".").pop()?.toLowerCase();

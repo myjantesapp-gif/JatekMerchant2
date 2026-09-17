@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Settings, Save, Loader2, Globe, AlertTriangle, Star, LayoutGrid, MessageSquare, SlidersHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { VideoUploadField } from "@/components/VideoUploadField";
 
 type HomeSectionConfig = {
   visible: boolean;
@@ -42,6 +43,7 @@ const DEFAULT_CONFIG = {
   featuredCount: 6,
   homeOrder: ["categories", "banners", "shorts", "recommended_products", "recommended_restaurants", "popular", "new_restaurants", "supermarkets", "new_products", "shops", "all", "free_delivery", "newest", "support"],
   welcomeMessage: "Bienvenue sur Jatek !",
+  splashVideoUrl: "",
   homeSections: {
     categories: { visible: true, title: "Catégories", source: "categories", limit: 4 },
     banners: { visible: true, title: "Bannières", source: "banners", limit: 10 },
@@ -240,6 +242,24 @@ export default function AppConfig() {
                     : <span className="text-muted-foreground text-sm">Désactivé — app visible normalement</span>}
                 </Label>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Featured count */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Vidéo de démarrage</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <VideoUploadField
+                label="Intro MP4 affichée au lancement de l’application"
+                value={form.splashVideoUrl}
+                uploadKind="splash"
+                onValueChange={(splashVideoUrl) => setForm({ ...form, splashVideoUrl })}
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Laissez vide pour utiliser l’intro intégrée à l’application.
+              </p>
             </CardContent>
           </Card>
 

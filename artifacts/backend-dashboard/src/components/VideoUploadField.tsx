@@ -10,7 +10,7 @@ type VideoUploadFieldProps = {
   value: string;
   onValueChange: (value: string) => void;
   onUploadingChange?: (isUploading: boolean) => void;
-  uploadKind?: Extract<MediaUploadKind, "short">;
+  uploadKind?: Extract<MediaUploadKind, "short" | "splash">;
 };
 
 function normalizeCandidate(url: string): string {

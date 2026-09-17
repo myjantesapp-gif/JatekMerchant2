@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Platform } from "react-native";
+import { Alert, Linking, Modal, View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router } from "expo-router";
@@ -51,7 +51,17 @@ export function AddressQuickPicker({ visible, onClose }: Props) {
         const req = await Location.requestForegroundPermissionsAsync();
         status = req.status;
       }
-      if (status !== "granted") return;
+       if (status !== "granted") {
+         Alert.alert(
+           "Localisation désactivée",
+           "Autorisez la localisation dans les réglages pour utiliser votre position.",
+           [
+             { text: "Annuler", style: "cancel" },
+             { text: "Ouvrir les réglages", onPress: () => void Linking.openSettings() },
+           ],
+         );
+         return;
+       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const { address } = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
       const zone = checkDeliveryZone(loc.coords.latitude, loc.coords.longitude);
@@ -59,6 +69,10 @@ export function AddressQuickPicker({ visible, onClose }: Props) {
       onClose();
     } catch (err) {
       console.warn("[AddressQuickPicker] geolocation lookup failed:", err);
+      Alert.alert(
+        "Position indisponible",
+        "Nous n’avons pas pu déterminer votre position. Vérifiez que la localisation est activée puis réessayez.",
+      );
     }
     finally { setLocating(false); }
   };

@@ -27,7 +27,7 @@ import {
   appConfigTable,
 } from "@workspace/db";
 import { eq, and, asc, desc, sql, count, inArray } from "drizzle-orm";
-import { homeOrderSchema, homeSectionsSchema, getDefaultHomeSections, type AppConfig } from "../lib/appConfig";
+import { homeOrderSchema, homeSectionsSchema, splashVideoUrlSchema, getDefaultHomeSections, type AppConfig } from "../lib/appConfig";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 import { closeUserSubscriptions, publish } from "../lib/sse";
 import * as tracking from "../lib/trackingService";
@@ -1213,6 +1213,15 @@ router.put("/backend/app-config", requireAuth, async (req: AuthedRequest, res, n
         return;
       }
       homeOrderEntry[1] = parsedHomeOrder.data;
+    }
+    const splashVideoEntry = validatedEntries.find(([key]) => key === "splashVideoUrl");
+    if (splashVideoEntry) {
+      const parsedSplashVideoUrl = splashVideoUrlSchema.safeParse(splashVideoEntry[1]);
+      if (!parsedSplashVideoUrl.success) {
+        res.status(400).json({ error: "Invalid splashVideoUrl", details: parsedSplashVideoUrl.error.issues });
+        return;
+      }
+      splashVideoEntry[1] = normalizeStoredMediaPath(parsedSplashVideoUrl.data) ?? "";
     }
     for (const [key, value] of validatedEntries) {
       await db

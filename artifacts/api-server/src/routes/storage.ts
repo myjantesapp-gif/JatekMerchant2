@@ -105,7 +105,7 @@ function canContainVideo(req: { headers: { "content-type"?: string | string[] } 
 function getMediaKind(req: express.Request, fallback: MediaKind): MediaKind {
   const requested = req.headers["x-jatek-media-kind"];
   const value = (Array.isArray(requested) ? requested[0] : requested)?.trim().toLowerCase();
-  if (value === "image" || value === "logo" || value === "banner" || value === "media" || value === "short") {
+  if (value === "image" || value === "logo" || value === "banner" || value === "media" || value === "short" || value === "splash") {
     return value;
   }
   return fallback;
