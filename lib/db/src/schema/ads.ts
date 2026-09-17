@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, integer, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -13,6 +13,11 @@ export const adsTable = pgTable("ads", {
   icon: text("icon").notNull().default("star"),
   imageUrl: text("image_url"),
   linkUrl: text("link_url"),
+  /** Optional product promotion metadata. Regular banners leave these null. */
+  restaurantId: integer("restaurant_id"),
+  productId: integer("product_id"),
+  normalPrice: real("normal_price"),
+  promoPrice: real("promo_price"),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

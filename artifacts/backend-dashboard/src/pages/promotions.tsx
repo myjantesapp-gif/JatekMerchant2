@@ -66,6 +66,33 @@ type ProductWithPromotion = MenuItem & {
   compareAtPrice?: number | null;
 };
 
+type PromoAd = Ad & {
+  restaurantId?: number | null;
+  productId?: number | null;
+  normalPrice?: number | null;
+  promoPrice?: number | null;
+};
+
+interface ProductPromoForm {
+  restaurantId: string;
+  productId: string;
+  normalPrice: string;
+  promoPrice: string;
+  imageUrl: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+const EMPTY_PRODUCT_PROMO: ProductPromoForm = {
+  restaurantId: "",
+  productId: "",
+  normalPrice: "",
+  promoPrice: "",
+  imageUrl: "",
+  sortOrder: 0,
+  isActive: true,
+};
+
 export default function Promotions() {
   const { data: ads, isLoading } = useListBackendAds({});
   const { data: shops = [] } = useListBackendShops({});
@@ -83,6 +110,12 @@ export default function Promotions() {
   const [promotionShopId, setPromotionShopId] = useState("");
   const [promotionProductId, setPromotionProductId] = useState("");
   const [promotionPrice, setPromotionPrice] = useState("");
+  const [promoDialogOpen, setPromoDialogOpen] = useState(false);
+  const [editingPromoId, setEditingPromoId] = useState<number | null>(null);
+  const [productPromoForm, setProductPromoForm] = useState<ProductPromoForm>(EMPTY_PRODUCT_PROMO);
+  const [promoUploadingImage, setPromoUploadingImage] = useState(false);
+  const [promoShopId, setPromoShopId] = useState("");
+  const [promoProductId, setPromoProductId] = useState("");
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListBackendAdsQueryKey() });
   const promotionProductsQuery = useQuery<ProductWithPromotion[]>({
@@ -91,6 +124,17 @@ export default function Promotions() {
     enabled: Boolean(promotionShopId),
   });
   const promotionProducts = promotionProductsQuery.data ?? [];
+  const promoProductsQuery = useQuery<ProductWithPromotion[]>({
+    queryKey: ["/api/backend/products", "new-promo", promoShopId],
+    queryFn: () => apiFetch(`/api/backend/products?shopId=${promoShopId}&sort=custom&sortDirection=asc`),
+    enabled: Boolean(promoShopId),
+  });
+  const promoProducts = promoProductsQuery.data ?? [];
+  const selectedPromoProduct = useMemo(
+    () => promoProducts.find((product) => String(product.id) === promoProductId),
+    [promoProductId, promoProducts],
+  );
+  const promoAds = (ads ?? []).filter((ad) => ad.type === "promo_product") as PromoAd[];
   const selectedPromotionProduct = useMemo(
     () => promotionProducts.find((product) => String(product.id) === promotionProductId),
     [promotionProductId, promotionProducts],
@@ -125,6 +169,22 @@ export default function Promotions() {
     setPromotionPrice(hasPromotion ? String(selectedPromotionProduct.price) : "");
   }, [selectedPromotionProduct]);
 
+  useEffect(() => {
+    if (editingPromoId) return;
+    setPromoProductId("");
+    setProductPromoForm((current) => ({ ...current, productId: "", normalPrice: "", promoPrice: "", imageUrl: "" }));
+  }, [editingPromoId, promoShopId]);
+
+  useEffect(() => {
+    if (!selectedPromoProduct || editingPromoId) return;
+    setProductPromoForm((current) => ({
+      ...current,
+      productId: String(selectedPromoProduct.id),
+      normalPrice: String(selectedPromoProduct.compareAtPrice ?? selectedPromoProduct.price),
+      imageUrl: current.imageUrl || selectedPromoProduct.imageUrl || "",
+    }));
+  }, [editingPromoId, selectedPromoProduct]);
+
   const openCreate = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
@@ -147,6 +207,77 @@ export default function Promotions() {
       sortOrder: ad.sortOrder ?? 0,
     });
     setDialogOpen(true);
+  };
+
+  const openCreatePromo = () => {
+    setEditingPromoId(null);
+    setPromoShopId("");
+    setPromoProductId("");
+    setProductPromoForm(EMPTY_PRODUCT_PROMO);
+    setPromoDialogOpen(true);
+  };
+
+  const openEditPromo = (ad: PromoAd) => {
+    setEditingPromoId(ad.id);
+    setPromoShopId(String(ad.restaurantId ?? ""));
+    setPromoProductId(String(ad.productId ?? ""));
+    setProductPromoForm({
+      restaurantId: String(ad.restaurantId ?? ""),
+      productId: String(ad.productId ?? ""),
+      normalPrice: String(ad.normalPrice ?? ""),
+      promoPrice: String(ad.promoPrice ?? ""),
+      imageUrl: ad.imageUrl ?? "",
+      sortOrder: ad.sortOrder ?? 0,
+      isActive: ad.isActive ?? true,
+    });
+    setPromoDialogOpen(true);
+  };
+
+  const handleSavePromo = async () => {
+    const normalPrice = Number(productPromoForm.normalPrice.trim().replace(",", "."));
+    const promoPrice = Number(productPromoForm.promoPrice.trim().replace(",", "."));
+    if (!productPromoForm.restaurantId || !productPromoForm.productId || !selectedPromoProduct) {
+      toast({ title: "Restaurant et produit requis", variant: "destructive" });
+      return;
+    }
+    if (!Number.isFinite(normalPrice) || normalPrice <= 0 || !Number.isFinite(promoPrice) || promoPrice < 0 || promoPrice >= normalPrice) {
+      toast({ title: "Prix promo invalide", description: "Le prix promo doit être inférieur au prix normal.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    const shop = shops.find((item) => String(item.id) === productPromoForm.restaurantId);
+    const payload = {
+      type: "promo_product",
+      title: selectedPromoProduct.name,
+      subtitle: shop?.name ?? undefined,
+      badge: "PROMO",
+      bgColor: "#E91E63",
+      accentColor: "#FFFFFF",
+      icon: "tag",
+      imageUrl: productPromoForm.imageUrl.trim() || undefined,
+      linkUrl: `/restaurant/${productPromoForm.restaurantId}?productId=${productPromoForm.productId}`,
+      restaurantId: Number(productPromoForm.restaurantId),
+      productId: Number(productPromoForm.productId),
+      normalPrice,
+      promoPrice,
+      isActive: productPromoForm.isActive,
+      sortOrder: Number(productPromoForm.sortOrder),
+    };
+    try {
+      if (editingPromoId) {
+        await updateAd.mutateAsync({ id: editingPromoId, data: payload });
+        toast({ title: "Promotion mise à jour" });
+      } else {
+        await createAd.mutateAsync({ data: payload });
+        toast({ title: "Promotion créée" });
+      }
+      await invalidate();
+      setPromoDialogOpen(false);
+    } catch (e: any) {
+      toast({ title: "Promotion non enregistrée", description: e?.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSave = async () => {
@@ -227,8 +358,61 @@ export default function Promotions() {
           <Tags className="h-7 w-7 text-primary" />
           <h1 className="text-3xl font-bold tracking-tight">Promotions</h1>
         </div>
-        <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Nouvelle publicité</Button>
+        <div className="flex gap-2">
+          <Button onClick={openCreatePromo}><Plus className="h-4 w-4 mr-2" />Nouvelle promo</Button>
+          <Button variant="outline" onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Nouvelle publicité</Button>
+        </div>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>Promotions produits ({promoAds.length})</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Associez une offre à un restaurant et à son produit.</p>
+          </div>
+          <Button size="sm" onClick={openCreatePromo}><Plus className="mr-2 h-4 w-4" />Ajouter</Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Image</TableHead>
+                <TableHead>Restaurant</TableHead>
+                <TableHead>Produit</TableHead>
+                <TableHead>Prix</TableHead>
+                <TableHead>Ordre</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {promoAds.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Aucune promotion produit.</TableCell></TableRow>
+              ) : promoAds.map((promo) => (
+                <TableRow key={promo.id}>
+                  <TableCell>
+                    {promo.imageUrl ? <img src={promo.imageUrl} alt="" className="h-10 w-14 rounded object-cover" /> : <div className="h-10 w-14 rounded bg-muted" />}
+                  </TableCell>
+                  <TableCell>{shops.find((shop) => shop.id === promo.restaurantId)?.name ?? "—"}</TableCell>
+                  <TableCell className="font-medium">{promo.title}</TableCell>
+                  <TableCell>
+                    <span className="font-semibold text-primary">{Number(promo.promoPrice ?? 0).toFixed(2)} DH</span>
+                    <span className="ml-2 text-xs text-muted-foreground line-through">{Number(promo.normalPrice ?? 0).toFixed(2)} DH</span>
+                  </TableCell>
+                  <TableCell>{promo.sortOrder}</TableCell>
+                  <TableCell><Badge variant={promo.isActive ? "default" : "secondary"}>{promo.isActive ? "Actif" : "Inactif"}</Badge></TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEditPromo(promo)}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(promo.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -439,6 +623,66 @@ export default function Promotions() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
             <Button onClick={handleSave} disabled={saving || uploadingImage}>{saving ? "Enregistrement…" : "Enregistrer"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={promoDialogOpen} onOpenChange={setPromoDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editingPromoId ? "Modifier la promo" : "Nouvelle promo"}</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-1.5">
+              <Label>Restaurant *</Label>
+              <Select value={promoShopId} onValueChange={(value) => {
+                setPromoShopId(value);
+                setProductPromoForm((current) => ({ ...current, restaurantId: value }));
+              }}>
+                <SelectTrigger><SelectValue placeholder="Choisir un restaurant" /></SelectTrigger>
+                <SelectContent>{shops.map((shop) => <SelectItem key={shop.id} value={String(shop.id)}>{shop.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Produit *</Label>
+              <Select value={promoProductId} onValueChange={(value) => {
+                setPromoProductId(value);
+                setProductPromoForm((current) => ({ ...current, productId: value }));
+              }} disabled={!promoShopId || promoProductsQuery.isLoading}>
+                <SelectTrigger><SelectValue placeholder={promoProductsQuery.isLoading ? "Chargement…" : "Choisir un produit"} /></SelectTrigger>
+                <SelectContent>{promoProducts.map((product) => <SelectItem key={product.id} value={String(product.id)}>{product.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>Prix normal (DH) *</Label>
+                <Input type="text" inputMode="decimal" value={productPromoForm.normalPrice} onChange={(event) => setProductPromoForm((current) => ({ ...current, normalPrice: event.target.value }))} placeholder="Ex. 50" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Prix promo (DH) *</Label>
+                <Input type="text" inputMode="decimal" value={productPromoForm.promoPrice} onChange={(event) => setProductPromoForm((current) => ({ ...current, promoPrice: event.target.value }))} placeholder="Ex. 35" />
+              </div>
+            </div>
+            <ImageUploadField
+              label="Image de la promo"
+              value={productPromoForm.imageUrl}
+              onValueChange={(imageUrl) => setProductPromoForm((current) => ({ ...current, imageUrl }))}
+              onUploadingChange={setPromoUploadingImage}
+              uploadKind="image"
+              previewClassName="h-28 w-full"
+            />
+            <div className="grid grid-cols-2 gap-3 items-end">
+              <div className="grid gap-1.5">
+                <Label>Ordre d'affichage</Label>
+                <Input type="number" min={0} step={1} value={productPromoForm.sortOrder} onChange={(event) => setProductPromoForm((current) => ({ ...current, sortOrder: Number(event.target.value) }))} />
+              </div>
+              <div className="flex items-center gap-2 pb-2">
+                <Switch checked={productPromoForm.isActive} onCheckedChange={(isActive) => setProductPromoForm((current) => ({ ...current, isActive }))} />
+                <Label>Promo active</Label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPromoDialogOpen(false)}>Annuler</Button>
+            <Button onClick={handleSavePromo} disabled={saving || promoUploadingImage || !selectedPromoProduct}>{saving ? "Enregistrement…" : "Enregistrer la promo"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

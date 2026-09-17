@@ -5905,6 +5905,22 @@ components:
           type:
             - string
             - "null"
+        restaurantId:
+          type:
+            - integer
+            - "null"
+        productId:
+          type:
+            - integer
+            - "null"
+        normalPrice:
+          type:
+            - number
+            - "null"
+        promoPrice:
+          type:
+            - number
+            - "null"
         isActive:
           type: boolean
         sortOrder:
@@ -5938,6 +5954,14 @@ components:
           type: string
         linkUrl:
           type: string
+        restaurantId:
+          type: integer
+        productId:
+          type: integer
+        normalPrice:
+          type: number
+        promoPrice:
+          type: number
         isActive:
           type: boolean
         sortOrder:

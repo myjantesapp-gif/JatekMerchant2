@@ -1229,6 +1229,14 @@ export interface Ad {
   imageUrl?: string | null;
   /** @nullable */
   linkUrl?: string | null;
+  /** @nullable */
+  restaurantId?: number | null;
+  /** @nullable */
+  productId?: number | null;
+  /** @nullable */
+  normalPrice?: number | null;
+  /** @nullable */
+  promoPrice?: number | null;
   isActive: boolean;
   sortOrder: number;
   createdAt?: string;
@@ -1245,6 +1253,10 @@ export interface AdBody {
   icon?: string;
   imageUrl?: string;
   linkUrl?: string;
+  restaurantId?: number;
+  productId?: number;
+  normalPrice?: number;
+  promoPrice?: number;
   isActive?: boolean;
   sortOrder?: number;
 }

@@ -47,6 +47,10 @@ function isAdmin(role?: string): boolean {
 function isSuperAdmin(role?: string): boolean {
   return !!role && ["super_admin", "admin"].includes(role);
 }
+function parseDecimal(value: unknown): number {
+  const parsed = Number(String(value ?? "").trim().replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 router.post("/backend/media/migrate-legacy", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   if (req.userRole !== "super_admin") {
@@ -141,12 +145,36 @@ router.get("/backend/ads", requireAuth, async (req: AuthedRequest, res, next): P
 router.post("/backend/ads", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   if (!isAdmin(req.userRole)) { res.status(403).json({ error: "Forbidden" }); return; }
   try {
-    const { type, title, subtitle, badge, bgColor, accentColor, icon, imageUrl, linkUrl, isActive, sortOrder } = req.body;
+    const {
+      type, title, subtitle, badge, bgColor, accentColor, icon, imageUrl, linkUrl,
+      restaurantId, productId, normalPrice, promoPrice, isActive, sortOrder,
+    } = req.body;
     if (!title) { res.status(400).json({ error: "title requis" }); return; }
      const parsedSortOrder = sortOrder === undefined ? 0 : Number(sortOrder);
      if (!Number.isInteger(parsedSortOrder) || parsedSortOrder < 0) {
        res.status(400).json({ error: "sortOrder doit être un entier positif ou nul" }); return;
      }
+    const parsedRestaurantId = restaurantId === undefined || restaurantId === null || restaurantId === "" ? null : Number(restaurantId);
+    const parsedProductId = productId === undefined || productId === null || productId === "" ? null : Number(productId);
+    const parsedNormalPrice = normalPrice === undefined || normalPrice === null || normalPrice === "" ? null : parseDecimal(normalPrice);
+    const parsedPromoPrice = promoPrice === undefined || promoPrice === null || promoPrice === "" ? null : parseDecimal(promoPrice);
+    if (type === "promo_product") {
+      const validRestaurantId = parsedRestaurantId === null ? NaN : parsedRestaurantId;
+      const validProductId = parsedProductId === null ? NaN : parsedProductId;
+      if (!Number.isInteger(validRestaurantId) || validRestaurantId <= 0 || !Number.isInteger(validProductId) || validProductId <= 0) {
+        res.status(400).json({ error: "restaurantId et productId requis pour une promotion produit" }); return;
+      }
+      if (parsedNormalPrice === null || parsedPromoPrice === null || parsedNormalPrice <= 0 || parsedPromoPrice < 0 || parsedPromoPrice >= parsedNormalPrice) {
+        res.status(400).json({ error: "Le prix promo doit être inférieur au prix normal" }); return;
+      }
+      const [product] = await db.select({ id: menuItemsTable.id, restaurantId: menuItemsTable.restaurantId })
+        .from(menuItemsTable)
+        .where(eq(menuItemsTable.id, validProductId))
+        .limit(1);
+      if (!product || product.restaurantId !== validRestaurantId) {
+        res.status(400).json({ error: "Produit introuvable dans ce restaurant" }); return;
+      }
+    }
     const [ad] = await db.insert(adsTable).values({
       type: type ?? "vip_banner",
       title,
@@ -157,6 +185,10 @@ router.post("/backend/ads", requireAuth, async (req: AuthedRequest, res, next): 
       icon: icon ?? "star",
       imageUrl: normalizeStoredMediaPath(imageUrl) ?? null,
       linkUrl: linkUrl ?? null,
+      restaurantId: Number.isInteger(parsedRestaurantId) ? parsedRestaurantId : null,
+      productId: Number.isInteger(parsedProductId) ? parsedProductId : null,
+      normalPrice: parsedNormalPrice,
+      promoPrice: parsedPromoPrice,
       isActive: isActive ?? true,
        sortOrder: parsedSortOrder,
     }).returning();
@@ -171,10 +203,38 @@ router.patch("/backend/ads/:id", requireAuth, async (req: AuthedRequest, res, ne
   try {
     const id = parseInt(String(req.params.id), 10);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-    const allowed = ["type", "title", "subtitle", "badge", "bgColor", "accentColor", "icon", "imageUrl", "linkUrl", "isActive", "sortOrder"];
+    const allowed = ["type", "title", "subtitle", "badge", "bgColor", "accentColor", "icon", "imageUrl", "linkUrl", "restaurantId", "productId", "normalPrice", "promoPrice", "isActive", "sortOrder"];
     const updates: Record<string, unknown> = {};
     const body = req.body ?? {};
     for (const k of allowed) if (body[k] !== undefined) updates[k] = body[k];
+    const [current] = await db.select().from(adsTable).where(eq(adsTable.id, id)).limit(1);
+    if (!current) { res.status(404).json({ error: "Not found" }); return; }
+    const nextType = String(updates.type ?? current.type);
+    const nextRestaurantId = updates.restaurantId === undefined ? current.restaurantId : (updates.restaurantId === null || updates.restaurantId === "" ? null : Number(updates.restaurantId));
+    const nextProductId = updates.productId === undefined ? current.productId : (updates.productId === null || updates.productId === "" ? null : Number(updates.productId));
+    const nextNormalPrice = updates.normalPrice === undefined ? current.normalPrice : (updates.normalPrice === null || updates.normalPrice === "" ? null : parseDecimal(updates.normalPrice));
+    const nextPromoPrice = updates.promoPrice === undefined ? current.promoPrice : (updates.promoPrice === null || updates.promoPrice === "" ? null : parseDecimal(updates.promoPrice));
+    if (nextType === "promo_product") {
+      const validRestaurantId = nextRestaurantId === null ? NaN : nextRestaurantId;
+      const validProductId = nextProductId === null ? NaN : nextProductId;
+      if (!Number.isInteger(validRestaurantId) || validRestaurantId <= 0 || !Number.isInteger(validProductId) || validProductId <= 0) {
+        res.status(400).json({ error: "restaurantId et productId requis pour une promotion produit" }); return;
+      }
+      if (nextNormalPrice === null || nextPromoPrice === null || nextNormalPrice <= 0 || nextPromoPrice < 0 || nextPromoPrice >= nextNormalPrice) {
+        res.status(400).json({ error: "Le prix promo doit être inférieur au prix normal" }); return;
+      }
+      const [product] = await db.select({ id: menuItemsTable.id, restaurantId: menuItemsTable.restaurantId })
+        .from(menuItemsTable)
+        .where(eq(menuItemsTable.id, validProductId))
+        .limit(1);
+      if (!product || product.restaurantId !== validRestaurantId) {
+        res.status(400).json({ error: "Produit introuvable dans ce restaurant" }); return;
+      }
+    }
+    if ("restaurantId" in updates) updates.restaurantId = nextRestaurantId;
+    if ("productId" in updates) updates.productId = nextProductId;
+    if ("normalPrice" in updates) updates.normalPrice = nextNormalPrice;
+    if ("promoPrice" in updates) updates.promoPrice = nextPromoPrice;
      if ("sortOrder" in updates) {
        const parsedSortOrder = Number(updates.sortOrder);
        if (!Number.isInteger(parsedSortOrder) || parsedSortOrder < 0) {
@@ -184,7 +244,6 @@ router.patch("/backend/ads/:id", requireAuth, async (req: AuthedRequest, res, ne
      }
     if ("imageUrl" in updates) updates.imageUrl = normalizeStoredMediaPath(updates.imageUrl);
     const [ad] = await db.update(adsTable).set(updates as any).where(eq(adsTable.id, id)).returning();
-    if (!ad) { res.status(404).json({ error: "Not found" }); return; }
     const [u] = await db.select({ name: usersTable.name, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
     await logActivity({ userId: req.userId, userEmail: u?.email, userName: u?.name, action: "update", entity: "ad", entityId: id, ip: req.ip });
     res.json(ad);
