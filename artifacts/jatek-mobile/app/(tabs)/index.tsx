@@ -32,6 +32,7 @@ import { useShorts } from "@/hooks/useContent";
 import {
   getPublicAppConfig,
   listAds,
+  listRecommendedRestaurants,
   type Ad,
   listRecommendedProducts,
   type Short,
@@ -451,6 +452,28 @@ function HomeScreen() {
     staleTime: 60_000,
   });
   const {
+    data: recommendedProducts = [],
+    isLoading: recommendedProductsLoading,
+    isError: recommendedProductsError,
+    refetch: refetchRecommendedProducts,
+  } = useQuery({
+    queryKey: ["home-recommended-products"],
+    queryFn: () => listRecommendedProducts({ limit: 30, sort: "recommended" }),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+  const {
+    data: recommendedRestaurants = [],
+    isLoading: recommendedRestaurantsLoading,
+    isError: recommendedRestaurantsError,
+    refetch: refetchRecommendedRestaurants,
+  } = useQuery({
+    queryKey: ["home-recommended-restaurants"],
+    queryFn: () => listRecommendedRestaurants({ limit: 30 }),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+  const {
     data: appConfig,
     isError: appConfigError,
     refetch: refetchAppConfig,
@@ -544,6 +567,8 @@ function HomeScreen() {
         refetchPromoProducts,
         refetchNewestProducts,
         refetchPopularProducts,
+        refetchRecommendedProducts,
+        refetchRecommendedRestaurants,
         refetchAppConfig,
       ]);
     } finally {
@@ -680,6 +705,52 @@ function HomeScreen() {
               keyPrefix="popular"
             />
             <WaveEdge color={SECTION_TINT} height={24} />
+          </View>
+        );
+      case "recommended_products":
+        return (
+          <View style={styles.popularSection}>
+            <WaveEdge color={SECTION_TINT} height={22} position="top" />
+            <SectionHeader title={config.title} variant="home" onPress={() => openSection(key)} testID="section-recommended-products" />
+            <ProductRail
+              products={recommendedProducts.slice(0, limit)}
+              loading={recommendedProductsLoading}
+              error={recommendedProductsError}
+              empty="Aucun produit recommandé pour le moment"
+              onRetry={() => void refetchRecommendedProducts()}
+              width={PRODUCT_GRID_WIDTH}
+              onProductPress={openProduct}
+              variant="home-popular"
+              keyPrefix="recommended-products"
+            />
+            <WaveEdge color={SECTION_TINT} height={24} />
+          </View>
+        );
+      case "recommended_restaurants":
+        return (
+          <View style={styles.restaurantSection}>
+            <SectionHeader title={config.title} variant="home" onPress={() => openSection(key)} testID="section-recommended-restaurants" />
+            {recommendedRestaurantsLoading || recommendedRestaurantsError ? (
+              <LoadingOrEmpty
+                loading={recommendedRestaurantsLoading}
+                error={recommendedRestaurantsError}
+                empty="Aucun restaurant recommandé pour le moment"
+                onRetry={() => void refetchRecommendedRestaurants()}
+              />
+            ) : recommendedRestaurants.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promoProductGrid} nestedScrollEnabled>
+                {recommendedRestaurants.slice(0, limit).map((restaurant) => (
+                  <StoreCard
+                    key={`recommended-${restaurant.id}`}
+                    restaurant={restaurant as Restaurant}
+                    width={SCREEN_WIDTH * 0.65}
+                    variant="home"
+                    showFee
+                    onPress={() => router.push({ pathname: "/restaurant/[id]", params: { id: String(restaurant.id) } })}
+                  />
+                ))}
+              </ScrollView>
+            ) : <Text style={styles.empty}>Aucun restaurant recommandé pour le moment</Text>}
           </View>
         );
       case "new_restaurants":

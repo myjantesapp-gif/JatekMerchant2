@@ -26,7 +26,7 @@ import {
   refundsTable,
   appConfigTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, count, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, sql, count, inArray } from "drizzle-orm";
 import { homeOrderSchema, homeSectionsSchema, getDefaultHomeSections, type AppConfig } from "../lib/appConfig";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 import { closeUserSubscriptions, publish } from "../lib/sse";
@@ -130,6 +130,91 @@ function toCSV(data: Record<string, unknown>[]): string {
 // ────────────────────────────────────────────────────────────────────────────
 // ADS / BANNERS CRUD
 // ────────────────────────────────────────────────────────────────────────────
+
+// ────────────────────────────────────────────────────────────────────────────
+// RECOMMENDATIONS
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Recommendations deliberately reuse the existing product/restaurant flags.
+ * This keeps old catalog data and older clients compatible while giving the
+ * dashboard one place to control the public Home feeds.
+ */
+router.get("/backend/recommendations", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
+  if (!isAdmin(req.userRole)) { res.status(403).json({ error: "Forbidden" }); return; }
+  try {
+    const products = await db
+      .select({
+        id: menuItemsTable.id,
+        restaurantId: menuItemsTable.restaurantId,
+        restaurantName: restaurantsTable.name,
+        name: menuItemsTable.name,
+        imageUrl: menuItemsTable.imageUrl,
+        price: menuItemsTable.price,
+        isAvailable: menuItemsTable.isAvailable,
+        isRecommended: menuItemsTable.isPopular,
+      })
+      .from(menuItemsTable)
+      .innerJoin(restaurantsTable, eq(menuItemsTable.restaurantId, restaurantsTable.id))
+      .orderBy(desc(menuItemsTable.isPopular), asc(restaurantsTable.name), asc(menuItemsTable.name), asc(menuItemsTable.id));
+    const restaurants = await db
+      .select({
+        id: restaurantsTable.id,
+        name: restaurantsTable.name,
+        imageUrl: restaurantsTable.imageUrl,
+        logoUrl: restaurantsTable.logoUrl,
+        businessType: restaurantsTable.businessType,
+        isOpen: restaurantsTable.isOpen,
+        isVerified: restaurantsTable.isVerified,
+        isRecommended: restaurantsTable.isFeatured,
+      })
+      .from(restaurantsTable)
+      .orderBy(desc(restaurantsTable.isFeatured), asc(restaurantsTable.name), asc(restaurantsTable.id));
+    res.json({
+      products: products.map((product) => ({
+        ...product,
+        imageUrl: resolveLegacyMediaPath(product.imageUrl, "medias"),
+      })),
+      restaurants: restaurants.map((restaurant) => ({
+        ...restaurant,
+        imageUrl: resolveLegacyMediaPath(restaurant.imageUrl, "banners"),
+        logoUrl: resolveLegacyMediaPath(restaurant.logoUrl, "logos"),
+      })),
+    });
+  } catch (err) { next(err); }
+});
+
+router.patch("/backend/recommendations/products/:id", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
+  if (!isAdmin(req.userRole)) { res.status(403).json({ error: "Forbidden" }); return; }
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0 || typeof req.body?.isRecommended !== "boolean") {
+      res.status(400).json({ error: "id et isRecommended booléen requis" }); return;
+    }
+    const [product] = await db.update(menuItemsTable)
+      .set({ isPopular: req.body.isRecommended })
+      .where(eq(menuItemsTable.id, id))
+      .returning({ id: menuItemsTable.id, isRecommended: menuItemsTable.isPopular });
+    if (!product) { res.status(404).json({ error: "Produit introuvable" }); return; }
+    res.json(product);
+  } catch (err) { next(err); }
+});
+
+router.patch("/backend/recommendations/restaurants/:id", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
+  if (!isAdmin(req.userRole)) { res.status(403).json({ error: "Forbidden" }); return; }
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0 || typeof req.body?.isRecommended !== "boolean") {
+      res.status(400).json({ error: "id et isRecommended booléen requis" }); return;
+    }
+    const [restaurant] = await db.update(restaurantsTable)
+      .set({ isFeatured: req.body.isRecommended })
+      .where(eq(restaurantsTable.id, id))
+      .returning({ id: restaurantsTable.id, isRecommended: restaurantsTable.isFeatured });
+    if (!restaurant) { res.status(404).json({ error: "Restaurant introuvable" }); return; }
+    res.json(restaurant);
+  } catch (err) { next(err); }
+});
 
 router.get("/backend/ads", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   if (!isAdmin(req.userRole)) { res.status(403).json({ error: "Forbidden" }); return; }

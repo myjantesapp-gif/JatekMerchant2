@@ -490,6 +490,8 @@ export type HomeSectionKey =
   | "categories"
   | "banners"
   | "shorts"
+  | "recommended_products"
+  | "recommended_restaurants"
   | "popular"
   | "new_restaurants"
   | "supermarkets"
@@ -503,6 +505,8 @@ export type HomeSectionSource =
   | "categories"
   | "banners"
   | "shorts"
+  | "recommended_products"
+  | "recommended_restaurants"
   | "popular"
   | "newest"
   | "promos"
@@ -537,6 +541,8 @@ const DEFAULT_HOME_ORDER: HomeSectionKey[] = [
   "categories",
   "banners",
   "shorts",
+  "recommended_products",
+  "recommended_restaurants",
   "popular",
   "new_restaurants",
   "supermarkets",
@@ -552,6 +558,8 @@ const DEFAULT_HOME_SECTIONS: Record<HomeSectionKey, Omit<HomeSectionConfig, "key
   categories: { title: "Catégories", visible: true, source: "categories", limit: 4 },
   banners: { title: "Bannières", visible: true, source: "banners", limit: 10 },
   shorts: { title: "Shorts", visible: true, source: "shorts", limit: 12 },
+  recommended_products: { title: "Produits recommandés", visible: true, source: "recommended_products", limit: 6 },
+  recommended_restaurants: { title: "Restaurants recommandés", visible: true, source: "recommended_restaurants", limit: 6 },
   popular: { title: "Produits populaires", visible: true, source: "popular", limit: 6 },
   new_restaurants: { title: "Restauration", visible: true, source: "new_restaurants", limit: 6 },
   supermarkets: { title: "Supermarché", visible: true, source: "supermarkets", limit: 6 },
@@ -589,7 +597,7 @@ export async function getPublicAppConfig(): Promise<PublicAppConfig> {
 export async function listRecommendedProducts(params?: {
   limit?: number;
   businessType?: string;
-  sort?: "catalog" | "newest" | "promos";
+  sort?: "catalog" | "newest" | "promos" | "recommended";
 }): Promise<RecommendedProduct[]> {
   const query = new URLSearchParams();
   if (params?.limit !== undefined) query.set("limit", String(params.limit));
@@ -597,6 +605,25 @@ export async function listRecommendedProducts(params?: {
   if (params?.sort) query.set("sort", params.sort);
   const qs = query.toString();
   return jsonFetch(`/api/recommendations/products${qs ? `?${qs}` : ""}`);
+}
+
+export type RecommendedRestaurant = {
+  id: number;
+  name: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  coverImageUrl?: string | null;
+  logoUrl?: string | null;
+  businessType?: string | null;
+  isOpen?: boolean;
+  rating?: number | null;
+  deliveryTime?: number | null;
+  deliveryFee?: number | null;
+};
+
+export async function listRecommendedRestaurants(params?: { limit?: number }): Promise<RecommendedRestaurant[]> {
+  const query = params?.limit ? `?limit=${encodeURIComponent(String(params.limit))}` : "";
+  return jsonFetch(`/api/restaurants/recommended${query}`);
 }
 
 // Promo codes -----------------------------------------------------------

@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, ShoppingCart, Package, Store, Star, Users, UserCog, Truck,
   Tags, TicketPercent, Wallet, Bell, BarChart3, Shield, Settings, LogOut, Menu,
-  ChevronDown, ChevronRight, Image, Activity, Server, Radio, AppWindow, LifeBuoy, Film
+  ChevronDown, ChevronRight, Image, Activity, Server, Radio, AppWindow, LifeBuoy, Film, CheckCircle2
 } from "lucide-react";
 import { useBackendMe } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
@@ -53,6 +53,7 @@ const navGroups: NavGroup[] = [
     label: "Marketing",
     items: [
       { href: "/promotions", label: "Promotions", icon: Tags },
+      { href: "/recommendations", label: "Recommandations", icon: CheckCircle2, roles: ADMIN_ROLES },
       { href: "/banners", label: "Bannières", icon: Image, roles: ADMIN_ROLES },
       { href: "/shorts", label: "Shorts & Reels", icon: Film, roles: ADMIN_ROLES },
       { href: "/vouchers", label: "Codes promo", icon: TicketPercent },

@@ -24,6 +24,8 @@ type HomeSectionKey =
   | "categories"
   | "banners"
   | "shorts"
+  | "recommended_products"
+  | "recommended_restaurants"
   | "popular"
   | "new_restaurants"
   | "supermarkets"
@@ -38,12 +40,14 @@ const DEFAULT_CONFIG = {
   defaultLanguage: "fr",
   maintenanceMode: false,
   featuredCount: 6,
-  homeOrder: ["categories", "banners", "shorts", "popular", "new_restaurants", "supermarkets", "new_products", "shops", "all", "free_delivery", "newest", "support"],
+  homeOrder: ["categories", "banners", "shorts", "recommended_products", "recommended_restaurants", "popular", "new_restaurants", "supermarkets", "new_products", "shops", "all", "free_delivery", "newest", "support"],
   welcomeMessage: "Bienvenue sur Jatek !",
   homeSections: {
     categories: { visible: true, title: "Catégories", source: "categories", limit: 4 },
     banners: { visible: true, title: "Bannières", source: "banners", limit: 10 },
     shorts: { visible: true, title: "Shorts", source: "shorts", limit: 12 },
+    recommended_products: { visible: true, title: "Produits recommandés", source: "recommended_products", limit: 6 },
+    recommended_restaurants: { visible: true, title: "Restaurants recommandés", source: "recommended_restaurants", limit: 6 },
     popular: { visible: true, title: "Produits populaires", source: "popular", limit: 6 },
     new_products: { visible: true, title: "Offres du moment", source: "promos", limit: 6 },
     new_restaurants: { visible: false, title: "Restauration", source: "new_restaurants", limit: 6 },
@@ -62,6 +66,8 @@ const HOME_SECTIONS = [
   { key: "categories", label: "Catégories des shops" },
   { key: "banners", label: "Bannières" },
   { key: "shorts", label: "Shorts" },
+  { key: "recommended_products", label: "Produits recommandés" },
+  { key: "recommended_restaurants", label: "Restaurants recommandés" },
   { key: "popular", label: "Produits populaires" },
   { key: "new_restaurants", label: "Restaurants près de chez vous" },
   { key: "supermarkets", label: "Supermarchés près de chez vous" },
@@ -73,13 +79,15 @@ const HOME_SECTIONS = [
   { key: "support", label: "Support" },
 ];
 const DYNAMIC_SECTION_KEYS: HomeSectionKey[] = [
-  "categories", "banners", "shorts", "popular", "new_restaurants", "supermarkets",
+  "categories", "banners", "shorts", "recommended_products", "recommended_restaurants", "popular", "new_restaurants", "supermarkets",
   "new_products", "shops", "all", "free_delivery", "newest", "support",
 ];
 const SOURCE_OPTIONS: Record<HomeSectionKey, Array<{ value: string; label: string }>> = {
   categories: [{ value: "categories", label: "Catégories actives" }],
   banners: [{ value: "banners", label: "Bannières actives" }],
   shorts: [{ value: "shorts", label: "Shorts publiés" }],
+  recommended_products: [{ value: "recommended_products", label: "Sélection gérée ci-dessous" }],
+  recommended_restaurants: [{ value: "recommended_restaurants", label: "Sélection gérée ci-dessous" }],
   popular: [
     { value: "popular", label: "Catalogue recommandé" },
     { value: "newest", label: "Produits les plus récents" },

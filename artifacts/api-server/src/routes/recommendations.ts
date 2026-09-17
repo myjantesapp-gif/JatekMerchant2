@@ -56,8 +56,8 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
     : typeof rawSort === "string"
       ? rawSort
       : "";
-  if (sort !== "catalog" && sort !== "newest" && sort !== "promos") {
-    res.status(400).json({ error: "sort must be one of catalog, newest or promos" });
+   if (sort !== "catalog" && sort !== "newest" && sort !== "promos" && sort !== "recommended") {
+    res.status(400).json({ error: "sort must be one of catalog, newest, promos or recommended" });
     return;
   }
 
@@ -70,6 +70,7 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
     eq(restaurantsTable.isOpen, true),
     eq(restaurantsTable.isVerified, true),
     eq(usersTable.isActive, true),
+    ...(sort === "recommended" ? [eq(menuItemsTable.isPopular, true)] : []),
     // A null category is the legacy-compatible public menu path. A linked
     // category must remain active before its product can be recommended.
     or(
@@ -117,7 +118,9 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
     // Catalog order is intentionally deterministic and never uses isPopular,
     // ratings, clicks or order history as a hidden recommendation score.
     .orderBy(
-      ...(sort === "newest"
+      ...(sort === "recommended"
+        ? [asc(menuItemsTable.sortOrder), desc(menuItemsTable.updatedAt), asc(menuItemsTable.id)]
+        : sort === "newest"
         ? [desc(menuItemsTable.createdAt), desc(menuItemsTable.id)]
         : sort === "promos"
           ? [desc(sql`(${menuItemsTable.compareAtPrice} - ${menuItemsTable.price})`), asc(menuItemsTable.sortOrder), asc(menuItemsTable.id)]
@@ -134,7 +137,7 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
       imageUrl: resolveLegacyMediaPath(row.imageUrl, "medias") ?? row.imageUrl,
     }));
 
-  const selectedCandidates = sort === "newest"
+   const selectedCandidates = sort === "newest"
     ? selectNewestRecommendations(candidates, requestedLimit)
     : selectAvailableRecommendations(candidates, requestedLimit);
   const items = selectedCandidates.map((item) => ({

@@ -22,6 +22,7 @@ import Staff from "@/pages/staff";
 import Deliverymen from "@/pages/deliverymen";
 import Roles from "@/pages/roles";
 import Promotions from "@/pages/promotions";
+import Recommendations from "@/pages/recommendations";
 import Vouchers from "@/pages/vouchers";
 import Wallets from "@/pages/wallets";
 import Notifications from "@/pages/notifications";
@@ -87,6 +88,7 @@ function Router() {
               <Route path="/shops" component={Shops} />
               <Route path="/reviews" component={Reviews} />
               <Route path="/promotions" component={Promotions} />
+              <AdminRoute path="/recommendations" component={Recommendations} />
 
               {/* Blocked for restaurant_owner */}
               <AdminRoute path="/categories" component={Categories} />

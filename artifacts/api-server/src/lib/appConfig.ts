@@ -9,6 +9,8 @@ export const HOME_SECTION_KEYS = [
   "categories",
   "banners",
   "shorts",
+  "recommended_products",
+  "recommended_restaurants",
   "popular",
   "new_restaurants",
   "supermarkets",
@@ -37,6 +39,12 @@ export const homeSectionsSchema = z.object({
   }).strict(),
   shorts: baseHomeSectionSchema.extend({
     source: z.literal("shorts"),
+  }).strict(),
+  recommended_products: baseHomeSectionSchema.extend({
+    source: z.literal("recommended_products"),
+  }).strict(),
+  recommended_restaurants: baseHomeSectionSchema.extend({
+    source: z.literal("recommended_restaurants"),
   }).strict(),
   popular: baseHomeSectionSchema.extend({
     source: z.enum(["popular", "newest", "promos"]),
@@ -72,6 +80,8 @@ export const HOME_ORDER_KEYS = [
   "categories",
   "banners",
   "shorts",
+  "recommended_products",
+  "recommended_restaurants",
   "popular",
   "new_restaurants",
   "supermarkets",
@@ -103,6 +113,18 @@ export const DEFAULT_HOME_SECTIONS: HomeSectionsConfig = {
     visible: true,
     source: "shorts",
     limit: 12,
+  },
+  recommended_products: {
+    title: "Produits recommandés",
+    visible: true,
+    source: "recommended_products",
+    limit: 6,
+  },
+  recommended_restaurants: {
+    title: "Restaurants recommandés",
+    visible: true,
+    source: "recommended_restaurants",
+    limit: 6,
   },
   popular: {
     title: "Produits populaires",

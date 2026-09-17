@@ -21,6 +21,7 @@ import {
 import {
   getPublicAppConfig,
   listRecommendedProducts,
+  listRecommendedRestaurants,
   type HomeSectionConfig,
   type HomeSectionKey,
   type RecommendedProduct,
@@ -44,15 +45,15 @@ function normalize(value: unknown): string {
 }
 
 function isRestaurantSection(source?: string): boolean {
-  return source === "new_restaurants" || source === "supermarkets" || source === "all_restaurants" || source === "shops";
+  return source === "new_restaurants" || source === "supermarkets" || source === "all_restaurants" || source === "shops" || source === "recommended_restaurants";
 }
 
 function isProductSection(source?: string): boolean {
-  return source === "popular" || source === "newest" || source === "promos" || source === "free_delivery";
+  return source === "popular" || source === "newest" || source === "promos" || source === "free_delivery" || source === "recommended_products";
 }
 
 function findBusinessCategory(categories: any[], source?: string) {
-  if (source === "all_restaurants") return undefined;
+  if (source === "all_restaurants" || source === "recommended_restaurants") return undefined;
   const roots = categories.filter((category) => category.parentId == null && category.isActive !== false);
   const matches = (category: any, terms: string[]) => {
     const value = normalize(`${category.businessType} ${category.slug} ${category.name}`);
@@ -139,11 +140,13 @@ export default function HomeSectionScreen() {
     { businessType },
     {
       query: {
-        enabled: restaurantSection && (source === "all_restaurants" || Boolean(businessType)),
+        enabled: restaurantSection && source !== "recommended_restaurants" && (source === "all_restaurants" || Boolean(businessType)),
       },
     } as any,
   );
-  const productSort = source === "promos" ? "promos" : source === "newest" ? "newest" : "catalog";
+  const productSort = source === "recommended_products"
+    ? "recommended"
+    : source === "promos" ? "promos" : source === "newest" ? "newest" : "catalog";
   const {
     data: recommendedProducts = [],
     isLoading: productsLoading,
@@ -153,6 +156,18 @@ export default function HomeSectionScreen() {
     queryFn: () => listRecommendedProducts({ limit: 30, sort: productSort }),
     enabled: productSection,
     staleTime: 60_000,
+    refetchInterval: 30_000,
+  });
+  const {
+    data: recommendedRestaurants = [],
+    isLoading: recommendedRestaurantsLoading,
+    isError: recommendedRestaurantsError,
+  } = useQuery({
+    queryKey: ["home-section-recommended-restaurants", sectionKey],
+    queryFn: () => listRecommendedRestaurants({ limit: 30 }),
+    enabled: source === "recommended_restaurants",
+    staleTime: 30_000,
+    refetchInterval: 30_000,
   });
   const products = useMemo(
     () => source === "free_delivery"
@@ -161,9 +176,10 @@ export default function HomeSectionScreen() {
     [recommendedProducts, source],
   );
   const loading = configLoading
-    || (restaurantSection && (categoriesLoading || restaurantsLoading))
+    || (restaurantSection && source !== "recommended_restaurants" && (categoriesLoading || restaurantsLoading))
+    || (source === "recommended_restaurants" && recommendedRestaurantsLoading)
     || (productSection && productsLoading);
-  const error = restaurantsError || productsError;
+  const error = restaurantsError || productsError || (source === "recommended_restaurants" && recommendedRestaurantsError);
 
   return (
     <View style={styles.root}>
@@ -188,16 +204,22 @@ export default function HomeSectionScreen() {
       >
         {loading ? <ActivityIndicator color={PINK} style={styles.loader} /> : null}
         {!loading && error ? <Text style={styles.empty}>Impossible de charger ce contenu</Text> : null}
-        {!loading && !error && restaurantSection && !restaurantCategory ? (
+        {!loading && !error && restaurantSection && source !== "recommended_restaurants" && !restaurantCategory ? (
           <Text style={styles.empty}>Aucune catégorie correspondante</Text>
         ) : null}
-        {!loading && !error && restaurantSection && restaurantCategory && restaurants.length === 0 ? (
+        {!loading && !error && source === "recommended_restaurants" && recommendedRestaurants.length === 0 ? (
+          <Text style={styles.empty}>Aucun restaurant recommandé</Text>
+        ) : null}
+        {!loading && !error && restaurantSection && source !== "recommended_restaurants" && restaurantCategory && restaurants.length === 0 ? (
           <Text style={styles.empty}>Aucun établissement disponible</Text>
         ) : null}
         {!loading && !error && productSection && products.length === 0 ? (
           <Text style={styles.empty}>Aucun produit disponible</Text>
         ) : null}
-        {!loading && !error && restaurantSection && restaurantCategory && restaurants.length > 0 ? (
+        {!loading && !error && source === "recommended_restaurants" && recommendedRestaurants.length > 0 ? (
+          <RestaurantGrid restaurants={recommendedRestaurants as Restaurant[]} />
+        ) : null}
+        {!loading && !error && restaurantSection && source !== "recommended_restaurants" && restaurantCategory && restaurants.length > 0 ? (
           <RestaurantGrid restaurants={restaurants as Restaurant[]} />
         ) : null}
         {!loading && !error && productSection && products.length > 0 ? (

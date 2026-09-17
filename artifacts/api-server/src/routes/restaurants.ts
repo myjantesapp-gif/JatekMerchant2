@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, restaurantsTable, ordersTable, reviewsTable, menuItemsTable } from "@workspace/db";
-import { eq, ilike, and, or, avg, count, sum, sql } from "drizzle-orm";
+import { eq, ilike, and, or, avg, count, sum, sql, asc, desc } from "drizzle-orm";
 import {
   CreateRestaurantBody,
   UpdateRestaurantBody,
@@ -80,8 +80,30 @@ router.get("/restaurants/featured", async (_req, res): Promise<void> => {
   const restaurants = await db
     .select()
     .from(restaurantsTable)
-    .where(and(eq(restaurantsTable.isVerified, true), eq(restaurantsTable.isOpen, true)))
+    .where(and(
+      eq(restaurantsTable.isVerified, true),
+      eq(restaurantsTable.isOpen, true),
+      eq(restaurantsTable.isFeatured, true),
+    ))
+    .orderBy(desc(restaurantsTable.rating), desc(restaurantsTable.clickCount), asc(restaurantsTable.id))
     .limit(6);
+  res.json(await Promise.all(restaurants.map(withDeliveryDefaults)));
+});
+
+/** Public feed controlled by the dashboard recommendation flag. */
+router.get("/restaurants/recommended", async (req, res): Promise<void> => {
+  const rawLimit = Number(req.query.limit ?? 6);
+  const limit = Number.isInteger(rawLimit) ? Math.max(1, Math.min(rawLimit, 30)) : 6;
+  const restaurants = await db
+    .select()
+    .from(restaurantsTable)
+    .where(and(
+      eq(restaurantsTable.isVerified, true),
+      eq(restaurantsTable.isOpen, true),
+      eq(restaurantsTable.isFeatured, true),
+    ))
+    .orderBy(desc(restaurantsTable.rating), desc(restaurantsTable.clickCount), asc(restaurantsTable.id))
+    .limit(limit);
   res.json(await Promise.all(restaurants.map(withDeliveryDefaults)));
 });
 
