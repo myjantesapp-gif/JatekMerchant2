@@ -122,7 +122,6 @@ router.get("/ads", async (req, res): Promise<void> => {
     .orderBy(asc(adsTable.sortOrder), asc(adsTable.id));
   res.json(rows.map((row) => ({
     ...row,
-    viewCount: normalizeShortViewCount(row.viewCount),
     imageUrl: resolveLegacyMediaPath(row.imageUrl, "banners"),
   })));
 });

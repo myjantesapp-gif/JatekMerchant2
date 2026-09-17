@@ -1294,6 +1294,8 @@ export interface Short {
   audioBitrate?: number | null;
   /** @nullable */
   durationSeconds?: number | null;
+  /** @minimum 0 */
+  viewCount: number;
   audio?: ShortAudio;
   stream?: ShortStream;
   isActive: boolean;

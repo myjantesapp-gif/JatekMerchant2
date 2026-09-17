@@ -3276,6 +3276,10 @@ export const ListAdsResponse = zod.array(ListAdsResponseItem)
 /**
  * @summary List active shorts
  */
+export const listShortsResponseViewCountMin = 0;
+
+
+
 export const ListShortsResponseItem = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
@@ -3287,6 +3291,7 @@ export const ListShortsResponseItem = zod.object({
   "audioCodec": zod.string().nullish(),
   "audioBitrate": zod.number().int().nullish(),
   "durationSeconds": zod.number().nullish(),
+  "viewCount": zod.number().int().min(listShortsResponseViewCountMin),
   "audio": zod.object({
   "codec": zod.string().nullish(),
   "bitrate": zod.number().int().nullish(),
@@ -3516,6 +3521,10 @@ export const DeleteBackendAdResponse = zod.void()
 /**
  * @summary List all shorts (admin)
  */
+export const listBackendShortsResponseViewCountMin = 0;
+
+
+
 export const ListBackendShortsResponseItem = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
@@ -3527,6 +3536,7 @@ export const ListBackendShortsResponseItem = zod.object({
   "audioCodec": zod.string().nullish(),
   "audioBitrate": zod.number().int().nullish(),
   "durationSeconds": zod.number().nullish(),
+  "viewCount": zod.number().int().min(listBackendShortsResponseViewCountMin),
   "audio": zod.object({
   "codec": zod.string().nullish(),
   "bitrate": zod.number().int().nullish(),
@@ -3557,6 +3567,10 @@ export const CreateBackendShortBody = zod.object({
   "sortOrder": zod.number().int().optional()
 })
 
+export const createBackendShortResponseViewCountMin = 0;
+
+
+
 export const CreateBackendShortResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
@@ -3568,6 +3582,7 @@ export const CreateBackendShortResponse = zod.object({
   "audioCodec": zod.string().nullish(),
   "audioBitrate": zod.number().int().nullish(),
   "durationSeconds": zod.number().nullish(),
+  "viewCount": zod.number().int().min(createBackendShortResponseViewCountMin),
   "audio": zod.object({
   "codec": zod.string().nullish(),
   "bitrate": zod.number().int().nullish(),
@@ -3601,6 +3616,10 @@ export const UpdateBackendShortBody = zod.object({
   "sortOrder": zod.number().int().optional()
 })
 
+export const updateBackendShortResponseViewCountMin = 0;
+
+
+
 export const UpdateBackendShortResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
@@ -3612,6 +3631,7 @@ export const UpdateBackendShortResponse = zod.object({
   "audioCodec": zod.string().nullish(),
   "audioBitrate": zod.number().int().nullish(),
   "durationSeconds": zod.number().nullish(),
+  "viewCount": zod.number().int().min(updateBackendShortResponseViewCountMin),
   "audio": zod.object({
   "codec": zod.string().nullish(),
   "bitrate": zod.number().int().nullish(),

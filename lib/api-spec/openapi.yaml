@@ -5971,6 +5971,7 @@ components:
       required:
         - id
         - title
+        - viewCount
         - isActive
         - sortOrder
       properties:
@@ -6010,6 +6011,9 @@ components:
           type:
             - number
             - "null"
+        viewCount:
+          type: integer
+          minimum: 0
         audio:
           type: object
           properties:
