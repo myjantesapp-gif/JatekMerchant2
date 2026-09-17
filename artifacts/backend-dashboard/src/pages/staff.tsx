@@ -127,7 +127,7 @@ export default function Staff() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <h1 className="text-3xl font-bold tracking-tight">Personnel</h1>
         {canManage && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>

@@ -35,7 +35,7 @@ export default function Reviews() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between"><h1 className="text-3xl font-bold tracking-tight">Avis</h1></div>
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Avis</h1></div>
 
       <Card>
         <CardHeader><CardTitle>Avis clients</CardTitle></CardHeader>

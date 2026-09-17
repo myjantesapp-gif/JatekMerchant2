@@ -163,12 +163,12 @@ export default function Vouchers() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
           <TicketPercent className="h-7 w-7 text-primary" />
           <h1 className="text-3xl font-bold tracking-tight">Codes promo & Vouchers</h1>
         </div>
-        <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Nouveau code</Button>
+        <Button onClick={openCreate} className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-2" />Nouveau code</Button>
       </div>
 
       <Card>

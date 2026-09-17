@@ -198,8 +198,8 @@ export default function Dashboard() {
   if (isLoading || !dashboard) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">{pageTitle}</h1>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{pageTitle}</h1>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
         </div>
       </div>
@@ -208,10 +208,10 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">{pageTitle}</h1>
-        <Tabs value={range} onValueChange={(v) => setRange(v as GetBackendDashboardRange)}>
-          <TabsList>
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{pageTitle}</h1>
+        <Tabs value={range} onValueChange={(v) => setRange(v as GetBackendDashboardRange)} className="w-full sm:w-auto">
+          <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
             <TabsTrigger value="week">Semaine</TabsTrigger>
             <TabsTrigger value="month">Mois</TabsTrigger>
             <TabsTrigger value="year">Année</TabsTrigger>
@@ -232,7 +232,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard title="Commandes en cours" value={dashboard.inProgressOrders} icon={ShoppingCart} />
         <KpiCard title="Commandes livrées" value={dashboard.deliveredOrders} icon={CheckCircle} />
         <KpiCard title="Commandes annulées" value={dashboard.cancelledOrders} icon={XCircle} />
@@ -255,13 +255,13 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 xl:grid-cols-7">
+        <Card className="min-w-0 xl:col-span-4">
           <CardHeader>
             <CardTitle>Aperçu des commandes</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <div className="h-[300px] w-full">
+            <div className="h-[260px] w-full sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dashboard.ordersChart}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -298,14 +298,14 @@ export default function Dashboard() {
           </CardContent>
         </Card>
         
-        <div className="col-span-3 space-y-4 flex flex-col">
+        <div className="min-w-0 space-y-4 xl:col-span-3">
           <div className="flex-1">
             <TodosWidget />
           </div>
         </div>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-1">
+      <div className="grid gap-4">
         <RecentOrders showRestaurant={!isOwner} />
       </div>
     </div>

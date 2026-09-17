@@ -241,14 +241,14 @@ export default function Shorts() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Shorts & Reels</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Gérez les vidéos courtes affichées dans la section «&nbsp;Découvrir en vidéo&nbsp;» de l'application
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setCreateOpen(true)}>
+        <Button className="w-full gap-2 sm:w-auto" onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" /> Nouveau short
         </Button>
       </div>

@@ -109,9 +109,9 @@ export default function Deliverymen() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Livreurs</h1>
-        <Button onClick={() => { setCreating(true); setNewForm(emptyNew); }} className="gap-2">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Livreurs</h1>
+        <Button onClick={() => { setCreating(true); setNewForm(emptyNew); }} className="w-full gap-2 sm:w-auto">
           <Plus className="h-4 w-4" /> Nouveau livreur
         </Button>
       </div>

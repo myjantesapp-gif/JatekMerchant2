@@ -211,9 +211,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   if (!me) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-dvh min-h-0 overflow-hidden bg-background">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? "w-[240px]" : "w-[68px]"} transition-all duration-300 border-r border-border bg-sidebar flex-col hidden md:flex shrink-0 z-20 shadow-sm relative`}>
+      <aside className={`${sidebarOpen ? "w-[240px]" : "w-[68px]"} transition-all duration-300 border-r border-border bg-sidebar flex-col hidden lg:flex shrink-0 z-20 shadow-sm relative`}>
         <div className="h-14 flex items-center justify-between px-3 border-b border-sidebar-border bg-sidebar">
           {sidebarOpen && (
             <div className="flex items-center gap-2.5 px-2 min-w-0">
@@ -299,10 +299,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
-        <header className="h-14 shrink-0 flex items-center justify-between px-4 md:px-8 border-b border-border bg-card shadow-xs z-10 gap-4">
+      <main className="flex-1 flex min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+        <header className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-3 shadow-xs sm:px-4 lg:px-8">
           <div className="flex items-center gap-3 min-w-0">
-            <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} className="md:hidden h-8 w-8 -ml-2 shrink-0">
+            <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} className="lg:hidden h-8 w-8 -ml-2 shrink-0">
               <Menu className="h-4 w-4" />
             </Button>
             <h1 className="font-bold text-sm md:text-base truncate tracking-tight text-foreground">
@@ -318,8 +318,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto bg-muted/10 p-4 md:p-8">
-          <div className="max-w-[1400px] mx-auto animate-in fade-in duration-300">
+        <div className="min-h-0 flex-1 overflow-auto bg-muted/10 p-3 sm:p-4 lg:p-8">
+          <div className="mx-auto min-w-0 max-w-[1400px] animate-in fade-in duration-300">
             {children}
           </div>
         </div>

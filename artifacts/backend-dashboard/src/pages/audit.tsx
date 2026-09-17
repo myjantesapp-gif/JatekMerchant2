@@ -71,7 +71,7 @@ export default function AuditPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <Shield className="h-8 w-8 text-primary" /> Journal d'audit

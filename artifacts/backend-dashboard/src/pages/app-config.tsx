@@ -175,7 +175,7 @@ export default function AppConfig() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-2xl pb-10">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <Settings className="h-8 w-8 text-primary" /> App Config
