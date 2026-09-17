@@ -11,18 +11,20 @@ import {
 test("Home section defaults have the complete typed contract", () => {
   assert.deepEqual(getDefaultHomeSections(), DEFAULT_HOME_SECTIONS);
   assert.deepEqual(Object.keys(DEFAULT_HOME_SECTIONS), [
-      "categories",
-      "banners",
-      "shorts",
+    "categories",
+    "banners",
+    "shorts",
+    "recommended_products",
+    "recommended_restaurants",
     "popular",
     "new_products",
     "new_restaurants",
     "supermarkets",
     "shops",
-      "all",
-      "free_delivery",
-      "newest",
-      "support",
+    "all",
+    "free_delivery",
+    "newest",
+    "support",
   ]);
   for (const section of Object.values(DEFAULT_HOME_SECTIONS)) {
     assert.deepEqual(Object.keys(section).sort(), ["limit", "source", "title", "visible"]);
