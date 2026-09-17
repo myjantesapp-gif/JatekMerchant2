@@ -34,7 +34,7 @@ export function getBackendProductsOrderBy(sort: ProductSort, direction: ProductS
   if (sort === "availability") return [order(menuItemsTable.isAvailable), order(menuItemsTable.name), order(menuItemsTable.id)];
   if (sort === "shop") return [order(menuItemsTable.restaurantId), order(menuItemsTable.name), order(menuItemsTable.id)];
   if (sort === "createdAt") return [order(menuItemsTable.createdAt), order(menuItemsTable.id)];
-  return [order(menuItemsTable.sortOrder), order(menuItemsTable.name), order(menuItemsTable.id)];
+  return [order(menuItemsTable.sortOrder), order(menuItemsTable.id)];
 }
 
 type SortableProduct = {
@@ -93,12 +93,12 @@ export function compareProductsBySort(
       || compareNumbers(left.id, right.id));
   }
   return multiplier * (compareNumbers(left.sortOrder, right.sortOrder)
-    || compareText(left.name, right.name)
     || compareNumbers(left.id, right.id));
 }
 
 type CustomerMenuEntry = SortableProduct & {
   category: string;
+  menuItemCategoryId: number | null;
   categorySortOrder: number | null;
 };
 
@@ -115,8 +115,10 @@ export function compareCustomerMenuEntries(
   const leftCategoryOrder = left.categorySortOrder ?? Number.MIN_SAFE_INTEGER;
   const rightCategoryOrder = right.categorySortOrder ?? Number.MIN_SAFE_INTEGER;
   return compareNumbers(leftCategoryOrder, rightCategoryOrder)
+    // Category id is the stable tie-breaker for duplicate legacy category
+    // ranks. It also keeps all products in a category contiguous.
+    || compareNumbers(left.menuItemCategoryId ?? Number.MIN_SAFE_INTEGER, right.menuItemCategoryId ?? Number.MIN_SAFE_INTEGER)
     || compareNumbers(left.sortOrder, right.sortOrder)
-    || compareText(left.category, right.category)
-    || compareNumbers(new Date(right.createdAt).getTime(), new Date(left.createdAt).getTime())
-    || compareNumbers(right.id, left.id);
+    // Never substitute product name or creation time for a saved position.
+    || compareNumbers(left.id, right.id);
 }

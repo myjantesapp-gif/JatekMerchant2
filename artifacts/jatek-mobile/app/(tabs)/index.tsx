@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -14,7 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -393,6 +393,9 @@ function HomeScreen() {
     isError: shortsError,
     refetch: refetchShorts,
   } = useShorts();
+  useFocusEffect(useCallback(() => {
+    void refetchShorts();
+  }, [refetchShorts]));
   const {
     data: restaurants,
     isLoading: restaurantsLoading,
@@ -1023,6 +1026,7 @@ function HomeScreen() {
         shorts={shorts}
         initialIndex={Math.min(initialShort, Math.max(0, shorts.length - 1))}
         onClose={() => setShortsVisible(false)}
+        onViewCountChanged={() => void refetchShorts()}
       />
       <SideMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </View>

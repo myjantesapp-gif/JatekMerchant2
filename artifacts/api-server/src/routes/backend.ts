@@ -1000,11 +1000,11 @@ router.get("/backend/menu-categories", requireAuth, async (req: AuthedRequest, r
           eq(menuItemCategoriesTable.restaurantId, rid)
         )
       ))
-      .orderBy(menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.name, menuItemCategoriesTable.id);
+      .orderBy(menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.id);
   } else if (scoped === null) {
     // Admin with no restaurantId filter → return everything
     rows = await db.select().from(menuItemCategoriesTable)
-      .orderBy(menuItemCategoriesTable.restaurantId, menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.name, menuItemCategoriesTable.id);
+      .orderBy(menuItemCategoriesTable.restaurantId, menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.id);
   } else {
     // Owner with no restaurantId → return their restaurants' categories + global
     if (scoped.length === 0) { res.json([]); return; }
@@ -1013,7 +1013,7 @@ router.get("/backend/menu-categories", requireAuth, async (req: AuthedRequest, r
         sql`${menuItemCategoriesTable.restaurantId} IS NULL`,
         inArray(menuItemCategoriesTable.restaurantId, scoped)
       ))
-      .orderBy(menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.name, menuItemCategoriesTable.id);
+      .orderBy(menuItemCategoriesTable.sortOrder, menuItemCategoriesTable.id);
   }
   const categoryIds = rows.map((row) => row.id);
    const usageCounts = await Promise.all(rows.map(async (row) => {
@@ -1059,7 +1059,7 @@ router.get("/backend/menu-categories/:id/products", requireAuth, async (req: Aut
   }
   const products = await db.select().from(menuItemsTable)
     .where(and(...conditions))
-    .orderBy(menuItemsTable.name, menuItemsTable.id);
+    .orderBy(menuItemsTable.sortOrder, menuItemsTable.id);
   res.json(products);
 });
 

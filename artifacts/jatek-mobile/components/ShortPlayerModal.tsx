@@ -5,7 +5,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  Image,
   FlatList,
   Pressable,
   Animated,
@@ -22,13 +21,15 @@ import { router } from "expo-router";
 import { WebView } from "react-native-webview";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Short } from "@/lib/api";
+import { trackShortView } from "@/lib/api";
 import { getYouTubeThumbnailUrl, getYouTubeVideoId, resolveMediaUrl } from "@/lib/mediaUrl";
+import { MediaImage } from "@/components/MediaImage";
 
 const PINK = "#FF4593";
 const TURQUOISE = "#00BFA6";
 
 function resolveVideoUrl(url: string): string {
-  return resolveMediaUrl(url) ?? url;
+  return resolveMediaUrl(url) ?? "";
 }
 
 function getYouTubeEmbedUrl(url: string): string | null {
@@ -58,10 +59,13 @@ interface Props {
   shorts: Short[];
   initialIndex: number;
   onClose: () => void;
+  onViewCountChanged?: () => void;
 }
 
-export function ShortPlayerModal({ visible, shorts, initialIndex, onClose }: Props) {
+export function ShortPlayerModal({ visible, shorts, initialIndex, onClose, onViewCountChanged }: Props) {
   const listRef = useRef<FlatList<Short>>(null);
+  const viewSessionRef = useRef("");
+  const viewedShortIdsRef = useRef(new Set<number>());
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const safeInitialIndex = shorts.length ? Math.max(0, Math.min(initialIndex, shorts.length - 1)) : 0;
@@ -70,6 +74,33 @@ export function ShortPlayerModal({ visible, shorts, initialIndex, onClose }: Pro
   useEffect(() => {
     if (visible) setIndex(safeInitialIndex);
   }, [visible, safeInitialIndex]);
+
+  useEffect(() => {
+    if (visible) {
+      viewSessionRef.current ||= `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+      return;
+    }
+    viewSessionRef.current = "";
+    viewedShortIdsRef.current.clear();
+  }, [visible]);
+
+  useEffect(() => {
+    const short = shorts[index];
+    if (
+      !visible ||
+      !short ||
+      !resolveMediaUrl(short.videoUrl) ||
+      viewedShortIdsRef.current.has(short.id)
+    ) return;
+
+    viewedShortIdsRef.current.add(short.id);
+    void trackShortView(short.id, viewSessionRef.current)
+      .then(() => onViewCountChanged?.())
+      .catch(() => {
+        // Permit an explicit replay retry after a transient API failure.
+        viewedShortIdsRef.current.delete(short.id);
+      });
+  }, [index, onViewCountChanged, shorts, visible]);
 
   useEffect(() => {
     if (visible && shorts.length && listRef.current) {
@@ -228,11 +259,12 @@ function ShortFrame({
 
   const burstOpacity = heartBurst.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] });
   const burstScale = heartBurst.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.6] });
+  const playableVideoUrl = resolveMediaUrl(short.videoUrl);
 
   return (
     <View style={[styles.frame, { width, height }]}>
-      {short.videoUrl && active ? (
-        <ShortVideo url={short.videoUrl} poster={short.imageUrl} soundEnabled={soundEnabled} />
+      {playableVideoUrl && active ? (
+        <ShortVideo url={playableVideoUrl} poster={short.imageUrl} soundEnabled={soundEnabled} />
       ) : (
         <ShortPoster short={short} />
       )}
@@ -243,7 +275,7 @@ function ShortFrame({
       />
 
       {/* The pulse is an affordance for image-only Shorts; videos autoplay. */}
-      {!short.videoUrl && (
+      {!playableVideoUrl && (
         <Animated.View style={[styles.playWrap, { transform: [{ scale: playPulse }] }]}>
           <View style={styles.playDot}>
             <Ionicons name="play" size={36} color="#fff" />
@@ -270,7 +302,7 @@ function ShortFrame({
           <Ionicons name="chatbubble-ellipses-outline" size={30} color="#fff" />
           <Text style={styles.sideBtnText}>{Math.floor(((short.id * 13) % 90) + 12)}</Text>
         </Pressable>
-        {short.videoUrl && (
+        {playableVideoUrl && (
           <Pressable
             onPress={() => setSoundEnabled((enabled) => !enabled)}
             style={styles.sideBtn}
@@ -380,7 +412,11 @@ function ShortVideo({
     if (videoFailed) {
       return posterUrl ? (
         <View style={styles.bg}>
-          <Image source={{ uri: posterUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <MediaImage
+            urls={[posterUrl]}
+            style={StyleSheet.absoluteFill}
+            fallback={<View style={[StyleSheet.absoluteFill, { backgroundColor: "#111" }]} />}
+          />
           <View style={styles.videoFallback}><Ionicons name="alert-circle-outline" size={24} color="#fff" /><Text style={styles.videoFallbackText}>Vidéo indisponible</Text></View>
         </View>
       ) : (
@@ -421,7 +457,11 @@ function ShortVideo({
   if (videoFailed) {
     return posterUrl ? (
       <View style={styles.bg}>
-        <Image source={{ uri: posterUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <MediaImage
+          urls={[posterUrl]}
+          style={StyleSheet.absoluteFill}
+          fallback={<View style={[StyleSheet.absoluteFill, { backgroundColor: "#111" }]} />}
+        />
         <View style={styles.videoFallback}><Ionicons name="alert-circle-outline" size={24} color="#fff" /><Text style={styles.videoFallbackText}>Vidéo indisponible</Text></View>
       </View>
     ) : (
@@ -460,25 +500,15 @@ function ShortVideo({
 }
 
 function ShortPoster({ short }: { short: Short }) {
-  const [sourceIndex, setSourceIndex] = useState(0);
-  const sources = [
-    resolveMediaUrl(short.imageUrl),
-    getYouTubeThumbnailUrl(short.videoUrl),
-  ].filter((value): value is string => Boolean(value));
-
-  useEffect(() => {
-    setSourceIndex(0);
-  }, [short.id, short.imageUrl, short.videoUrl]);
-
-  const source = sources[sourceIndex];
-  if (!source) return <View style={[styles.bg, { backgroundColor: "#111" }]} />;
-
   return (
-    <Image
-      source={{ uri: source }}
+    <MediaImage
+      urls={[short.imageUrl, getYouTubeThumbnailUrl(short.videoUrl)]}
       style={styles.bg}
-      resizeMode="cover"
-      onError={() => setSourceIndex((current) => current + 1)}
+      fallback={
+        <View style={[styles.bg, styles.posterFallback]}>
+          <Ionicons name="videocam-outline" size={42} color="rgba(255,255,255,0.72)" />
+        </View>
+      }
     />
   );
 }
@@ -487,6 +517,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, width: "100%", height: "100%", backgroundColor: "#000" },
   frame: { position: "relative", width: "100%", height: "100%" },
   bg: { width: "100%", height: "100%" },
+  posterFallback: { alignItems: "center", justifyContent: "center", backgroundColor: "#111" },
   webMedia: {
     width: "100%",
     height: "100%",

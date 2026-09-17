@@ -8,6 +8,7 @@ import {
   type MediaKind,
 } from "../lib/objectStorage";
 import { requireRole, requireAuth, type AuthedRequest } from "../middlewares/auth";
+import { detectVideoMimeFromMagic } from "../lib/videoMime";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -56,24 +57,6 @@ function detectMimeFromMagic(buf: Buffer): string | null {
     MAGIC_BYTES["image/webp"].some((pattern) => pattern.every((b, i) => buf[i] === b)) &&
     buf.subarray(8, 12).toString("ascii") === "WEBP"
   ) return "image/webp";
-  return null;
-}
-
-function detectVideoMimeFromMagic(buf: Buffer): string | null {
-  // ISO Base Media files (MP4/MOV) declare the file type at bytes 4–11.
-  if (buf.length >= 12 && buf.subarray(4, 8).toString("ascii") === "ftyp") {
-    const brand = buf.subarray(8, 12).toString("ascii");
-    if (brand === "qt  ") return "video/quicktime";
-    if (brand.startsWith("3gp") || brand.startsWith("3g2")) return "video/3gpp";
-    if (brand.startsWith("M4V")) return "video/x-m4v";
-    return "video/mp4";
-  }
-  // WebM is an EBML container and must include its document type in the header.
-  if (
-    buf.length >= 64 &&
-    buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3 &&
-    buf.subarray(0, Math.min(buf.length, 256)).includes(Buffer.from("webm"))
-  ) return "video/webm";
   return null;
 }
 
@@ -216,6 +199,10 @@ router.post(
     }
 
     const detectedMime = detectVideoMimeFromMagic(body);
+    if (getMediaKind(req, "short") === "splash" && detectedMime !== "video/mp4") {
+      res.status(400).json({ error: "La vidéo de démarrage doit être un fichier MP4." });
+      return;
+    }
     if (!detectedMime || (declaredMime && detectedMime !== declaredMime)) {
       res.status(400).json({ error: "The file content does not match the declared video type." });
       return;

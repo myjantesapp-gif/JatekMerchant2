@@ -4,6 +4,7 @@ import {
   Image, ActivityIndicator, Platform, ScrollView, Animated, Pressable, Modal, Linking,
   Share, TextInput,
   RefreshControl,
+  SectionList,
   NativeScrollEvent, NativeSyntheticEvent,
   useWindowDimensions,
 } from "react-native";
@@ -75,12 +76,12 @@ export default function RestaurantScreen() {
   const [restaurantCoords, setRestaurantCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [categoryPinned, setCategoryPinned] = useState(false);
   const [headerPinned, setHeaderPinned] = useState(false);
-  const menuScrollRef = useRef<ScrollView>(null);
+  const menuScrollRef = useRef<SectionList<any>>(null);
   const categoryScrollRef = useRef<ScrollView>(null);
   const floatingCategoryScrollRef = useRef<ScrollView>(null);
   const categoryBarOffsetRef = useRef<number | null>(null);
-  const sectionOffsetsRef = useRef<Record<string, number>>({});
   const categoryOffsetsRef = useRef<Record<string, number>>({});
+  const pendingCategoryJumpRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!token || !restaurantId) return;
@@ -134,10 +135,12 @@ export default function RestaurantScreen() {
   }, [menuItems, productId]);
 
   const categories = useMemo(() => {
-    const fromApi = (productCategories ?? []).map((category) => ({
-      id: String(category.id),
-      name: category.name.trim(),
-    }));
+    const fromApi = [...(productCategories ?? [])]
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+      .map((category) => ({
+        id: String(category.id),
+        name: category.name.trim(),
+      }));
     const knownNames = new Set(fromApi.map((category) => category.name.trim().toLocaleLowerCase()));
     const legacyCategories = Array.from(
       new Map(
@@ -162,9 +165,18 @@ export default function RestaurantScreen() {
   const sections = useMemo(() => {
     return groupMenuSections(categories, filtered, selectedCategory);
   }, [selectedCategory, categories, filtered]);
+  const virtualSections = useMemo(
+    () => sections.map((section) => ({
+      ...section,
+      data: Array.from(
+        { length: Math.ceil(section.items.length / 2) },
+        (_, index) => section.items.slice(index * 2, index * 2 + 2),
+      ),
+    })),
+    [sections],
+  );
 
   useEffect(() => {
-    sectionOffsetsRef.current = {};
     if (selectedCategory === "Tous") setActiveCategory("Tous");
   }, [sections, selectedCategory]);
 
@@ -193,22 +205,33 @@ export default function RestaurantScreen() {
       setCategoryPinned(false);
     }
 
-    if (selectedCategory !== "Tous" || sections.length === 0) return;
+  };
 
-    const firstSectionY = sectionOffsetsRef.current[sections[0].id];
-    if (firstSectionY == null) return;
-
-    const sectionMarkerY = scrollY + CATEGORY_STICKY_HEIGHT + 12;
-    let nextCategory = "Tous";
-    for (const section of sections) {
-      const sectionY = sectionOffsetsRef.current[section.id];
-      if (sectionY == null || sectionY > sectionMarkerY) break;
-      if (categories.some((category) => category.id === section.id)) {
-        nextCategory = section.id;
-      }
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ section?: { id?: string } }> }) => {
+    const visibleSectionId = viewableItems.find((token) => token.section?.id)?.section?.id;
+    if (visibleSectionId) {
+      setActiveCategory((current) => current === visibleSectionId ? current : visibleSectionId);
     }
+  }).current;
 
-    setActiveCategory((current) => (current === nextCategory ? current : nextCategory));
+  const jumpToCategory = (categoryId: string) => {
+    setSelectedCategory("Tous");
+    setActiveCategory(categoryId);
+    if (categoryId === "Tous") {
+      menuScrollRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    const sectionIndex = virtualSections.findIndex((section) => section.id === categoryId);
+    if (sectionIndex < 0) return;
+    pendingCategoryJumpRef.current = sectionIndex;
+    requestAnimationFrame(() => {
+      menuScrollRef.current?.scrollToLocation({
+        sectionIndex,
+        itemIndex: 0,
+        viewOffset: insets.top + COMPACT_HEADER_HEIGHT + CATEGORY_STICKY_HEIGHT,
+        animated: true,
+      });
+    });
   };
 
   const renderCategoryBar = (floating = false) => (
@@ -242,9 +265,7 @@ export default function RestaurantScreen() {
                   categoryOffsetsRef.current[cat.id] = event.nativeEvent.layout.x;
                 }}
                 onPress={() => {
-                  setSelectedCategory(cat.id);
-                  setActiveCategory(cat.id);
-                  menuScrollRef.current?.scrollTo({ y: 0, animated: true });
+                  jumpToCategory(cat.id);
                 }}
                 testID={`restaurant-category-${cat.id}`}
                 style={({ pressed }) => [
@@ -568,57 +589,79 @@ export default function RestaurantScreen() {
 
   return (
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
-      <ScrollView
+      <SectionList
         ref={menuScrollRef}
+        sections={virtualSections}
+        keyExtractor={(row) => row.map((item: any) => item.id).join("-")}
+        ListHeaderComponent={(
+          <>
+            {Header}
+            {renderCategoryBar()}
+          </>
+        )}
+        ListEmptyComponent={filtered.length === 0 && !mLoading && !menuError ? (
+          <View style={styles.emptyWrap}>
+            <Ionicons name="basket-outline" size={48} color={colors.mutedForeground} />
+            <Text style={[styles.emptyTxt, { color: colors.mutedForeground }]}>Aucun produit pour le moment</Text>
+          </View>
+        ) : null}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionTitleWrap}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{section.name}</Text>
+          </View>
+        )}
+        renderItem={({ item: row }) => (
+          <View style={styles.menuList}>
+            {row.map((item: any) => (
+              <MenuItemGridCard
+                key={item.id}
+                item={item}
+                width={menuCardWidth}
+                quantity={getQty(item.id)}
+                restaurantOpen={isOpen}
+                onPressCard={() => setSelectedItem(item)}
+                onAdd={() => {
+                  if (!isOpen) return;
+                  const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null; commissionRate?: number | null };
+                  addItem(restaurantId, restaurant.name, { cartLineId: String(item.id), menuItemId: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl }, { deliveryFee: pricing.deliveryFee, freeDeliveryThreshold: pricing.freeDeliveryThreshold, commissionRate: pricing.commissionRate });
+                }}
+              />
+            ))}
+          </View>
+        )}
         showsVerticalScrollIndicator={false}
         onScroll={handleMenuScroll}
         scrollEventThrottle={16}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={{ itemVisiblePercentThreshold: 15, minimumViewTime: 80 }}
+        stickySectionHeadersEnabled={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        updateCellsBatchingPeriod={40}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS !== "web"}
+        onScrollToIndexFailed={(info) => {
+          menuScrollRef.current?.getScrollResponder()?.scrollTo({
+            y: Math.max(0, info.averageItemLength * info.index),
+            animated: false,
+          });
+          const sectionIndex = pendingCategoryJumpRef.current;
+          if (sectionIndex == null) return;
+          setTimeout(() => {
+            menuScrollRef.current?.scrollToLocation({
+              sectionIndex,
+              itemIndex: 0,
+              viewOffset: insets.top + COMPACT_HEADER_HEIGHT + CATEGORY_STICKY_HEIGHT,
+              animated: true,
+            });
+          }, 80);
+        }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{
           paddingTop: insets.top,
           paddingBottom: insets.bottom + (itemCount > 0 || isServices ? 110 : 24) + (Platform.OS === "web" ? 34 : 0),
         }}
-      >
-        {Header}
-        {renderCategoryBar()}
-        {filtered.length === 0 && !mLoading && !menuError ? (
-          <View style={styles.emptyWrap}>
-            <Ionicons name="basket-outline" size={48} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTxt, { color: colors.mutedForeground }]}>Aucun produit pour le moment</Text>
-          </View>
-        ) : (
-          sections.map((section) => (
-            <View
-              key={section.id}
-              style={styles.menuSection}
-              onLayout={(event) => {
-                sectionOffsetsRef.current[section.id] = event.nativeEvent.layout.y;
-              }}
-            >
-              <View style={styles.sectionTitleWrap}>
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{section.name}</Text>
-              </View>
-               <View style={styles.menuList}>
-                {section.items.map((item: any) => (
-                   <MenuItemGridCard
-                    key={item.id}
-                      item={item}
-                     width={menuCardWidth}
-                    quantity={getQty(item.id)}
-                    restaurantOpen={isOpen}
-                    onPressCard={() => setSelectedItem(item)}
-                    onAdd={() => {
-                      if (!isOpen) return;
-                      const pricing = restaurant as { deliveryFee?: number | null; freeDeliveryThreshold?: number | null; commissionRate?: number | null };
-                      addItem(restaurantId, restaurant.name, { cartLineId: String(item.id), menuItemId: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl }, { deliveryFee: pricing.deliveryFee, freeDeliveryThreshold: pricing.freeDeliveryThreshold, commissionRate: pricing.commissionRate });
-                    }}
-                  />
-                ))}
-              </View>
-            </View>
-          ))
-        )}
-      </ScrollView>
+      />
 
       {categoryPinned && categories.length > 1 && (
         <View

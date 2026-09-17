@@ -235,12 +235,30 @@ test("GET /api/recommendations/products enforces live merchant and category elig
   );
   assert.equal(response.status, 200);
 
-  const items = response.body as Array<{ id: number; imageUrl: string; price: number }>;
+  const items = response.body as Array<{
+    id: number;
+    imageUrl: string;
+    price: number;
+    menuItemCategoryId: number | null;
+    sortOrder: number;
+    categorySortOrder: number | null;
+  }>;
   assert.deepEqual(items.map((item) => item.id), [
     fixture.productIds.eligibleGlobal,
     fixture.productIds.eligibleOwn,
   ]);
   assert.ok(items.every((item) => item.imageUrl.length > 0 && item.price > 0));
+  assert.deepEqual(
+    items.map(({ menuItemCategoryId, sortOrder, categorySortOrder }) => ({
+      menuItemCategoryId,
+      sortOrder,
+      categorySortOrder,
+    })),
+    [
+      { menuItemCategoryId: fixture.categoryIds[0], sortOrder: 1, categorySortOrder: 0 },
+      { menuItemCategoryId: fixture.categoryIds[1], sortOrder: 2, categorySortOrder: 1 },
+    ],
+  );
   const excludedIds = [
     fixture.productIds.unavailable,
     fixture.productIds.noImage,

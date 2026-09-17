@@ -7,16 +7,43 @@ import { getApiBaseSafe } from "./apiBase";
 export function resolveMediaUrl(url?: string | null): string | undefined {
   const value = url?.trim();
   if (!value) return undefined;
-  if (value.startsWith("//")) return `https:${value}`;
-  if (/^[a-z][a-z\d+\-.]*:/i.test(value)) return value;
+  const normalizedValue = value.startsWith("//") ? `https:${value}` : value;
 
   // Dashboard users often paste a YouTube URL without the scheme. Treat it as
   // an external URL instead of accidentally requesting it from the API host.
-  if (/^(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(value)) {
-    return `https://${value}`;
+  if (/^(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(normalizedValue)) {
+    return `https://${normalizedValue}`;
   }
 
-  return `${getApiBaseSafe()}${value.startsWith("/") ? value : `/${value}`}`;
+  const canonicalPath = (pathname: string) =>
+    pathname.replace(/^\/?objects\/(?=(?:images|logos|banners|medias|shorts|splash|uploads)\/)/i, "/api/storage/objects/");
+
+  // Only network URLs are valid backend-driven media. Reject persisted blob,
+  // file, javascript and other schemes instead of handing unsafe/invalid
+  // sources to native Image or WebView.
+  if (/^[a-z][a-z\d+\-.]*:/i.test(normalizedValue)) {
+    try {
+      const parsed = new URL(normalizedValue);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+      const pathname = canonicalPath(parsed.pathname);
+      return pathname === parsed.pathname
+        ? parsed.toString()
+        : `${parsed.origin}${pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (normalizedValue.startsWith("#") || normalizedValue.startsWith("?")) return undefined;
+  const path = canonicalPath(normalizedValue.startsWith("/") ? normalizedValue : `/${normalizedValue}`);
+  return `${getApiBaseSafe()}${path}`;
+}
+
+/** Resolves and de-duplicates fallback media sources in priority order. */
+export function getMediaUrlCandidates(
+  ...urls: Array<string | null | undefined>
+): string[] {
+  return [...new Set(urls.map(resolveMediaUrl).filter((url): url is string => Boolean(url)))];
 }
 
 /** Extracts a YouTube video id from watch, Shorts, embed, live, or short URLs. */

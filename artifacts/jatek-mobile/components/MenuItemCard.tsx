@@ -1,11 +1,11 @@
 import React, { useRef } from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Image, Pressable, Animated, Platform } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, Pressable, Animated, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/useColors";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { formatMad } from "@/lib/money";
+import { MediaImage } from "@/components/MediaImage";
 
 const BTN_FROM = "#FF5FAD";
 const BTN_TO   = "#C81877";
@@ -102,13 +102,15 @@ export function MenuItemCard({ item, quantity, onAdd, onRemove, onPressCard, res
           </View>
 
           <View style={styles.imageWrap}>
-            {item.imageUrl ? (
-              <Image source={{ uri: resolveMediaUrl(item.imageUrl) }} style={styles.image} resizeMode="cover" />
-            ) : (
+            <MediaImage
+              urls={[item.imageUrl]}
+              style={styles.image}
+              fallback={
               <View style={[styles.image, styles.imagePlaceholder, { backgroundColor: colors.muted }]}>
                 <Ionicons name="fast-food-outline" size={26} color={colors.mutedForeground} />
               </View>
-            )}
+              }
+            />
 
             {/* Floating "+" / quantity controls overlapping image bottom-right */}
             {!restaurantOpen ? (

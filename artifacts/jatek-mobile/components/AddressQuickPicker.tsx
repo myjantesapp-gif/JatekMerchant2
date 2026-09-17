@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Alert, Linking, Modal, View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Platform } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, Modal, View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useT } from "@/contexts/LanguageContext";
@@ -9,6 +8,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { listAddresses, type SavedAddress } from "@/lib/api";
 import { reverseGeocode, checkDeliveryZone } from "@/utils/deliveryZone";
+import { DeviceLocationError, getDeviceLocation, openLocationSettings } from "@/utils/deviceLocation";
 // checkDeliveryZone used for GPS pick
 
 interface Props {
@@ -25,62 +25,104 @@ export function AddressQuickPicker({ visible, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [showGpsModal, setShowGpsModal] = useState(false);
   const [locating, setLocating] = useState(false);
+  const operationRef = useRef(0);
+  const locatingRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    operationRef.current += 1;
+  }, []);
 
   useEffect(() => {
-    if (!visible || !user) return;
+    const operation = ++operationRef.current;
+    if (!visible) {
+      locatingRef.current = false;
+      setLocating(false);
+      setShowGpsModal(false);
+      return;
+    }
+    if (!user) {
+      setLoading(false);
+      setItems([]);
+      return;
+    }
     setLoading(true);
     listAddresses()
-      .then(setItems)
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false));
+      .then((next) => {
+        if (operation === operationRef.current && mountedRef.current) setItems(next);
+      })
+      .catch(() => {
+        if (operation === operationRef.current && mountedRef.current) setItems([]);
+      })
+      .finally(() => {
+        if (operation === operationRef.current && mountedRef.current) setLoading(false);
+      });
   }, [visible, user]);
+
+  const close = () => {
+    operationRef.current += 1;
+    locatingRef.current = false;
+    setLocating(false);
+    setShowGpsModal(false);
+    onClose();
+  };
 
   const pick = (a: SavedAddress) => {
     // Saved addresses passed zone validation at save time, so trust it.
     setSelectedAddress(a.fullAddress, true);
-    onClose();
+    close();
   };
 
   const useGps = async () => {
+    if (locatingRef.current) return;
+    locatingRef.current = true;
+    const operation = ++operationRef.current;
     setShowGpsModal(false);
     setLocating(true);
     try {
-      const existing = await Location.getForegroundPermissionsAsync();
-      let status = existing.status;
-      if (status !== "granted") {
-        const req = await Location.requestForegroundPermissionsAsync();
-        status = req.status;
-      }
-       if (status !== "granted") {
-         Alert.alert(
-           "Localisation désactivée",
-           "Autorisez la localisation dans les réglages pour utiliser votre position.",
-           [
-             { text: "Annuler", style: "cancel" },
-             { text: "Ouvrir les réglages", onPress: () => void Linking.openSettings() },
-           ],
-         );
-         return;
-       }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const { address } = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
-      const zone = checkDeliveryZone(loc.coords.latitude, loc.coords.longitude);
+      const coords = await getDeviceLocation();
+      const { address } = await reverseGeocode(coords.latitude, coords.longitude);
+      if (operation !== operationRef.current || !mountedRef.current) return;
+      const zone = checkDeliveryZone(coords.latitude, coords.longitude);
       setSelectedAddress(address, zone.inZone);
-      onClose();
+      close();
     } catch (err) {
+      if (operation !== operationRef.current || !mountedRef.current) return;
       console.warn("[AddressQuickPicker] geolocation lookup failed:", err);
-      Alert.alert(
-        "Position indisponible",
-        "Nous n’avons pas pu déterminer votre position. Vérifiez que la localisation est activée puis réessayez.",
-      );
+      if (err instanceof DeviceLocationError && err.reason === "permission-denied") {
+        Alert.alert(
+          "Localisation refusée",
+          err.canAskAgain
+            ? "L’accès à votre position a été refusé. Vous pouvez réessayer ou choisir une adresse manuellement."
+            : "Autorisez la localisation dans les réglages, ou choisissez une adresse manuellement.",
+          err.canAskAgain ? [{ text: "OK" }] : [
+            { text: "Annuler", style: "cancel" },
+            { text: "Ouvrir les réglages", onPress: () => void openLocationSettings() },
+          ],
+        );
+      } else {
+        const disabled = err instanceof DeviceLocationError && err.reason === "services-disabled";
+        Alert.alert(
+          disabled ? "GPS désactivé" : "Position indisponible",
+          disabled
+            ? "Activez les services de localisation, puis réessayez."
+            : "Nous n’avons pas pu déterminer votre adresse. Réessayez ou choisissez-la manuellement.",
+        );
+      }
     }
-    finally { setLocating(false); }
+    finally {
+      if (operation === operationRef.current && mountedRef.current) {
+        locatingRef.current = false;
+        setLocating(false);
+      }
+    }
   };
 
   return (
     <>
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <TouchableOpacity activeOpacity={1} onPress={onClose} style={sheetStyles.overlay}>
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+        <TouchableOpacity activeOpacity={1} onPress={close} style={sheetStyles.overlay}>
           <TouchableOpacity activeOpacity={1} onPress={(event) => event.stopPropagation?.()} style={[sheetStyles.sheet, { backgroundColor: colors.background }]}>
             <View style={sheetStyles.handle} />
             <Text style={[sheetStyles.title, { color: colors.heading }]}>{t("addr_sheet_title")}</Text>
@@ -107,7 +149,7 @@ export function AddressQuickPicker({ visible, onClose }: Props) {
                   </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => { onClose(); router.push("/(auth)/login"); }}
+                  onPress={() => { close(); router.push("/(auth)/login"); }}
                   style={[sheetStyles.loginBtn, { backgroundColor: colors.primary }]}
                   activeOpacity={0.85}
                 >
@@ -140,7 +182,7 @@ export function AddressQuickPicker({ visible, onClose }: Props) {
 
             <TouchableOpacity
               onPress={() => {
-                onClose();
+                close();
                 if (user) {
                   router.push("/profile/addresses?select=1");
                 } else {

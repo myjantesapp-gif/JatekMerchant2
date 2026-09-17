@@ -14,6 +14,7 @@ import Animated, {
 import colors from "@/constants/colors";
 import { getApiBaseSafe } from "@/lib/apiBase";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { loadStartupVideoUrl } from "@/lib/startupVideo";
 
 const INTRO_BACKGROUND = colors.light.introBackground;
 const INTRO_VIDEO = require("../assets/videos/jatek-intro.mp4");
@@ -26,17 +27,41 @@ const FADE_DURATION = 250;
  * AppState listener: returning from background must never restart it.
  */
 export default function SplashOverlay() {
+  const [source, setSource] = useState<string | number | null>(null);
+  useEffect(() => {
+    let active = true;
+    void loadStartupVideoUrl(getApiBaseSafe()).then((url) => {
+      if (active) setSource(resolveMediaUrl(url) || INTRO_VIDEO);
+    });
+    return () => { active = false; };
+  }, []);
+  if (source === null) {
+    return <View style={styles.root}><View style={styles.logoFrame}>
+      <Image source={INTRO_LOGO} style={styles.logo} resizeMode="contain" />
+    </View></View>;
+  }
+  return <IntroErrorBoundary><IntroPlayback source={source} /></IntroErrorBoundary>;
+}
+
+/** A native video initialization failure must not take down the application. */
+class IntroErrorBoundary extends React.Component<React.PropsWithChildren, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch() { console.warn("[SplashOverlay] intro unavailable; continuing to app"); }
+  render() { return this.state.failed ? null : this.props.children; }
+}
+
+function IntroPlayback({ source }: { source: string | number }) {
   const rootNavigationState = useRootNavigationState();
   const [mounted, setMounted] = useState(true);
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   const [playbackFinished, setPlaybackFinished] = useState(false);
   const [playbackError, setPlaybackError] = useState(false);
-  const [configuredVideoUrl, setConfiguredVideoUrl] = useState<string | null>(null);
   const transitionStarted = useRef(false);
   const playbackStarted = useRef(false);
   const opacity = useSharedValue(1);
 
-  const player = useVideoPlayer(INTRO_VIDEO, (videoPlayer) => {
+  const player = useVideoPlayer(source, (videoPlayer) => {
     videoPlayer.loop = false;
     videoPlayer.muted = true;
     videoPlayer.audioMixingMode = "auto";
@@ -48,28 +73,21 @@ export default function SplashOverlay() {
 
   useEffect(() => {
     let active = true;
-    void fetch(`${getApiBaseSafe()}/api/app-config`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`App config HTTP ${response.status}`);
-        return response.json() as Promise<{ splashVideoUrl?: unknown }>;
-      })
-      .then(async (config) => {
-        const remoteUrl = typeof config.splashVideoUrl === "string"
-          ? resolveMediaUrl(config.splashVideoUrl)
-          : null;
-        if (!active || !remoteUrl) return;
-        await player.replaceAsync(remoteUrl);
-        if (active) setConfiguredVideoUrl(remoteUrl);
-      })
-      .catch((error) => console.warn("[SplashOverlay] using bundled intro:", error));
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then((value) => { if (active) setReduceMotion(value); })
+      .catch(() => { if (active) setReduceMotion(false); });
     return () => { active = false; };
-  }, [player]);
+  }, []);
 
   useEffect(() => {
-    void AccessibilityInfo.isReduceMotionEnabled()
-      .then(setReduceMotion)
-      .catch(() => setReduceMotion(false));
-  }, []);
+    const timer = setTimeout(() => {
+      // Hard deadline, independent of navigation readiness: never obscure
+      // the application's own recovery UI if navigation itself has failed.
+      try { player.pause(); } catch { /* Failed native players may reject pause. */ }
+      setMounted(false);
+    }, 12000);
+    return () => clearTimeout(timer);
+  }, [player]);
 
   useEffect(() => {
     const endSubscription = player.addListener("playToEnd", () => {
@@ -81,6 +99,10 @@ export default function SplashOverlay() {
         setPlaybackFinished(true);
       }
     });
+    if (player.status === "error") {
+      setPlaybackError(true);
+      setPlaybackFinished(true);
+    }
 
     return () => {
       endSubscription.remove();
@@ -91,16 +113,12 @@ export default function SplashOverlay() {
   useEffect(() => {
     if (reduceMotion !== false || playbackStarted.current || playbackError) return;
     playbackStarted.current = true;
-    // Give the startup config request a brief opportunity to replace the
-    // bundled asset. Network failures still fall back to the local intro.
-    const timer = setTimeout(() => {
-      if (!playbackStarted.current) {
-        playbackStarted.current = true;
-        player.play();
-      }
-    }, configuredVideoUrl ? 0 : 450);
-    return () => clearTimeout(timer);
-  }, [configuredVideoUrl, playbackError, player, reduceMotion]);
+    try { player.play(); }
+    catch {
+      setPlaybackError(true);
+      setPlaybackFinished(true);
+    }
+  }, [playbackError, player, reduceMotion]);
 
   useEffect(() => {
     if (reduceMotion !== true) return;
@@ -117,6 +135,7 @@ export default function SplashOverlay() {
   useEffect(() => {
     if (!playbackFinished || !navigationReady || transitionStarted.current) return;
     transitionStarted.current = true;
+    try { player.pause(); } catch { /* Player may already have failed. */ }
 
     if (reduceMotion) {
       setMounted(false);
@@ -130,7 +149,7 @@ export default function SplashOverlay() {
         if (finished) runOnJS(setMounted)(false);
       },
     );
-  }, [navigationReady, opacity, playbackFinished, reduceMotion]);
+  }, [navigationReady, opacity, playbackFinished, reduceMotion, player]);
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
   const showStaticLogo = reduceMotion !== false || playbackError;
@@ -139,7 +158,7 @@ export default function SplashOverlay() {
 
   return (
     <Animated.View
-      style={[styles.root, overlayStyle, { pointerEvents: "none" }]}
+      style={[styles.root, overlayStyle]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >

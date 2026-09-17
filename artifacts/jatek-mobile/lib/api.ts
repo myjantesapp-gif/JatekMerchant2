@@ -448,6 +448,7 @@ export interface Short {
   restaurantId?: number | null;
   restaurantName?: string | null;
   restaurantLogoUrl?: string | null;
+  viewCount: number;
   isActive: boolean;
   sortOrder: number;
 }
@@ -458,6 +459,16 @@ export async function listAds(type?: string): Promise<Ad[]> {
 
 export async function listShorts(): Promise<Short[]> {
   return jsonFetch("/api/shorts");
+}
+
+export async function trackShortView(
+  id: number,
+  sessionId: string,
+): Promise<{ id: number; viewCount: number; counted: boolean }> {
+  return jsonFetch(`/api/shorts/${id}/view`, {
+    method: "POST",
+    body: JSON.stringify({ sessionId }),
+  });
 }
 
 // Home recommendations -------------------------------------------------

@@ -11,6 +11,7 @@ type VideoUploadFieldProps = {
   onValueChange: (value: string) => void;
   onUploadingChange?: (isUploading: boolean) => void;
   uploadKind?: Extract<MediaUploadKind, "short" | "splash">;
+  disabled?: boolean;
 };
 
 function normalizeCandidate(url: string): string {
@@ -48,6 +49,20 @@ export function isValidVideoSource(url: string): boolean {
   }
 }
 
+export function isValidSplashVideoSource(url: string): boolean {
+  const value = url.trim();
+  if (!value) return true;
+  if (/^\/api\/storage\/objects\/splash\/[a-zA-Z0-9_-]+(?:\.mp4)?(?:\?[^#]*)?$/.test(value)) return true;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" && !parsed.username && !parsed.password
+      && (/\.mp4$/i.test(parsed.pathname)
+        || /^\/api\/storage\/objects\/splash\/[a-zA-Z0-9_-]+(?:\.mp4)?$/.test(parsed.pathname));
+  } catch {
+    return false;
+  }
+}
+
 /** Local video picker with immediate playback preview for admin Shorts. */
 export function VideoUploadField({
   label,
@@ -55,6 +70,7 @@ export function VideoUploadField({
   onValueChange,
   onUploadingChange,
   uploadKind = "short",
+  disabled = false,
 }: VideoUploadFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +79,7 @@ export function VideoUploadField({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const previewUrl = localPreviewUrl ?? value;
+  const isDisabled = disabled || isUploading;
 
   const clearLocalPreview = () => {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
@@ -80,6 +97,11 @@ export function VideoUploadField({
   };
 
   const handleFileSelection = async (file: File) => {
+    if (disabled || isUploading) return;
+    if (uploadKind === "splash" && file.type !== "video/mp4" && !/\.mp4$/i.test(file.name)) {
+      setError("Choisissez une vidéo MP4 pour l’intro.");
+      return;
+    }
     const validationError = validateVideoFile(file);
     if (validationError) {
       setError(validationError);
@@ -97,6 +119,7 @@ export function VideoUploadField({
       onValueChange(await uploadVideo(file, uploadKind));
       clearLocalPreview();
     } catch (uploadError) {
+      clearLocalPreview();
       setError(uploadError instanceof Error ? uploadError.message : "La vidéo n'a pas pu être téléversée.");
     } finally {
       setUploading(false);
@@ -108,18 +131,24 @@ export function VideoUploadField({
       <Label className="text-xs font-medium">{label}</Label>
       <div className="flex gap-2">
         <Input
+          disabled={isDisabled}
           value={value}
-           onChange={(event) => {
+          onChange={(event) => {
             setError(null);
             clearLocalPreview();
             onValueChange(event.target.value);
           }}
-           onBlur={(event) => {
-             if (event.target.value.trim() && !isValidVideoSource(event.target.value)) {
-               setError("Saisissez une URL YouTube valide ou un chemin vidéo App Storage.");
-             }
-           }}
-          placeholder="https://… ou choisissez une vidéo"
+          onBlur={(event) => {
+            const isValid = uploadKind === "splash"
+              ? isValidSplashVideoSource(event.target.value)
+              : isValidVideoSource(event.target.value);
+            if (!isValid) {
+              setError(uploadKind === "splash"
+                ? "Saisissez une URL HTTPS directe vers un MP4 ou un chemin App Storage de démarrage."
+                : "Saisissez une URL YouTube valide ou un chemin vidéo App Storage.");
+            }
+          }}
+          placeholder={uploadKind === "splash" ? "https://…/intro.mp4 ou choisissez un MP4" : "https://… ou choisissez une vidéo"}
           className="min-w-0 flex-1"
         />
         <div className="flex shrink-0 gap-1">
@@ -128,29 +157,30 @@ export function VideoUploadField({
             variant="outline"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
+            disabled={isDisabled}
             title="Choisir une vidéo depuis l’appareil"
             aria-label={`Choisir une vidéo depuis l’appareil pour ${label}`}
           >
             {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileVideo className="h-4 w-4" />}
           </Button>
-          <Button
+          {uploadKind !== "splash" && <Button
             type="button"
             variant="outline"
             size="icon"
             onClick={() => cameraInputRef.current?.click()}
-            disabled={isUploading}
+            disabled={isDisabled}
             title="Filmer une vidéo avec la caméra"
             aria-label={`Filmer une vidéo avec la caméra pour ${label}`}
           >
             <Camera className="h-4 w-4" />
-          </Button>
+          </Button>}
         </div>
       </div>
       <input
         ref={fileInputRef}
         type="file"
-        accept="video/*,.mp4,.webm,.mov,.m4v,.3gp,.3g2"
+        disabled={isDisabled}
+        accept={uploadKind === "splash" ? "video/mp4,.mp4" : "video/*,.mp4,.webm,.mov,.m4v,.3gp,.3g2"}
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0];
@@ -161,6 +191,7 @@ export function VideoUploadField({
       <input
         ref={cameraInputRef}
         type="file"
+        disabled={isDisabled}
         accept="video/*"
         capture="environment"
         className="hidden"
@@ -190,6 +221,7 @@ export function VideoUploadField({
           </div>
         ) : (
           <video
+            key={previewUrl}
             className="h-44 w-full rounded-lg border bg-black object-cover"
             controls
             muted

@@ -183,6 +183,7 @@ EXPO_PUBLIC_PROJECT_ID = "73e947fb-0a5a-4064-aafe-c856e231c9d4"
 VAPID_PRIVATE_KEY = "CepGJ21FnGHCxtMSTn9uujjKuGVRWT7guRY2-iDTBlQ"
 VAPID_PUBLIC_KEY = "BKdEq8KVX9EuyJ4hlkeOTiXCgfwLyff2DorTnKQIgJY3YuDamX2kliSO9pyG5dvFILYz3ymzdZVxntjZhaUph0I"
 VAPID_SUBJECT = "mailto:admin@jatek.ma"
+MEDIA_RESTORE_TARGET_BUCKET_ID = "replit-objstore-2ba35714-7412-4601-99fd-279b167f1c81"
 
   [userenv.production]
   EXPO_PUBLIC_DOMAIN = "ma.jatek.app"
@@ -198,7 +199,7 @@ VAPID_PUBLIC_KEY = "BKdEq8KVX9EuyJ4hlkeOTiXCgfwLyff2DorTnKQIgJY3YuDamX2kliSO9pyG
 VAPID_SUBJECT = "mailto:admin@jatek.ma"
 
   [objectStorage]
-defaultBucketID = "replit-objstore-2ba35714-7412-4601-99fd-279b167f1c81"
+defaultBucketID = "replit-objstore-6c3a11f5-dc90-4ba5-8945-eec929991c85"
 
 [[ports]]
 localPort = 3000

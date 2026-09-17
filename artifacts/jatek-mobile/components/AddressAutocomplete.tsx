@@ -4,7 +4,6 @@ import {
   FlatList, ActivityIndicator, Platform, Keyboard, Modal, Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useT } from "@/contexts/LanguageContext";
@@ -15,6 +14,7 @@ import {
   PlaceSuggestion,
   MAX_RADIUS_KM,
 } from "@/utils/deliveryZone";
+import { DeviceLocationError, getDeviceLocation, openLocationSettings } from "@/utils/deviceLocation";
 
 interface Props {
   value: string;
@@ -34,30 +34,51 @@ export function AddressAutocomplete({ value, onChange, onZoneChange }: Props) {
   const [zoneInfo, setZoneInfo] = useState<{ inZone: boolean; distanceKm: number } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const mountedRef = useRef(true);
+  const requestRef = useRef(0);
+  const locatingRef = useRef(false);
+  const searchAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    requestRef.current += 1;
+    searchAbortRef.current?.abort();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  }, []);
 
   useEffect(() => {
     setQuery(value);
   }, [value]);
 
   const runSearch = useCallback(async (text: string) => {
+    const request = ++requestRef.current;
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
     if (text.trim().length < 3) {
       setSuggestions([]);
       setShowSuggestions(false);
+      setSearching(false);
       return;
     }
     setSearching(true);
     try {
-      const results = await searchPlaces(text);
+      const results = await searchPlaces(text, controller.signal);
+      if (request !== requestRef.current || !mountedRef.current) return;
       setSuggestions(results);
       setShowSuggestions(results.length > 0);
     } catch {
-      setSuggestions([]);
+      if (request === requestRef.current && mountedRef.current && !controller.signal.aborted) {
+        setSuggestions([]);
+      }
     } finally {
-      setSearching(false);
+      if (request === requestRef.current && mountedRef.current) setSearching(false);
     }
   }, []);
 
   const handleChangeText = (text: string) => {
+    requestRef.current += 1;
+    searchAbortRef.current?.abort();
     setQuery(text);
     onChange(text);
     setZoneInfo(null);
@@ -68,6 +89,8 @@ export function AddressAutocomplete({ value, onChange, onZoneChange }: Props) {
   };
 
   const handleSelectSuggestion = (suggestion: PlaceSuggestion) => {
+    requestRef.current += 1;
+    searchAbortRef.current?.abort();
     Keyboard.dismiss();
     setShowSuggestions(false);
     setSuggestions([]);
@@ -84,38 +107,25 @@ export function AddressAutocomplete({ value, onChange, onZoneChange }: Props) {
     onZoneChange?.(zone.inZone, zone.distanceKm);
 
     if (Platform.OS !== "web") {
-      Haptics.impactAsync(
+      void Haptics.impactAsync(
         zone.inZone
           ? Haptics.ImpactFeedbackStyle.Light
           : Haptics.ImpactFeedbackStyle.Medium
-      );
+      ).catch(() => {});
     }
   };
 
   const requestLocateNow = async () => {
+    if (locatingRef.current) return;
+    locatingRef.current = true;
+    const request = ++requestRef.current;
+    searchAbortRef.current?.abort();
     setShowGpsModal(false);
     setLocating(true);
     try {
-      const existing = await Location.getForegroundPermissionsAsync();
-      let status = existing.status;
-      if (status !== "granted") {
-        const req = await Location.requestForegroundPermissionsAsync();
-        status = req.status;
-      }
-      if (status !== "granted") {
-        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Keyboard.dismiss();
-        Alert.alert(t("gps_denied_title"), t("gps_denied_text"), [{ text: t("ok") }]);
-        return;
-      }
-
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-        timeInterval: 5000,
-      });
-
-      const { latitude, longitude } = loc.coords;
+      const { latitude, longitude } = await getDeviceLocation();
       const { address } = await reverseGeocode(latitude, longitude);
+      if (request !== requestRef.current || !mountedRef.current) return;
 
       setQuery(address);
       onChange(address);
@@ -126,16 +136,41 @@ export function AddressAutocomplete({ value, onChange, onZoneChange }: Props) {
 
       setShowSuggestions(false);
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(
+        void Haptics.notificationAsync(
           zone.inZone
             ? Haptics.NotificationFeedbackType.Success
             : Haptics.NotificationFeedbackType.Warning
+        ).catch(() => {});
+      }
+    } catch (error) {
+      if (request !== requestRef.current || !mountedRef.current) return;
+      if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      Keyboard.dismiss();
+      if (error instanceof DeviceLocationError && error.reason === "permission-denied") {
+        Alert.alert(
+          t("gps_denied_title"),
+          error.canAskAgain
+            ? t("gps_denied_text")
+            : "Autorisez la localisation dans les réglages, ou saisissez votre adresse manuellement.",
+          error.canAskAgain ? [{ text: t("ok") }] : [
+            { text: t("ok"), style: "cancel" },
+            { text: "Ouvrir les réglages", onPress: () => void openLocationSettings() },
+          ],
+        );
+      } else {
+        const disabled = error instanceof DeviceLocationError && error.reason === "services-disabled";
+        Alert.alert(
+          disabled ? "GPS désactivé" : "Adresse introuvable",
+          disabled
+            ? "Activez les services de localisation puis réessayez."
+            : "Votre position ou son adresse n’a pas pu être déterminée. Réessayez ou saisissez l’adresse manuellement.",
         );
       }
-    } catch {
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
-      setLocating(false);
+      if (request === requestRef.current && mountedRef.current) {
+        locatingRef.current = false;
+        setLocating(false);
+      }
     }
   };
 
@@ -145,6 +180,8 @@ export function AddressAutocomplete({ value, onChange, onZoneChange }: Props) {
   };
 
   const handleClear = () => {
+    requestRef.current += 1;
+    searchAbortRef.current?.abort();
     setQuery("");
     onChange("");
     setSuggestions([]);

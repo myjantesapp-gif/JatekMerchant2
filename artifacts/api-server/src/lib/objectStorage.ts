@@ -27,9 +27,12 @@ export const objectStorageClient = new Storage({
  * Uses Replit's supported App Storage SDK. It resolves the active bucket from
  * the sidecar, rather than relying on a deployment-only bucket identifier.
  */
-const managedObjectStorageClient = new ReplitObjectStorageClient({
-  bucketId: process.env.JATEK_APP_STORAGE_BUCKET_ID || process.env.DEFAULT_OBJECT_STORAGE_ID,
-});
+// Do not pass a persisted bucket ID here. App Storage's default bucket is
+// environment-specific, and a shared development bucket ID can leave a
+// deployment authenticated as the wrong identity (reads/writes then fail with
+// storage.objects.* 403s). The supported SDK asks the local sidecar for the
+// active bucket in both development and deployments.
+const managedObjectStorageClient = new ReplitObjectStorageClient();
 
 type ManagedObjectFile = {
   objectName: string;

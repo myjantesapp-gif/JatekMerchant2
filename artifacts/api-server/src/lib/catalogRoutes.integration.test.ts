@@ -268,13 +268,29 @@ test("GET /api/restaurants/:restaurantId/menu groups categories and keeps legacy
   const response = await requestJson(`/restaurants/${fixture.restaurantId}/menu`, authToken);
   assert.equal(response.status, 200);
 
-  const products = response.body as Array<{ id: number; restaurantId: number; menuItemCategoryId: number | null }>;
+  const products = response.body as Array<{
+    id: number;
+    restaurantId: number;
+    menuItemCategoryId: number | null;
+    sortOrder: number;
+    categorySortOrder: number | null;
+  }>;
   assert.deepEqual(products.map((product) => product.id), [
-    fixture.productIds.legacy,
     fixture.productIds.usedLow,
     fixture.productIds.usedHigh,
+    fixture.productIds.legacy,
     fixture.productIds.private,
   ]);
   assert.ok(products.every((product) => product.restaurantId === fixture.restaurantId));
-  assert.equal(products[0].menuItemCategoryId, null);
+  assert.equal(products[2].menuItemCategoryId, null);
+  assert.equal(products[2].categorySortOrder, 2);
+  assert.deepEqual(
+    products.map(({ sortOrder, categorySortOrder }) => ({ sortOrder, categorySortOrder })),
+    [
+      { sortOrder: 1, categorySortOrder: 1 },
+      { sortOrder: 20, categorySortOrder: 1 },
+      { sortOrder: 50, categorySortOrder: 2 },
+      { sortOrder: 30, categorySortOrder: 3 },
+    ],
+  );
 });

@@ -201,6 +201,14 @@ export type AppConfig = Record<string, unknown> & {
 
 export const splashVideoUrlSchema = z.string().trim().max(2048)
   .refine(
-    (value) => value === "" || value.startsWith("/api/storage/objects/splash/") || /^https:\/\//i.test(value),
-    "splashVideoUrl must be an HTTPS URL or an App Storage splash path",
+    (value) => {
+      if (value === "") return true;
+      if (/^\/api\/storage\/objects\/splash\/[a-zA-Z0-9_-]+(?:\.mp4)?(?:\?[^#]*)?$/.test(value)) return true;
+      try {
+        const url = new URL(value);
+        return url.protocol === "https:" && !url.username && !url.password
+          && (/\.mp4$/i.test(url.pathname) || /^\/api\/storage\/objects\/splash\/[a-zA-Z0-9_-]+(?:\.mp4)?$/.test(url.pathname));
+      } catch { return false; }
+    },
+    "splashVideoUrl must be a direct HTTPS MP4 URL or an App Storage splash path",
   );

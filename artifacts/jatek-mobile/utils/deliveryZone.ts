@@ -60,6 +60,28 @@ export function checkDeliveryZone(
 
 const GOOGLE_PLACES_KEY = (process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY ?? "").trim();
 const useGoogle = GOOGLE_PLACES_KEY.length > 0;
+const GEOCODE_TIMEOUT_MS = 8_000;
+
+async function fetchGeocode(
+  url: string,
+  init: RequestInit = {},
+  signal?: AbortSignal,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GEOCODE_TIMEOUT_MS);
+  const abort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("Geocoding request timed out or was cancelled");
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+  }
+}
 
 /**
  * Reverse geocode: coords → human-readable address.
@@ -68,12 +90,16 @@ const useGoogle = GOOGLE_PLACES_KEY.length > 0;
  */
 export async function reverseGeocode(
   latitude: number,
-  longitude: number
+  longitude: number,
+  signal?: AbortSignal,
 ): Promise<{ address: string; displayName: string }> {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    throw new Error("Invalid coordinates");
+  }
   if (useGoogle) {
     try {
       const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&language=fr&key=${GOOGLE_PLACES_KEY}`;
-      const res = await fetch(url);
+      const res = await fetchGeocode(url, {}, signal);
       if (res.ok) {
         const data = await res.json();
         const first = data.results?.[0];
@@ -82,12 +108,15 @@ export async function reverseGeocode(
           return { address: display, displayName: display };
         }
       }
-    } catch { /* fall through to Nominatim */ }
+    } catch {
+      if (signal?.aborted) throw new Error("Geocoding request cancelled");
+      /* fall through to Nominatim */
+    }
   }
   const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=fr`;
-  const res = await fetch(url, {
+  const res = await fetchGeocode(url, {
     headers: { "User-Agent": "JatekMobileApp/1.0" },
-  });
+  }, signal);
   if (!res.ok) throw new Error("Reverse geocoding failed");
   const data = await res.json();
 
@@ -118,7 +147,7 @@ export interface PlaceSuggestion {
   longitude: number;
 }
 
-export async function searchPlaces(query: string): Promise<PlaceSuggestion[]> {
+export async function searchPlaces(query: string, signal?: AbortSignal): Promise<PlaceSuggestion[]> {
   if (query.trim().length < 3) return [];
 
   if (useGoogle) {
@@ -131,12 +160,12 @@ export async function searchPlaces(query: string): Promise<PlaceSuggestion[]> {
         radius: String(MAX_RADIUS_KM * 1000),
         key: GOOGLE_PLACES_KEY,
       });
-      const res = await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`);
+      const res = await fetchGeocode(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`, {}, signal);
       if (res.ok) {
         const data = await res.json();
         const preds: any[] = data.predictions ?? [];
         const detailed = await Promise.all(preds.slice(0, 6).map(async (p) => {
-          const dRes = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${p.place_id}&fields=geometry,formatted_address&language=fr&key=${GOOGLE_PLACES_KEY}`);
+          const dRes = await fetchGeocode(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${p.place_id}&fields=geometry,formatted_address&language=fr&key=${GOOGLE_PLACES_KEY}`, {}, signal);
           if (!dRes.ok) return null;
           const d = await dRes.json();
           const loc = d.result?.geometry?.location;
@@ -153,7 +182,10 @@ export async function searchPlaces(query: string): Promise<PlaceSuggestion[]> {
         const out = detailed.filter(Boolean) as PlaceSuggestion[];
         if (out.length > 0) return out;
       }
-    } catch { /* fall through to Nominatim */ }
+    } catch {
+      if (signal?.aborted) throw new Error("Place search cancelled");
+      /* fall through to Nominatim */
+    }
   }
 
   const params = new URLSearchParams({
@@ -168,9 +200,9 @@ export async function searchPlaces(query: string): Promise<PlaceSuggestion[]> {
   });
 
   const url = `https://nominatim.openstreetmap.org/search?${params}`;
-  const res = await fetch(url, {
+  const res = await fetchGeocode(url, {
     headers: { "User-Agent": "JatekMobileApp/1.0" },
-  });
+  }, signal);
   if (!res.ok) return [];
 
   const results: any[] = await res.json();

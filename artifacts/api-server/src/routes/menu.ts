@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, menuItemsTable, menuItemCategoriesTable, restaurantsTable } from "@workspace/db";
-import { eq, and, or, asc, desc, sql } from "drizzle-orm";
+import { eq, and, or, asc, sql } from "drizzle-orm";
 import { requireRole, type AuthedRequest } from "../middlewares/auth";
 import {
   CreateMenuItemBody,
@@ -83,6 +83,7 @@ router.get("/restaurants/:restaurantId/menu", async (req, res): Promise<void> =>
 
   const items = await db.select({
     item: menuItemsTable,
+    categoryId: menuItemCategoriesTable.id,
     categorySortOrder: menuItemCategoriesTable.sortOrder,
   })
     .from(menuItemsTable)
@@ -90,16 +91,56 @@ router.get("/restaurants/:restaurantId/menu", async (req, res): Promise<void> =>
     .where(and(...conditions))
     .orderBy(
       asc(menuItemCategoriesTable.sortOrder),
+      asc(menuItemCategoriesTable.id),
       asc(menuItemsTable.sortOrder),
-      asc(menuItemsTable.category),
-      desc(menuItemsTable.createdAt),
+      asc(menuItemsTable.id),
     );
-  const orderedItems = items.sort((left, right) => compareCustomerMenuEntries(
-    { ...left.item, categorySortOrder: left.categorySortOrder },
-    { ...right.item, categorySortOrder: right.categorySortOrder },
+  // Products created before menuItemCategoryId existed still participate in a
+  // saved category order when their legacy category text has an active match.
+  // Prefer a restaurant-owned category over a global category, exactly as the
+  // create/update category resolver does.
+  const availableCategories = await db.select({
+    id: menuItemCategoriesTable.id,
+    name: menuItemCategoriesTable.name,
+    restaurantId: menuItemCategoriesTable.restaurantId,
+    sortOrder: menuItemCategoriesTable.sortOrder,
+  }).from(menuItemCategoriesTable).where(and(
+    eq(menuItemCategoriesTable.isActive, true),
+    or(
+      eq(menuItemCategoriesTable.restaurantId, restaurantId),
+      sql`${menuItemCategoriesTable.restaurantId} IS NULL`,
+    ),
   ));
-  res.json(orderedItems.map(({ item }) => ({
+  const legacyCategoryByName = new Map<string, typeof availableCategories[number]>();
+  for (const category of availableCategories.sort((left, right) =>
+    Number(right.restaurantId === restaurantId) - Number(left.restaurantId === restaurantId)
+    || left.sortOrder - right.sortOrder
+    || left.id - right.id)) {
+    const key = category.name.trim().toLocaleLowerCase();
+    if (!legacyCategoryByName.has(key)) legacyCategoryByName.set(key, category);
+  }
+  const entries = items.map((row) => {
+    if (row.categoryId !== null) return row;
+    const legacyCategory = legacyCategoryByName.get(row.item.category.trim().toLocaleLowerCase());
+    return legacyCategory
+      ? { ...row, categoryId: legacyCategory.id, categorySortOrder: legacyCategory.sortOrder }
+      : row;
+  });
+  const orderedItems = entries.sort((left, right) => compareCustomerMenuEntries(
+    {
+      ...left.item,
+      menuItemCategoryId: left.categoryId,
+      categorySortOrder: left.categorySortOrder,
+    },
+    {
+      ...right.item,
+      menuItemCategoryId: right.categoryId,
+      categorySortOrder: right.categorySortOrder,
+    },
+  ));
+  res.json(orderedItems.map(({ item, categorySortOrder }) => ({
     ...item,
+    categorySortOrder,
     imageUrl: resolveLegacyMediaPath(item.imageUrl, "medias"),
   })));
 });

@@ -31,6 +31,9 @@ export type HomeRecommendedProduct = {
   compareAtPrice: number | null;
   imageUrl: string;
   category: string;
+  menuItemCategoryId: number | null;
+  sortOrder: number;
+  categorySortOrder: number | null;
   deliveryTime: number | null;
   deliveryFee: number | null;
   rating: number | null;
@@ -94,6 +97,9 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
       compareAtPrice: menuItemsTable.compareAtPrice,
       imageUrl: menuItemsTable.imageUrl,
       category: menuItemsTable.category,
+      menuItemCategoryId: menuItemsTable.menuItemCategoryId,
+      sortOrder: menuItemsTable.sortOrder,
+      categorySortOrder: menuItemCategoriesTable.sortOrder,
       deliveryTime: restaurantsTable.deliveryTime,
       deliveryFee: restaurantsTable.deliveryFee,
       rating: restaurantsTable.rating,
@@ -119,12 +125,22 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
     // ratings, clicks or order history as a hidden recommendation score.
     .orderBy(
       ...(sort === "recommended"
-        ? [asc(menuItemsTable.sortOrder), desc(menuItemsTable.updatedAt), asc(menuItemsTable.id)]
+        ? [
+          asc(menuItemCategoriesTable.sortOrder),
+          asc(menuItemCategoriesTable.id),
+          asc(menuItemsTable.sortOrder),
+          asc(menuItemsTable.id),
+        ]
         : sort === "newest"
         ? [desc(menuItemsTable.createdAt), desc(menuItemsTable.id)]
         : sort === "promos"
           ? [desc(sql`(${menuItemsTable.compareAtPrice} - ${menuItemsTable.price})`), asc(menuItemsTable.sortOrder), asc(menuItemsTable.id)]
-        : [asc(menuItemsTable.sortOrder), asc(menuItemsTable.createdAt), asc(menuItemsTable.id)]),
+        : [
+          asc(menuItemCategoriesTable.sortOrder),
+          asc(menuItemCategoriesTable.id),
+          asc(menuItemsTable.sortOrder),
+          asc(menuItemsTable.id),
+        ]),
     )
     .limit(Math.min(requestedLimit * 4, MAX_CANDIDATES));
 
@@ -152,6 +168,9 @@ router.get("/recommendations/products", async (req, res): Promise<void> => {
     compareAtPrice: item.compareAtPrice === null ? null : Number(item.compareAtPrice),
     imageUrl: item.imageUrl as string,
     category: String(item.category),
+    menuItemCategoryId: item.menuItemCategoryId === null ? null : Number(item.menuItemCategoryId),
+    sortOrder: Number(item.sortOrder),
+    categorySortOrder: item.categorySortOrder === null ? null : Number(item.categorySortOrder),
     deliveryTime: typeof item.deliveryTime === "number" ? item.deliveryTime : null,
     deliveryFee: typeof item.deliveryFee === "number" ? item.deliveryFee : null,
     rating: typeof item.rating === "number" ? item.rating : null,

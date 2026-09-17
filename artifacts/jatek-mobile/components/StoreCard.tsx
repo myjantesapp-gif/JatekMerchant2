@@ -6,6 +6,7 @@ import type { Restaurant } from "@workspace/api-client-react";
 import { formatMad } from "@/lib/money";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import colors from "@/constants/colors";
+import { MediaImage } from "@/components/MediaImage";
 
 type Props = {
   restaurant: Restaurant;
@@ -17,7 +18,7 @@ type Props = {
   showFee?: boolean;
 };
 
-export function StoreCard({
+export const StoreCard = React.memo(function StoreCard({
   restaurant,
   width,
   onPress,
@@ -45,13 +46,15 @@ export function StoreCard({
         ]}
       >
         <View style={styles.homeCoverWrap}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.homeCover} resizeMode="cover" />
-          ) : (
+          <MediaImage
+            urls={[imageUrl]}
+            style={styles.homeCover}
+            fallback={
             <View style={[styles.homeCover, styles.imagePlaceholder]}>
               <Ionicons name="storefront-outline" size={32} color={colors.light.mutedForeground} />
             </View>
-          )}
+            }
+          />
           <View style={styles.homeLogoCircle}>
             {restaurant.logoUrl ? (
               <Image
@@ -114,17 +117,15 @@ export function StoreCard({
       ]}
     >
       <View style={styles.coverWrap}>
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={[styles.cover, compact && styles.coverCompact]}
-            resizeMode="cover"
-          />
-        ) : (
+        <MediaImage
+          urls={[imageUrl]}
+          style={[styles.cover, compact && styles.coverCompact]}
+          fallback={
           <View style={[styles.cover, compact && styles.coverCompact, styles.imagePlaceholder]}>
             <Ionicons name="storefront-outline" size={32} color={colors.light.mutedForeground} />
           </View>
-        )}
+          }
+        />
         {badgeLabel ? (
           <View style={[styles.badge, badgeLabel === "Promo" && styles.badgePromo]}>
             <Text style={[styles.badgeText, badgeLabel === "Promo" && { color: "#FFFFFF" }]}>{badgeLabel}</Text>
@@ -192,7 +193,7 @@ export function StoreCard({
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

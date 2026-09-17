@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Modal, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -44,6 +44,18 @@ export default function AddressesScreen() {
   const [isDefault, setIsDefault] = useState(false);
   const [saving, setSaving] = useState(false);
   const [coords, setCoords] = useState({ latitude: OUJDA_CENTER.latitude, longitude: OUJDA_CENTER.longitude });
+  const mountedRef = useRef(true);
+  const formOperationRef = useRef(0);
+  const savingRef = useRef(false);
+  const geocodeAbortRef = useRef<AbortController | null>(null);
+  const loadOperationRef = useRef(0);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    formOperationRef.current += 1;
+    loadOperationRef.current += 1;
+    geocodeAbortRef.current?.abort();
+  }, []);
 
   const isUnauthenticated = (e: any) =>
     e?.status === 401 ||
@@ -51,10 +63,18 @@ export default function AddressesScreen() {
     e?.message === "Authentication required";
 
   const load = useCallback(async () => {
+    const operation = ++loadOperationRef.current;
     // Guard: token missing means the session is gone even if user cache remains.
-    if (!user || !token) { setLoading(false); return; }
-    try { setItems(await listAddresses()); }
+    if (!user || !token) {
+      if (mountedRef.current) setLoading(false);
+      return;
+    }
+    try {
+      const next = await listAddresses();
+      if (operation === loadOperationRef.current && mountedRef.current) setItems(next);
+    }
     catch (e: any) {
+      if (operation !== loadOperationRef.current || !mountedRef.current) return;
       if (isUnauthenticated(e)) {
         friendly.show({
           tone: "info",
@@ -75,24 +95,44 @@ export default function AddressesScreen() {
         hideSecondary: true,
       });
     }
-    finally { setLoading(false); }
+    finally {
+      if (operation === loadOperationRef.current && mountedRef.current) setLoading(false);
+    }
   }, [friendly, user, token]);
   useEffect(() => { load(); }, [load]);
 
-  const openAdd = () => { setEditing(null); setLabel(""); setFullAddress(""); setDetails(""); setIsDefault(items.length === 0); setFormAddrInZone(true); setCoords({ latitude: OUJDA_CENTER.latitude, longitude: OUJDA_CENTER.longitude }); setShowForm(true); };
-  const openEdit = (a: SavedAddress) => { setEditing(a); setLabel(a.label); setFullAddress(a.fullAddress); setDetails(a.details ?? ""); setIsDefault(a.isDefault); setFormAddrInZone(true); setCoords({ latitude: OUJDA_CENTER.latitude, longitude: OUJDA_CENTER.longitude }); setShowForm(true); };
+  const resetFormOperation = () => {
+    formOperationRef.current += 1;
+    geocodeAbortRef.current?.abort();
+    geocodeAbortRef.current = null;
+    savingRef.current = false;
+    setSaving(false);
+  };
+  const closeForm = () => {
+    resetFormOperation();
+    setShowForm(false);
+  };
+  const openAdd = () => { resetFormOperation(); setEditing(null); setLabel(""); setFullAddress(""); setDetails(""); setIsDefault(items.length === 0); setFormAddrInZone(true); setCoords({ latitude: OUJDA_CENTER.latitude, longitude: OUJDA_CENTER.longitude }); setShowForm(true); };
+  const openEdit = (a: SavedAddress) => { resetFormOperation(); setEditing(a); setLabel(a.label); setFullAddress(a.fullAddress); setDetails(a.details ?? ""); setIsDefault(a.isDefault); setFormAddrInZone(true); setCoords({ latitude: OUJDA_CENTER.latitude, longitude: OUJDA_CENTER.longitude }); setShowForm(true); };
 
   const onMapPick = async (c: { latitude: number; longitude: number }) => {
+    const operation = ++formOperationRef.current;
+    geocodeAbortRef.current?.abort();
+    const controller = new AbortController();
+    geocodeAbortRef.current = controller;
     setCoords(c);
     const zone = checkDeliveryZone(c.latitude, c.longitude);
     setFormAddrInZone(zone.inZone);
     try {
-      const { address } = await reverseGeocode(c.latitude, c.longitude);
-      setFullAddress(address);
+      const { address } = await reverseGeocode(c.latitude, c.longitude, controller.signal);
+      if (operation === formOperationRef.current && mountedRef.current && !controller.signal.aborted) {
+        setFullAddress(address);
+      }
     } catch { /* keep previous text */ }
   };
 
   const save = async () => {
+    if (savingRef.current) return;
     if (!label.trim() || !fullAddress.trim()) {
       friendly.show({
         tone: "info",
@@ -115,17 +155,23 @@ export default function AddressesScreen() {
       });
       return;
     }
+    savingRef.current = true;
+    const operation = ++formOperationRef.current;
+    geocodeAbortRef.current?.abort();
     setSaving(true);
     try {
       if (editing) {
         const updated = await updateAddress(editing.id, { label: label.trim(), fullAddress: fullAddress.trim(), details: details.trim() || null, isDefault });
+        if (operation !== formOperationRef.current || !mountedRef.current) return;
         setItems((prev) => prev.map((x) => x.id === updated.id ? updated : (isDefault ? { ...x, isDefault: false } : x)).map((x) => x.id === updated.id ? updated : x));
       } else {
         const created = await createAddress({ label: label.trim(), fullAddress: fullAddress.trim(), details: details.trim() || null, isDefault });
+        if (operation !== formOperationRef.current || !mountedRef.current) return;
         setItems((prev) => [created, ...prev.map((x) => isDefault ? { ...x, isDefault: false } : x)]);
       }
       setShowForm(false);
     } catch (e: any) {
+      if (operation !== formOperationRef.current || !mountedRef.current) return;
       friendly.show({
         tone: "error",
         icon: "alert-circle-outline",
@@ -135,7 +181,12 @@ export default function AddressesScreen() {
         hideSecondary: true,
       });
     }
-    finally { setSaving(false); }
+    finally {
+      if (operation === formOperationRef.current && mountedRef.current) {
+        savingRef.current = false;
+        setSaving(false);
+      }
+    }
   };
 
   const onDelete = (id: number) => {
@@ -301,7 +352,8 @@ export default function AddressesScreen() {
         </ScrollView>
       )}
 
-      <Modal visible={showForm} transparent animationType="slide" onRequestClose={() => setShowForm(false)}>
+      {showForm && (
+      <Modal visible transparent animationType="slide" onRequestClose={closeForm}>
         <View style={styles.modalOverlay}>
           <View style={[styles.sheet, { backgroundColor: colors.background }]}>
             <View style={styles.sheetHandle} />
@@ -314,7 +366,7 @@ export default function AddressesScreen() {
               <Text style={[styles.label, { color: colors.mutedForeground }]}>Libellé</Text>
               <TextInput value={label} onChangeText={setLabel} placeholder="Domicile, Bureau..." placeholderTextColor={colors.mutedForeground} style={[styles.input, { backgroundColor: colors.card, color: colors.heading, borderColor: colors.border }]} />
               <Text style={[styles.label, { color: colors.mutedForeground }]}>Adresse (saisie manuelle ou autocomplete)</Text>
-              <AddressAutocomplete value={fullAddress} onChange={setFullAddress} onZoneChange={(inZone) => setFormAddrInZone(inZone)} />
+               <AddressAutocomplete value={fullAddress} onChange={(value) => { formOperationRef.current += 1; geocodeAbortRef.current?.abort(); setFullAddress(value); }} onZoneChange={(inZone) => setFormAddrInZone(inZone)} />
               <Text style={[styles.label, { color: colors.mutedForeground }]}>Détails (étage, code, etc.)</Text>
               <TextInput value={details} onChangeText={setDetails} placeholder="Optionnel" placeholderTextColor={colors.mutedForeground} style={[styles.input, { backgroundColor: colors.card, color: colors.heading, borderColor: colors.border }]} />
               <TouchableOpacity onPress={() => setIsDefault((v) => !v)} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 }}>
@@ -322,7 +374,7 @@ export default function AddressesScreen() {
                 <Text style={{ color: colors.heading, fontSize: 14, fontFamily: "Inter_500Medium" }}>Définir par défaut</Text>
               </TouchableOpacity>
               <View style={{ flexDirection: "row", gap: 12, marginTop: 16, marginBottom: 8 }}>
-                <TouchableOpacity onPress={() => setShowForm(false)} style={[styles.btn, { backgroundColor: colors.muted, flex: 1 }]}>
+                 <TouchableOpacity onPress={closeForm} style={[styles.btn, { backgroundColor: colors.muted, flex: 1 }]}>
                   <Text style={[styles.btnText, { color: colors.heading }]}>Annuler</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={save} disabled={saving} style={[styles.btn, { backgroundColor: colors.primary, flex: 1 }]}>
@@ -333,6 +385,7 @@ export default function AddressesScreen() {
           </View>
         </View>
       </Modal>
+      )}
     </ProfileScreenLayout>
   );
 }

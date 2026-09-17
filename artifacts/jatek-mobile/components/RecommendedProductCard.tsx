@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RecommendedProduct } from "@/lib/api";
 import { formatMad } from "@/lib/money";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { MediaImage } from "@/components/MediaImage";
 
 const PINK = "#E91E63";
 const TEXT_DARK = "#0A1B3D";
@@ -39,10 +40,14 @@ export function RecommendedProductCard({ product, width, onPress, compact = fals
       ]}
     >
       <View style={[styles.imageWrap, compact && styles.imageWrapCompact]}>
-        <Image
-          source={{ uri: resolveMediaUrl(product.imageUrl) ?? product.imageUrl }}
+        <MediaImage
+          urls={[product.imageUrl]}
           style={styles.image}
-          resizeMode="cover"
+          fallback={
+            <View style={[styles.image, styles.imageFallback]}>
+              <Ionicons name="image-outline" size={28} color={TEXT_MUTED} />
+            </View>
+          }
         />
         {/* Merchant logo top-left */}
         {product.restaurantLogoUrl ? (
@@ -105,6 +110,10 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+  },
+  imageFallback: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   merchantLogoWrap: {
     position: "absolute",

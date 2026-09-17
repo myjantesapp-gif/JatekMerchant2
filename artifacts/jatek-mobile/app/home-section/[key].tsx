@@ -1,11 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
+  FlatList,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
@@ -33,9 +34,10 @@ const PINK = "#E91E63";
 const NAVY = "#0F172A";
 const MUTED = "#64748B";
 const PAGE_BG = "#FAFAFA";
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
 type HomeSectionViewConfig = Omit<HomeSectionConfig, "key">;
+type GridEntry =
+  | { kind: "product"; value: RecommendedProduct }
+  | { kind: "restaurant"; value: Restaurant };
 
 function normalize(value: unknown): string {
   return String(value ?? "")
@@ -71,49 +73,10 @@ function findBusinessCategory(categories: any[], source?: string) {
   return roots.find((category) => matches(category, ["restaurant", "restauration", "food"]));
 }
 
-function ProductGrid({ products }: { products: RecommendedProduct[] }) {
-  const cardWidth = Math.max(0, (SCREEN_WIDTH - 48) / 2);
-
-  return (
-    <View style={styles.productGrid}>
-      {products.map((product) => (
-        <ProductCard
-          key={`${product.restaurantId}-${product.id}`}
-          product={product}
-          width={cardWidth}
-          onPress={() =>
-            router.push({
-              pathname: "/restaurant/[id]",
-              params: { id: String(product.restaurantId), productId: String(product.id) },
-            })
-          }
-        />
-      ))}
-    </View>
-  );
-}
-
-function RestaurantGrid({ restaurants }: { restaurants: Restaurant[] }) {
-  const cardWidth = Math.max(0, (SCREEN_WIDTH - 48) / 2);
-
-  return (
-    <View style={styles.restaurantGrid}>
-      {restaurants.map((restaurant) => (
-        <StoreCard
-          key={restaurant.id}
-          restaurant={restaurant}
-          width={cardWidth}
-          onPress={() => router.push({ pathname: "/restaurant/[id]", params: { id: String(restaurant.id) } })}
-          showFee
-        />
-      ))}
-    </View>
-  );
-}
-
 export default function HomeSectionScreen() {
   const { key } = useLocalSearchParams<{ key: string }>();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const sectionKey = key as HomeSectionKey;
   const { data: appConfig, isLoading: configLoading } = useQuery({
     queryKey: ["public-app-config", "home-section", sectionKey],
@@ -180,6 +143,65 @@ export default function HomeSectionScreen() {
     || (source === "recommended_restaurants" && recommendedRestaurantsLoading)
     || (productSection && productsLoading);
   const error = restaurantsError || productsError || (source === "recommended_restaurants" && recommendedRestaurantsError);
+  const entries = useMemo<GridEntry[]>(() => {
+    if (loading || error) return [];
+    if (productSection) return products.map((value) => ({ kind: "product", value }));
+    if (source === "recommended_restaurants") {
+      return (recommendedRestaurants as Restaurant[]).map((value) => ({ kind: "restaurant", value }));
+    }
+    if (restaurantSection && restaurantCategory) {
+      return (restaurants as Restaurant[]).map((value) => ({ kind: "restaurant", value }));
+    }
+    return [];
+  }, [
+    error,
+    loading,
+    productSection,
+    products,
+    recommendedRestaurants,
+    restaurantCategory,
+    restaurantSection,
+    restaurants,
+    source,
+  ]);
+  const cardWidth = Math.max(0, (width - 48) / 2);
+  const renderItem = useCallback(({ item }: { item: GridEntry }) => {
+    if (item.kind === "product") {
+      const product = item.value;
+      return (
+        <ProductCard
+          product={product}
+          width={cardWidth}
+          onPress={() => router.push({
+            pathname: "/restaurant/[id]",
+            params: { id: String(product.restaurantId), productId: String(product.id) },
+          })}
+        />
+      );
+    }
+    const restaurant = item.value;
+    return (
+      <StoreCard
+        restaurant={restaurant}
+        width={cardWidth}
+        onPress={() => router.push({ pathname: "/restaurant/[id]", params: { id: String(restaurant.id) } })}
+        showFee
+      />
+    );
+  }, [cardWidth]);
+  const emptyContent = useMemo(() => {
+    if (loading) return <ActivityIndicator color={PINK} style={styles.loader} />;
+    if (error) return <Text style={styles.empty}>Impossible de charger ce contenu</Text>;
+    if (restaurantSection && source !== "recommended_restaurants" && !restaurantCategory) {
+      return <Text style={styles.empty}>Aucune catégorie correspondante</Text>;
+    }
+    if (source === "recommended_restaurants") {
+      return <Text style={styles.empty}>Aucun restaurant recommandé</Text>;
+    }
+    if (restaurantSection) return <Text style={styles.empty}>Aucun établissement disponible</Text>;
+    if (productSection) return <Text style={styles.empty}>Aucun produit disponible</Text>;
+    return null;
+  }, [error, loading, productSection, restaurantCategory, restaurantSection, source]);
 
   return (
     <View style={styles.root}>
@@ -198,34 +220,24 @@ export default function HomeSectionScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView
+      <FlatList
+        data={entries}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.kind === "product"
+          ? `product-${item.value.restaurantId}-${item.value.id}`
+          : `restaurant-${item.value.id}`}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
+        ItemSeparatorComponent={() => <View style={styles.rowSeparator} />}
+        ListEmptyComponent={emptyContent}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
-      >
-        {loading ? <ActivityIndicator color={PINK} style={styles.loader} /> : null}
-        {!loading && error ? <Text style={styles.empty}>Impossible de charger ce contenu</Text> : null}
-        {!loading && !error && restaurantSection && source !== "recommended_restaurants" && !restaurantCategory ? (
-          <Text style={styles.empty}>Aucune catégorie correspondante</Text>
-        ) : null}
-        {!loading && !error && source === "recommended_restaurants" && recommendedRestaurants.length === 0 ? (
-          <Text style={styles.empty}>Aucun restaurant recommandé</Text>
-        ) : null}
-        {!loading && !error && restaurantSection && source !== "recommended_restaurants" && restaurantCategory && restaurants.length === 0 ? (
-          <Text style={styles.empty}>Aucun établissement disponible</Text>
-        ) : null}
-        {!loading && !error && productSection && products.length === 0 ? (
-          <Text style={styles.empty}>Aucun produit disponible</Text>
-        ) : null}
-        {!loading && !error && source === "recommended_restaurants" && recommendedRestaurants.length > 0 ? (
-          <RestaurantGrid restaurants={recommendedRestaurants as Restaurant[]} />
-        ) : null}
-        {!loading && !error && restaurantSection && source !== "recommended_restaurants" && restaurantCategory && restaurants.length > 0 ? (
-          <RestaurantGrid restaurants={restaurants as Restaurant[]} />
-        ) : null}
-        {!loading && !error && productSection && products.length > 0 ? (
-          <ProductGrid products={products} />
-        ) : null}
-      </ScrollView>
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={40}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS !== "web"}
+      />
     </View>
   );
 }
@@ -275,14 +287,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: "Inter_500Medium",
   },
-  productGrid: {
+  gridRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16,
+    columnGap: 16,
   },
-  restaurantGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16,
-  },
+  rowSeparator: { height: 16 },
 });

@@ -127,6 +127,7 @@ export default function AppConfig() {
   });
 
   const [form, setForm] = useState<AppConfigData>(DEFAULT_CONFIG);
+  const [uploadingSplash, setUploadingSplash] = useState(false);
 
   useEffect(() => {
     if (config) {
@@ -186,7 +187,7 @@ export default function AppConfig() {
             Configuration lue par l'app mobile au démarrage via <code className="text-xs bg-muted px-1 py-0.5 rounded">/api/app-config</code>
           </p>
         </div>
-        <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
+        <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending || uploadingSplash || isLoading}>
           {saveMutation.isPending
             ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
             : <Save className="h-4 w-4 mr-2" />}
@@ -255,10 +256,12 @@ export default function AppConfig() {
                 label="Intro MP4 affichée au lancement de l’application"
                 value={form.splashVideoUrl}
                 uploadKind="splash"
-                onValueChange={(splashVideoUrl) => setForm({ ...form, splashVideoUrl })}
+                disabled={saveMutation.isPending}
+                onValueChange={(splashVideoUrl) => setForm(prev => ({ ...prev, splashVideoUrl }))}
+                onUploadingChange={setUploadingSplash}
               />
               <p className="mt-2 text-xs text-muted-foreground">
-                Laissez vide pour utiliser l’intro intégrée à l’application.
+                MP4, 50 Mo maximum, 10 secondes conseillées. Laissez vide pour utiliser l’intro intégrée. Sauvegardez après le téléversement.
               </p>
             </CardContent>
           </Card>

@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,6 +28,7 @@ import {
   OUT_OF_ZONE_MESSAGE,
   type PlaceSuggestion,
 } from "@/utils/deliveryZone";
+import { DeviceLocationError, getDeviceLocation, openLocationSettings } from "@/utils/deviceLocation";
 
 export default function WelcomeScreen() {
   const colors = useColors();
@@ -51,77 +51,109 @@ export default function WelcomeScreen() {
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  const coordinateOperationRef = useRef(0);
+  const locationOperationRef = useRef(0);
+  const locatingRef = useRef(false);
+  const searchAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    coordinateOperationRef.current += 1;
+    locationOperationRef.current += 1;
+    searchAbortRef.current?.abort();
+  }, []);
 
   const updateForCoords = async (latitude: number, longitude: number) => {
+    const operation = ++coordinateOperationRef.current;
     setCoords({ latitude, longitude });
     const zone = checkDeliveryZone(latitude, longitude);
     setZoneOk(zone.inZone);
     setResolving(true);
     try {
       const { address: addr } = await reverseGeocode(latitude, longitude);
-      setAddress(addr);
+      if (operation === coordinateOperationRef.current && mountedRef.current) setAddress(addr);
     } catch {
-      setAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      if (operation === coordinateOperationRef.current && mountedRef.current) {
+        setAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      }
     } finally {
-      setResolving(false);
+      if (operation === coordinateOperationRef.current && mountedRef.current) setResolving(false);
     }
   };
 
   const handleUseGps = async () => {
-    if (Platform.OS !== "web") Haptics.selectionAsync();
+    if (locatingRef.current) return;
+    locatingRef.current = true;
+    const operation = ++locationOperationRef.current;
+    if (Platform.OS !== "web") void Haptics.selectionAsync().catch(() => {});
     setLocating(true);
     try {
-      const existing = await Location.getForegroundPermissionsAsync();
-      let status = existing.status;
-      if (status !== "granted") {
-        const req = await Location.requestForegroundPermissionsAsync();
-        status = req.status;
-      }
-      if (status !== "granted") {
+      const next = await getDeviceLocation();
+      if (operation !== locationOperationRef.current || !mountedRef.current) return;
+      await updateForCoords(next.latitude, next.longitude);
+    } catch (error) {
+      if (operation !== locationOperationRef.current || !mountedRef.current) return;
+      if (error instanceof DeviceLocationError && error.reason === "permission-denied") {
         friendly.show({
           tone: "warning",
           icon: "navigate-outline",
           title: "Localisation refusée",
-          message: "Pas de souci, choisissez votre point de livraison directement sur la carte.",
-          primary: { label: "Compris" },
+          message: error.canAskAgain
+            ? "Pas de souci, choisissez votre point directement sur la carte ou réessayez."
+            : "Autorisez la localisation dans les réglages, ou choisissez votre point directement sur la carte.",
+          primary: error.canAskAgain
+            ? { label: "Compris" }
+            : { label: "Ouvrir les réglages", onPress: () => void openLocationSettings() },
+          secondary: error.canAskAgain ? undefined : { label: "Choisir sur la carte" },
+          hideSecondary: error.canAskAgain,
+        });
+      } else {
+        const disabled = error instanceof DeviceLocationError && error.reason === "services-disabled";
+        friendly.show({
+          tone: disabled ? "warning" : "error",
+          icon: disabled ? "navigate-outline" : "alert-circle-outline",
+          title: disabled ? "GPS désactivé" : "Position introuvable",
+          message: disabled
+            ? "Activez les services de localisation, puis réessayez. La carte reste disponible."
+            : "Impossible d'obtenir votre position à temps. Réessayez ou choisissez-la sur la carte.",
+          primary: { label: "OK" },
           hideSecondary: true,
         });
-        return;
       }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      await updateForCoords(loc.coords.latitude, loc.coords.longitude);
-    } catch {
-      friendly.show({
-        tone: "error",
-        icon: "alert-circle-outline",
-        title: "Position introuvable",
-        message: "Impossible d'obtenir votre position. Vérifiez que le GPS est activé.",
-        primary: { label: "OK" },
-        hideSecondary: true,
-      });
     } finally {
-      setLocating(false);
+      if (operation === locationOperationRef.current && mountedRef.current) {
+        locatingRef.current = false;
+        setLocating(false);
+      }
     }
   };
 
   // Debounced place search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    searchAbortRef.current?.abort();
     if (query.trim().length < 3) {
       setSuggestions([]);
+      setSearching(false);
       return;
     }
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
       try {
-        const r = await searchPlaces(query);
-        setSuggestions(r);
+        const r = await searchPlaces(query, controller.signal);
+        if (!controller.signal.aborted && mountedRef.current) setSuggestions(r);
+      } catch {
+        if (!controller.signal.aborted && mountedRef.current) setSuggestions([]);
       } finally {
-        setSearching(false);
+        if (!controller.signal.aborted && mountedRef.current) setSearching(false);
       }
     }, 350);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      searchAbortRef.current?.abort();
     };
   }, [query]);
 

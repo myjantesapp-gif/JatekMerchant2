@@ -38,12 +38,25 @@ test("Home recommendations preserve the catalog order while diversifying merchan
     candidate(21, 11),
   ];
 
-  // The route supplies candidates ordered by sortOrder, createdAt and id.
+  // The route supplies candidates in saved category/product order.
   // Diversity may skip a merchant's later product during the first pass, but
   // it must never move a later catalog entry ahead of an earlier one.
   assert.deepEqual(
     selectAvailableRecommendations(rows, 4).map((row) => row.id),
     [10, 20, 11, 21],
+  );
+});
+
+test("Home recommendations keep skipped same-merchant products in catalog order when filling", () => {
+  const rows = [
+    candidate(10, 10),
+    candidate(11, 10),
+    candidate(20, 20),
+  ];
+
+  assert.deepEqual(
+    selectAvailableRecommendations(rows, 3).map((row) => row.id),
+    [10, 11, 20],
   );
 });
 

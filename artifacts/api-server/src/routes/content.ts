@@ -4,8 +4,10 @@ import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectS
 import { filterVisibleRestaurantMenuCategories } from "../lib/menuCategoryVisibility";
 import { eq, asc, and, or, sql, inArray } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
+import { normalizeShortViewCount, ShortViewDeduper } from "../lib/shortViews";
 
 const router: IRouter = Router();
+const shortViewDeduper = new ShortViewDeduper();
 
 // ─────────────────────────────────────────────────────────────
 // Categories (public read)
@@ -85,7 +87,7 @@ router.get("/menu-categories", async (req, res): Promise<void> => {
 
   const rows = await db.select().from(menuItemCategoriesTable)
     .where(condition)
-    .orderBy(asc(menuItemCategoriesTable.sortOrder), asc(menuItemCategoriesTable.name), asc(menuItemCategoriesTable.id));
+    .orderBy(asc(menuItemCategoriesTable.sortOrder), asc(menuItemCategoriesTable.id));
   if (rid === null) {
     res.json(rows);
     return;
@@ -120,6 +122,7 @@ router.get("/ads", async (req, res): Promise<void> => {
     .orderBy(asc(adsTable.sortOrder), asc(adsTable.id));
   res.json(rows.map((row) => ({
     ...row,
+    viewCount: normalizeShortViewCount(row.viewCount),
     imageUrl: resolveLegacyMediaPath(row.imageUrl, "banners"),
   })));
 });
@@ -143,10 +146,12 @@ function decodeShortCursor(value: unknown): { sortOrder: number; id: number } | 
   }
 }
 
-function serializeShort(row: typeof shortsTable.$inferSelect, restaurantLogoUrl?: string | null) {
+export function serializeShort(row: typeof shortsTable.$inferSelect, restaurantLogoUrl?: string | null) {
   return {
     ...row,
-    imageUrl: resolveLegacyMediaPath(row.imageUrl, "images"),
+    // The dashboard stores both uploaded Short thumbnails and videos under
+    // shorts/. Keep legacy uploads pointed at that same real storage folder.
+    imageUrl: resolveLegacyMediaPath(row.imageUrl, "shorts"),
     videoUrl: resolveLegacyMediaPath(row.videoUrl, "shorts"),
     restaurantLogoUrl: resolveLegacyMediaPath(restaurantLogoUrl, "logos"),
     audio: {
@@ -166,7 +171,7 @@ function isMissingShortAudioColumns(error: unknown): boolean {
   const message = String(candidate?.message ?? error);
   if (
     candidate?.code === "42703" ||
-    /column "(audio_codec|audio_bitrate|duration_seconds)" does not exist/i.test(message)
+    /column "(audio_codec|audio_bitrate|duration_seconds|view_count)" does not exist/i.test(message)
   ) {
     return true;
   }
@@ -213,6 +218,7 @@ async function listShortRows(
       audioCodec: null,
       audioBitrate: null,
       durationSeconds: null,
+      viewCount: 0,
     }));
   }
 }
@@ -271,6 +277,50 @@ router.get("/shorts", async (req, res): Promise<void> => {
     hasMore,
     limit: requestedLimit,
   } : page);
+});
+
+router.post("/shorts/:id/view", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const sessionId = typeof req.body?.sessionId === "string" ? req.body.sessionId.trim() : "";
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid Short id" });
+    return;
+  }
+  if (!/^[A-Za-z0-9_-]{12,100}$/.test(sessionId)) {
+    res.status(400).json({ error: "Invalid view session" });
+    return;
+  }
+
+  if (!shortViewDeduper.claim(id, sessionId)) {
+    const [existing] = await db
+      .select({ viewCount: shortsTable.viewCount })
+      .from(shortsTable)
+      .where(and(eq(shortsTable.id, id), eq(shortsTable.isActive, true)))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "Short not found" });
+      return;
+    }
+    res.json({ id, viewCount: normalizeShortViewCount(existing.viewCount), counted: false });
+    return;
+  }
+
+  try {
+    const [updated] = await db
+      .update(shortsTable)
+      .set({ viewCount: sql`${shortsTable.viewCount} + 1` })
+      .where(and(eq(shortsTable.id, id), eq(shortsTable.isActive, true)))
+      .returning({ viewCount: shortsTable.viewCount });
+    if (!updated) {
+      shortViewDeduper.release(id, sessionId);
+      res.status(404).json({ error: "Short not found" });
+      return;
+    }
+    res.json({ id, viewCount: normalizeShortViewCount(updated.viewCount), counted: true });
+  } catch (error) {
+    shortViewDeduper.release(id, sessionId);
+    throw error;
+  }
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -339,7 +389,7 @@ router.get("/backend/shorts", requireAuth, async (req: AuthedRequest, res): Prom
   const rows = await db.select().from(shortsTable).orderBy(asc(shortsTable.sortOrder));
   res.json(rows.map((row) => ({
     ...row,
-    imageUrl: resolveLegacyMediaPath(row.imageUrl, "images"),
+    imageUrl: resolveLegacyMediaPath(row.imageUrl, "shorts"),
     videoUrl: resolveLegacyMediaPath(row.videoUrl, "shorts"),
   })));
 });

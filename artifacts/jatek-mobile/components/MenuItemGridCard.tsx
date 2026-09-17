@@ -1,11 +1,11 @@
 import React, { useRef } from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Image, Pressable, Animated, Platform } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, Pressable, Animated, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/useColors";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { formatMad } from "@/lib/money";
+import { MediaImage } from "@/components/MediaImage";
 
 const BTN_FROM = "#FF5FAD";
 const BTN_TO = "#C81877";
@@ -26,7 +26,7 @@ interface Props {
   restaurantOpen?: boolean;
 }
 
-export function MenuItemGridCard({ item, quantity, width, onPressCard, onAdd, restaurantOpen = true }: Props) {
+export const MenuItemGridCard = React.memo(function MenuItemGridCard({ item, quantity, width, onPressCard, onAdd, restaurantOpen = true }: Props) {
   const colors = useColors();
   const scale = useRef(new Animated.Value(1)).current;
   const plus = useRef(new Animated.Value(1)).current;
@@ -51,13 +51,15 @@ export function MenuItemGridCard({ item, quantity, width, onPressCard, onAdd, re
     <Pressable onPress={onPressCard} onPressIn={onIn} onPressOut={onOut}>
       <Animated.View style={[styles.card, { width, backgroundColor: colors.card, transform: [{ scale }], opacity: restaurantOpen ? 1 : 0.6 }]}>
         <View style={styles.imageWrap}>
-          {item.imageUrl ? (
-            <Image source={{ uri: resolveMediaUrl(item.imageUrl) }} style={styles.image} resizeMode="cover" />
-          ) : (
+          <MediaImage
+            urls={[item.imageUrl]}
+            style={styles.image}
+            fallback={
             <View style={[styles.image, styles.placeholder, { backgroundColor: colors.muted }]}>
               <Ionicons name="fast-food-outline" size={32} color={colors.mutedForeground} />
             </View>
-          )}
+            }
+          />
           <Animated.View style={[styles.plusWrap, { transform: [{ scale: plus }] }]}>
             {restaurantOpen ? (
               <LinearGradient colors={[BTN_FROM, BTN_TO]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.plusFab}>
@@ -91,7 +93,7 @@ export function MenuItemGridCard({ item, quantity, width, onPressCard, onAdd, re
       </Animated.View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

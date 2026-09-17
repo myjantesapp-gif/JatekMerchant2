@@ -26,8 +26,8 @@ export function selectAvailableRecommendations<T extends AvailableProductCandida
   const selectedRestaurantIds = new Set<number>();
 
   // First pass: show one real product per merchant where possible. The query
-  // order (sortOrder, createdAt, id) is the merchant's catalog order, not a
-  // popularity score.
+  // order (category sortOrder/id, then product sortOrder/id) is the merchant's
+  // saved catalog order, not a popularity score.
   for (const candidate of candidates) {
     if (selected.length >= limit) break;
     if (selectedIds.has(candidate.id) || selectedRestaurantIds.has(candidate.restaurantId)) continue;
@@ -45,7 +45,13 @@ export function selectAvailableRecommendations<T extends AvailableProductCandida
     selectedIds.add(candidate.id);
   }
 
-  return selected;
+  // The diversity pass decides membership, not presentation order. Re-sort the
+  // chosen set by its API/catalog position so filling a skipped product cannot
+  // move it behind a later merchant's product.
+  const sourceIndex = new Map(candidates.map((candidate, index) => [candidate.id, index]));
+  return selected.sort(
+    (left, right) => (sourceIndex.get(left.id) ?? 0) - (sourceIndex.get(right.id) ?? 0),
+  );
 }
 
 /**

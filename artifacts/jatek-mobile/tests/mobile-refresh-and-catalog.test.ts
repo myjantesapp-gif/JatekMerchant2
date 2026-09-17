@@ -95,6 +95,22 @@ test("catalog helper supports all sort modes and keeps recommended order", () =>
   );
 });
 
+test("equal-price sorting keeps the API custom sequence as the stable tie-break", () => {
+  const customSequence = [
+    { id: "admin-third", name: "C", price: 20 },
+    { id: "admin-first", name: "A", price: 20 },
+    { id: "admin-second", name: "B", price: 20 },
+  ];
+  const options = { categories: [{ id: "Tous", name: "Tous" }], activeCategory: "Tous", searchQuery: "" };
+
+  for (const sortMode of ["recommended", "priceAsc", "priceDesc"] as const) {
+    assert.deepEqual(
+      filterAndSortMenuItems(customSequence, { ...options, sortMode }).map((item) => item.id),
+      ["admin-third", "admin-first", "admin-second"],
+    );
+  }
+});
+
 test("restaurant page uses recommended order without exposing sort controls", () => {
   const code = source("app/restaurant/[id].tsx");
 
@@ -121,6 +137,7 @@ test("restaurant catalog sections retain category labels and collect uncategoriz
 test("restaurant category tabs keep legacy menu categories alongside API categories", () => {
   const page = source("app/restaurant/[id].tsx");
 
+  assert.match(page, /\.sort\(\(a, b\) => a\.sortOrder - b\.sortOrder \|\| a\.id - b\.id\)/);
   assert.match(page, /const legacyCategories = Array\.from/);
   assert.match(page, /new Map\(/);
   assert.match(page, /knownNames\.has\(name\.toLocaleLowerCase\(\)\)/);
@@ -143,11 +160,13 @@ test("restaurant category navigation stays sticky and tracks visible sections", 
   assert.match(code, /categoryPinned/);
   assert.match(code, /onScroll=\{handleMenuScroll\}/);
   assert.match(code, /scrollEventThrottle=\{16\}/);
-  assert.match(code, /sectionOffsetsRef/);
+  assert.match(code, /onViewableItemsChanged=\{onViewableItemsChanged\}/);
   assert.match(code, /setActiveCategory\(\(current\)/);
   assert.match(code, /CATEGORY_OVERLAY_TOP_GAP/);
   assert.match(code, /\(categoryBarY \?\? HERO_H\) - insets\.top - CATEGORY_OVERLAY_TOP_GAP/);
-  assert.match(code, /menuScrollRef\.current\?\.scrollTo\(\{ y: 0, animated: true \}\)/);
+  assert.match(code, /scrollToLocation\(\{/);
+  assert.match(code, /onScrollToIndexFailed/);
+  assert.doesNotMatch(code, /sectionOffsetsRef/);
   assert.match(code, /testID=\{`restaurant-category-\$\{cat\.id\}`\}/);
 });
 
@@ -161,10 +180,32 @@ test("restaurant page keeps the safe-area header and renders a two-column produc
   assert.match(page, /<MenuItemGridCard/);
   assert.match(page, /width=\{menuCardWidth\}/);
   assert.match(page, /MENU_GRID_GAP\) \/ 2/);
-  assert.match(page, /menuList:\s*\{[\s\S]*flexDirection: "row"[\s\S]*flexWrap: "wrap"/);
+  assert.match(page, /<SectionList/);
+  assert.match(page, /section\.items\.slice\(index \* 2, index \* 2 \+ 2\)/);
+  assert.match(page, /menuList:\s*\{[\s\S]*flexDirection: "row"/);
+  assert.doesNotMatch(page, /sections\.map\(\(section\) => \(\s*<View/);
   assert.match(page, /const MENU_GRID_GAP/);
   assert.doesNotMatch(page, /section\.items\.length.*articles/);
   assert.match(gridCard, /aspectRatio: 1/);
+});
+
+test("long mobile catalog grids use bounded virtualization and cached recycled images", () => {
+  const restaurant = source("app/restaurant/[id].tsx");
+  const homeSection = source("app/home-section/[key].tsx");
+  const mediaImage = source("components/MediaImage.tsx");
+
+  for (const page of [restaurant, homeSection]) {
+    assert.match(page, /initialNumToRender=\{/);
+    assert.match(page, /maxToRenderPerBatch=\{/);
+    assert.match(page, /windowSize=\{/);
+    assert.match(page, /removeClippedSubviews/);
+  }
+  assert.match(homeSection, /<FlatList/);
+  assert.doesNotMatch(homeSection, /<ScrollView/);
+  assert.match(mediaImage, /from "expo-image"/);
+  assert.match(mediaImage, /cachePolicy="memory-disk"/);
+  assert.match(mediaImage, /recyclingKey=\{sourceKey\}/);
+  assert.match(mediaImage, /failedSource\.key === sourceKey/);
 });
 
 test("home renders discovery videos as a horizontal 9:16 card rail", () => {
@@ -435,14 +476,14 @@ test("home includes every commerce type instead of defaulting to restaurants", (
   assert.match(code, /Aucun nouveau produit pour le moment/);
 });
 
-test("app uses a transparent edge-to-edge system bar while preserving readable icons", () => {
+test("app keeps an opaque system bar and bundled native launch colors", () => {
   const code = source("app/_layout.tsx");
   const appConfig = source("app.json");
 
-  assert.match(code, /<StatusBar style="dark" backgroundColor="transparent" translucent \/>/);
+  assert.match(code, /<StatusBar style="dark" backgroundColor=\{colors\.light\.background\} translucent=\{false\} \/>/);
   assert.doesNotMatch(code, /SystemStatusBarBackdrop/);
-  assert.match(appConfig, /"android": \{[\s\S]*"edgeToEdgeEnabled": true/);
-  assert.match(appConfig, /"androidStatusBar": \{[\s\S]*"backgroundColor": "#00000000"[\s\S]*"barStyle": "dark-content"[\s\S]*"translucent": true/);
+  assert.match(appConfig, /"android": \{[\s\S]*"edgeToEdgeEnabled": false/);
+  assert.match(appConfig, /"androidStatusBar": \{[\s\S]*"backgroundColor": "#E80868"[\s\S]*"barStyle": "light-content"[\s\S]*"translucent": false/);
 });
 
 const profileFeedScreens = [

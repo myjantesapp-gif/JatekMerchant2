@@ -17,6 +17,8 @@ type MediaManifest = {
   entries: ManifestEntry[];
 };
 
+const REPLIT_DEFAULT_BUCKET_URL = "http://127.0.0.1:1106/object-storage/default-bucket";
+
 function required(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);
@@ -39,9 +41,24 @@ function assertSafeObjectName(objectName: string): void {
   }
 }
 
+async function getDefaultBucketId(): Promise<string> {
+  const response = await fetch(REPLIT_DEFAULT_BUCKET_URL, {
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) {
+    throw new Error(`Unable to resolve the active App Storage bucket (HTTP ${response.status})`);
+  }
+  const body = await response.json() as { bucketId?: unknown };
+  if (typeof body.bucketId !== "string" || !body.bucketId) {
+    throw new Error("The App Storage sidecar returned an invalid default bucket");
+  }
+  return body.bucketId;
+}
+
 async function main(): Promise<void> {
   const mediaRoot = path.resolve(required("MEDIA_RESTORE_ROOT"));
   const manifestPath = path.resolve(required("MEDIA_MANIFEST_PATH"));
+  const expectedBucketId = required("MEDIA_RESTORE_TARGET_BUCKET_ID");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as MediaManifest;
 
   if (manifest.version !== 1 || !Array.isArray(manifest.entries)) {
@@ -51,16 +68,30 @@ async function main(): Promise<void> {
     throw new Error("Media manifest object count does not match its entries");
   }
 
+  const defaultBucketId = await getDefaultBucketId();
+  if (defaultBucketId !== expectedBucketId) {
+    throw new Error("The active App Storage bucket does not match the explicitly confirmed restore target");
+  }
+
   const client = new ReplitObjectStorageClient();
-  const allowOverwrite = process.env.ALLOW_MEDIA_OVERWRITE === "YES";
   let uploaded = 0;
   let skipped = 0;
   let totalBytes = 0;
+  const verifiedEntries: Array<{ entry: ManifestEntry; bytes: Buffer }> = [];
+  const objectNames = new Set<string>();
 
+  // Verify the complete archive before making any remote changes.
   for (const entry of manifest.entries) {
     assertSafeObjectName(entry.objectName);
+    if (objectNames.has(entry.objectName)) {
+      throw new Error(`Duplicate media object name: ${entry.objectName}`);
+    }
+    objectNames.add(entry.objectName);
     if (entry.relativePath !== path.posix.join("media", entry.objectName)) {
       throw new Error(`Manifest path mismatch for ${entry.objectName}`);
+    }
+    if (!Number.isSafeInteger(entry.size) || entry.size < 0 || !/^[a-f0-9]{64}$/.test(entry.sha256)) {
+      throw new Error(`Invalid manifest metadata for ${entry.objectName}`);
     }
 
     const localPath = path.resolve(mediaRoot, entry.objectName);
@@ -73,7 +104,19 @@ async function main(): Promise<void> {
       throw new Error(`Checksum verification failed before upload: ${entry.objectName}`);
     }
     totalBytes += file.size;
+    verifiedEntries.push({ entry, bytes });
+  }
 
+  if (totalBytes !== manifest.totalBytes) {
+    throw new Error("Media manifest total byte count does not match the archive contents");
+  }
+
+  // Inspect the complete target before uploading. A differing object always
+  // aborts the restore: this script only fills missing objects and never
+  // overwrites or deletes production media.
+  const missingEntries: Array<{ entry: ManifestEntry; bytes: Buffer }> = [];
+  for (const verifiedEntry of verifiedEntries) {
+    const { entry } = verifiedEntry;
     const existing = await client.exists(entry.objectName);
     if (!existing.ok) throw new Error(`Unable to inspect ${entry.objectName}: ${existing.error.message}`);
     if (existing.value) {
@@ -83,11 +126,12 @@ async function main(): Promise<void> {
         skipped++;
         continue;
       }
-      if (!allowOverwrite) {
-        throw new Error(`Target object differs: ${entry.objectName}. Set ALLOW_MEDIA_OVERWRITE=YES to replace it.`);
-      }
+      throw new Error(`Target object differs: ${entry.objectName}. Restore aborted without overwriting it.`);
     }
+    missingEntries.push(verifiedEntry);
+  }
 
+  for (const { entry, bytes } of missingEntries) {
     const uploadedResult = await client.uploadFromBytes(entry.objectName, bytes, { compress: false });
     if (!uploadedResult.ok) throw new Error(`Unable to upload ${entry.objectName}: ${uploadedResult.error.message}`);
 
@@ -101,9 +145,6 @@ async function main(): Promise<void> {
     }
   }
 
-  if (totalBytes !== manifest.totalBytes) {
-    throw new Error("Media manifest total byte count does not match the archive contents");
-  }
   console.log(`[restore:media] complete — ${uploaded} uploaded, ${skipped} already verified, ${manifest.entries.length} total`);
 }
 

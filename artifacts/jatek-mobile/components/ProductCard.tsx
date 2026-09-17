@@ -11,6 +11,7 @@ import type { RecommendedProduct } from "@/lib/api";
 import { formatMad } from "@/lib/money";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import colors from "@/constants/colors";
+import { MediaImage } from "@/components/MediaImage";
 
 type Props = {
   product: RecommendedProduct;
@@ -21,7 +22,7 @@ type Props = {
   variant?: "default" | "home-compact" | "home-popular" | "home-offer" | "home-free-delivery";
 };
 
-export function ProductCard({
+export const ProductCard = React.memo(function ProductCard({
   product,
   width,
   onPress,
@@ -69,11 +70,13 @@ export function ProductCard({
         style={({ pressed }) => [styles.cardOffer, { width }, pressed && styles.pressed]}
       >
         <View style={styles.offerImageWrap}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.offerImage} resizeMode="cover" />
-          ) : (
+          <MediaImage
+            urls={[imageUrl]}
+            style={styles.offerImage}
+            fallback={
             <View style={[styles.offerImage, { backgroundColor: "#f3f4f6" }]} />
-          )}
+            }
+          />
           {discount > 0 && (
             <View style={styles.discountBadge}>
               <Text style={styles.discountText}>-{discount}%</Text>
@@ -101,11 +104,14 @@ export function ProductCard({
         style={({ pressed }) => [styles.cardFreeDelivery, { width }, pressed && styles.pressed]}
       >
         <View style={styles.fdImageWrap}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.fdImage} resizeMode="contain" />
-          ) : (
+          <MediaImage
+            urls={[imageUrl]}
+            style={styles.fdImage}
+            resizeMode="contain"
+            fallback={
             <View style={[styles.fdImage, { backgroundColor: "#f3f4f6" }]} />
-          )}
+            }
+          />
           <View style={styles.fdBadge}>
             <Ionicons name="car" size={10} color="#fff" />
             <Text style={styles.fdBadgeText}>0 DH</Text>
@@ -137,11 +143,13 @@ export function ProductCard({
         style={({ pressed }) => [styles.homeCardCompact, { width }, pressed && styles.pressed]}
       >
         <View style={styles.compactImageWrap}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.compactImage} resizeMode="cover" />
-          ) : (
+          <MediaImage
+            urls={[imageUrl]}
+            style={styles.compactImage}
+            fallback={
             <View style={[styles.compactImage, { backgroundColor: "#f3f4f6" }]} />
-          )}
+            }
+          />
           <View style={styles.compactLogo}>
             {product.restaurantLogoUrl ? (
               <Image
@@ -187,16 +195,14 @@ export function ProductCard({
       ]}
     >
       <View style={[styles.imageWrap, compact && styles.imageWrapCompact]}>
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={[styles.image, emphasizeImage && styles.emphasizedImage]}
-            resizeMode="contain"
-          />
-        )
-          : <View style={[styles.image, { alignItems: "center", justifyContent: "center" }]}>
+        <MediaImage
+          urls={[imageUrl]}
+          style={[styles.image, emphasizeImage && styles.emphasizedImage]}
+          resizeMode="contain"
+          fallback={<View style={[styles.image, { alignItems: "center", justifyContent: "center" }]}>
               <Ionicons name="image-outline" size={24} color="#9CA3AF" />
             </View>}
+        />
         <View style={[styles.restaurantLogo, compact && styles.restaurantLogoCompact]}>
           {product.restaurantLogoUrl ? (
             <Image
@@ -248,7 +254,7 @@ export function ProductCard({
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

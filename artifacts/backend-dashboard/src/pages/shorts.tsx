@@ -49,8 +49,7 @@ const EMPTY = {
 };
 
 function formatShortViews(short: Short): string {
-  const value = short.viewCount ?? short.views;
-  if (value == null) return "— vues";
+  const value = Math.max(0, short.viewCount ?? short.views ?? 0);
   if (value >= 1000) {
     return `${(value / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}K vues`;
   }

@@ -7,6 +7,7 @@ import type { Short } from "@/lib/api";
 import { getYouTubeThumbnailUrl, resolveMediaUrl } from "@/lib/mediaUrl";
 import colors from "@/constants/colors";
 import { MediaImage } from "@/components/MediaImage";
+import { formatShortViewCount } from "@/lib/shortViews";
 
 type Props = {
   short: Short;
@@ -20,12 +21,9 @@ export function ShortCard({ short, width, avatarUrl, onPress, variant = "default
   const merchantName = short.restaurantName?.trim() || "";
   const initials = merchantName.charAt(0).toUpperCase();
   const shortWithViews = short as Short & { views?: number; viewCount?: number };
-  const viewCount = Math.max(0, shortWithViews.viewCount ?? shortWithViews.views ?? 0);
+  const viewCount = shortWithViews.viewCount ?? shortWithViews.views;
 
-  const formattedViews =
-    viewCount >= 1000
-        ? `${(viewCount / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}K`
-        : viewCount.toLocaleString("fr-FR");
+  const formattedViews = formatShortViewCount(viewCount);
 
   if (variant === "home") {
     return (

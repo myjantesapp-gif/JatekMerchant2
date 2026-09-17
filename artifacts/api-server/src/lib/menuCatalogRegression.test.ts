@@ -58,15 +58,38 @@ test("backend product sort modes are deterministic and invalid values fall back 
   );
 });
 
+test("custom product order uses only the saved rank and stable id tie-breaker", () => {
+  const products = [
+    { id: 9, name: "Alpha", price: 1, sortOrder: 4, createdAt: "2024-01-01T00:00:00Z" },
+    { id: 3, name: "Zulu", price: 1, sortOrder: 4, createdAt: "2026-01-01T00:00:00Z" },
+    { id: 8, name: "Beta", price: 1, sortOrder: 2, createdAt: "2025-01-01T00:00:00Z" },
+  ];
+
+  assert.deepEqual(
+    [...products].sort((left, right) => compareProductsBySort(left, right, "custom")).map((product) => product.id),
+    [8, 3, 9],
+  );
+});
+
 test("customer menu order preserves custom product positions within a category", () => {
   const entries = [
-    { id: 11, name: "Second", price: 20, sortOrder: 20, createdAt: "2026-09-03T10:00:00Z", category: "Burgers", categorySortOrder: 1 },
-    { id: 12, name: "First", price: 50, sortOrder: 10, createdAt: "2026-09-01T10:00:00Z", category: "Burgers", categorySortOrder: 1 },
-    { id: 13, name: "Drink", price: 10, sortOrder: 0, createdAt: "2026-09-04T10:00:00Z", category: "Drinks", categorySortOrder: 2 },
+    { id: 11, name: "Second", price: 20, sortOrder: 20, createdAt: "2026-09-03T10:00:00Z", category: "Burgers", menuItemCategoryId: 5, categorySortOrder: 1 },
+    { id: 12, name: "First", price: 50, sortOrder: 10, createdAt: "2026-09-01T10:00:00Z", category: "Burgers", menuItemCategoryId: 5, categorySortOrder: 1 },
+    { id: 13, name: "Drink", price: 10, sortOrder: 0, createdAt: "2026-09-04T10:00:00Z", category: "Drinks", menuItemCategoryId: 8, categorySortOrder: 2 },
   ];
 
   assert.deepEqual(
     [...entries].sort(compareCustomerMenuEntries).map((entry) => entry.id),
     [12, 11, 13],
   );
+});
+
+test("customer menu uses category id and product id only to break duplicate saved ranks", () => {
+  const entries = [
+    { id: 30, name: "Alpha", price: 1, sortOrder: 0, createdAt: "2026-01-03T00:00:00Z", category: "A", menuItemCategoryId: 12, categorySortOrder: 0 },
+    { id: 20, name: "Zulu", price: 1, sortOrder: 0, createdAt: "2026-01-02T00:00:00Z", category: "Z", menuItemCategoryId: 11, categorySortOrder: 0 },
+    { id: 10, name: "Newest", price: 1, sortOrder: 0, createdAt: "2026-01-04T00:00:00Z", category: "Z", menuItemCategoryId: 11, categorySortOrder: 0 },
+  ];
+
+  assert.deepEqual([...entries].sort(compareCustomerMenuEntries).map((entry) => entry.id), [10, 20, 30]);
 });

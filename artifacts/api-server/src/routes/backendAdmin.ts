@@ -18,6 +18,7 @@ import {
   restaurantsTable,
   ordersTable,
   menuItemsTable,
+  menuItemCategoriesTable,
   adsTable,
   promoCodesTable,
   driversTable,
@@ -153,10 +154,20 @@ router.get("/backend/recommendations", requireAuth, async (req: AuthedRequest, r
         price: menuItemsTable.price,
         isAvailable: menuItemsTable.isAvailable,
         isRecommended: menuItemsTable.isPopular,
+        menuItemCategoryId: menuItemsTable.menuItemCategoryId,
+        sortOrder: menuItemsTable.sortOrder,
+        categorySortOrder: menuItemCategoriesTable.sortOrder,
       })
       .from(menuItemsTable)
       .innerJoin(restaurantsTable, eq(menuItemsTable.restaurantId, restaurantsTable.id))
-      .orderBy(desc(menuItemsTable.isPopular), asc(restaurantsTable.name), asc(menuItemsTable.name), asc(menuItemsTable.id));
+      .leftJoin(menuItemCategoriesTable, eq(menuItemsTable.menuItemCategoryId, menuItemCategoriesTable.id))
+      .orderBy(
+        desc(menuItemsTable.isPopular),
+        asc(menuItemCategoriesTable.sortOrder),
+        asc(menuItemCategoriesTable.id),
+        asc(menuItemsTable.sortOrder),
+        asc(menuItemsTable.id),
+      );
     const restaurants = await db
       .select({
         id: restaurantsTable.id,
@@ -1158,10 +1169,12 @@ async function getAppConfig(): Promise<AppConfig> {
     throw new Error("Stored homeSections configuration is invalid");
   }
   const parsedHomeOrder = homeOrderSchema.safeParse(config.homeOrder);
+  const parsedSplash = splashVideoUrlSchema.safeParse(config.splashVideoUrl ?? "");
   return {
     ...config,
     homeOrder: parsedHomeOrder.success ? parsedHomeOrder.data : DEFAULT_APP_CONFIG.homeOrder,
     homeSections: parsedHomeSections.data,
+    splashVideoUrl: parsedSplash.success ? parsedSplash.data : "",
   } as AppConfig;
 }
 
@@ -1221,7 +1234,13 @@ router.put("/backend/app-config", requireAuth, async (req: AuthedRequest, res, n
         res.status(400).json({ error: "Invalid splashVideoUrl", details: parsedSplashVideoUrl.error.issues });
         return;
       }
-      splashVideoEntry[1] = normalizeStoredMediaPath(parsedSplashVideoUrl.data) ?? "";
+      const normalizedSplashVideoUrl = normalizeStoredMediaPath(parsedSplashVideoUrl.data) ?? "";
+      const parsedNormalizedSplashVideoUrl = splashVideoUrlSchema.safeParse(normalizedSplashVideoUrl);
+      if (!parsedNormalizedSplashVideoUrl.success) {
+        res.status(400).json({ error: "Invalid normalized splashVideoUrl", details: parsedNormalizedSplashVideoUrl.error.issues });
+        return;
+      }
+      splashVideoEntry[1] = parsedNormalizedSplashVideoUrl.data;
     }
     for (const [key, value] of validatedEntries) {
       await db

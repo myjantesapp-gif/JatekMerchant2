@@ -12,6 +12,7 @@ export const shortsTable = pgTable("shorts", {
   audioCodec: text("audio_codec"),
   audioBitrate: integer("audio_bitrate"),
   durationSeconds: real("duration_seconds"),
+  viewCount: integer("view_count").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
