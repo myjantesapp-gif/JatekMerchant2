@@ -10,6 +10,8 @@
     "test": "node --import tsx --test src/lib/*.test.ts",
     "backup:prepublish": "pnpm exec tsx src/scripts/backup-prepublish.ts",
     "import:jatek-catalog": "pnpm exec tsx src/scripts/import-jatek-catalog.ts",
+    "import:public-catalog": "pnpm exec tsx src/scripts/import-public-catalog.ts",
+    "seed:public-catalog": "pnpm exec tsx src/scripts/import-public-catalog.ts",
     "seed:jatek-catalog": "pnpm exec tsx src/scripts/import-jatek-catalog.ts --seed",
     "seed:smashs": "pnpm exec tsx src/scripts/seed-smashs.ts",
     "seed:smashs:bucket": "pnpm exec tsx src/scripts/seed-smashs.ts --from-bucket",
