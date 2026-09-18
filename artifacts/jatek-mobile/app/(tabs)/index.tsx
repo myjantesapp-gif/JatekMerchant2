@@ -369,7 +369,7 @@ function ProductRail({
 function HomeScreen() {
   const { width } = useWindowDimensions();
   const PROMO_PRODUCT_WIDTH = (width - 48) / 3;
-  const OFFER_CARD_WIDTH = Math.max(0, (width - 32 - 6) / 2);
+  const OFFER_CARD_WIDTH = Math.max(0, width - 32);
   const RECOMMENDED_PRODUCT_WIDTH = Math.max(0, width - 32);
   const PRODUCT_GRID_WIDTH = PROMO_PRODUCT_WIDTH;
   const insets = useSafeAreaInsets();
@@ -847,6 +847,7 @@ function HomeScreen() {
               onProductPress={openProduct}
               variant="home-offer"
               keyPrefix="offer"
+              gap={16}
             />
           </View>
         );
