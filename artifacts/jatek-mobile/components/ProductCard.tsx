@@ -78,13 +78,13 @@ export const ProductCard = React.memo(function ProductCard({
             <View style={[styles.offerImage, { backgroundColor: "#f3f4f6" }]} />
             }
           />
-        </View>
-        <View style={styles.offerBody}>
           {discount > 0 && (
             <View style={styles.discountBadge}>
               <Text style={styles.discountText}>-{discount}%</Text>
             </View>
           )}
+        </View>
+        <View style={styles.offerBody}>
           <Text style={styles.offerName} numberOfLines={2}>{product.name}</Text>
           <View style={styles.offerPriceRow}>
             {hasPromotion && (
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   cardOffer: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    minHeight: 154,
+    minHeight: 126,
     backgroundColor: "#fff",
     borderRadius: 12,
     borderWidth: 1,
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   offerImageWrap: {
-    height: 138,
+    height: 118,
     width: "48%",
     flexShrink: 0,
     padding: 8,
@@ -568,19 +568,20 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   discountBadge: {
-    alignSelf: "flex-start",
-    marginBottom: 8,
+    position: "absolute",
+    top: 8,
+    left: 8,
     backgroundColor: "#E91E63",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 24,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
   discountText: {
     color: "#fff",
     fontFamily: "Poppins_700Bold",
-    fontSize: 14,
+    fontSize: 11,
     transform: [{ rotate: "-15deg" }],
   },
   offerBody: {

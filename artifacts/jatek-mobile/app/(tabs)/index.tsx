@@ -838,7 +838,7 @@ function HomeScreen() {
               error={promoProductsError}
               empty="Aucun produit en promotion pour le moment"
               onRetry={() => void refetchPromoProducts()}
-              width={SCREEN_WIDTH * 0.75}
+              width={SCREEN_WIDTH * 0.68}
               onProductPress={openProduct}
               variant="home-offer"
               keyPrefix="offer"
