@@ -73,17 +73,18 @@ export const ProductCard = React.memo(function ProductCard({
           <MediaImage
             urls={[imageUrl]}
             style={styles.offerImage}
+            resizeMode="contain"
             fallback={
             <View style={[styles.offerImage, { backgroundColor: "#f3f4f6" }]} />
             }
           />
+        </View>
+        <View style={styles.offerBody}>
           {discount > 0 && (
             <View style={styles.discountBadge}>
               <Text style={styles.discountText}>-{discount}%</Text>
             </View>
           )}
-        </View>
-        <View style={styles.offerBody}>
           <Text style={styles.offerName} numberOfLines={2}>{product.name}</Text>
           <View style={styles.offerPriceRow}>
             {hasPromotion && (
@@ -546,6 +547,9 @@ const styles = StyleSheet.create({
 
   // Offer (Offres du moment)
   cardOffer: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    minHeight: 154,
     backgroundColor: "#fff",
     borderRadius: 12,
     borderWidth: 1,
@@ -553,8 +557,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   offerImageWrap: {
-    height: 104,
-    width: "100%",
+    height: 138,
+    width: "48%",
+    flexShrink: 0,
+    padding: 8,
     position: "relative",
   },
   offerImage: {
@@ -562,12 +568,11 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   discountBadge: {
-    position: "absolute",
-    top: -4,
-    left: -4,
+    alignSelf: "flex-start",
+    marginBottom: 8,
     backgroundColor: "#E91E63",
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
@@ -579,7 +584,9 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "-15deg" }],
   },
   offerBody: {
-    padding: 8,
+    flex: 1,
+    minWidth: 0,
+    padding: 12,
   },
   offerName: {
     fontSize: 13,

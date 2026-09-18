@@ -74,7 +74,7 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           <View style={styles.logoWrap}>
-            <JatekWordmark width={165} height={64} />
+            <JatekWordmark width={140} height={54} />
           </View>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Créez votre compte</Text>
 
@@ -149,20 +149,20 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flexGrow: 1, width: "100%", maxWidth: 600, alignSelf: "center", paddingHorizontal: 36, paddingTop: 28, alignItems: "center" },
+  container: { flexGrow: 1, width: "100%", maxWidth: 480, alignSelf: "center", paddingHorizontal: 24, paddingTop: 28, alignItems: "center" },
   backBtn: { position: "absolute", top: 12, left: 24, width: 58, height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center", zIndex: 10 },
-  logoWrap: { width: 165, height: 64, alignItems: "center", justifyContent: "center", marginTop: 12 },
-  subtitle: { fontSize: 20, lineHeight: 26, fontFamily: "Inter_400Regular", marginTop: 4, marginBottom: 36, textAlign: "center" },
+  logoWrap: { width: 140, height: 54, alignItems: "center", justifyContent: "center", marginTop: 12 },
+  subtitle: { fontSize: 14, lineHeight: 21, fontFamily: "Inter_400Regular", marginTop: 8, marginBottom: 28, textAlign: "center" },
   form: { width: "100%", gap: 14 },
-  label: { fontSize: 20, lineHeight: 26, fontFamily: "Inter_500Medium", marginTop: 1, marginBottom: 2 },
+  label: { fontSize: 14, lineHeight: 20, fontFamily: "Inter_500Medium", marginTop: 1, marginBottom: 2 },
   channelBadge: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 56, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 16, marginBottom: 2 },
-  channelBadgeText: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
+  channelBadgeText: { fontSize: 13, lineHeight: 19, flexShrink: 1, fontFamily: "Inter_600SemiBold" },
   inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 20, borderWidth: 2, height: 80, overflow: "hidden" },
-  input: { flex: 1, fontSize: 20, fontFamily: "Inter_400Regular", paddingHorizontal: 18 },
+  input: { flex: 1, minWidth: 0, fontSize: 16, fontFamily: "Inter_400Regular", paddingHorizontal: 14 },
   helperText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, textAlign: "center", paddingHorizontal: 4 },
   errorText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   btn: { height: 80, borderRadius: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 11, marginTop: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 14, elevation: 6 },
-  btnText: { color: "#fff", fontSize: 22, fontFamily: "Inter_700Bold" },
+  btnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
   switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, marginTop: 4 },
-  switchText: { fontSize: 18, fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
+  switchText: { fontSize: 13, lineHeight: 20, flexShrink: 1, textAlign: "center", fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
 });
