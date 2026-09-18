@@ -272,8 +272,29 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     ? email.trim().toLowerCase()
     : normalizePhone((phone as string).trim());
 
+  // A Twilio Verify marker is written only when the Verify request succeeded.
+  // If Verify is misconfigured and send-otp falls back to a legacy provider,
+  // the local hashed OTP must be verified below instead of trying Verify again.
+  let twilioVerifyMarker: { id: number } | undefined;
+  if (!isEmailMode) {
+    const [marker] = await db
+      .select({ id: otpCodesTable.id })
+      .from(otpCodesTable)
+      .where(
+        and(
+          eq(otpCodesTable.phone, identifier),
+          eq(otpCodesTable.code, "__twilio_verify__"),
+          eq(otpCodesTable.used, false),
+          gt(otpCodesTable.expiresAt, new Date()),
+        ),
+      )
+      .orderBy(desc(otpCodesTable.createdAt))
+      .limit(1);
+    twilioVerifyMarker = marker;
+  }
+
   // ── Phone OTP via Twilio Verify ─────────────────────────────────────────────
-  if (!isEmailMode && twilioVerifyConfigured()) {
+  if (!isEmailMode && twilioVerifyConfigured() && twilioVerifyMarker) {
     let verifyStatus: "approved" | "pending" | "expired";
     try {
       verifyStatus = await checkTwilioVerify(identifier, (code as string).trim());
@@ -295,7 +316,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     await db
       .update(otpCodesTable)
       .set({ used: true })
-      .where(and(eq(otpCodesTable.phone, identifier), eq(otpCodesTable.used, false)));
+      .where(eq(otpCodesTable.id, twilioVerifyMarker.id));
 
     // Code approved — proceed to account creation (signup) or standard login.
     const isSignup = intent === "signup";
@@ -684,17 +705,17 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     return;
   }
 
-  // Use phone if available, otherwise fall back to the user's actual email
+  // Password reset is an email flow in the client. Always use Resend for the
+  // reset code, even when the account also has a phone number, so the message
+  // and the identifier used by reset-password stay consistent.
   const isRealEmail = normalizedEmail && !normalizedEmail.endsWith("@jatek.local");
-  const hasPhone = !!user.phone;
 
-  if (!hasPhone && !isRealEmail) {
+  if (!isRealEmail) {
     res.json(genericResponse);
     return;
   }
 
-  // Pick the primary identifier for this OTP
-  const identifier = hasPhone ? normalizePhone(user.phone!) : normalizedEmail;
+  const identifier = normalizedEmail;
 
   // Rate limit (silent — same response shape, no 429 leak)
   const recentOtp = await db
@@ -722,25 +743,10 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
 
   let delivered = false;
   try {
-    if (hasPhone) {
-      await sendOtpMessage(identifier, messageBody);
-      delivered = true;
-    } else {
-      await sendOtpEmail(normalizedEmail, code, messageBody, resetEmailSubject);
-      delivered = true;
-    }
+    await sendOtpEmail(normalizedEmail, code, messageBody, resetEmailSubject);
+    delivered = true;
   } catch (err: any) {
-    // If WhatsApp delivery fails, also try email as fallback (when we have a real email)
-    if (hasPhone && isRealEmail) {
-      try {
-        await sendOtpEmail(normalizedEmail, code, messageBody, resetEmailSubject);
-        delivered = true;
-      } catch (emailErr: any) {
-        console.error(`[forgot-password] email fallback also failed for ${normalizedEmail}:`, emailErr?.message ?? emailErr);
-      }
-    } else {
-      console.error(`[forgot-password] delivery failed for ${identifier}:`, err?.message ?? err);
-    }
+    console.error(`[forgot-password] email delivery failed for ${normalizedEmail}:`, err?.message ?? err);
   }
 
   // If delivery definitively failed (all providers exhausted), tell the client.
@@ -784,15 +790,10 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
     return;
   }
 
-  // Look up the OTP using the same identifier that forgot-password stored it
-  // under: phone (normalised) when available, otherwise the user's real email.
+  // Forgot-password stores reset codes under the email address because this
+  // screen explicitly asks the user to retrieve the code by email.
   const isRealEmail = normalizedEmail && !normalizedEmail.endsWith("@jatek.local");
-  const hasPhone = !!user.phone;
-  const otpIdentifier = hasPhone
-    ? normalizePhone(user.phone!)
-    : isRealEmail
-      ? normalizedEmail
-      : null;
+  const otpIdentifier = isRealEmail ? normalizedEmail : null;
 
   if (!otpIdentifier) {
     res.status(400).json({ error: "Code invalide ou expiré" });

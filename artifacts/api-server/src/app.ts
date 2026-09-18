@@ -82,7 +82,7 @@ app.use(
     origin: corsOriginCheck,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Jatek-Media-Kind"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Client", "X-Jatek-Media-Kind"],
     maxAge: 86400,
   }),
 );
