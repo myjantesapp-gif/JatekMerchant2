@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -20,6 +21,7 @@ type Method = "email" | "whatsapp";
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const t = useT();
   const { login, logout } = useAuth();
   const [method, setMethod] = useState<Method>("email");
@@ -108,12 +110,18 @@ export default function LoginScreen() {
   };
 
   const pending = loginMutation.isPending || sendOtp.isPending;
+  const horizontalPadding = Math.max(18, Math.min(28, width * 0.06));
+  const logoWidth = Math.min(150, Math.max(120, width * 0.36));
+  const logoHeight = Math.round(logoWidth * 0.386);
 
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <ScrollView
-          contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]}
+          contentContainerStyle={[
+            styles.container,
+            { paddingHorizontal: horizontalPadding, paddingBottom: insets.bottom + 24 },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -130,20 +138,20 @@ export default function LoginScreen() {
             <Ionicons name="arrow-back" size={22} color={colors.foreground} />
           </TouchableOpacity>
 
-          <View style={styles.logoWrap}>
-            <JatekWordmark width={140} height={54} />
+          <View style={[styles.logoWrap, { width: logoWidth, height: logoHeight }]}>
+            <JatekWordmark width={logoWidth} height={logoHeight} />
           </View>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Connectez-vous pour commander</Text>
 
           {/* Method toggle */}
-          <View style={[styles.toggle, { backgroundColor: colors.muted }]}>
+          <View style={[styles.toggle, { backgroundColor: colors.muted, borderColor: colors.authBorder }]}>
             <TouchableOpacity
               style={[styles.toggleBtn, method === "email" && { backgroundColor: colors.card, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 }]}
               onPress={() => { setMethod("email"); setPhoneError(""); }}
               activeOpacity={0.8}
             >
-              <Ionicons name="mail-outline" size={15} color={method === "email" ? colors.primary : colors.mutedForeground} />
-              <Text style={[styles.toggleText, { color: method === "email" ? colors.foreground : colors.mutedForeground }]}>Email</Text>
+              <Ionicons name="mail-outline" size={15} color={method === "email" ? colors.authTeal : colors.mutedForeground} />
+              <Text style={[styles.toggleText, { color: method === "email" ? colors.authInk : colors.mutedForeground }]}>Email</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.toggleBtn, method === "whatsapp" && { backgroundColor: colors.card, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 }]}
@@ -151,25 +159,25 @@ export default function LoginScreen() {
               activeOpacity={0.8}
             >
               <Ionicons name="logo-whatsapp" size={15} color={method === "whatsapp" ? "#25D366" : colors.mutedForeground} />
-              <Text style={[styles.toggleText, { color: method === "whatsapp" ? colors.foreground : colors.mutedForeground }]}>WhatsApp</Text>
+              <Text style={[styles.toggleText, { color: method === "whatsapp" ? colors.authInk : colors.mutedForeground }]}>WhatsApp</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.form}>
             {method === "email" ? (
               <>
-                <View style={[styles.channelBadge, { backgroundColor: colors.primary + "15" }]}>
-                  <Ionicons name="lock-closed-outline" size={16} color={colors.primary} />
-                  <Text style={[styles.channelBadgeText, { color: colors.primary }]}>Connexion sécurisée par email</Text>
+                <View style={[styles.channelBadge, { backgroundColor: colors.authTeal }]}>
+                  <Ionicons name="lock-closed-outline" size={19} color={colors.authBadgeForeground} />
+                  <Text style={[styles.channelBadgeText, { color: colors.authBadgeForeground }]}>Connexion sécurisée par email</Text>
                 </View>
-                <Text style={[styles.label, { color: colors.foreground }]}>Adresse email</Text>
-                <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: emailError ? colors.destructive : colors.border }]}>
-                  <Ionicons name="mail-outline" size={18} color={colors.mutedForeground} style={{ paddingLeft: 14 }} />
+                <Text style={[styles.label, { color: colors.authInk }]}>Adresse email</Text>
+                <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: emailError ? colors.destructive : colors.authBorder }]}>
+                  <Ionicons name="mail-outline" size={20} color={colors.authPlum} style={{ paddingLeft: 15 }} />
                   <TextInput
                     ref={emailInputRef}
-                    style={[styles.input, { color: colors.foreground }]}
+                    style={[styles.input, { color: colors.authPlum }]}
                     placeholder="vous@exemple.com"
-                    placeholderTextColor={colors.mutedForeground}
+                    placeholderTextColor={colors.authPlum}
                     value={email}
                     onChangeText={(v) => { setEmail(v); setEmailError(""); }}
                     keyboardType="email-address"
@@ -178,13 +186,13 @@ export default function LoginScreen() {
                     returnKeyType="next"
                   />
                 </View>
-                <Text style={[styles.label, { color: colors.foreground }]}>Mot de passe</Text>
-                <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: emailError ? colors.destructive : colors.border }]}>
-                  <Ionicons name="key-outline" size={18} color={colors.mutedForeground} style={{ paddingLeft: 14 }} />
+                <Text style={[styles.label, { color: colors.authInk }]}>Mot de passe</Text>
+                <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: emailError ? colors.destructive : colors.authBorder }]}>
+                  <Ionicons name="key-outline" size={20} color={colors.authPlum} style={{ paddingLeft: 15 }} />
                   <TextInput
-                    style={[styles.input, { color: colors.foreground }]}
+                    style={[styles.input, { color: colors.authPlum }]}
                     placeholder="Votre mot de passe"
-                    placeholderTextColor={colors.mutedForeground}
+                    placeholderTextColor={colors.authPlum}
                     value={password}
                     onChangeText={(v) => { setPassword(v); setEmailError(""); }}
                     secureTextEntry
@@ -194,7 +202,7 @@ export default function LoginScreen() {
                 </View>
                 {emailError ? <Text style={[styles.errorText, { color: colors.destructive }]}>{emailError}</Text> : null}
                 <TouchableOpacity
-                  style={[styles.btn, { backgroundColor: colors.primary, opacity: pending ? 0.7 : 1 }]}
+                  style={[styles.btn, { backgroundColor: colors.authTeal, opacity: pending ? 0.7 : 1 }]}
                   onPress={handleEmailLogin}
                   disabled={pending}
                   activeOpacity={0.8}
@@ -209,7 +217,7 @@ export default function LoginScreen() {
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password")} style={styles.secondaryRow}>
-                  <Text style={[styles.switchText, { color: colors.primary }]}>Mot de passe oublié ?</Text>
+                  <Text style={[styles.switchText, { color: colors.authPlum }]}>Mot de passe oublié ?</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -218,20 +226,20 @@ export default function LoginScreen() {
                   <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
                   <Text style={[styles.channelBadgeText, { color: "#25D366" }]}>Connexion par code WhatsApp</Text>
                 </View>
-                <Text style={[styles.label, { color: colors.foreground }]}>Numéro WhatsApp</Text>
-                <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: phoneError ? colors.destructive : colors.border }]}>
+                <Text style={[styles.label, { color: colors.authInk }]}>Numéro WhatsApp</Text>
+                <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: phoneError ? colors.destructive : colors.authBorder }]}>
                   <TouchableOpacity
-                    style={[styles.dialCodeBtn, { borderRightColor: colors.border }]}
+                    style={[styles.dialCodeBtn, { borderRightColor: colors.authBorder }]}
                     onPress={() => setShowPicker(true)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.dialCodeText, { color: colors.foreground }]}>{country.dialCode}</Text>
+                    <Text style={[styles.dialCodeText, { color: colors.authPlum }]}>{country.dialCode}</Text>
                     <Ionicons name="chevron-down" size={14} color={colors.mutedForeground} />
                   </TouchableOpacity>
                   <TextInput
-                    style={[styles.input, { color: colors.foreground }]}
+                    style={[styles.input, { color: colors.authPlum }]}
                     placeholder="6 12 34 56 78"
-                    placeholderTextColor={colors.mutedForeground}
+                  placeholderTextColor={colors.authPlum}
                     value={phone}
                     onChangeText={(v) => { setPhone(v); setPhoneError(""); setShowEmailCta(false); }}
                     keyboardType="phone-pad"
@@ -278,10 +286,10 @@ export default function LoginScreen() {
             )}
 
             {/* Register link */}
-            <View style={[styles.divider, { borderTopColor: colors.border }]} />
+            <View style={[styles.divider, { borderTopColor: colors.authBorder }]} />
             <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={styles.switchRow} activeOpacity={0.7}>
-              <Ionicons name="person-add-outline" size={16} color={colors.primary} />
-              <Text style={[styles.switchText, { color: colors.mutedForeground }]}>Pas encore de compte ? S'inscrire</Text>
+              <Ionicons name="person-add-outline" size={16} color={colors.authTeal} />
+              <Text style={[styles.switchText, { color: colors.authPlum }]}>Pas encore de compte ? S'inscrire</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -293,29 +301,29 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flexGrow: 1, width: "100%", maxWidth: 480, alignSelf: "center", paddingHorizontal: 24, paddingTop: 28, alignItems: "center" },
-  backBtn: { position: "absolute", top: 12, left: 24, width: 58, height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center", zIndex: 10 },
-  logoWrap: { width: 140, height: 54, alignItems: "center", justifyContent: "center", marginTop: 12 },
-  subtitle: { fontSize: 14, lineHeight: 21, fontFamily: "Inter_400Regular", marginTop: 8, marginBottom: 28, textAlign: "center" },
-  toggle: { flexDirection: "row", borderRadius: 22, padding: 5, marginBottom: 36, width: "100%", height: 67 },
-  toggleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, borderRadius: 17 },
-  toggleText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  form: { width: "100%", gap: 14 },
-  label: { fontSize: 14, lineHeight: 20, fontFamily: "Inter_500Medium", marginTop: 1, marginBottom: 2 },
-  channelBadge: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 56, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 16 },
-  channelBadgeText: { fontSize: 13, lineHeight: 19, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
-  inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 20, borderWidth: 2, height: 80, overflow: "hidden" },
+  container: { flexGrow: 1, width: "100%", maxWidth: 520, alignSelf: "center", paddingHorizontal: 24, paddingTop: 20, alignItems: "center" },
+  backBtn: { position: "absolute", top: 10, left: 24, width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", zIndex: 10 },
+  logoWrap: { width: 140, height: 54, alignItems: "center", justifyContent: "center", marginTop: 14 },
+  subtitle: { fontSize: 17, lineHeight: 24, fontFamily: "Montserrat_400Regular", marginTop: 8, marginBottom: 22, textAlign: "center" },
+  toggle: { flexDirection: "row", borderRadius: 25, borderWidth: 1, padding: 4, marginBottom: 24, width: "100%", height: 50 },
+  toggleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderRadius: 21 },
+  toggleText: { fontSize: 14, fontFamily: "Montserrat_600SemiBold" },
+  form: { width: "100%", gap: 12 },
+  label: { fontSize: 16, lineHeight: 22, fontFamily: "Montserrat_500Medium", marginTop: 1, marginBottom: 2 },
+  channelBadge: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24 },
+  channelBadgeText: { fontSize: 15, lineHeight: 20, fontFamily: "Montserrat_700Bold", flexShrink: 1 },
+  inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 22, borderWidth: 1.5, height: 58, overflow: "hidden" },
   dialCodeBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 14, height: "100%", borderRightWidth: 1 },
-  dialCodeText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  input: { flex: 1, minWidth: 0, fontSize: 16, fontFamily: "Inter_400Regular", paddingHorizontal: 14 },
+  dialCodeText: { fontSize: 15, fontFamily: "Montserrat_600SemiBold" },
+  input: { flex: 1, minWidth: 0, fontSize: 16, fontFamily: "Montserrat_400Regular", paddingHorizontal: 14 },
   errorText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   helperText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
-  btn: { height: 80, borderRadius: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 11, marginTop: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 14, elevation: 6 },
-  btnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
+  btn: { height: 58, borderRadius: 22, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 4 },
+  btnText: { color: "#fff", fontSize: 17, fontFamily: "Montserrat_700Bold" },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 18 },
   switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14 },
-  secondaryRow: { alignItems: "center", paddingVertical: 5 },
-  switchText: { fontSize: 13, lineHeight: 20, flexShrink: 1, textAlign: "center", fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
+  secondaryRow: { alignItems: "center", paddingVertical: 6 },
+  switchText: { fontSize: 15, lineHeight: 21, flexShrink: 1, textAlign: "center", fontFamily: "Montserrat_500Medium", textDecorationLine: "underline" },
   emailCtaBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
   emailCtaText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
 });

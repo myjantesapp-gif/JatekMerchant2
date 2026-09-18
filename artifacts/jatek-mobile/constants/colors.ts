@@ -40,6 +40,11 @@ const colors = {
     input: "#EBEBEB",
     success: "#22C55E",
     warning: "#FFD400",
+    authTeal: "#159CAF",
+    authBadgeForeground: "#C9B8D3",
+    authPlum: "#7A3C62",
+    authInk: "#15151A",
+    authBorder: "#D6D6D8",
   },
   dark: {
     text: "#F5F5F5",
@@ -77,6 +82,11 @@ const colors = {
     input: "#2A2A2A",
     success: "#22C55E",
     warning: "#FFD400",
+    authTeal: "#159CAF",
+    authBadgeForeground: "#E3D7E8",
+    authPlum: "#D7A9C4",
+    authInk: "#F7F7F8",
+    authBorder: "#57575C",
   },
   radius: 14,
 };
