@@ -562,6 +562,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     padding: 8,
     position: "relative",
+    backgroundColor: colors.light.turquoiseSoft,
   },
   offerImage: {
     width: "100%",

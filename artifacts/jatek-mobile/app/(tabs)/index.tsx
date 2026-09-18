@@ -344,21 +344,6 @@ function ProductRail({
     return <LoadingOrEmpty loading={loading} error={error} empty={empty} onRetry={onRetry} />;
   }
   if (!products?.length) return <Text style={styles.empty}>{empty}</Text>;
-  if (variant === "home-offer") {
-    return (
-      <View style={styles.offerGrid}>
-        {products.map((product) => (
-          <ProductCard
-            key={`${keyPrefix}-${product.restaurantId}-${product.id}`}
-            product={product}
-            width={width}
-            variant={variant}
-            onPress={() => onProductPress(product)}
-          />
-        ))}
-      </View>
-    );
-  }
   return (
     <ScrollView
       horizontal
@@ -382,7 +367,7 @@ function ProductRail({
 function HomeScreen() {
   const { width } = useWindowDimensions();
   const PROMO_PRODUCT_WIDTH = (width - 48) / 3;
-  const OFFER_CARD_WIDTH = Math.max(0, (width - 32 - 8) / 2);
+  const OFFER_CARD_WIDTH = Math.max(0, Math.min(width * 0.72, 280));
   const PRODUCT_GRID_WIDTH = PROMO_PRODUCT_WIDTH;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -1349,14 +1334,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexDirection: "row",
     gap: 6,
-  },
-  offerGrid: {
-    width: "100%",
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    columnGap: 8,
-    rowGap: 10,
   },
   productGrid: {
     paddingHorizontal: 16,
