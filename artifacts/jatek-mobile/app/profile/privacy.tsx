@@ -14,6 +14,8 @@ import {
   deleteMyAccount,
   authenticatedFetch,
   getApiBase,
+  getPublicAppConfig,
+  type LegalDocument,
   type UserConsents,
 } from "@/lib/api";
 
@@ -35,6 +37,11 @@ export default function PrivacyScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [privacyDocument, setPrivacyDocument] = useState<LegalDocument | null>(null);
+
+  useEffect(() => {
+    getPublicAppConfig().then((config) => setPrivacyDocument(config.legalContent?.privacy ?? null)).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -139,7 +146,7 @@ export default function PrivacyScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         <View style={{ padding: 20, gap: 12 }}>
           <Text style={[styles.intro, { color: colors.mutedForeground }]}>
-            Vous contrôlez vos données. Modifiez vos consentements à tout moment, exportez ou supprimez votre compte conformément au RGPD.
+            {privacyDocument?.intro}
           </Text>
           <View style={styles.actionRow}>
             <TouchableOpacity style={[styles.bigBtn, { backgroundColor: colors.primary }]} onPress={onAcceptAll} disabled={saving}>
@@ -194,8 +201,8 @@ export default function PrivacyScreen() {
           <TouchableOpacity style={[styles.actionItem, { borderBottomColor: colors.border }]} onPress={() => router.push("/profile/legal?type=privacy" as any)}>
             <Ionicons name="shield-checkmark-outline" size={22} color={colors.heading} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.rowLabel, { color: colors.heading }]}>Politique de confidentialité</Text>
-              <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>Comment nous traitons vos données</Text>
+              <Text style={[styles.rowLabel, { color: colors.heading }]}>{privacyDocument?.title ?? "Politique de confidentialité"}</Text>
+              <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>{privacyDocument?.sections[1]?.p}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
           </TouchableOpacity>
@@ -221,7 +228,11 @@ export default function PrivacyScreen() {
           {consents.privacyAcceptedAt && <Text style={[styles.meta, { color: colors.mutedForeground }]}>Politique acceptée le {new Date(consents.privacyAcceptedAt).toLocaleDateString("fr-FR")}</Text>}
           {consents.termsAcceptedAt && <Text style={[styles.meta, { color: colors.mutedForeground }]}>CGU acceptées le {new Date(consents.termsAcceptedAt).toLocaleDateString("fr-FR")}</Text>}
           {consents.cookiesAcceptedAt && <Text style={[styles.meta, { color: colors.mutedForeground }]}>Cookies configurés le {new Date(consents.cookiesAcceptedAt).toLocaleDateString("fr-FR")}</Text>}
-          <Text style={[styles.meta, { color: colors.mutedForeground, marginTop: 8 }]}>Contact DPO : privacy@jatek.ma</Text>
+          {privacyDocument?.sections.find((section) => section.h.toLowerCase().includes("contact")) ? (
+            <Text style={[styles.meta, { color: colors.mutedForeground, marginTop: 8 }]}>
+              {privacyDocument.sections.find((section) => section.h.toLowerCase().includes("contact"))?.p}
+            </Text>
+          ) : null}
         </View>
       </ScrollView>
     </ProfileScreenLayout>

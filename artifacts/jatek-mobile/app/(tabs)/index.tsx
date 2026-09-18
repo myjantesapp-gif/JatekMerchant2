@@ -239,6 +239,11 @@ function PromotionalCard({
             {ad.badge ? <Text style={styles.promoBadge}>{ad.badge}</Text> : null}
             <Text style={styles.promoTitle} numberOfLines={2}>{ad.title || "Découvrez nos offres"}</Text>
             {ad.subtitle ? <Text style={styles.promoSubtitle} numberOfLines={2}>{ad.subtitle}</Text> : null}
+             {ad.type === "promo_product" && ad.promoPrice !== null && ad.promoPrice !== undefined ? (
+               <Text style={styles.promoSubtitle} numberOfLines={1}>
+                 {ad.promoPrice.toFixed(2)} MAD {ad.normalPrice ? `au lieu de ${ad.normalPrice.toFixed(2)} MAD` : ""}
+               </Text>
+             ) : null}
           </View>
         </View>
       )}
@@ -533,7 +538,7 @@ function HomeScreen() {
         .filter(
           (ad) =>
             ad.isActive &&
-            (ad.type.includes("banner") || ad.type === "hero") &&
+            (ad.type.includes("banner") || ad.type === "hero" || ad.type === "promo_product") &&
              (Boolean(resolveMediaUrl(ad.imageUrl)) || Boolean(ad.title)),
         )
         .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id),
@@ -542,6 +547,10 @@ function HomeScreen() {
   const homeSections = useMemo(
     () => (appConfig?.homeSections ?? {}) as Partial<Record<HomeSectionKey, HomeSectionViewConfig>>,
     [appConfig?.homeSections],
+  );
+  const promoRestaurantIds = useMemo(
+    () => new Set((ads ?? []).filter((ad) => ad.isActive && ad.type === "promo_product" && ad.restaurantId).map((ad) => ad.restaurantId)),
+    [ads],
   );
   const homeOrder = useMemo(() => {
     const configured = Array.isArray(appConfig?.homeOrder) ? appConfig.homeOrder : [];
@@ -804,11 +813,11 @@ function HomeScreen() {
                     restaurant={restaurant}
                     width={SCREEN_WIDTH * 0.65}
                     variant="home"
-                    badgeLabel={
-                      key === "new_restaurants" && promoProducts?.some((product) => product.restaurantId === restaurant.id)
-                        ? "Promo"
-                        : undefined
-                    }
+                     badgeLabel={
+                       (promoRestaurantIds.has(restaurant.id) || promoProducts?.some((product) => product.restaurantId === restaurant.id))
+                         ? "Promo"
+                         : undefined
+                     }
                     onPress={() => router.push({ pathname: "/restaurant/[id]", params: { id: String(restaurant.id) } })}
                   />
                 ))}

@@ -43,6 +43,19 @@ function normalizePhone(phone: string): string {
   return p;
 }
 
+function isMobileClient(req: { get: (name: string) => string | undefined }): boolean {
+  return req.get("x-client") === "mobile";
+}
+
+function rejectNonCustomerMobile(req: { get: (name: string) => string | undefined }, user: { role: string }, res: { status: (code: number) => { json: (body: unknown) => void } }): boolean {
+  if (!isMobileClient(req) || user.role === "customer") return false;
+  res.status(403).json({
+    error: "L'application mobile est réservée aux comptes clients.",
+    code: "MOBILE_CUSTOMER_ONLY",
+  });
+  return true;
+}
+
 // OTP messaging is delegated to lib/otpMessaging.ts. Phone OTP is WhatsApp-only;
 // email OTP is delivered through the configured email provider.
 
@@ -105,6 +118,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  if (rejectNonCustomerMobile(req, user, res)) return;
   const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: "30d" });
   const { password: _pw, ...safeUser } = user;
   res.json({ token, user: safeUser });
@@ -126,6 +140,21 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
   const identifier = isEmailMode
     ? email.trim().toLowerCase()
     : normalizePhone(phone.trim());
+
+  if (isMobileClient(req)) {
+    const existing = await db
+      .select({ role: usersTable.role })
+      .from(usersTable)
+      .where(isEmailMode ? eq(usersTable.email, identifier) : eq(usersTable.phone, identifier))
+      .limit(1);
+    if (existing[0] && existing[0].role !== "customer") {
+      res.status(403).json({
+        error: "L'application mobile est réservée aux comptes clients.",
+        code: "MOBILE_CUSTOMER_ONLY",
+      });
+      return;
+    }
+  }
 
   // Rate-limit every provider, including Twilio Verify. This prevents a
   // fallback provider or a provider outage from becoming a resend bypass.
@@ -328,6 +357,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
       res.status(403).json({ error: "Ce compte est désactivé. Contactez le support." });
       return;
     }
+    if (rejectNonCustomerMobile(req, existingUser, res)) return;
     const token = jwt.sign({ userId: existingUser.id, role: existingUser.role }, JWT_SECRET, { expiresIn: "30d" });
     const { password: _pw, ...safeUser } = existingUser;
     res.json({ token, user: safeUser, isNewUser: false });
@@ -434,6 +464,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
           res.status(403).json({ error: "Ce compte est désactivé. Contactez le support." });
           return;
         }
+        if (rejectNonCustomerMobile(req, existing, res)) return;
         const token = jwt.sign({ userId: existing.id, role: existing.role }, JWT_SECRET, { expiresIn: "30d" });
         const { password: _pw, ...safeUser } = existing;
         res.json({ token, user: safeUser, isNewUser: false });

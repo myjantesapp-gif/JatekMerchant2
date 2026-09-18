@@ -33,14 +33,15 @@ export default function OtpScreen() {
   const identifier = params.email || params.phone || "";
   const isEmailMode = !!params.email && !params.phone;
   const isWhatsApp = !isEmailMode;
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(60);
   const refs = useRef<(TextInput | null)[]>([]);
-  const verifyOtp = useVerifyOtp();
-  const sendOtp = useSendOtp();
+  const mobileRequest = { headers: { "X-Client": "mobile" } };
+  const verifyOtp = useVerifyOtp({ request: mobileRequest });
+  const sendOtp = useSendOtp({ request: mobileRequest });
   const otpIntent = params.intent === "signup" ? "signup" : "login";
 
   useEffect(() => {
@@ -68,12 +69,13 @@ export default function OtpScreen() {
     verifyOtp.mutate({ data: payload }, {
       onSuccess: async (res) => {
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (res.user?.role !== "customer") {
+          await logout();
+          setError("L'application mobile est réservée aux comptes clients.");
+          return;
+        }
         await login(res.token, { ...res.user, phone: res.user.phone ?? null });
-        // Redirect by role so drivers and merchants land on their own dashboard
-        const role = res.user?.role;
-        if (role === "driver") router.replace("/(tabs)/deliver");
-        else if (role === "restaurant_owner" || role === "owner") router.replace("/(tabs)/manage");
-        else router.replace("/(tabs)");
+        router.replace("/(tabs)");
       },
       onError: (err) => {
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

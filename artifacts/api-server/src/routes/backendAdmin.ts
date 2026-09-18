@@ -28,7 +28,15 @@ import {
   appConfigTable,
 } from "@workspace/db";
 import { eq, and, asc, desc, sql, count, inArray } from "drizzle-orm";
-import { homeOrderSchema, homeSectionsSchema, splashVideoUrlSchema, getDefaultHomeSections, type AppConfig } from "../lib/appConfig";
+import {
+  homeOrderSchema,
+  homeSectionsSchema,
+  legalContentSchema,
+  splashVideoUrlSchema,
+  getDefaultHomeSections,
+  getDefaultLegalContent,
+  type AppConfig,
+} from "../lib/appConfig";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 import { closeUserSubscriptions, publish } from "../lib/sse";
 import * as tracking from "../lib/trackingService";
@@ -1142,10 +1150,16 @@ const DEFAULT_APP_CONFIG = {
   homeOrder: ["categories", "banners", "shorts", "popular", "new_restaurants", "supermarkets", "new_products", "shops", "all", "free_delivery", "newest", "support"],
   welcomeMessage: "Bienvenue sur Jatek !",
   homeSections: getDefaultHomeSections(),
+  legalContent: getDefaultLegalContent(),
 } satisfies AppConfig;
 
 async function getAppConfig(): Promise<AppConfig> {
   const rows = await db.select().from(appConfigTable);
+  if (!rows.some((row) => row.key === "legalContent")) {
+    await db.insert(appConfigTable)
+      .values({ key: "legalContent", value: getDefaultLegalContent() })
+      .onConflictDoNothing();
+  }
   const config: Record<string, unknown> = { ...DEFAULT_APP_CONFIG };
   for (const row of rows) {
     config[row.key] = row.value;
@@ -1170,10 +1184,12 @@ async function getAppConfig(): Promise<AppConfig> {
   }
   const parsedHomeOrder = homeOrderSchema.safeParse(config.homeOrder);
   const parsedSplash = splashVideoUrlSchema.safeParse(config.splashVideoUrl ?? "");
+  const parsedLegalContent = legalContentSchema.safeParse(config.legalContent);
   return {
     ...config,
     homeOrder: parsedHomeOrder.success ? parsedHomeOrder.data : DEFAULT_APP_CONFIG.homeOrder,
     homeSections: parsedHomeSections.data,
+    legalContent: parsedLegalContent.success ? parsedLegalContent.data : getDefaultLegalContent(),
     splashVideoUrl: parsedSplash.success ? parsedSplash.data : "",
   } as AppConfig;
 }
@@ -1226,6 +1242,18 @@ router.put("/backend/app-config", requireAuth, async (req: AuthedRequest, res, n
         return;
       }
       homeOrderEntry[1] = parsedHomeOrder.data;
+    }
+    const legalContentEntry = validatedEntries.find(([key]) => key === "legalContent");
+    if (legalContentEntry) {
+      const parsedLegalContent = legalContentSchema.safeParse(legalContentEntry[1]);
+      if (!parsedLegalContent.success) {
+        res.status(400).json({
+          error: "Invalid legalContent",
+          details: parsedLegalContent.error.issues,
+        });
+        return;
+      }
+      legalContentEntry[1] = parsedLegalContent.data;
     }
     const splashVideoEntry = validatedEntries.find(([key]) => key === "splashVideoUrl");
     if (splashVideoEntry) {

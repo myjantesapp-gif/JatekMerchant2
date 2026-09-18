@@ -157,6 +157,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(async (session) => {
         if (!session) return;
         const { token: t, user: restoredUser } = session;
+        if (restoredUser.role !== "customer") {
+          await Promise.all([secureDel(SESSION_KEY), secureDel(TOKEN_KEY), secureDel(USER_KEY)]);
+          return;
+        }
         // Make the restored token the active identity before its verification
         // request so a 401 can clear it instead of being treated as stale.
         activeTokenRef.current = t;

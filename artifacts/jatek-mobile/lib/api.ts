@@ -436,6 +436,10 @@ export interface Ad {
   icon: string;
   imageUrl?: string | null;
   linkUrl?: string | null;
+  restaurantId?: number | null;
+  productId?: number | null;
+  normalPrice?: number | null;
+  promoPrice?: number | null;
   isActive: boolean;
   sortOrder: number;
 }
@@ -536,9 +540,24 @@ export interface HomeSectionConfig {
   limit: number;
 }
 
+export interface LegalDocument {
+  title: string;
+  intro: string;
+  sections: Array<{ h: string; p: string }>;
+  updatedAt: string;
+}
+
+export interface LegalContent {
+  privacy: LegalDocument;
+  terms: LegalDocument;
+  cookies: LegalDocument;
+  mentions: LegalDocument;
+}
+
 export interface PublicAppConfig {
   homeSections?: Record<HomeSectionKey, Omit<HomeSectionConfig, "key">>;
   homeOrder?: string[];
+  legalContent?: LegalContent;
   [key: string]: unknown;
 }
 

@@ -190,12 +190,91 @@ export function getDefaultHomeSections(): HomeSectionsConfig {
   return homeSectionsSchema.parse(DEFAULT_HOME_SECTIONS);
 }
 
+const legalSectionSchema = z.object({
+  h: z.string().trim().min(1).max(160),
+  p: z.string().trim().min(1).max(5000),
+}).strict();
+
+export const legalDocumentSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  intro: z.string().trim().max(2000),
+  sections: z.array(legalSectionSchema).min(1).max(40),
+  updatedAt: z.string().trim().min(1).max(80),
+}).strict();
+
+export const legalContentSchema = z.object({
+  privacy: legalDocumentSchema,
+  terms: legalDocumentSchema,
+  cookies: legalDocumentSchema,
+  mentions: legalDocumentSchema,
+}).strict();
+
+export type LegalContent = z.infer<typeof legalContentSchema>;
+
+export const DEFAULT_LEGAL_CONTENT: LegalContent = {
+  privacy: {
+    title: "Politique de confidentialité",
+    intro: "Nous protégeons vos données et vous permettons d'exercer vos droits à tout moment.",
+    updatedAt: "avril 2026",
+    sections: [
+      { h: "1. Données collectées", p: "Nous collectons votre nom, email, téléphone, adresse de livraison et historique de commande pour fournir le service. Aucune donnée bancaire n'est stockée par Jatek." },
+      { h: "2. Utilisation des données", p: "Vos données servent à traiter vos commandes, vous identifier, livrer à la bonne adresse et améliorer le service. Nous ne vendons jamais vos données à des tiers." },
+      { h: "3. Vos droits (RGPD)", p: "Vous pouvez à tout moment consulter, modifier ou supprimer vos données depuis l'écran Profil. La suppression de compte efface l'ensemble des données sous 30 jours." },
+      { h: "4. Cookies & analytics", p: "Nous utilisons un minimum de cookies techniques et un outil d'analyse anonymisée pour améliorer l'application." },
+      { h: "5. Contact DPO", p: "Pour toute question : privacy@jatek.ma" },
+    ],
+  },
+  terms: {
+    title: "Conditions d'utilisation",
+    intro: "En utilisant Jatek, vous acceptez les conditions présentées ci-dessous.",
+    updatedAt: "avril 2026",
+    sections: [
+      { h: "1. Acceptation", p: "En utilisant Jatek, vous acceptez ces conditions ainsi que la politique de confidentialité." },
+      { h: "2. Compte utilisateur", p: "Vous êtes responsable de la confidentialité de vos identifiants. Tout usage frauduleux entraînera la fermeture du compte." },
+      { h: "3. Commandes", p: "Une commande validée est ferme. L'annulation est possible tant que le restaurant ne l'a pas confirmée." },
+      { h: "4. Paiement", p: "Le paiement est dû à la livraison ou au moment de la commande selon le mode choisi." },
+      { h: "5. Livraison", p: "Les délais sont indicatifs. Jatek met tout en œuvre pour les respecter mais ne peut être tenu responsable d'un retard ponctuel." },
+      { h: "6. Litiges", p: "Tout litige sera porté devant les juridictions compétentes du Royaume du Maroc." },
+    ],
+  },
+  cookies: {
+    title: "Politique des cookies",
+    intro: "Cette politique explique les traceurs utilisés par Jatek et la façon dont vous pouvez gérer vos choix.",
+    updatedAt: "avril 2026",
+    sections: [
+      { h: "1. Qu'est-ce qu'un cookie ?", p: "Un cookie est un petit fichier déposé sur votre appareil qui permet à une application de mémoriser vos préférences ou d'analyser votre utilisation." },
+      { h: "2. Cookies essentiels", p: "Indispensables au fonctionnement (session, panier, sécurité). Ils ne peuvent pas être désactivés." },
+      { h: "3. Cookies analytiques", p: "Mesure d'audience anonymisée pour améliorer l'application. Activables/désactivables dans Profil > Confidentialité." },
+      { h: "4. Cookies marketing", p: "Personnalisation des offres et publicités. Désactivés par défaut, soumis à votre consentement explicite." },
+      { h: "5. Durée de conservation", p: "12 mois maximum, renouvelés à chaque visite. Vous pouvez retirer votre consentement à tout moment." },
+      { h: "6. Gérer vos cookies", p: "Allez dans Profil > Confidentialité & RGPD pour modifier vos choix à tout moment." },
+    ],
+  },
+  mentions: {
+    title: "Mentions légales",
+    intro: "Informations relatives à l'éditeur et à l'hébergement de Jatek.",
+    updatedAt: "avril 2026",
+    sections: [
+      { h: "Éditeur", p: "Jatek SARL — Capital 100 000 MAD\nSiège social : Oujda, Maroc\nRC : 12345 — ICE : 002345678000099" },
+      { h: "Directeur de publication", p: "Direction Jatek" },
+      { h: "Hébergement", p: "Replit, Inc. — 548 Market Street, San Francisco, CA 94104, USA" },
+      { h: "Contact", p: "contact@jatek.ma" },
+      { h: "Propriété intellectuelle", p: "L'ensemble du contenu de l'application (textes, logos, design) est la propriété exclusive de Jatek SARL ou de ses partenaires." },
+    ],
+  },
+};
+
+export function getDefaultLegalContent(): LegalContent {
+  return legalContentSchema.parse(DEFAULT_LEGAL_CONTENT);
+}
+
 export function validateHomeSections(value: unknown): HomeSectionsConfig {
   return homeSectionsSchema.parse(value);
 }
 
 export type AppConfig = Record<string, unknown> & {
   homeSections: HomeSectionsConfig;
+  legalContent: LegalContent;
   splashVideoUrl?: string;
 };
 

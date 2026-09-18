@@ -1,4 +1,5 @@
 - [Jatek API auth pattern](jatek-api-auth.md) — API uses JWT Bearer tokens; no cookie sessions; always send Authorization header in fetch calls.
+- [Mobile client auth boundary](mobile-client-auth-boundary.md) — mobile auth sends an explicit client header and the API rejects non-customer roles without blocking dashboard auth.
 - [OpenAPI Zod codegen compatibility](openapi-zod-codegen.md) — Orval emits Zod 4 helpers while this workspace uses Zod 3; preserve the compatibility adapter when regenerating.
 - [Jatek notification route order](jatek-notification-routes.md) — PATCH /notifications/read-all must be registered before /notifications/:id/read in Express to avoid route-param capture.
 - [Jatek mobile API base resolution](jatek-mobile-apibase.md) — Always use getApiBaseSafe() from lib/apiBase.ts, never raw process.env.EXPO_PUBLIC_DOMAIN, which is empty in LAN/Expo-Go dev mode.
@@ -39,6 +40,7 @@
 - [Home reference layout](home-reference-layout.md) — screenshot direction uses Poppins, navy/pink styling, soft waves, three product columns, and compact nearby-store cards.
 - [Mobile content source](mobile-content-source.md) — Home content, metadata, and section navigation must come from dashboard/API data, never local live-content samples.
 - [Home config normalization](home-config-normalization.md) — partial public app-config responses must be completed client-side before rendering Home sections.
+- [Legal content configuration](legal-content-config.md) — legal documents live in validated public app_config and are edited from the dashboard, not embedded in mobile screens.
 - [Database backup connection](database-backup-connection.md) — managed SQL access can work while shell pg_dump credentials are stale or invalid; verify dumps before presenting them.
 - [Product promotion pricing](product-promotions.md) — active discounts keep the catalogue price in compareAtPrice and restore it when the promotion is removed.
 - [Product promo content](product-promo-content.md) — product promo cards reuse the ads/content feed and carry restaurant, product, price, image, order, and active-state metadata.

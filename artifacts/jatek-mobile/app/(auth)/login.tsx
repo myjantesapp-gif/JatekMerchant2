@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image,
+  KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -13,6 +13,7 @@ import { CountryPickerModal } from "@/components/CountryPickerModal";
 import { DEFAULT_COUNTRY, type Country } from "@/lib/countries";
 import { useT } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { JatekWordmark } from "@/components/JatekWordmark";
 
 type Method = "email" | "whatsapp";
 
@@ -20,7 +21,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const t = useT();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const [method, setMethod] = useState<Method>("email");
 
   // Email/password
@@ -37,8 +38,9 @@ export default function LoginScreen() {
 
   const emailInputRef = useRef<any>(null);
 
-  const loginMutation = useLogin();
-  const sendOtp = useSendOtp();
+  const mobileRequest = { headers: { "X-Client": "mobile" } };
+  const loginMutation = useLogin({ request: mobileRequest });
+  const sendOtp = useSendOtp({ request: mobileRequest });
 
   const fullPhone = `${country.dialCode}${phone.replace(/^0+/, "").replace(/\s/g, "")}`;
 
@@ -55,6 +57,11 @@ export default function LoginScreen() {
     setEmailError("");
     loginMutation.mutate({ data: { email: trimmed, password } }, {
       onSuccess: async (res) => {
+        if (res.user?.role !== "customer") {
+          await logout();
+          setEmailError("L'application mobile est réservée aux comptes clients.");
+          return;
+        }
         await login(res.token, { ...res.user, phone: res.user.phone ?? null });
         router.replace("/(tabs)");
       },
@@ -74,7 +81,7 @@ export default function LoginScreen() {
     setPhoneError("");
     const payload: SendOtpBody = { phone: fullPhone, channel: "whatsapp", intent: "login" };
     sendOtp.mutate({ data: payload }, {
-      onSuccess: (res) => {
+       onSuccess: (res) => {
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         router.push({
           pathname: "/(auth)/otp",
@@ -123,10 +130,9 @@ export default function LoginScreen() {
             <Ionicons name="arrow-back" size={22} color={colors.foreground} />
           </TouchableOpacity>
 
-          <View style={[styles.logoWrap, { backgroundColor: colors.card }]}>
-            <Image source={require("../../assets/images/jatek-logo.png")} style={{ width: 56, height: 56 }} resizeMode="contain" />
+          <View style={styles.logoWrap}>
+            <JatekWordmark width={190} height={74} />
           </View>
-          <Text style={[styles.brand, { color: colors.heading }]}>Jatek.</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Connectez-vous pour commander</Text>
 
           {/* Method toggle */}
@@ -287,30 +293,29 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 24, alignItems: "center" },
-  backBtn: { position: "absolute", top: 12, left: 16, width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", zIndex: 10 },
-  logoWrap: { width: 80, height: 80, borderRadius: 24, alignItems: "center", justifyContent: "center", shadowColor: "#E2006A", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8 },
-  brand: { fontSize: 32, fontFamily: "Inter_700Bold", marginTop: 16, fontStyle: "italic" },
-  subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 4, marginBottom: 24 },
-  toggle: { flexDirection: "row", borderRadius: 14, padding: 4, marginBottom: 24, width: "100%" },
-  toggleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 10 },
-  toggleText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  form: { width: "100%", gap: 10 },
-  label: { fontSize: 14, fontFamily: "Inter_500Medium", marginBottom: 2 },
-  channelBadge: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
-  channelBadgeText: { fontSize: 13, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
-  inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1.5, height: 54, overflow: "hidden" },
+  container: { flexGrow: 1, width: "100%", maxWidth: 600, alignSelf: "center", paddingHorizontal: 36, paddingTop: 28, alignItems: "center" },
+  backBtn: { position: "absolute", top: 12, left: 24, width: 58, height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center", zIndex: 10 },
+  logoWrap: { width: 190, height: 74, alignItems: "center", justifyContent: "center", marginTop: 2 },
+  subtitle: { fontSize: 20, lineHeight: 26, fontFamily: "Inter_400Regular", marginTop: 4, marginBottom: 34, textAlign: "center" },
+  toggle: { flexDirection: "row", borderRadius: 22, padding: 5, marginBottom: 36, width: "100%", height: 67 },
+  toggleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, borderRadius: 17 },
+  toggleText: { fontSize: 20, fontFamily: "Inter_600SemiBold" },
+  form: { width: "100%", gap: 14 },
+  label: { fontSize: 20, lineHeight: 26, fontFamily: "Inter_500Medium", marginTop: 1, marginBottom: 2 },
+  channelBadge: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 56, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 16 },
+  channelBadgeText: { fontSize: 18, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
+  inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 20, borderWidth: 2, height: 80, overflow: "hidden" },
   dialCodeBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 14, height: "100%", borderRightWidth: 1 },
   dialCodeText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  input: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular", paddingHorizontal: 14 },
-  errorText: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  helperText: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },
-  btn: { height: 54, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 },
-  btnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 8 },
-  switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12 },
-  secondaryRow: { alignItems: "center", paddingVertical: 4 },
-  switchText: { fontSize: 13, fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
+  input: { flex: 1, fontSize: 20, fontFamily: "Inter_400Regular", paddingHorizontal: 18 },
+  errorText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  helperText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  btn: { height: 80, borderRadius: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 11, marginTop: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 14, elevation: 6 },
+  btnText: { color: "#fff", fontSize: 22, fontFamily: "Inter_700Bold" },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 18 },
+  switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14 },
+  secondaryRow: { alignItems: "center", paddingVertical: 5 },
+  switchText: { fontSize: 18, fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
   emailCtaBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
-  emailCtaText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  emailCtaText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
 });

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image,
+  KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseSafe } from "@/lib/apiBase";
+import { JatekWordmark } from "@/components/JatekWordmark";
 
 export default function RegisterScreen() {
   const colors = useColors();
@@ -30,7 +31,7 @@ export default function RegisterScreen() {
       const base = getApiBaseSafe();
       const res = await fetch(`${base}/api/auth/send-otp`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Client": "mobile" },
         body: JSON.stringify({ email: trimEmail }),
       });
       const data = await res.json();
@@ -72,10 +73,9 @@ export default function RegisterScreen() {
             <Ionicons name="arrow-back" size={22} color={colors.foreground} />
           </TouchableOpacity>
 
-          <View style={[styles.logoWrap, { backgroundColor: colors.card }]}>
-            <Image source={require("../../assets/images/jatek-logo.png")} style={{ width: 56, height: 56 }} resizeMode="contain" />
+          <View style={styles.logoWrap}>
+            <JatekWordmark width={190} height={74} />
           </View>
-          <Text style={[styles.brand, { color: colors.heading }]}>Jatek.</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Créez votre compte</Text>
 
           <View style={styles.form}>
@@ -149,21 +149,20 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 24, alignItems: "center" },
-  backBtn: { position: "absolute", top: 12, left: 16, width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", zIndex: 10 },
-  logoWrap: { width: 80, height: 80, borderRadius: 24, alignItems: "center", justifyContent: "center", shadowColor: "#E2006A", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8 },
-  brand: { fontSize: 32, fontFamily: "Inter_700Bold", marginTop: 16, fontStyle: "italic" },
-  subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 4, marginBottom: 36 },
-  form: { width: "100%", gap: 10 },
-  label: { fontSize: 14, fontFamily: "Inter_500Medium", marginBottom: 2 },
-  channelBadge: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, marginBottom: 4 },
-  channelBadgeText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1.5, height: 54, overflow: "hidden" },
-  input: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular", paddingHorizontal: 14 },
-  helperText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18, textAlign: "center", paddingHorizontal: 4 },
-  errorText: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  btn: { height: 54, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 },
-  btnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, marginTop: 4 },
-  switchText: { fontSize: 13, fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
+  container: { flexGrow: 1, width: "100%", maxWidth: 600, alignSelf: "center", paddingHorizontal: 36, paddingTop: 28, alignItems: "center" },
+  backBtn: { position: "absolute", top: 12, left: 24, width: 58, height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center", zIndex: 10 },
+  logoWrap: { width: 190, height: 74, alignItems: "center", justifyContent: "center", marginTop: 2 },
+  subtitle: { fontSize: 20, lineHeight: 26, fontFamily: "Inter_400Regular", marginTop: 4, marginBottom: 36, textAlign: "center" },
+  form: { width: "100%", gap: 14 },
+  label: { fontSize: 20, lineHeight: 26, fontFamily: "Inter_500Medium", marginTop: 1, marginBottom: 2 },
+  channelBadge: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 56, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 16, marginBottom: 2 },
+  channelBadgeText: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
+  inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 20, borderWidth: 2, height: 80, overflow: "hidden" },
+  input: { flex: 1, fontSize: 20, fontFamily: "Inter_400Regular", paddingHorizontal: 18 },
+  helperText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, textAlign: "center", paddingHorizontal: 4 },
+  errorText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  btn: { height: 80, borderRadius: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 11, marginTop: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 14, elevation: 6 },
+  btnText: { color: "#fff", fontSize: 22, fontFamily: "Inter_700Bold" },
+  switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, marginTop: 4 },
+  switchText: { fontSize: 18, fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
 });

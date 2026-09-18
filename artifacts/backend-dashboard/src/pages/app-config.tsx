@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Save, Loader2, Globe, AlertTriangle, Star, LayoutGrid, MessageSquare, SlidersHorizontal } from "lucide-react";
+import { Settings, Save, Loader2, Globe, AlertTriangle, Star, LayoutGrid, MessageSquare, SlidersHorizontal, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { VideoUploadField } from "@/components/VideoUploadField";
@@ -37,6 +37,31 @@ type HomeSectionKey =
   | "newest"
   | "support";
 
+type LegalSection = { h: string; p: string };
+type LegalDocument = { title: string; intro: string; sections: LegalSection[]; updatedAt: string };
+type LegalContent = Record<"privacy" | "terms" | "cookies" | "mentions", LegalDocument>;
+
+const DEFAULT_LEGAL_DOCUMENT: LegalDocument = {
+  title: "",
+  intro: "",
+  updatedAt: "",
+  sections: [{ h: "", p: "" }],
+};
+
+const DEFAULT_LEGAL_CONTENT: LegalContent = {
+  privacy: { ...DEFAULT_LEGAL_DOCUMENT, title: "Politique de confidentialité" },
+  terms: { ...DEFAULT_LEGAL_DOCUMENT, title: "Conditions d'utilisation" },
+  cookies: { ...DEFAULT_LEGAL_DOCUMENT, title: "Politique des cookies" },
+  mentions: { ...DEFAULT_LEGAL_DOCUMENT, title: "Mentions légales" },
+};
+
+const LEGAL_DOCUMENTS: Array<{ key: keyof LegalContent; label: string }> = [
+  { key: "privacy", label: "Politique RGPD / confidentialité" },
+  { key: "terms", label: "Conditions générales d'utilisation" },
+  { key: "cookies", label: "Politique des cookies" },
+  { key: "mentions", label: "Mentions légales" },
+];
+
 const DEFAULT_CONFIG = {
   defaultLanguage: "fr",
   maintenanceMode: false,
@@ -44,6 +69,7 @@ const DEFAULT_CONFIG = {
   homeOrder: ["categories", "banners", "shorts", "recommended_products", "recommended_restaurants", "popular", "new_restaurants", "supermarkets", "new_products", "shops", "all", "free_delivery", "newest", "support"],
   welcomeMessage: "Bienvenue sur Jatek !",
   splashVideoUrl: "",
+  legalContent: DEFAULT_LEGAL_CONTENT,
   homeSections: {
     categories: { visible: true, title: "Catégories", source: "categories", limit: 4 },
     banners: { visible: true, title: "Bannières", source: "banners", limit: 10 },
@@ -141,7 +167,11 @@ export default function AppConfig() {
         homeSections: {
           ...DEFAULT_CONFIG.homeSections,
           ...(config.homeSections || {})
-        }
+        },
+        legalContent: {
+          ...DEFAULT_LEGAL_CONTENT,
+          ...(config.legalContent || {}),
+        },
       });
     }
   }, [config]);
@@ -174,6 +204,33 @@ export default function AppConfig() {
         [key]: { ...prev.homeSections[key], ...updates },
       }
     }));
+  };
+
+  const updateLegalDocument = (key: keyof LegalContent, updates: Partial<LegalDocument>) => {
+    setForm((prev) => ({
+      ...prev,
+      legalContent: {
+        ...prev.legalContent,
+        [key]: { ...prev.legalContent[key], ...updates },
+      },
+    }));
+  };
+
+  const updateLegalSection = (key: keyof LegalContent, index: number, updates: Partial<LegalSection>) => {
+    const document = form.legalContent[key];
+    const sections = document.sections.map((section, i) => i === index ? { ...section, ...updates } : section);
+    updateLegalDocument(key, { sections });
+  };
+
+  const addLegalSection = (key: keyof LegalContent) => {
+    const document = form.legalContent[key];
+    updateLegalDocument(key, { sections: [...document.sections, { h: "", p: "" }] });
+  };
+
+  const removeLegalSection = (key: keyof LegalContent, index: number) => {
+    const document = form.legalContent[key];
+    if (document.sections.length <= 1) return;
+    updateLegalDocument(key, { sections: document.sections.filter((_, i) => i !== index) });
   };
 
   return (
@@ -393,6 +450,83 @@ export default function AppConfig() {
                     )}
                   </div>
                 )
+              })}
+            </CardContent>
+          </Card>
+
+          {/* Welcome message */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4" /> Contenu légal de l'application
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Ces textes sont enregistrés dans app_config et chargés par l'application mobile. Aucun document légal n'est embarqué dans l'app.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {LEGAL_DOCUMENTS.map(({ key, label }) => {
+                const document = form.legalContent[key];
+                return (
+                  <div key={key} className="space-y-3 rounded-lg border p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label className="font-semibold">{label}</Label>
+                      <Input
+                        className="w-36"
+                        value={document.updatedAt}
+                        onChange={(e) => updateLegalDocument(key, { updatedAt: e.target.value })}
+                        placeholder="Date de mise à jour"
+                        aria-label={`${label} — date de mise à jour`}
+                      />
+                    </div>
+                    <Input
+                      value={document.title}
+                      onChange={(e) => updateLegalDocument(key, { title: e.target.value })}
+                      placeholder="Titre du document"
+                      aria-label={`${label} — titre`}
+                    />
+                    <Textarea
+                      rows={2}
+                      value={document.intro}
+                      onChange={(e) => updateLegalDocument(key, { intro: e.target.value })}
+                      placeholder="Introduction"
+                      aria-label={`${label} — introduction`}
+                    />
+                    <div className="space-y-3 border-t pt-3">
+                      {document.sections.map((section, index) => (
+                        <div key={`${key}-${index}`} className="space-y-2 rounded-md bg-muted/30 p-3">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={section.h}
+                              onChange={(e) => updateLegalSection(key, index, { h: e.target.value })}
+                              placeholder="Titre de section"
+                              aria-label={`${label} — titre section ${index + 1}`}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeLegalSection(key, index)}
+                              disabled={document.sections.length <= 1}
+                            >
+                              Supprimer
+                            </Button>
+                          </div>
+                          <Textarea
+                            rows={4}
+                            value={section.p}
+                            onChange={(e) => updateLegalSection(key, index, { p: e.target.value })}
+                            placeholder="Contenu de la section"
+                            aria-label={`${label} — contenu section ${index + 1}`}
+                          />
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => addLegalSection(key)}>
+                        Ajouter une section
+                      </Button>
+                    </div>
+                  </div>
+                );
               })}
             </CardContent>
           </Card>
