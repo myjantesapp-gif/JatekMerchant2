@@ -27,6 +27,12 @@ description: EAS build quirks for the jatek-mobile pnpm monorepo workspace — c
 
 4. **OTA update command** — `EXPO_TOKEN=$EXPO_TOKEN_JATEK node_modules/.bin/eas update --channel preview --message "..." --non-interactive` — bundles both iOS and Android, uploads to EAS.
 
+4b. **Native Android overrides Expo config** — because `artifacts/jatek-mobile/android/` is checked in, Android versioning and manifest permissions must stay synchronized with `app.json`; EAS ignores the Android values from `app.json` when native files are present.
+
+**Why:** A cloud build can report and ship the stale `versionCode`, `versionName`, or permissions from the native Android project even when `app.json` looks correct.
+
+**How to apply:** Before an Android build, inspect `android/app/build.gradle` and `android/app/src/main/AndroidManifest.xml`; keep the explicit runtime string aligned with the installed client.
+
 5. **Remove `--go` from `expo start`** — the app uses `expo-dev-client`, `react-native-keyboard-controller`, `react-native-worklets`, and `expo-notifications`, all of which are custom native modules incompatible with standard Expo Go. `--go` forces Expo Go mode and breaks the dev server. Use `expo start --tunnel` instead.
 
 6. **`serve.js` needs `BASE_PATH=/mobile`** — The production serve script must set `BASE_PATH=/mobile` so routing for `/mobile/` requests works. Without it, every request falls through to `serveStaticFile` and returns 500.

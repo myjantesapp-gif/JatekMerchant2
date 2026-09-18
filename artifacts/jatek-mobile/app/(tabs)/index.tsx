@@ -1006,7 +1006,7 @@ function HomeScreen() {
               </Pressable>
             ) : null}
           </View>
-          <WaveEdge color={HEADER_PINK} height={28} />
+          <WaveEdge color={HEADER_PINK} height={36} />
         </View>
 
       <ScrollView
@@ -1059,6 +1059,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
     paddingHorizontal: 16,
     paddingBottom: 12,
+    marginBottom: 35,
     backgroundColor: HEADER_PINK,
     overflow: "visible",
   },
@@ -1139,8 +1140,8 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   searchBox: {
-    height: 44,
-    marginTop: 5,
+    height: 48,
+    marginTop: 7,
     paddingHorizontal: 15,
     borderRadius: 25,
     flexDirection: "row",
@@ -1155,7 +1156,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: 44,
     padding: 0,
     color: NAVY,
     fontSize: 14,

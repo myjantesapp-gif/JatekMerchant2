@@ -17,17 +17,16 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ma.jatek.app",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Jatek uses your location to autofill your delivery address and confirm you are within our delivery zone in Oujda.",
-        "NSLocationAlwaysUsageDescription": "Jatek uses your location to autofill your delivery address.",
+        "NSLocationWhenInUseUsageDescription": "Jatek utilise votre position uniquement pendant l’utilisation de l’application pour renseigner votre adresse et vérifier la zone de livraison à Oujda.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "ma.jatek.app",
-      "versionCode": 17,
+      "versionCode": 18,
       "edgeToEdgeEnabled": false,
       "googleServicesFile": "./google-services.json",
       "permissions": [
@@ -59,7 +58,15 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Jatek to use your location to fill in your delivery address."
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "locationWhenInUsePermission": "Jatek utilise votre position uniquement pendant l’utilisation de l’application pour renseigner votre adresse."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Jatek utilise vos photos uniquement lorsque vous choisissez une image de profil."
         }
       ],
       [
