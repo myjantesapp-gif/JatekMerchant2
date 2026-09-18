@@ -27,7 +27,6 @@ interface PaymentMethodOption {
 }
 const PAYMENT_METHODS: PaymentMethodOption[] = [
   { id: "cash", label: "Espèces", icon: "cash-outline" },
-  { id: "card", label: "Carte", icon: "card-outline" },
 ];
 
 export default function CartScreen() {
@@ -47,7 +46,7 @@ export default function CartScreen() {
   const createOrder = useCreateOrder();
   const friendly = useFriendlyAlert();
   const address = selectedAddress;
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | null>("cash");
 
   const handlePlaceOrder = () => {
     if (!token) {
