@@ -11,6 +11,31 @@ export type MenuItemLike = {
 
 export type MenuSortMode = "recommended" | "priceAsc" | "priceDesc";
 
+function isMenuItemRecord(value: unknown): value is MenuItemLike {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    "id" in value
+  );
+}
+
+export function normalizeMenuGridRow<T extends MenuItemLike>(row: unknown): T[] {
+  const values = Array.isArray(row) ? row : isMenuItemRecord(row) ? [row] : [];
+  return values.filter(isMenuItemRecord) as T[];
+}
+
+export function chunkMenuItems<T extends MenuItemLike>(
+  items: unknown,
+  chunkSize = 2,
+): T[][] {
+  if (!Array.isArray(items) || chunkSize < 1) return [];
+  const safeItems = items.filter(isMenuItemRecord) as T[];
+  return Array.from(
+    { length: Math.ceil(safeItems.length / chunkSize) },
+    (_, index) => safeItems.slice(index * chunkSize, index * chunkSize + chunkSize),
+  );
+}
+
 function matchesMenuCategory(item: MenuItemLike, category: MenuCategory): boolean {
   const itemCategoryName = String(item.category ?? "").trim().toLowerCase();
   const categoryName = category.name.trim().toLowerCase();

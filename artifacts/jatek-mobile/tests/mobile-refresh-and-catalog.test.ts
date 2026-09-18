@@ -5,9 +5,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  chunkMenuItems,
   filterAndSortMenuItems,
   filterRestaurantsBySearch,
   groupMenuSections,
+  normalizeMenuGridRow,
   rotateItems,
   sortOrdersByCreatedAt,
 } from "../lib/catalogUtils";
@@ -185,6 +187,25 @@ test("restaurant catalog sections retain category labels and collect uncategoriz
       ["Autres", [4]],
     ],
   );
+});
+
+test("restaurant grid rows tolerate a single product or malformed row", () => {
+  assert.deepEqual(normalizeMenuGridRow(menuItems[0]), [menuItems[0]]);
+  assert.deepEqual(normalizeMenuGridRow([menuItems[0], menuItems[1]]), [menuItems[0], menuItems[1]]);
+  assert.deepEqual(normalizeMenuGridRow({ name: "missing id" }), []);
+  assert.deepEqual(normalizeMenuGridRow(null), []);
+  assert.deepEqual(
+    chunkMenuItems([menuItems[0], { name: "missing id" }, menuItems[1]]),
+    [[menuItems[0], menuItems[1]]],
+  );
+});
+
+test("restaurant page guards SectionList rows before calling map", () => {
+  const page = source("app/restaurant/[id].tsx");
+
+  assert.match(page, /normalizeMenuGridRow\(row\)/);
+  assert.match(page, /chunkMenuItems\(section\.items\)/);
+  assert.match(page, /const safeMenuItems = useMemo/);
 });
 
 test("restaurant category tabs keep legacy menu categories alongside API categories", () => {

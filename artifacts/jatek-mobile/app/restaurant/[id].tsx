@@ -26,7 +26,12 @@ import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { apiFetch } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { refreshAll } from "@/lib/mobileRefresh";
-import { filterAndSortMenuItems, groupMenuSections } from "@/lib/catalogUtils";
+import {
+  chunkMenuItems,
+  filterAndSortMenuItems,
+  groupMenuSections,
+  normalizeMenuGridRow,
+} from "@/lib/catalogUtils";
 
 const SIDE = 16;
 const MENU_GRID_GAP = 12;
@@ -111,6 +116,10 @@ export default function RestaurantScreen() {
     isError: menuError,
     refetch: refetchMenu,
   } = useListMenuItems(restaurantId);
+  const safeMenuItems = useMemo(
+    () => (Array.isArray(menuItems) ? menuItems : []),
+    [menuItems],
+  );
   const { data: productCategories, refetch: refetchProductCategories } = useQuery<Array<{ id: number; name: string; sortOrder: number }>>({
     queryKey: ["/api/menu-categories", restaurantId],
     queryFn: () => apiFetch(`/api/menu-categories?restaurantId=${restaurantId}`),
@@ -126,13 +135,13 @@ export default function RestaurantScreen() {
   // normal merchant menu screen and its existing detail modal/cart flow.
   useEffect(() => {
     const requestedProductId = Number(productId);
-    if (!Number.isInteger(requestedProductId) || requestedProductId <= 0 || !menuItems) return;
-    const requestedProduct = menuItems.find((item) => item.id === requestedProductId);
+    if (!Number.isInteger(requestedProductId) || requestedProductId <= 0) return;
+    const requestedProduct = safeMenuItems.find((item) => item.id === requestedProductId);
     // Recommendation links can outlive an availability change. Keep the
     // merchant page usable, but never open a stale/unavailable item through
     // the deep-link path.
     if (requestedProduct?.isAvailable === true) setSelectedItem(requestedProduct);
-  }, [menuItems, productId]);
+  }, [productId, safeMenuItems]);
 
   const categories = useMemo(() => {
     const fromApi = [...(productCategories ?? [])]
@@ -144,7 +153,7 @@ export default function RestaurantScreen() {
     const knownNames = new Set(fromApi.map((category) => category.name.trim().toLocaleLowerCase()));
     const legacyCategories = Array.from(
       new Map(
-        (menuItems ?? [])
+        safeMenuItems
           .map((item: any) => (typeof item.category === "string" ? item.category.trim() : ""))
           .filter((name) => name.length > 0 && !knownNames.has(name.toLocaleLowerCase()))
           .map((name) => [name.toLocaleLowerCase(), name] as const),
@@ -152,15 +161,15 @@ export default function RestaurantScreen() {
     ).map((name) => ({ id: `legacy:${name}`, name }));
 
     return [{ id: "Tous", name: "Tous" }, ...fromApi, ...legacyCategories];
-  }, [menuItems, productCategories]);
+  }, [productCategories, safeMenuItems]);
   const filtered = useMemo(() => {
-    return filterAndSortMenuItems(menuItems ?? [], {
+    return filterAndSortMenuItems(safeMenuItems, {
       categories,
       activeCategory: selectedCategory,
       searchQuery,
       sortMode: "recommended",
     });
-  }, [menuItems, selectedCategory, searchQuery, categories]);
+  }, [safeMenuItems, selectedCategory, searchQuery, categories]);
 
   const sections = useMemo(() => {
     return groupMenuSections(categories, filtered, selectedCategory);
@@ -168,10 +177,7 @@ export default function RestaurantScreen() {
   const virtualSections = useMemo(
     () => sections.map((section) => ({
       ...section,
-      data: Array.from(
-        { length: Math.ceil(section.items.length / 2) },
-        (_, index) => section.items.slice(index * 2, index * 2 + 2),
-      ),
+       data: chunkMenuItems(section.items),
     })),
     [sections],
   );
@@ -592,7 +598,12 @@ export default function RestaurantScreen() {
       <SectionList
         ref={menuScrollRef}
         sections={virtualSections}
-        keyExtractor={(row) => row.map((item: any) => item.id).join("-")}
+        keyExtractor={(row, index) => {
+          const rowItems = normalizeMenuGridRow(row);
+          return rowItems.length > 0
+            ? rowItems.map((item) => item.id).join("-")
+            : `menu-row-${index}`;
+        }}
         ListHeaderComponent={(
           <>
             {Header}
@@ -610,9 +621,12 @@ export default function RestaurantScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{section.name}</Text>
           </View>
         )}
-        renderItem={({ item: row }) => (
-          <View style={styles.menuList}>
-            {row.map((item: any) => (
+        renderItem={({ item: row }) => {
+          const rowItems = normalizeMenuGridRow(row);
+          if (rowItems.length === 0) return null;
+          return (
+            <View style={styles.menuList}>
+            {rowItems.map((item: any) => (
               <MenuItemGridCard
                 key={item.id}
                 item={item}
@@ -627,8 +641,9 @@ export default function RestaurantScreen() {
                 }}
               />
             ))}
-          </View>
-        )}
+            </View>
+          );
+        }}
         showsVerticalScrollIndicator={false}
         onScroll={handleMenuScroll}
         scrollEventThrottle={16}
