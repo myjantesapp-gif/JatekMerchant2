@@ -329,12 +329,12 @@ export default function CategoryScreen() {
           <Image source={{ uri: resolveMediaUrl(config.bannerImageUrl) }} style={styles.bannerImg} resizeMode="cover" />
         ) : null}
         <View style={styles.bannerOverlay} />
-        <View style={[styles.categoryPattern, { pointerEvents: "none" }]}>
+        <View style={styles.categoryPattern} pointerEvents="none">
           <Ionicons name={headerPatternIcon} size={104} color="rgba(255,255,255,0.13)" style={styles.patternIconMain} />
           <Ionicons name={headerPatternIcon} size={52} color="rgba(255,255,255,0.11)" style={styles.patternIconTop} />
           <Ionicons name={headerPatternIcon} size={68} color="rgba(255,255,255,0.10)" style={styles.patternIconBottom} />
         </View>
-        <View style={[styles.bannerWaves, { pointerEvents: "none" }]}>
+        <View style={styles.bannerWaves} pointerEvents="none">
           <Svg width="100%" height="100%" viewBox="0 0 100 22" preserveAspectRatio="none">
             <Path
               d="M0 9 C18 4 34 14 52 9 C70 4 84 14 100 8 L100 22 L0 22 Z"

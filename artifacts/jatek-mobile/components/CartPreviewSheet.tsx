@@ -289,25 +289,31 @@ export function CartPreviewSheet({ visible, onClose }: Props) {
             </TouchableOpacity>
           </View>
 
-          {items.length === 0 ? (
-            <View style={styles.emptyWrap}>
-              <View style={styles.emptyIcon}>
-                <Ionicons name="cart-outline" size={42} color={PINK} />
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.bodyContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {items.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <View style={styles.emptyIcon}>
+                  <Ionicons name="cart-outline" size={42} color={PINK} />
+                </View>
+                <Text style={styles.emptyTitle}>Votre panier est vide</Text>
+                <Text style={styles.emptyTxt}>
+                  Parcourez les restaurants et ajoutez vos plats préférés.
+                </Text>
+                <TouchableOpacity
+                  style={styles.browseBtn}
+                  onPress={onClose}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.browseBtnTxt}>Découvrir les offres</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.emptyTitle}>Votre panier est vide</Text>
-              <Text style={styles.emptyTxt}>
-                Parcourez les restaurants et ajoutez vos plats préférés.
-              </Text>
-              <TouchableOpacity
-                style={styles.browseBtn}
-                onPress={onClose}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.browseBtnTxt}>Découvrir les offres</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
+            ) : (
+              <>
               {freeDeliveryThreshold > 0 && (
                 <View style={styles.freeWrap}>
                   <View style={styles.freeRow}>
@@ -330,11 +336,7 @@ export function CartPreviewSheet({ visible, onClose }: Props) {
                 </View>
               )}
 
-              <ScrollView
-                style={styles.list}
-                contentContainerStyle={{ paddingVertical: 4 }}
-                showsVerticalScrollIndicator={false}
-              >
+              <View style={styles.list}>
                 {items.map((it) => (
                   <View key={it.cartLineId} style={styles.row}>
                     {it.imageUrl ? (
@@ -384,7 +386,7 @@ export function CartPreviewSheet({ visible, onClose }: Props) {
                     </View>
                   </View>
                 ))}
-              </ScrollView>
+              </View>
 
               {suggestions.length > 0 && (
                 <View style={styles.suggestBlock}>
@@ -585,28 +587,31 @@ export function CartPreviewSheet({ visible, onClose }: Props) {
                 </View>
               </View>
 
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  onPress={handleClear}
-                  style={styles.clearBtn}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityLabel="Vider le panier"
-                >
-                  <Ionicons name="trash-outline" size={18} color={PINK} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={goToCart}
-                  style={styles.checkoutBtn}
-                  activeOpacity={0.9}
-                  accessibilityRole="button"
-                  accessibilityLabel="Aller au panier"
-                >
-                  <Text style={styles.checkoutTxt}>Voir le panier</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
-                </TouchableOpacity>
-              </View>
             </>
+            )}
+          </ScrollView>
+          {items.length > 0 && (
+            <View style={styles.actions}>
+              <TouchableOpacity
+                onPress={handleClear}
+                style={styles.clearBtn}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Vider le panier"
+              >
+                <Ionicons name="trash-outline" size={18} color={PINK} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={goToCart}
+                style={styles.checkoutBtn}
+                activeOpacity={0.9}
+                accessibilityRole="button"
+                accessibilityLabel="Passer la commande"
+              >
+                <Text style={styles.checkoutTxt}>Passer la commande</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
           )}
         </Animated.View>
       </View>
@@ -627,6 +632,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 16,
     paddingTop: 8,
+    height: SHEET_MAX_H,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.18,
     shadowRadius: 20,
@@ -716,6 +723,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 24,
   },
+  body: { flex: 1 },
+  bodyContent: { paddingBottom: 4 },
   browseBtn: {
     marginTop: 8,
     backgroundColor: PINK,

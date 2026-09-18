@@ -208,6 +208,17 @@ test("restaurant page guards SectionList rows before calling map", () => {
   assert.match(page, /const safeMenuItems = useMemo/);
 });
 
+test("cart preview keeps the checkout action visible outside the scrollable content", () => {
+  const preview = source("components/CartPreviewSheet.tsx");
+
+  assert.match(preview, /style=\{styles\.body\}/);
+  assert.match(preview, /height: SHEET_MAX_H/);
+  assert.match(preview, /items\.length > 0 && \(\s*<View style=\{styles\.actions\}/);
+  assert.match(preview, /accessibilityLabel="Passer la commande"/);
+  assert.match(preview, /<Text style=\{styles\.checkoutTxt\}>Passer la commande<\/Text>/);
+  assert.doesNotMatch(preview, /<ScrollView\s+style=\{styles\.list\}/);
+});
+
 test("restaurant category tabs keep legacy menu categories alongside API categories", () => {
   const page = source("app/restaurant/[id].tsx");
 
@@ -255,7 +266,7 @@ test("restaurant page keeps the safe-area header and renders a two-column produc
   assert.match(page, /width=\{menuCardWidth\}/);
   assert.match(page, /MENU_GRID_GAP\) \/ 2/);
   assert.match(page, /<SectionList/);
-  assert.match(page, /section\.items\.slice\(index \* 2, index \* 2 \+ 2\)/);
+  assert.match(page, /chunkMenuItems\(section\.items\)/);
   assert.match(page, /menuList:\s*\{[\s\S]*flexDirection: "row"/);
   assert.doesNotMatch(page, /sections\.map\(\(section\) => \(\s*<View/);
   assert.match(page, /const MENU_GRID_GAP/);
