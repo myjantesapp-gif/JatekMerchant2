@@ -370,7 +370,6 @@ function HomeScreen() {
   const { width } = useWindowDimensions();
   const PROMO_PRODUCT_WIDTH = (width - 48) / 3;
   const OFFER_CARD_WIDTH = Math.max(0, width - 32);
-  const RECOMMENDED_PRODUCT_WIDTH = Math.max(0, width - 32);
   const PRODUCT_GRID_WIDTH = PROMO_PRODUCT_WIDTH;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -734,11 +733,10 @@ function HomeScreen() {
               error={recommendedProductsError}
               empty="Aucun produit recommandé pour le moment"
               onRetry={() => void refetchRecommendedProducts()}
-              width={RECOMMENDED_PRODUCT_WIDTH}
+              width={PRODUCT_GRID_WIDTH}
               onProductPress={openProduct}
               variant="home-popular"
               keyPrefix="recommended-products"
-              gap={16}
             />
             <WaveEdge color={SECTION_TINT} height={24} />
           </View>

@@ -157,6 +157,7 @@ export const ProductCard = React.memo(function ProductCard({
           <MediaImage
             urls={[imageUrl]}
             style={styles.compactImage}
+            resizeMode="contain"
             fallback={
             <View style={[styles.compactImage, { backgroundColor: "#f3f4f6" }]} />
             }
@@ -452,6 +453,7 @@ const styles = StyleSheet.create({
     height: 96,
     width: "100%",
     position: "relative",
+    backgroundColor: "#fff",
   },
   compactImage: {
     width: "100%",
