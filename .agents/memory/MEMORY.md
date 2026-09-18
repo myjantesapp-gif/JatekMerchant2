@@ -41,3 +41,4 @@
 - [Database backup connection](database-backup-connection.md) — managed SQL access can work while shell pg_dump credentials are stale or invalid; verify dumps before presenting them.
 - [Product promotion pricing](product-promotions.md) — active discounts keep the catalogue price in compareAtPrice and restore it when the promotion is removed.
 - [Product promo content](product-promo-content.md) — product promo cards reuse the ads/content feed and carry restaurant, product, price, image, order, and active-state metadata.
+- [Jatek target architecture](jatek-target-architecture.md) — treat zero-crash behavior, strict TypeScript, API-driven ordering, and branded fallbacks as ecosystem-wide standards.
