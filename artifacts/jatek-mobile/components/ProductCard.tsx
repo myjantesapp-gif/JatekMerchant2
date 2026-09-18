@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
 
   // Offer (Offres du moment)
   cardOffer: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     minHeight: 126,
     backgroundColor: "#fff",
