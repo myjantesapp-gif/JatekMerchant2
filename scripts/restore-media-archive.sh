@@ -34,10 +34,16 @@ cleanup() { rm -rf "$TEMP_DIR"; }
 trap cleanup EXIT
 
 tar -xzf "$ARCHIVE" -C "$TEMP_DIR" --no-same-owner --no-same-permissions
-[ -f "$TEMP_DIR/media-manifest.json" ] || fail "media-manifest.json is missing"
 [ -d "$TEMP_DIR/media" ] || fail "media/ directory is missing"
 
+MANIFEST_PATH="$TEMP_DIR/media-manifest.json"
+if [ ! -f "$MANIFEST_PATH" ]; then
+  ADJACENT_MANIFEST="$(dirname "$ARCHIVE")/media-manifest.json"
+  [ -f "$ADJACENT_MANIFEST" ] || fail "media-manifest.json is missing from the archive and its directory"
+  MANIFEST_PATH="$(cd "$(dirname "$ADJACENT_MANIFEST")" && pwd)/$(basename "$ADJACENT_MANIFEST")"
+fi
+
 MEDIA_RESTORE_ROOT="$TEMP_DIR/media" \
-MEDIA_MANIFEST_PATH="$TEMP_DIR/media-manifest.json" \
+MEDIA_MANIFEST_PATH="$MANIFEST_PATH" \
 MEDIA_RESTORE_TARGET_BUCKET_ID="$TARGET_BUCKET_ID" \
 pnpm --filter @workspace/api-server exec tsx src/scripts/restore-media-archive.ts
