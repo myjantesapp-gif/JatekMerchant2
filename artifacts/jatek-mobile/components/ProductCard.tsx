@@ -75,7 +75,7 @@ export const ProductCard = React.memo(function ProductCard({
             style={styles.offerImage}
             resizeMode="contain"
             fallback={
-            <View style={[styles.offerImage, { backgroundColor: "#f3f4f6" }]} />
+            <View style={styles.offerImage} />
             }
           />
           {discount > 0 && (
@@ -563,6 +563,11 @@ const styles = StyleSheet.create({
     padding: 8,
     position: "relative",
     backgroundColor: colors.light.turquoiseSoft,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.light.turquoise + "55",
+    overflow: "hidden",
+    margin: 6,
   },
   offerImage: {
     width: "100%",
