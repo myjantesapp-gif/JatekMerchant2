@@ -172,7 +172,11 @@ function IntroPlayback({ source }: { source: string | number }) {
           <VideoView
             player={player}
             style={StyleSheet.absoluteFill}
-            contentFit="contain"
+            // The intro asset is a portrait 1080x1920 video. Cover keeps it
+            // edge-to-edge on modern phones instead of leaving letterboxing.
+            // The pink background remains visible behind the video on devices
+            // with a different aspect ratio.
+            contentFit="cover"
             nativeControls={false}
             allowsFullscreen={false}
             fullscreenOptions={{ enable: false }}
