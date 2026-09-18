@@ -74,7 +74,7 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           <View style={styles.logoWrap}>
-            <JatekWordmark width={190} height={74} />
+            <JatekWordmark width={165} height={64} />
           </View>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Créez votre compte</Text>
 
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flexGrow: 1, width: "100%", maxWidth: 600, alignSelf: "center", paddingHorizontal: 36, paddingTop: 28, alignItems: "center" },
   backBtn: { position: "absolute", top: 12, left: 24, width: 58, height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center", zIndex: 10 },
-  logoWrap: { width: 190, height: 74, alignItems: "center", justifyContent: "center", marginTop: 2 },
+  logoWrap: { width: 165, height: 64, alignItems: "center", justifyContent: "center", marginTop: 12 },
   subtitle: { fontSize: 20, lineHeight: 26, fontFamily: "Inter_400Regular", marginTop: 4, marginBottom: 36, textAlign: "center" },
   form: { width: "100%", gap: 14 },
   label: { fontSize: 20, lineHeight: 26, fontFamily: "Inter_500Medium", marginTop: 1, marginBottom: 2 },
