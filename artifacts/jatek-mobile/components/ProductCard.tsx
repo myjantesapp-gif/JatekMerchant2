@@ -1,5 +1,6 @@
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
@@ -92,6 +93,15 @@ export const ProductCard = React.memo(function ProductCard({
             )}
             <Text style={styles.offerNewPrice}>{formatMad(product.price)} DH</Text>
           </View>
+        </View>
+        <View pointerEvents="none" style={styles.offerWave}>
+          <Svg width="100%" height="24" viewBox="0 0 100 24" preserveAspectRatio="none">
+            <Path
+              d="M0,11 C18,2 34,19 52,9 C68,0 83,16 100,6 L100,24 L0,24 Z"
+              fill={colors.light.turquoise}
+              opacity={0.16}
+            />
+          </Svg>
         </View>
       </Pressable>
     );
@@ -547,13 +557,14 @@ const styles = StyleSheet.create({
 
   // Offer (Offres du moment)
   cardOffer: {
+    position: "relative",
     flexDirection: "row",
     alignItems: "center",
     minHeight: 124,
-    backgroundColor: "#fff",
+    backgroundColor: colors.light.turquoiseSoft,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#f3f4f6",
+    borderColor: colors.light.turquoise + "55",
     overflow: "hidden",
   },
   offerImageWrap: {
@@ -562,12 +573,11 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     padding: 8,
     position: "relative",
-    backgroundColor: colors.light.turquoiseSoft,
+    backgroundColor: "transparent",
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.light.turquoise + "55",
     overflow: "hidden",
     margin: 6,
+    zIndex: 1,
   },
   offerImage: {
     width: "100%",
@@ -596,6 +606,14 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     padding: 12,
+    zIndex: 1,
+  },
+  offerWave: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 24,
   },
   offerName: {
     fontSize: 13,

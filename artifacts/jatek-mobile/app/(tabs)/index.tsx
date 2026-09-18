@@ -367,7 +367,7 @@ function ProductRail({
 function HomeScreen() {
   const { width } = useWindowDimensions();
   const PROMO_PRODUCT_WIDTH = (width - 48) / 3;
-  const OFFER_CARD_WIDTH = Math.max(0, Math.min(width * 0.72, 280));
+  const OFFER_CARD_WIDTH = Math.max(0, (width - 32 - 6) / 2);
   const PRODUCT_GRID_WIDTH = PROMO_PRODUCT_WIDTH;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
