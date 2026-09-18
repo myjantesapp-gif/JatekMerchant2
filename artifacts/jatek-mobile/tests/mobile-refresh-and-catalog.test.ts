@@ -12,6 +12,7 @@ import {
   sortOrdersByCreatedAt,
 } from "../lib/catalogUtils";
 import { refreshAll } from "../lib/mobileRefresh";
+import { customFetch } from "../../../lib/api-client-react/src/custom-fetch";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const source = (relativePath: string) =>
@@ -33,6 +34,58 @@ test("refreshAll starts every feed and settles when one feed fails", async () =>
   ]);
 
   assert.deepEqual(completed, ["restaurants", "orders"]);
+});
+
+test("custom fetch parses native responses whose body is null", async () => {
+  const payload = { categories: [{ id: 1, name: "Burgers" }] };
+  const response = new Response(JSON.stringify(payload), {
+    headers: { "content-type": "application/json" },
+  });
+  Object.defineProperty(response, "body", { configurable: true, value: null });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => response;
+
+  try {
+    assert.deepEqual(
+      await customFetch("/api/categories", { responseType: "json" }),
+      payload,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("custom fetch keeps 204 and zero-content responses empty", async () => {
+  const responses = [
+    new Response(null, { status: 204 }),
+    new Response(null, {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+        "content-length": "0",
+      },
+    }),
+  ];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    const response = responses.shift();
+    assert.ok(response, "expected a response for every request");
+    return response;
+  };
+
+  try {
+    assert.equal(
+      await customFetch("/api/empty-204", { responseType: "json" }),
+      null,
+    );
+    assert.equal(
+      await customFetch("/api/empty-content", { responseType: "json" }),
+      null,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("home rotation changes the visible order without mutating API data", () => {
