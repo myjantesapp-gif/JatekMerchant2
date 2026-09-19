@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   OtpDestinationError,
+  sendOtpEmail,
   sendOtpMessage,
   sendTwilioVerify,
   twilioCredentialMode,
@@ -20,6 +21,15 @@ const credentialEnv = [
   "TWILIO_FROM_NUMBER",
   "TWILIO_PHONE_NUMBER",
   "TWILIO_SMS_FROM",
+  "RESEND_API_KEY",
+  "RESEND_API_KEY_2",
+  "RESEND_API_KEY_3",
+  "RESEND_FROM_EMAIL",
+  "RESEND_FROM_EMAIL_2",
+  "RESEND_FROM_EMAIL_3",
+  "RESEND_EMAIL_FROM",
+  "RESEND_EMAIL_FROM_2",
+  "RESEND_EMAIL_FROM_3",
 ] as const;
 
 function withEnv(values: Record<string, string | undefined>, fn: () => Promise<void>): Promise<void> {
@@ -125,6 +135,46 @@ test("SMS destination errors remain actionable without another delivery channel"
           error instanceof OtpDestinationError &&
           error.message.includes("SMS"),
       );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+test("email OTP falls back through all configured Resend key/sender pairs", async () => {
+  await withEnv({
+    RESEND_API_KEY: "key-1",
+    RESEND_FROM_EMAIL: "one@example.test",
+    RESEND_API_KEY_2: "key-2",
+    RESEND_FROM_EMAIL_2: "two@example.test",
+    RESEND_API_KEY_3: "key-3",
+    RESEND_FROM_EMAIL_3: "three@example.test",
+  }, async () => {
+    const originalFetch = globalThis.fetch;
+    const attempts: Array<{ authorization: string; from: string }> = [];
+    globalThis.fetch = (async (_input, init) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { from?: string };
+      attempts.push({
+        authorization: String(new Headers(init?.headers).get("authorization") ?? ""),
+        from: String(body.from ?? ""),
+      });
+      return attempts.length < 3
+        ? jsonResponse({ message: "sender domain is not verified" }, 403)
+        : jsonResponse({ id: "email-test" });
+    }) as typeof fetch;
+
+    try {
+      const result = await sendOtpEmail(
+        "customer@example.test",
+        "123456",
+        "Votre code Jatek : 123456",
+      );
+      assert.equal(result.channel, "resend-email");
+      assert.deepEqual(attempts, [
+        { authorization: "Bearer key-1", from: "one@example.test" },
+        { authorization: "Bearer key-2", from: "two@example.test" },
+        { authorization: "Bearer key-3", from: "three@example.test" },
+      ]);
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -239,9 +239,9 @@ export async function checkTwilioVerify(to: string, code: string): Promise<"appr
 export { twilioConfigured, twilioVerifyConfigured };
 
 // ─── Resend (email OTP) ───────────────────────────────────────────────────────
-// RESEND_EMAIL_FROM is accepted as an alias for RESEND_FROM_EMAIL. A second
-// pair is supported because a verified sender may live in a separate Resend
-// project while the original key/from pair is still present in the workspace.
+// RESEND_EMAIL_FROM is accepted as an alias for RESEND_FROM_EMAIL. Each
+// numbered key is deliberately paired with its numbered sender so a key from
+// one Resend project is never accidentally used with another project's sender.
 type ResendConfig = {
   apiKey: string;
   from: string;
@@ -251,24 +251,19 @@ type ResendConfig = {
 function getResendConfigs(): ResendConfig[] {
   const candidates = [
     {
-      apiKey: process.env.RESEND_API_KEY_3,
-      from: process.env.RESEND_FROM_EMAIL_3 ||
-        process.env.RESEND_EMAIL_FROM_3 ||
-        process.env.RESEND_FROM_EMAIL_2 ||
-        process.env.RESEND_EMAIL_FROM_2 ||
-        process.env.RESEND_FROM_EMAIL ||
-        process.env.RESEND_EMAIL_FROM,
-      label: "resend-email-new-key",
-    },
-    {
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.RESEND_FROM_EMAIL || process.env.RESEND_EMAIL_FROM,
-      label: "resend-email",
+      label: "resend-email-1",
     },
     {
       apiKey: process.env.RESEND_API_KEY_2,
       from: process.env.RESEND_FROM_EMAIL_2 || process.env.RESEND_EMAIL_FROM_2,
-      label: "resend-email-fallback",
+      label: "resend-email-2",
+    },
+    {
+      apiKey: process.env.RESEND_API_KEY_3,
+      from: process.env.RESEND_FROM_EMAIL_3 || process.env.RESEND_EMAIL_FROM_3,
+      label: "resend-email-3",
     },
   ];
 
