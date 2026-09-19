@@ -15,6 +15,7 @@ import {
 import { eq, inArray } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 import { closeUserSubscriptions } from "../lib/sse";
+import { deleteUserAccount } from "../lib/deleteUserAccount";
 
 const router: IRouter = Router();
 
@@ -168,12 +169,11 @@ router.get("/me/export", requireAuth, async (req: AuthedRequest, res): Promise<v
   });
 });
 
-/** RGPD: right to erasure. Deletes user and all related rows via ON DELETE CASCADE. */
+/** RGPD: right to erasure with deletion or anonymization of related personal data. */
 router.delete("/me", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const userId = req.userId!;
-  const deleted = await db.delete(usersTable).where(eq(usersTable.id, userId))
-    .returning({ id: usersTable.id });
-  if (deleted.length > 0) closeUserSubscriptions(userId);
+  const deleted = await deleteUserAccount(userId);
+  if (deleted) closeUserSubscriptions(userId);
   res.sendStatus(204);
 });
 

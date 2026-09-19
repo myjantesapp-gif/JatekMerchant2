@@ -69,7 +69,6 @@ export default function RestaurantScreen() {
   const restaurantId = parseInt(id, 10);
   const menuCardWidth = (viewportWidth - SIDE * 2 - MENU_GRID_GAP) / 2;
   const [activeCategory, setActiveCategory] = useState("Tous");
-  const [selectedCategory, setSelectedCategory] = useState("Tous");
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -86,6 +85,8 @@ export default function RestaurantScreen() {
   const floatingCategoryScrollRef = useRef<ScrollView>(null);
   const categoryBarOffsetRef = useRef<number | null>(null);
   const categoryOffsetsRef = useRef<Record<string, number>>({});
+  const isProgrammaticScroll = useRef(false);
+  const programmaticScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!token || !restaurantId) return;
@@ -164,15 +165,15 @@ export default function RestaurantScreen() {
   const filtered = useMemo(() => {
     return filterAndSortMenuItems(safeMenuItems, {
       categories,
-      activeCategory: selectedCategory,
+      activeCategory: "Tous",
       searchQuery,
       sortMode: "recommended",
     });
-  }, [safeMenuItems, selectedCategory, searchQuery, categories]);
+  }, [safeMenuItems, searchQuery, categories]);
 
   const sections = useMemo(() => {
-    return groupMenuSections(categories, filtered, selectedCategory);
-  }, [selectedCategory, categories, filtered]);
+    return groupMenuSections(categories, filtered, "Tous");
+  }, [categories, filtered]);
   const virtualSections = useMemo(
     () => sections.map((section) => ({
       ...section,
@@ -180,10 +181,6 @@ export default function RestaurantScreen() {
     })),
     [sections],
   );
-
-  useEffect(() => {
-    if (selectedCategory === "Tous") setActiveCategory("Tous");
-  }, [sections, selectedCategory]);
 
   useEffect(() => {
     const x = categoryOffsetsRef.current[activeCategory];
@@ -210,26 +207,54 @@ export default function RestaurantScreen() {
       setCategoryPinned(false);
     }
 
+    if (!isProgrammaticScroll.current && scrollY <= pinThreshold + 4) {
+      setActiveCategory((current) => current === "Tous" ? current : "Tous");
+    }
   };
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ section?: { id?: string } }> }) => {
+    if (isProgrammaticScroll.current) return;
     const visibleSectionId = viewableItems.find((token) => token.section?.id)?.section?.id;
     if (visibleSectionId) {
       setActiveCategory((current) => current === visibleSectionId ? current : visibleSectionId);
     }
   }).current;
 
-  const jumpToCategory = (categoryId: string) => {
-    // Category chips are filters. Keeping "Tous" selected here made every
-    // chip appear clickable while leaving the complete catalogue on screen.
-    setSelectedCategory(categoryId);
-    setActiveCategory(categoryId);
+  const finishProgrammaticScroll = () => {
+    if (!isProgrammaticScroll.current) return;
+    isProgrammaticScroll.current = false;
+    if (programmaticScrollTimerRef.current) {
+      clearTimeout(programmaticScrollTimerRef.current);
+      programmaticScrollTimerRef.current = null;
+    }
+  };
 
-    // The filtered SectionList has a new data shape after the state update.
-    // Reset its offset instead of jumping to an index from the previous list.
+  const jumpToCategory = (categoryId: string) => {
+    setActiveCategory(categoryId);
+    isProgrammaticScroll.current = true;
+    if (programmaticScrollTimerRef.current) clearTimeout(programmaticScrollTimerRef.current);
+
+    const sectionIndex = categoryId === "Tous"
+      ? 0
+      : virtualSections.findIndex((section) => section.id === categoryId);
+    if (sectionIndex < 0) {
+      finishProgrammaticScroll();
+      return;
+    }
+
     requestAnimationFrame(() => {
-      menuScrollRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true });
+      menuScrollRef.current?.scrollToLocation({
+        sectionIndex,
+        itemIndex: 0,
+        animated: true,
+        viewPosition: 0,
+        viewOffset: insets.top + COMPACT_HEADER_HEIGHT + CATEGORY_STICKY_HEIGHT + CATEGORY_OVERLAY_TOP_GAP,
+      });
     });
+
+    // Native platforms normally emit momentum end after an animated jump.
+    // Keep a fallback so interrupted animations can never leave tracking locked.
+    programmaticScrollTimerRef.current = setTimeout(finishProgrammaticScroll, 900);
   };
 
   const renderCategoryBar = (floating = false) => (
@@ -253,9 +278,7 @@ export default function RestaurantScreen() {
           contentContainerStyle={styles.catRow}
         >
           {categories.map((cat) => {
-            const active = selectedCategory === "Tous"
-              ? activeCategory === cat.id
-              : selectedCategory === cat.id;
+            const active = activeCategory === cat.id;
             return (
               <Pressable
                 key={cat.id}
@@ -276,7 +299,7 @@ export default function RestaurantScreen() {
                 ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
-                accessibilityLabel={`Filtrer par ${cat.name}`}
+                accessibilityLabel={`Aller à la catégorie ${cat.name}`}
               >
                 <Text style={[
                   styles.catText,
@@ -640,6 +663,7 @@ export default function RestaurantScreen() {
         onScroll={handleMenuScroll}
         scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
+        onMomentumScrollEnd={finishProgrammaticScroll}
         viewabilityConfig={{ itemVisiblePercentThreshold: 15, minimumViewTime: 80 }}
         stickySectionHeadersEnabled={false}
         initialNumToRender={6}

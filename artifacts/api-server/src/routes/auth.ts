@@ -13,6 +13,7 @@ import {
 } from "../lib/otpMessaging.js";
 import { requireAuth, requireRole, type AuthedRequest } from "../middlewares/auth.js";
 import { closeUserSubscriptions } from "../lib/sse.js";
+import { deleteUserAccount } from "../lib/deleteUserAccount.js";
 
 // Log any obvious provider misconfigurations once at startup.
 logProviderConfigWarnings();
@@ -998,9 +999,8 @@ router.post("/auth/logout", async (_req, res): Promise<void> => {
 
 router.delete("/auth/me", requireAuth, async (req: AuthedRequest, res): Promise<void> => {
   const userId = req.userId!;
-  const deleted = await db.delete(usersTable).where(eq(usersTable.id, userId))
-    .returning({ id: usersTable.id });
-  if (deleted.length > 0) closeUserSubscriptions(userId);
+  const deleted = await deleteUserAccount(userId);
+  if (deleted) closeUserSubscriptions(userId);
   res.json({ success: true });
 });
 

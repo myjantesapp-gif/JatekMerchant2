@@ -47,3 +47,4 @@
 - [Product promo content](product-promo-content.md) — product promo cards reuse the ads/content feed and carry restaurant, product, price, image, order, and active-state metadata.
 - [Jatek target architecture](jatek-target-architecture.md) — treat zero-crash behavior, strict TypeScript, API-driven ordering, and branded fallbacks as ecosystem-wide standards.
 - [Public catalog seed](public-catalog-seed.md) — public catalog imports are explicit and non-destructive; media restore stays a separately verified operation.
+- [Account erasure retention](account-erasure-retention.md) — delete customer data transactionally; anonymize required order/accounting history instead of leaving identifying fields.
