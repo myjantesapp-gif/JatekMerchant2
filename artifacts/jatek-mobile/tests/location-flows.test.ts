@@ -26,6 +26,12 @@ test("preserves the five kilometre Oujda delivery boundary", () => {
 test("location acquisition handles native denial, disabled services, and timeout", () => {
   const utility = source("../utils/deviceLocation.ts");
   assert.match(utility, /hasServicesEnabledAsync/);
+  assert.match(utility, /requestForegroundPermissionsAsync/);
+  assert.ok(
+    utility.indexOf("requestForegroundPermissionsAsync") <
+      utility.indexOf("hasServicesEnabledAsync"),
+    "the native permission request must happen before the service-state check",
+  );
   assert.match(utility, /canAskAgain/);
   assert.match(utility, /permission-denied/);
   assert.match(utility, /services-disabled/);

@@ -72,6 +72,23 @@ export async function getDeviceLocation(): Promise<{
     return withLocationTimeout(getWebLocation());
   }
 
+  // Ask for the app permission before checking the device-wide location
+  // switch. On a fresh iOS install, checking services first can return a
+  // disabled/unavailable state and prevent the native permission prompt from
+  // ever being reached.
+  let permission: Location.LocationPermissionResponse;
+  try {
+    permission = await Location.getForegroundPermissionsAsync();
+    if (!permission.granted && permission.canAskAgain) {
+      permission = await Location.requestForegroundPermissionsAsync();
+    }
+  } catch {
+    throw new DeviceLocationError("unavailable");
+  }
+  if (!permission.granted) {
+    throw new DeviceLocationError("permission-denied", permission.canAskAgain);
+  }
+
   let servicesEnabled: boolean;
   try {
     servicesEnabled = await Location.hasServicesEnabledAsync();
@@ -80,22 +97,11 @@ export async function getDeviceLocation(): Promise<{
   }
   if (!servicesEnabled) throw new DeviceLocationError("services-disabled");
 
-  let permission = await Location.getForegroundPermissionsAsync();
-  if (!permission.granted) {
-    if (!permission.canAskAgain) {
-      throw new DeviceLocationError("permission-denied", false);
-    }
-    permission = await Location.requestForegroundPermissionsAsync();
-  }
-  if (!permission.granted) {
-    throw new DeviceLocationError("permission-denied", permission.canAskAgain);
-  }
-
   try {
     const position = await withLocationTimeout(
       Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
-          mayShowUserSettingsDialog: true,
+        mayShowUserSettingsDialog: true,
       }),
     );
     return {

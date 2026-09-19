@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ma.jatek.app",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Jatek utilise votre position uniquement pendant l’utilisation de l’application pour renseigner votre adresse et vérifier la zone de livraison à Oujda.",
@@ -26,7 +26,7 @@
     },
     "android": {
       "package": "ma.jatek.app",
-      "versionCode": 18,
+      "versionCode": 19,
       "edgeToEdgeEnabled": false,
       "googleServicesFile": "./google-services.json",
       "permissions": [

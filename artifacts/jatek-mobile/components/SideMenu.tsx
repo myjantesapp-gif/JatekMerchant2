@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   Modal,
   StyleSheet,
@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { JatekWordmark } from "@/components/JatekWordmark";
+import { useListCategories } from "@workspace/api-client-react";
 
 const PINK      = "#FF4593";
 const PINK_DEEP = "#E91E63";
@@ -30,20 +31,37 @@ const DRAWER_W = 80;
 
 interface MenuEntry {
   id: string;
+  label: string;
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
   route: string;
 }
 
 const ENTRIES: MenuEntry[] = [
-  { id: "cart",      icon: "cart",              color: PINK_DEEP, route: "/cart" },
-  { id: "fav",       icon: "heart",             color: PINK,      route: "/profile/favorites" },
-  { id: "promo",     icon: "pricetag",          color: ORANGE,    route: "/profile/coupons" },
-  { id: "orders",    icon: "bag-handle",        color: TURQUOISE, route: "/(tabs)/orders" },
-  { id: "rewards",   icon: "gift",              color: YELLOW,    route: "/profile/coupons" },
-  { id: "addresses", icon: "location",          color: PURPLE,    route: "/profile/addresses" },
-  { id: "help",      icon: "chatbubbles",       color: "#0EA5E9", route: "/profile/help" },
+  { id: "cart",      label: "Panier",              icon: "cart",        color: PINK_DEEP, route: "/cart" },
+  { id: "fav",       label: "Favoris",             icon: "heart",       color: PINK,      route: "/profile/favorites" },
+  { id: "promo",     label: "Promotions",          icon: "pricetag",    color: ORANGE,    route: "/profile/coupons" },
+  { id: "orders",    label: "Commandes",           icon: "bag-handle",  color: TURQUOISE, route: "/(tabs)/orders" },
+  { id: "rewards",   label: "Récompenses",         icon: "gift",        color: YELLOW,    route: "/profile/coupons" },
+  { id: "addresses", label: "Adresses",            icon: "location",    color: PURPLE,    route: "/profile/addresses" },
+  { id: "help",      label: "Aide",                icon: "chatbubbles", color: "#0EA5E9", route: "/profile/help" },
 ];
+
+function normalize(value: unknown): string {
+  return String(value ?? "")
+    .toLocaleLowerCase("fr-FR")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+function categoryIcon(category: any): keyof typeof Ionicons.glyphMap {
+  const value = normalize(`${category?.slug} ${category?.name} ${category?.businessType}`);
+  if (value.includes("pharm") || value.includes("sant")) return "medkit";
+  if (value.includes("market") || value.includes("grocery") || value.includes("supermarch") || value.includes("epicer")) return "basket";
+  if (value.includes("shop") || value.includes("boutique") || value.includes("store")) return "bag-handle";
+  if (value.includes("restaurant") || value.includes("restauration") || value.includes("food")) return "restaurant";
+  return "grid";
+}
 
 interface Props {
   visible: boolean;
@@ -55,6 +73,21 @@ export function SideMenu({ visible, onClose }: Props) {
   const insets  = useSafeAreaInsets();
   const slide   = useRef(new Animated.Value(-DRAWER_W)).current;
   const overlay = useRef(new Animated.Value(0)).current;
+  const { data: categories } = useListCategories();
+  const categoryEntries = useMemo<MenuEntry[]>(
+    () =>
+      (categories ?? [])
+        .filter((category: any) => category.parentId == null && category.isActive !== false && typeof category.slug === "string")
+        .map((category: any) => ({
+          id: `category-${category.slug}`,
+          label: category.name || category.slug,
+          icon: categoryIcon(category),
+          color: category.accentColor || PINK_DEEP,
+          route: `/category/${encodeURIComponent(category.slug)}`,
+        })),
+    [categories],
+  );
+  const menuEntries = useMemo(() => [...ENTRIES, ...categoryEntries], [categoryEntries]);
 
   useEffect(() => {
     if (visible) {
@@ -119,7 +152,7 @@ export function SideMenu({ visible, onClose }: Props) {
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
-            {ENTRIES.map((entry, i) => (
+            {menuEntries.map((entry, i) => (
               <IconItem
                 key={entry.id}
                 entry={entry}
@@ -134,6 +167,8 @@ export function SideMenu({ visible, onClose }: Props) {
               <TouchableOpacity
                 onPress={() => handleNav("/profile/info" as any)}
                 style={styles.settingsBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Paramètres"
               >
                 <Ionicons name="settings-outline" size={22} color={colors.mutedForeground} />
               </TouchableOpacity>
@@ -189,7 +224,13 @@ function IconItem({
   const rotate     = wobble.interpolate({ inputRange: [-1, 1], outputRange: ["-14deg", "14deg"] });
 
   return (
-    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={entry.label}
+    >
       <Animated.View
         style={[
           styles.itemRow,
