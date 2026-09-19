@@ -38,6 +38,9 @@ test("location acquisition handles native denial, disabled services, and timeout
   assert.match(utility, /Promise\.race/);
   assert.match(utility, /Linking\.openSettings/);
   assert.match(utility, /mayShowUserSettingsDialog: true/);
+  assert.match(utility, /Platform\.OS === "web"/);
+  assert.match(utility, /navigator\.geolocation/);
+  assert.match(utility, /getCurrentPosition/);
 });
 
 test("dismissible location flows invalidate stale asynchronous work", () => {
@@ -59,6 +62,8 @@ test("GPS selection keeps working when reverse geocoding is unavailable", () => 
   assert.match(picker, /reverseGeocode/);
   assert.match(picker, /coordinates are still valid/i);
   assert.match(picker, /checkDeliveryZone\(coords\.latitude, coords\.longitude\)/);
+  assert.match(picker, /ActivityIndicator/);
+  assert.match(picker, /disabled=\{locating\}/);
 });
 
 test("reverse geocoding is bounded and accepts cancellation", () => {
@@ -66,4 +71,52 @@ test("reverse geocoding is bounded and accepts cancellation", () => {
   assert.match(utility, /GEOCODE_TIMEOUT_MS/);
   assert.match(utility, /AbortController/);
   assert.match(utility, /signal\?: AbortSignal/);
+});
+
+test("auth actions require the exact legal consent on every client auth path", () => {
+  const login = source("../app/(auth)/login.tsx");
+  const register = source("../app/(auth)/register.tsx");
+  const consent = "J'accepte les conditions générales et la politique RGPD";
+
+  for (const screen of [login, register]) {
+    assert.match(screen, new RegExp(consent));
+    assert.match(screen, /accessibilityRole="checkbox"/);
+    assert.match(screen, /accessibilityState=\{\{ checked: isChecked \}\}/);
+    assert.match(screen, /colors\.authPrimary/);
+  }
+
+  assert.equal(
+    login.match(/disabled=\{pending \|\| !isChecked\}/g)?.length,
+    2,
+  );
+  assert.match(register, /disabled=\{loading \|\| !isChecked\}/);
+  assert.match(register, /testID="register-consent-checkbox"/);
+});
+
+test("native location and push permissions remain configured without microphone access", () => {
+  const appConfig = JSON.parse(source("../app.json")) as {
+    expo: {
+      ios?: { infoPlist?: Record<string, unknown> };
+      android?: { permissions?: string[]; blockedPermissions?: string[] };
+      plugins?: unknown[];
+    };
+  };
+  const expo = appConfig.expo;
+  const plugins = JSON.stringify(expo.plugins);
+
+  assert.equal(
+    expo.ios?.infoPlist?.NSLocationWhenInUseUsageDescription !== undefined,
+    true,
+  );
+  assert.deepEqual(
+    expo.android?.permissions,
+    [
+      "android.permission.POST_NOTIFICATIONS",
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.ACCESS_FINE_LOCATION",
+    ],
+  );
+  assert.deepEqual(expo.android?.blockedPermissions, ["android.permission.RECORD_AUDIO"]);
+  assert.match(plugins, /expo-location/);
+  assert.match(plugins, /expo-notifications/);
 });
