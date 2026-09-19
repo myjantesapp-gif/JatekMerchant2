@@ -13,4 +13,5 @@ Select the Verify service SID from the same Twilio account in the console and re
 
 ## How to apply
 - Run `artifacts/api-server/scripts/test-twilio-config.mjs` to validate Account and Verify access without sending an OTP; a 404/20404 means the SID is not the service used by the configured account.
-- Add `--send-whatsapp +212...` only for an intentional delivery test.
+- Add `--send-sms +212...` only for an intentional delivery test.
+- This workspace also uses `TWILIO_ACC_SID` as an Account SID alias. `TWILIO_SEC_KEY` is interpreted as the API secret when an API key SID is present, otherwise as the Account SID auth token; keep the canonical variables supported too.

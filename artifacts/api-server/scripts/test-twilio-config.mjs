@@ -3,7 +3,7 @@
  *
  * Usage:
  *   node scripts/test-twilio-config.mjs
- *   node scripts/test-twilio-config.mjs --send-whatsapp +2126XXXXXXXX
+ *   node scripts/test-twilio-config.mjs --send-sms +2126XXXXXXXX
  *
  * The default command only authenticates and reads the Verify Service. The
  * optional flag sends a real OTP and must be used explicitly.
@@ -14,18 +14,19 @@ const env = (name) => {
   return value || undefined;
 };
 
-const accountSid = env("TWILIO_ACCOUNT_SID");
+const accountSid = env("TWILIO_ACCOUNT_SID") || env("TWILIO_ACC_SID");
 const verifySid = env("TWILIO_VERIFY_SID");
 const apiKey = env("TWILIO_API_KEY");
-const apiSecret = env("TWILIO_API_SECRET") || env("TWILIO_AUTH_KEY");
-const authToken = env("TWILIO_AUTH_TOKEN");
+const sharedSecret = env("TWILIO_SEC_KEY");
+const apiSecret = env("TWILIO_API_SECRET") || env("TWILIO_AUTH_KEY") || (apiKey ? sharedSecret : undefined);
+const authToken = env("TWILIO_AUTH_TOKEN") || (!apiKey ? sharedSecret : undefined);
 
 function fail(message) {
   console.error(`❌ ${message}`);
   process.exitCode = 1;
 }
 
-if (!accountSid?.startsWith("AC")) fail("TWILIO_ACCOUNT_SID absent ou invalide (préfixe AC attendu)");
+if (!accountSid?.startsWith("AC")) fail("TWILIO_ACCOUNT_SID/TWILIO_ACC_SID absent ou invalide (préfixe AC attendu)");
 if (!verifySid?.startsWith("VA")) fail("TWILIO_VERIFY_SID absent ou invalide (préfixe VA attendu)");
 if (apiKey && !apiKey.startsWith("SK")) fail("TWILIO_API_KEY invalide (préfixe SK attendu)");
 
@@ -41,7 +42,7 @@ if (apiKey && apiSecret) {
   password = authToken;
   mode = "Auth Token legacy";
 } else {
-  fail("Credentials Twilio incomplets : TWILIO_API_KEY + TWILIO_AUTH_KEY requis");
+  fail("Credentials Twilio incomplets : API key/secret ou Account SID/Auth Token requis");
 }
 
 if (process.exitCode) process.exit();
@@ -75,11 +76,11 @@ if (!verifyResult.response.ok) {
   console.log(`✅ Service Verify accessible (${verifyResult.data?.friendly_name ?? "nom masqué"})`);
 }
 
-const sendIndex = process.argv.indexOf("--send-whatsapp");
+const sendIndex = process.argv.indexOf("--send-sms");
 if (sendIndex !== -1) {
   const to = process.argv[sendIndex + 1];
   if (!to) {
-    fail("Numéro manquant après --send-whatsapp");
+    fail("Numéro manquant après --send-sms");
     process.exit();
   }
 
@@ -91,15 +92,15 @@ if (sendIndex !== -1) {
         ...headers,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({ To: to, Channel: "whatsapp" }).toString(),
+      body: new URLSearchParams({ To: to, Channel: "sms" }).toString(),
     },
   );
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    fail(`Envoi WhatsApp Verify échoué (${response.status}, code ${data?.code ?? "unknown"}): ${data?.message ?? "erreur Twilio"}`);
+    fail(`Envoi SMS Verify échoué (${response.status}, code ${data?.code ?? "unknown"}): ${data?.message ?? "erreur Twilio"}`);
   } else {
-    console.log(`✅ OTP WhatsApp demandé (statut ${data?.status ?? "unknown"})`);
+    console.log(`✅ OTP SMS demandé (statut ${data?.status ?? "unknown"})`);
   }
 } else {
-  console.log("ℹ️ Aucun OTP envoyé. Utilisez --send-whatsapp +212... pour un test réel.");
+  console.log("ℹ️ Aucun OTP envoyé. Utilisez --send-sms +212... uniquement pour un test réel.");
 }

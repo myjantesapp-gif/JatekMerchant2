@@ -32,7 +32,7 @@ export default function OtpScreen() {
   }>();
   const identifier = params.email || params.phone || "";
   const isEmailMode = !!params.email && !params.phone;
-  const isWhatsApp = !isEmailMode;
+  const isSms = !isEmailMode;
   const { login, logout } = useAuth();
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
@@ -141,14 +141,14 @@ export default function OtpScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.foreground} />
         </TouchableOpacity>
 
-        <View style={[styles.channelBadge, { backgroundColor: isWhatsApp ? "#25D36618" : colors.primary + "15" }]}>
+        <View style={[styles.channelBadge, { backgroundColor: isSms ? colors.authTeal + "15" : colors.primary + "15" }]}>
           <Ionicons
-            name={isWhatsApp ? "logo-whatsapp" : "mail-outline"}
+            name={isSms ? "chatbubble-ellipses-outline" : "mail-outline"}
             size={16}
-            color={isWhatsApp ? "#25D366" : colors.primary}
+            color={isSms ? colors.authTeal : colors.primary}
           />
-          <Text style={[styles.channelBadgeText, { color: isWhatsApp ? "#25D366" : colors.primary }]}>
-            {isWhatsApp ? "Connexion via WhatsApp" : t("otp_via_email")}
+          <Text style={[styles.channelBadgeText, { color: isSms ? colors.authTeal : colors.primary }]}>
+            {isSms ? t("otp_via_sms") : t("otp_via_email")}
           </Text>
         </View>
 

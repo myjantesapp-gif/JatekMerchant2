@@ -20,6 +20,7 @@ import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 import {
   sendOtpMessage,
   twilioConfigured,
+  twilioSmsConfigured,
   twilioCredentialMode,
   twilioVerifyConfigured,
 } from "../lib/otpMessaging";
@@ -2504,19 +2505,17 @@ router.get("/backend/otp-health", requireAuth, (_req, res): void => {
   type ProviderStatus = "ok" | "misconfigured" | "not_configured";
   interface ProviderHealth {
     id: string; name: string;
-    channel: "whatsapp" | "email";
+     channel: "sms" | "email";
     role: "primary" | "fallback";
     status: ProviderStatus; notes: string[];
   }
 
-  const isProduction = process.env.NODE_ENV === "production" || !!process.env.REPLIT_DEPLOYMENT;
-  const sandboxNumber = "+14155238886";
   const providers: ProviderHealth[] = [];
 
-  // ── Twilio Verify (primary WhatsApp) ────────────────────────────────────────
+  // ── Twilio Verify (primary SMS) ──────────────────────────────────────────────
   {
     const verifySid  = process.env.TWILIO_VERIFY_SID;
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const accountSid = process.env.TWILIO_ACCOUNT_SID || process.env.TWILIO_ACC_SID;
     const notes: string[] = [];
     let status: ProviderStatus = "ok";
 
@@ -2538,13 +2537,13 @@ router.get("/backend/otp-health", requireAuth, (_req, res): void => {
         notes.push("Credentials Twilio manquants/incomplets : TWILIO_API_KEY + TWILIO_AUTH_KEY (ou TWILIO_AUTH_TOKEN)");
       }
     }
-    providers.push({ id: "twilio-verify", name: "Twilio Verify", channel: "whatsapp", role: "primary", status, notes });
+    providers.push({ id: "twilio-verify", name: "Twilio Verify SMS", channel: "sms", role: "primary", status, notes });
   }
 
-  // ── Twilio WhatsApp direct (fallback) ───────────────────────────────────────
+  // ── Twilio SMS direct (fallback) ────────────────────────────────────────────
   {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const waFrom     = process.env.TWILIO_WA_FROM;
+    const accountSid = process.env.TWILIO_ACCOUNT_SID || process.env.TWILIO_ACC_SID;
+    const smsFrom    = process.env.TWILIO_FROM_NUMBER || process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_SMS_FROM;
     const notes: string[] = [];
     let status: ProviderStatus = "ok";
 
@@ -2553,29 +2552,9 @@ router.get("/backend/otp-health", requireAuth, (_req, res): void => {
     } else {
       if (!accountSid?.startsWith("AC")) { status = "misconfigured"; notes.push("TWILIO_ACCOUNT_SID manquant ou invalide"); }
       if (!twilioConfigured())           { status = "misconfigured"; notes.push("Credentials Twilio manquants/incomplets : TWILIO_API_KEY + TWILIO_AUTH_KEY (ou TWILIO_AUTH_TOKEN)"); }
-      if (isProduction && (!waFrom || waFrom === sandboxNumber)) {
-        if (status === "ok") status = "misconfigured";
-        notes.push("Numéro sandbox en production — définissez TWILIO_WA_FROM avec un numéro WhatsApp Business approuvé");
-      }
+      if (!smsFrom)                      { status = "misconfigured"; notes.push("TWILIO_FROM_NUMBER ou TWILIO_PHONE_NUMBER manquant"); }
     }
-    providers.push({ id: "twilio-whatsapp", name: "Twilio WhatsApp direct", channel: "whatsapp", role: "fallback", status, notes });
-  }
-
-  // ── Infobip WhatsApp (fallback) ──────────────────────────────────────────────
-  {
-    const apiKey  = process.env.INFOBIP_API_KEY;
-    const baseUrl = process.env.INFOBIP_BASE_URL || process.env.INFOBIP_URL;
-    const sender  = process.env.INFOBIP_WA_SENDER;
-    const notes: string[] = [];
-    let status: ProviderStatus = "ok";
-
-    if (!apiKey) {
-      status = "not_configured";
-    } else {
-      if (!baseUrl) { status = "misconfigured"; notes.push("INFOBIP_BASE_URL manquant"); }
-      if (!sender)  { status = "misconfigured"; notes.push("INFOBIP_WA_SENDER manquant"); }
-    }
-    providers.push({ id: "infobip", name: "Infobip WhatsApp", channel: "whatsapp", role: "fallback", status, notes });
+    providers.push({ id: "twilio-sms", name: "Twilio SMS direct", channel: "sms", role: "fallback", status, notes });
   }
 
   // ── Resend Email (primary email OTP / password reset) ────────────────────────
@@ -2605,7 +2584,7 @@ router.get("/backend/otp-health", requireAuth, (_req, res): void => {
   res.json({
     providers,
     summary: {
-      whatsapp: channelSummary(providers.filter((p) => p.channel === "whatsapp")),
+      sms:      channelSummary(providers.filter((p) => p.channel === "sms")),
       email:    channelSummary(providers.filter((p) => p.channel === "email")),
     },
   });

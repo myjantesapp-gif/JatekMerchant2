@@ -16,7 +16,7 @@ import { useT } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { JatekWordmark } from "@/components/JatekWordmark";
 
-type Method = "email" | "whatsapp";
+type Method = "email" | "sms";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -31,7 +31,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
 
-  // WhatsApp
+  // SMS
   const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
   const [showPicker, setShowPicker] = useState(false);
   const [phone, setPhone] = useState("");
@@ -74,14 +74,14 @@ export default function LoginScreen() {
     });
   };
 
-  const handleWhatsAppLogin = () => {
+  const handleSmsLogin = () => {
     const local = phone.trim().replace(/\s/g, "");
     if (local.length < 5) {
       setPhoneError(t("login_phone_error"));
       return;
     }
     setPhoneError("");
-    const payload: SendOtpBody = { phone: fullPhone, channel: "whatsapp", intent: "login" };
+    const payload: SendOtpBody = { phone: fullPhone, channel: "sms", intent: "login" };
     sendOtp.mutate({ data: payload }, {
        onSuccess: (res) => {
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -92,7 +92,7 @@ export default function LoginScreen() {
             intent: "login",
             demo: res?.demoOtp ? "1" : "0",
             demoOtp: res?.demoOtp ?? "",
-            channel: res?.channel ?? "twilio-verify-whatsapp",
+            channel: res?.channel ?? "twilio-verify-sms",
           },
         });
       },
@@ -101,7 +101,7 @@ export default function LoginScreen() {
         setPhoneError(err instanceof Error ? err.message : t("login_send_fail"));
         if (err && typeof err === "object" && "data" in err) {
           const data = err.data;
-          if (data && typeof data === "object" && "code" in data && data.code === "INVALID_PHONE_FOR_WHATSAPP") {
+            if (data && typeof data === "object" && "code" in data && data.code === "INVALID_PHONE_FOR_SMS") {
             setShowEmailCta(true);
           }
         }
@@ -154,12 +154,12 @@ export default function LoginScreen() {
               <Text style={[styles.toggleText, { color: method === "email" ? colors.authInk : colors.mutedForeground }]}>Email</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.toggleBtn, method === "whatsapp" && { backgroundColor: colors.card, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 }]}
-              onPress={() => { setMethod("whatsapp"); setEmailError(""); }}
+              style={[styles.toggleBtn, method === "sms" && { backgroundColor: colors.card, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 }]}
+              onPress={() => { setMethod("sms"); setEmailError(""); }}
               activeOpacity={0.8}
             >
-              <Ionicons name="logo-whatsapp" size={15} color={method === "whatsapp" ? "#25D366" : colors.mutedForeground} />
-              <Text style={[styles.toggleText, { color: method === "whatsapp" ? colors.authInk : colors.mutedForeground }]}>WhatsApp</Text>
+              <Ionicons name="chatbubble-ellipses-outline" size={15} color={method === "sms" ? colors.authTeal : colors.mutedForeground} />
+              <Text style={[styles.toggleText, { color: method === "sms" ? colors.authInk : colors.mutedForeground }]}>SMS</Text>
             </TouchableOpacity>
           </View>
 
@@ -223,10 +223,10 @@ export default function LoginScreen() {
             ) : (
               <>
                 <View style={[styles.channelBadge, { backgroundColor: "#25D36618" }]}>
-                  <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
-                  <Text style={[styles.channelBadgeText, { color: "#25D366" }]}>Connexion par code WhatsApp</Text>
+                  <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.authTeal} />
+                  <Text style={[styles.channelBadgeText, { color: colors.authTeal }]}>Connexion par code SMS</Text>
                 </View>
-                <Text style={[styles.label, { color: colors.authInk }]}>Numéro WhatsApp</Text>
+                <Text style={[styles.label, { color: colors.authInk }]}>Numéro de téléphone</Text>
                 <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: phoneError ? colors.destructive : colors.authBorder }]}>
                   <TouchableOpacity
                     style={[styles.dialCodeBtn, { borderRightColor: colors.authBorder }]}
@@ -244,7 +244,7 @@ export default function LoginScreen() {
                     onChangeText={(v) => { setPhone(v); setPhoneError(""); setShowEmailCta(false); }}
                     keyboardType="phone-pad"
                     returnKeyType="done"
-                    onSubmitEditing={handleWhatsAppLogin}
+                    onSubmitEditing={handleSmsLogin}
                   />
                 </View>
                 {phoneError ? <Text style={[styles.errorText, { color: colors.destructive }]}>{phoneError}</Text> : null}
@@ -266,21 +266,21 @@ export default function LoginScreen() {
                 ) : null}
                 <TouchableOpacity
                   style={[styles.btn, { backgroundColor: "#25D366", opacity: pending ? 0.7 : 1 }]}
-                  onPress={handleWhatsAppLogin}
+                  onPress={handleSmsLogin}
                   disabled={pending}
                   activeOpacity={0.8}
-                  testID="login-whatsapp-submit"
+                  testID="login-sms-submit"
                 >
                   {sendOtp.isPending ? <ActivityIndicator color="#fff" size="small" /> : (
                     <>
-                      <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+                      <Ionicons name="chatbubble-ellipses-outline" size={20} color="#fff" />
                       <Text style={styles.btnText}>Recevoir le code</Text>
                       <Ionicons name="arrow-forward" size={20} color="#fff" />
                     </>
                   )}
                 </TouchableOpacity>
                 <Text style={[styles.helperText, { color: colors.mutedForeground }]}>
-                  Un code à 6 chiffres sera envoyé sur votre WhatsApp.
+                  Un code à 6 chiffres sera envoyé par SMS.
                 </Text>
               </>
             )}

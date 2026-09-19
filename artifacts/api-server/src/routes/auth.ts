@@ -56,7 +56,7 @@ function rejectNonCustomerMobile(req: { get: (name: string) => string | undefine
   return true;
 }
 
-// OTP messaging is delegated to lib/otpMessaging.ts. Phone OTP is WhatsApp-only;
+// OTP messaging is delegated to lib/otpMessaging.ts. Phone OTP uses Twilio SMS;
 // email OTP is delivered through the configured email provider.
 
 // ─── Register (email/password, for admin/driver panel) ──────────────────────
@@ -124,8 +124,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   res.json({ token, user: safeUser });
 });
 
-// ─── Send OTP (email or WhatsApp) ──────────────────────────────────────────────
-// Phone OTP: Twilio Verify Service (preferred) → legacy WhatsApp providers.
+// ─── Send OTP (email or SMS) ───────────────────────────────────────────────────
+// Phone OTP: Twilio Verify Service (preferred) → direct Twilio SMS.
 // Email OTP: Resend (DB-managed, unchanged).
 router.post("/auth/send-otp", async (req, res): Promise<void> => {
   const { phone, email } = req.body;
@@ -179,7 +179,7 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
   // On failure: fall through to the DB-managed path so Infobip can serve as backup.
   if (!isEmailMode && twilioVerifyConfigured()) {
     try {
-      await sendTwilioVerify(identifier, "whatsapp");
+      await sendTwilioVerify(identifier);
       await db.insert(otpCodesTable).values({
         phone: identifier,
         code: "__twilio_verify__",
@@ -187,15 +187,15 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
       });
       res.json({
         success: true,
-        channel: "twilio-verify-whatsapp",
-        message: `Code envoyé via WhatsApp à ${identifier}`,
+        channel: "twilio-verify-sms",
+        message: `Code envoyé par SMS à ${identifier}`,
         otpSent: true,
       });
       return;
     } catch (err: any) {
       if (err instanceof OtpDestinationError) {
         // Bad phone number — don't fall through to legacy providers; tell user now.
-        res.status(400).json({ error: err.message, code: "INVALID_PHONE_FOR_WHATSAPP" });
+        res.status(400).json({ error: err.message, code: "INVALID_PHONE_FOR_SMS" });
         return;
       }
       console.warn(`[OTP] Twilio Verify send failed for ${identifier}, falling back to DB-managed path:`, err?.message ?? err);
@@ -237,9 +237,9 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
     if (!canExposeDemoOtp) {
       await db.delete(otpCodesTable).where(eq(otpCodesTable.phone, identifier));
       // If every provider that attempted a send reported a destination error
-      // (invalid number / not on WhatsApp), return 400 with actionable message.
+      // (invalid number / cannot receive SMS), return 400 with actionable message.
       if (err instanceof OtpDestinationError) {
-        res.status(400).json({ error: err.message, code: "INVALID_PHONE_FOR_WHATSAPP" });
+        res.status(400).json({ error: err.message, code: "INVALID_PHONE_FOR_SMS" });
         return;
       }
       res.status(502).json({ error: "Impossible d'envoyer le code. Réessayez dans un instant." });
@@ -346,7 +346,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
         return;
       }
       if (phoneUser.length > 0) {
-        res.status(409).json({ error: "Ce numéro WhatsApp possède déjà un compte" });
+        res.status(409).json({ error: "Ce numéro de téléphone possède déjà un compte" });
         return;
       }
 
@@ -535,7 +535,7 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
       return;
     }
     if (phoneUser.length > 0) {
-      res.status(409).json({ error: "Ce numéro WhatsApp possède déjà un compte" });
+      res.status(409).json({ error: "Ce numéro de téléphone possède déjà un compte" });
       return;
     }
 
@@ -858,10 +858,10 @@ router.get("/auth/otp-diagnostic", requireRole("super_admin"), async (_req, res)
 
   // ── Twilio ──────────────────────────────────────────────────────────────────
   try {
-    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || process.env.TWILIO_ACC_SID;
     const twilioApiKey = process.env.TWILIO_API_KEY;
-    const twilioAuthKey = process.env.TWILIO_AUTH_KEY;
-    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioAuthKey = process.env.TWILIO_AUTH_KEY || process.env.TWILIO_SEC_KEY;
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN || process.env.TWILIO_SEC_KEY;
     const twilioPhone = process.env.TWILIO_FROM_NUMBER || process.env.TWILIO_PHONE_NUMBER;
 
     const twilioConfig = {
@@ -962,8 +962,8 @@ router.get("/auth/otp-diagnostic", requireRole("super_admin"), async (_req, res)
   // ── Twilio Verify ────────────────────────────────────────────────────────────
   try {
     const verifySid = process.env.TWILIO_VERIFY_SID;
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const waFrom     = process.env.TWILIO_WA_FROM;
+    const accountSid = process.env.TWILIO_ACCOUNT_SID || process.env.TWILIO_ACC_SID;
+    const smsFrom    = process.env.TWILIO_FROM_NUMBER || process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_SMS_FROM;
 
     let verifyStatus: "ok" | "misconfigured" | "not_configured";
     const notes: string[] = [];
@@ -973,8 +973,8 @@ router.get("/auth/otp-diagnostic", requireRole("super_admin"), async (_req, res)
       verifyStatus = "misconfigured";
       if (!verifySid) notes.push("TWILIO_VERIFY_SID not set");
       else if (!verifySid.startsWith("VA")) notes.push(`TWILIO_VERIFY_SID must start with "VA", got "${verifySid.slice(0, 4)}…"`);
-      if (!accountSid?.startsWith("AC")) notes.push("TWILIO_ACCOUNT_SID not set or invalid");
-      if (!twilioCredentialMode()) notes.push("Twilio credentials not set: TWILIO_API_KEY + TWILIO_AUTH_KEY (or legacy TWILIO_AUTH_TOKEN)");
+      if (!accountSid?.startsWith("AC")) notes.push("TWILIO_ACCOUNT_SID or TWILIO_ACC_SID not set or invalid");
+      if (!twilioCredentialMode()) notes.push("Twilio credentials not set: API key/secret or Account SID/Auth Token");
     } else {
       verifyStatus = "ok";
     }
@@ -982,25 +982,12 @@ router.get("/auth/otp-diagnostic", requireRole("super_admin"), async (_req, res)
     results.twilioVerify = {
       status: verifyStatus,
       TWILIO_VERIFY_SID: verifySid ? (verifySid.startsWith("VA") ? "configured" : "invalid format") : "NOT SET",
-      TWILIO_WA_FROM: waFrom ? "configured" : "NOT SET (not required for Verify)",
+      TWILIO_FROM_NUMBER: smsFrom ? "configured" : "NOT SET (not required for Verify)",
       ...(notes.length ? { notes } : {}),
     };
   } catch (e: any) {
     results.twilioVerify = { status: "error", error: e?.message };
   }
-
-  // ── Infobip ─────────────────────────────────────────────────────────────────
-  const infobipConfigured = !!(process.env.INFOBIP_API_KEY && (process.env.INFOBIP_BASE_URL || process.env.INFOBIP_URL));
-  const infobipWhatsappReady = infobipConfigured && !!process.env.INFOBIP_WA_SENDER;
-  results.infobip = {
-    status: infobipWhatsappReady ? "ok" : infobipConfigured ? "misconfigured" : "not_configured",
-    configured: infobipConfigured,
-    whatsappReady: infobipWhatsappReady,
-    INFOBIP_API_KEY: process.env.INFOBIP_API_KEY ? "SET" : "NOT SET",
-    INFOBIP_BASE_URL: process.env.INFOBIP_BASE_URL || process.env.INFOBIP_URL || "NOT SET",
-    INFOBIP_WA_SENDER: process.env.INFOBIP_WA_SENDER ? `${process.env.INFOBIP_WA_SENDER.slice(0, 6)}****` : "NOT SET",
-    ...(infobipConfigured && !infobipWhatsappReady ? { note: "INFOBIP_WA_SENDER not set — WhatsApp disabled" } : {}),
-  };
 
   res.json({ ok: true, providers: results });
 });

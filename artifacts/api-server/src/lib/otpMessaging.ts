@@ -1,14 +1,16 @@
 // OTP messaging with multi-provider fallback chain.
 //
-// Phone OTP (preferred): Twilio Verify Service
-//   - env: TWILIO_ACCOUNT_SID + (TWILIO_API_KEY + TWILIO_AUTH_KEY
-//     or legacy TWILIO_AUTH_TOKEN) + TWILIO_VERIFY_SID
-//   - Sends WhatsApp OTP via Twilio Verify; Twilio manages code/expiry/rate-limit
-//   - No DB entry needed for phone OTP when Verify is configured
+// Phone OTP (preferred): Twilio Verify Service over SMS
+//   - env: TWILIO_ACCOUNT_SID (or TWILIO_ACC_SID) +
+//     TWILIO_API_KEY + TWILIO_API_SECRET (or TWILIO_SEC_KEY/TWILIO_AUTH_KEY)
+//     or Account SID + TWILIO_AUTH_TOKEN/TWILIO_SEC_KEY, plus TWILIO_VERIFY_SID
+//   - Twilio manages code generation, expiry, rate-limit and SMS delivery
+//   - No DB entry is needed for the code when Verify is configured; a marker
+//     row still binds the verification request to the local auth flow.
 //
-// Phone OTP (legacy fallback — no Verify SID):
-//   1. Twilio WhatsApp direct  (TWILIO_ACCOUNT_SID + Twilio credentials + TWILIO_WA_FROM)
-//   2. Infobip WhatsApp        (INFOBIP_API_KEY + INFOBIP_BASE_URL + INFOBIP_WA_SENDER)
+// Phone OTP (fallback — no Verify SID or Verify unavailable):
+//   - Twilio SMS direct (Twilio credentials + TWILIO_FROM_NUMBER or
+//     TWILIO_PHONE_NUMBER), with a locally hashed code and expiry
 //
 // Email: Resend (RESEND_API_KEY + RESEND_FROM_EMAIL)
 //
@@ -20,7 +22,7 @@
  * sees an actionable French message rather than a generic "réessayez" prompt.
  */
 export class OtpDestinationError extends Error {
-  /** Provider error code for logging, e.g. Twilio 60212 or Infobip RECIPIENT_NOT_ON_CHANNEL. */
+  /** Provider error code for logging, e.g. a Twilio destination error code. */
   providerCode?: string | number;
   constructor(message: string, providerCode?: string | number) {
     super(message);
@@ -34,29 +36,26 @@ export class OtpDestinationError extends Error {
  * Call once at server startup — never throws.
  */
 export function logProviderConfigWarnings(): void {
-  const verifySid = process.env.TWILIO_VERIFY_SID;
+  const verifySid = twilioEnv("TWILIO_VERIFY_SID");
   if (verifySid && !verifySid.startsWith("VA")) {
     console.warn(
       `[OTP] TWILIO_VERIFY_SID="${verifySid.slice(0, 4)}…" does not start with "VA" — Twilio Verify will be skipped.`
     );
   }
-  if ((verifySid || process.env.TWILIO_ACCOUNT_SID) && !getTwilioCredentials()) {
+  if ((verifySid || twilioAccountSid()) && !getTwilioCredentials()) {
     console.warn(
-      "[OTP] Twilio credentials are incomplete — set TWILIO_API_KEY + TWILIO_AUTH_KEY (or legacy TWILIO_AUTH_TOKEN)."
+      "[OTP] Twilio credentials are incomplete — set the configured Twilio API key/secret or Auth Token."
     );
   }
-  const waFrom = process.env.TWILIO_WA_FROM;
-  const isProduction = process.env.NODE_ENV === "production" || !!process.env.REPLIT_DEPLOYMENT;
-  if (isProduction && twilioConfigured() && !verifySid && (!waFrom || waFrom === "+14155238886")) {
+  if (!verifySid && twilioConfigured() && !twilioSmsFrom()) {
     console.warn(
-      `[OTP] TWILIO_WA_FROM is the Twilio sandbox number in production — only numbers that have opted in to the sandbox can receive messages.`
+      "[OTP] Direct Twilio SMS fallback is unavailable — set TWILIO_FROM_NUMBER or TWILIO_PHONE_NUMBER."
     );
   }
 }
 
 export type OtpChannel =
-  | "infobip-whatsapp"
-  | "twilio-whatsapp"
+  | "twilio-sms"
   | "resend-email";
 
 export interface SendOtpResult {
@@ -70,69 +69,14 @@ export interface AttemptLog {
   reason?: string;
 }
 
-// ─── Infobip ──────────────────────────────────────────────────────────────────
-function infobipBaseHost(): string | undefined {
-  const raw = process.env.INFOBIP_BASE_URL || process.env.INFOBIP_URL;
-  if (!raw) return undefined;
-  return raw.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-}
-
-function infobipConfigured(): boolean {
-  return !!(process.env.INFOBIP_API_KEY && infobipBaseHost());
-}
-
-async function sendInfobipWhatsapp(to: string, body: string): Promise<void> {
-  const apiKey = process.env.INFOBIP_API_KEY!;
-  const baseUrl = infobipBaseHost()!;
-  const from = process.env.INFOBIP_WA_SENDER;
-  if (!from) throw new Error("INFOBIP_WA_SENDER not set");
-
-  const url = `https://${baseUrl}/whatsapp/1/message/text`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `App ${apiKey}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ from, to, content: { text: body } }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    // Try to classify destination-level errors from Infobip's structured response.
-    try {
-      const errJson = JSON.parse(errText);
-      const msgId: string | undefined =
-        errJson?.requestError?.serviceException?.messageId;
-      const BAD_DEST_IDS = new Set([
-        "RECIPIENT_NOT_ON_CHANNEL",
-        "EC_OA_SND_ID_NOT_FOUND",
-        "NOT_FOUND",
-      ]);
-      if (msgId && BAD_DEST_IDS.has(msgId)) {
-        throw new OtpDestinationError(
-          "Ce numéro n'est pas joignable sur WhatsApp. Vérifiez le numéro ou utilisez l'email.",
-          msgId
-        );
-      }
-    } catch (e) {
-      if (e instanceof OtpDestinationError) throw e;
-      // JSON parse failed — fall through to generic error
-    }
-    throw new Error(`Infobip WhatsApp ${res.status}: ${errText.slice(0, 200)}`);
-  }
-}
-
 // ─── Twilio ───────────────────────────────────────────────────────────────────
 // Direct REST API calls — no SDK dependency.
 // Required env vars:
-//   TWILIO_ACCOUNT_SID  → Account SID (AC...)
+//   TWILIO_ACCOUNT_SID or TWILIO_ACC_SID → Account SID (AC...)
 //   TWILIO_API_KEY      → API Key SID (SK...) and TWILIO_API_SECRET
-//     (preferred) or TWILIO_AUTH_KEY → API Key secret
-//   (or legacy TWILIO_AUTH_TOKEN)
-// Optional:
-//   TWILIO_WA_FROM      → WhatsApp sender (default: Twilio sandbox +14155238886)
+//     (preferred) or TWILIO_SEC_KEY/TWILIO_AUTH_KEY → API Key secret
+//   (or TWILIO_AUTH_TOKEN/TWILIO_SEC_KEY as an Account SID auth token)
+//   TWILIO_FROM_NUMBER or TWILIO_PHONE_NUMBER → SMS sender for direct fallback
 
 type TwilioCredentials = {
   username: string;
@@ -146,18 +90,22 @@ function twilioEnv(name: string): string | undefined {
 }
 
 function twilioAccountSid(): string | undefined {
-  return twilioEnv("TWILIO_ACCOUNT_SID");
+  return twilioEnv("TWILIO_ACCOUNT_SID") || twilioEnv("TWILIO_ACC_SID");
 }
 
 function getTwilioCredentials(): TwilioCredentials | null {
   const apiKey = twilioEnv("TWILIO_API_KEY");
-  const apiSecret = twilioEnv("TWILIO_API_SECRET") || twilioEnv("TWILIO_AUTH_KEY");
+  const sharedSecret = twilioEnv("TWILIO_SEC_KEY");
+  const apiSecret =
+    twilioEnv("TWILIO_API_SECRET") ||
+    twilioEnv("TWILIO_AUTH_KEY") ||
+    (apiKey ? sharedSecret : undefined);
   if (apiKey?.startsWith("SK") && apiSecret) {
     return { username: apiKey, password: apiSecret, mode: "api-key" };
   }
 
   const accountSid = twilioAccountSid();
-  const authToken = twilioEnv("TWILIO_AUTH_TOKEN");
+  const authToken = twilioEnv("TWILIO_AUTH_TOKEN") || (!apiKey ? sharedSecret : undefined);
   if (accountSid && authToken) {
     return { username: accountSid, password: authToken, mode: "auth-token" };
   }
@@ -180,55 +128,40 @@ function twilioConfigured(): boolean {
   return !!(accountSid?.startsWith("AC") && getTwilioCredentials());
 }
 
-async function twilioPost(path: string, params: Record<string, string>): Promise<void> {
-  const accountSid = twilioAccountSid()!;
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/${path}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: twilioAuthHeader(),
-    },
-    body: new URLSearchParams(params).toString(),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({})) as any;
-    throw new Error(
-      `Twilio ${res.status}: ${data?.message ?? res.statusText}` +
-      (data?.code ? ` (code ${data.code})` : "")
-    );
-  }
+function twilioSmsFrom(): string | undefined {
+  return (
+    twilioEnv("TWILIO_FROM_NUMBER") ||
+    twilioEnv("TWILIO_PHONE_NUMBER") ||
+    twilioEnv("TWILIO_SMS_FROM")
+  );
 }
 
-async function sendTwilioWhatsapp(to: string, body: string): Promise<void> {
-  const rawFrom = twilioEnv("TWILIO_WA_FROM") || "+14155238886";
-  const from    = rawFrom.startsWith("whatsapp:") ? rawFrom : `whatsapp:${rawFrom}`;
-  const toWa    = to.startsWith("whatsapp:")     ? to       : `whatsapp:${to}`;
+export function twilioSmsConfigured(): boolean {
+  return twilioConfigured() && !!twilioSmsFrom();
+}
 
-  // Inline fetch so we can inspect Twilio's error code and classify destination errors.
+async function sendTwilioSms(to: string, body: string): Promise<void> {
   const accountSid = twilioAccountSid()!;
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const from = twilioSmsFrom()!;
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       Authorization: twilioAuthHeader(),
     },
-    body: new URLSearchParams({ To: toWa, From: from, Body: body }).toString(),
+    body: new URLSearchParams({ To: to, From: from, Body: body }).toString(),
   });
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({})) as any;
     const code = Number(data?.code ?? 0);
-    // These Twilio error codes indicate the destination is invalid or not on WhatsApp.
-    // 21211: Invalid 'To' phone number format
-    // 21614: 'To' number not mobile (cannot receive WA)
-    // 63016: Failed to send WhatsApp message (number not registered / not opted in)
-    // 63018: WhatsApp capability not enabled on the 'From' number
-    if ([21211, 21614, 63016, 63018].includes(code)) {
+    // These Twilio error codes indicate the destination cannot receive SMS.
+    // 21211: invalid phone number, 21614: not a mobile number,
+    // 30003/30005/30006: unreachable, unknown or landline destination.
+    if ([21211, 21614, 30003, 30005, 30006].includes(code)) {
       throw new OtpDestinationError(
-        "Ce numéro n'est pas joignable sur WhatsApp. Vérifiez le numéro ou utilisez l'email.",
+        "Ce numéro ne peut pas recevoir de SMS. Vérifiez le numéro ou utilisez l'email.",
         code
       );
     }
@@ -241,7 +174,7 @@ async function sendTwilioWhatsapp(to: string, body: string): Promise<void> {
 
 // ─── Twilio Verify Service ────────────────────────────────────────────────────
 // Preferred phone OTP path. Twilio manages code generation, storage, expiry,
-// rate-limiting and multi-channel delivery. No DB row needed.
+// rate-limiting and SMS delivery. No DB code row is needed.
 function twilioVerifyConfigured(): boolean {
   return !!(
     twilioEnv("TWILIO_VERIFY_SID")?.startsWith("VA") &&
@@ -250,7 +183,7 @@ function twilioVerifyConfigured(): boolean {
   );
 }
 
-export async function sendTwilioVerify(to: string, channel: "whatsapp" | "sms" = "whatsapp"): Promise<void> {
+export async function sendTwilioVerify(to: string): Promise<void> {
   const sid = twilioEnv("TWILIO_VERIFY_SID")!;
   const url = `https://verify.twilio.com/v2/Services/${sid}/Verifications`;
   const res = await fetch(url, {
@@ -259,19 +192,17 @@ export async function sendTwilioVerify(to: string, channel: "whatsapp" | "sms" =
       "Content-Type": "application/x-www-form-urlencoded",
       Authorization: twilioAuthHeader(),
     },
-    body: new URLSearchParams({ To: to, Channel: channel }).toString(),
+    body: new URLSearchParams({ To: to, Channel: "sms" }).toString(),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({})) as any;
     const code = Number(data?.code ?? 0);
-    // Twilio Verify destination-level errors — the number is invalid or not on WhatsApp.
-    // 60200: Invalid parameter (usually bad phone format)
-    // 60212: Recipient has not opted in / not registered on WhatsApp
-    // 21211: Invalid 'To' phone number format
-    // 63016: Failed to send WhatsApp message (not registered / not opted in)
-    if ([60200, 60212, 21211, 63016].includes(code)) {
+    // Twilio Verify destination-level errors for SMS.
+    // 60200: invalid parameter, 21211: invalid phone format,
+    // 21614: destination is not a mobile number.
+    if ([60200, 21211, 21614].includes(code)) {
       throw new OtpDestinationError(
-        "Ce numéro n'est pas joignable sur WhatsApp. Vérifiez le numéro ou utilisez l'email.",
+        "Ce numéro ne peut pas recevoir de SMS. Vérifiez le numéro ou utilisez l'email.",
         code
       );
     }
@@ -383,29 +314,23 @@ export async function sendOtpEmail(
   }
 }
 
-// ─── Public: WhatsApp OTP ─────────────────────────────────────────────────────
-// Phone OTP is WhatsApp-only. Provider failure is surfaced instead of sending SMS.
+// ─── Public: SMS OTP fallback ─────────────────────────────────────────────────
+// This path always stores/verifies a local hashed code in auth.ts. It is used
+// when Verify is unavailable or not configured.
 export async function sendOtpMessage(
   to: string,
   body: string
 ): Promise<SendOtpResult> {
   const attempts: AttemptLog[] = [];
-  const infobipReady = infobipConfigured();
-  const twilioReady = twilioConfigured();
+  const twilioReady = twilioSmsConfigured();
 
   type Step = { channel: OtpChannel; available: boolean; fn: () => Promise<void> };
   const steps: Step[] = [
-    // ── Twilio WhatsApp (primary) ────────────────────────────────────────────
+    // ── Twilio SMS ────────────────────────────────────────────────────────────
     {
-      channel: "twilio-whatsapp",
+      channel: "twilio-sms",
       available: twilioReady,
-      fn: () => sendTwilioWhatsapp(to, body),
-    },
-    // ── Infobip WhatsApp (fallback) ──────────────────────────────────────────
-    {
-      channel: "infobip-whatsapp",
-      available: infobipReady && !!process.env.INFOBIP_WA_SENDER,
-      fn: () => sendInfobipWhatsapp(to, body),
+      fn: () => sendTwilioSms(to, body),
     },
   ];
 
@@ -445,8 +370,7 @@ export async function sendOtpMessage(
 export function anyOtpProviderConfigured(): boolean {
   return (
     twilioVerifyConfigured() ||
-    twilioConfigured() ||
-    infobipConfigured() ||
+    twilioSmsConfigured() ||
     resendConfigured()
   );
 }
