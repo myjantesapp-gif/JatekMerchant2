@@ -87,6 +87,8 @@ export default function RestaurantScreen() {
   const categoryOffsetsRef = useRef<Record<string, number>>({});
   const isProgrammaticScroll = useRef(false);
   const programmaticScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSectionIndexRef = useRef<number | null>(null);
+  const scrollRetryCountRef = useRef(0);
 
   useEffect(() => {
     if (!token || !restaurantId) return;
@@ -227,6 +229,18 @@ export default function RestaurantScreen() {
       clearTimeout(programmaticScrollTimerRef.current);
       programmaticScrollTimerRef.current = null;
     }
+    pendingSectionIndexRef.current = null;
+    scrollRetryCountRef.current = 0;
+  };
+
+  const scrollToMenuSection = (sectionIndex: number) => {
+    menuScrollRef.current?.scrollToLocation({
+      sectionIndex,
+      itemIndex: 0,
+      animated: true,
+      viewPosition: 0,
+      viewOffset: insets.top + COMPACT_HEADER_HEIGHT + CATEGORY_STICKY_HEIGHT + CATEGORY_OVERLAY_TOP_GAP,
+    });
   };
 
   const jumpToCategory = (categoryId: string) => {
@@ -241,15 +255,11 @@ export default function RestaurantScreen() {
       finishProgrammaticScroll();
       return;
     }
+    pendingSectionIndexRef.current = sectionIndex;
+    scrollRetryCountRef.current = 0;
 
     requestAnimationFrame(() => {
-      menuScrollRef.current?.scrollToLocation({
-        sectionIndex,
-        itemIndex: 0,
-        animated: true,
-        viewPosition: 0,
-        viewOffset: insets.top + COMPACT_HEADER_HEIGHT + CATEGORY_STICKY_HEIGHT + CATEGORY_OVERLAY_TOP_GAP,
-      });
+      scrollToMenuSection(sectionIndex);
     });
 
     // Native platforms normally emit momentum end after an animated jump.
@@ -664,6 +674,20 @@ export default function RestaurantScreen() {
         scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
         onMomentumScrollEnd={finishProgrammaticScroll}
+        onScrollToIndexFailed={({ averageItemLength, index }) => {
+          const sectionIndex = pendingSectionIndexRef.current;
+          if (sectionIndex == null || scrollRetryCountRef.current >= 2) {
+            finishProgrammaticScroll();
+            return;
+          }
+
+          scrollRetryCountRef.current += 1;
+          menuScrollRef.current?.getScrollResponder()?.scrollTo({
+            y: Math.max(0, averageItemLength * index),
+            animated: false,
+          });
+          setTimeout(() => scrollToMenuSection(sectionIndex), 80);
+        }}
         viewabilityConfig={{ itemVisiblePercentThreshold: 15, minimumViewTime: 80 }}
         stickySectionHeadersEnabled={false}
         initialNumToRender={6}

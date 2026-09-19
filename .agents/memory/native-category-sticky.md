@@ -7,4 +7,4 @@ For long catalog screens containing a horizontal category ScrollView, use an exp
 
 **Why:** Nested horizontal ScrollViews can prevent `stickyHeaderIndices` from behaving consistently across iOS, Android, and React Native Web, and section tracking can fail at the same time.
 
-**How to apply:** Record the category bar and section layout positions, toggle the overlay from the vertical scroll offset, and derive the active category from the section nearest the fixed bar. Keep the overlay below the safe-area inset with a small breathing gap, and include that gap in the pin threshold.
+**How to apply:** Record the category bar and section layout positions, toggle the overlay from the vertical scroll offset, and derive the active category from the section nearest the fixed bar. Keep the overlay below the safe-area inset with a small breathing gap, and include that gap in the pin threshold. Any virtualized `scrollToLocation`/`scrollToIndex` call must provide `getItemLayout` or `onScrollToIndexFailed`; for variable-height sections, use the failure callback to approximate the offset and retry the exact section after measurement.

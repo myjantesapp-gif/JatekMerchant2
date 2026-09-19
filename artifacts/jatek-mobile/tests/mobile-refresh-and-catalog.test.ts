@@ -254,6 +254,9 @@ test("restaurant category navigation stays sticky and tracks visible sections", 
   assert.match(code, /scrollToLocation\(\{/);
   assert.match(code, /sectionIndex,/);
   assert.match(code, /viewOffset: insets\.top \+ COMPACT_HEADER_HEIGHT \+ CATEGORY_STICKY_HEIGHT/);
+  assert.match(code, /onScrollToIndexFailed=\{/);
+  assert.match(code, /averageItemLength \* index/);
+  assert.match(code, /setTimeout\(\(\) => scrollToMenuSection\(sectionIndex\), 80\)/);
   assert.match(code, /isProgrammaticScroll\.current = true/);
   assert.match(code, /if \(isProgrammaticScroll\.current\) return/);
   assert.match(code, /onMomentumScrollEnd=\{finishProgrammaticScroll\}/);
