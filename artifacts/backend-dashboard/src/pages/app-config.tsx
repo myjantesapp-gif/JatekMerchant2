@@ -52,7 +52,16 @@ const DEFAULT_LEGAL_CONTENT: LegalContent = {
   privacy: { ...DEFAULT_LEGAL_DOCUMENT, title: "Politique de confidentialité" },
   terms: { ...DEFAULT_LEGAL_DOCUMENT, title: "Conditions d'utilisation" },
   cookies: { ...DEFAULT_LEGAL_DOCUMENT, title: "Politique des cookies" },
-  mentions: { ...DEFAULT_LEGAL_DOCUMENT, title: "Mentions légales" },
+  mentions: {
+    ...DEFAULT_LEGAL_DOCUMENT,
+    title: "Mentions légales",
+    sections: [
+      {
+        h: "Contact",
+        p: "Contact général : contact@jatek.app\nAdministration : admin@jatek.app\nSupport : support@jatek.app",
+      },
+    ],
+  },
 };
 
 const LEGAL_DOCUMENTS: Array<{ key: keyof LegalContent; label: string }> = [

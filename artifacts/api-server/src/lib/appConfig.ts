@@ -264,7 +264,10 @@ export const DEFAULT_LEGAL_CONTENT: LegalContent = {
       { h: "Éditeur", p: "Jatek SARL — Capital 100 000 MAD\nSiège social : Oujda, Maroc\nRC : 12345 — ICE : 002345678000099" },
       { h: "Directeur de publication", p: "Direction Jatek" },
       { h: "Hébergement", p: "Le service est hébergé auprès d'un prestataire technique sélectionné par Jatek. Les informations d'identification du prestataire peuvent être communiquées sur demande légitime." },
-      { h: "Contact", p: "contact@jatek.ma" },
+      {
+        h: "Contact",
+        p: "Contact général : contact@jatek.app\nAdministration : admin@jatek.app\nSupport : support@jatek.app",
+      },
       { h: "Propriété intellectuelle", p: "L'ensemble du contenu de l'application (textes, logos, design) est la propriété exclusive de Jatek SARL ou de ses partenaires." },
     ],
   },
