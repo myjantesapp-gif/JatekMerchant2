@@ -49,3 +49,4 @@
 - [Public catalog seed](public-catalog-seed.md) — public catalog imports are explicit and non-destructive; media restore stays a separately verified operation.
 - [Account erasure retention](account-erasure-retention.md) — delete customer data transactionally; anonymize required order/accounting history instead of leaving identifying fields.
 - [Password reset OTP security](password-reset-otp.md) — reset codes are hashed, short-lived, attempt-limited, and temporarily support legacy rows.
+- [Resend OTP provider fallback](resend-otp-provider-fallback.md) — keep a verified sender fallback because an unverified Resend domain returns 403 even when the API key is valid.

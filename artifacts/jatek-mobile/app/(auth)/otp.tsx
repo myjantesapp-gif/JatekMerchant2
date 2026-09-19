@@ -60,6 +60,16 @@ export default function OtpScreen() {
 
   const code = digits.join("");
 
+  const getErrorMessage = (errorValue: unknown, fallback: string): string => {
+    if (errorValue && typeof errorValue === "object" && "data" in errorValue) {
+      const data = (errorValue as { data?: unknown }).data;
+      if (data && typeof data === "object" && "error" in data && typeof (data as { error?: unknown }).error === "string") {
+        return (data as { error: string }).error;
+      }
+    }
+    return errorValue instanceof Error && errorValue.message ? errorValue.message : fallback;
+  };
+
   const handleVerify = (c = code) => {
     if (c.length < 6) return;
     setError("");
@@ -84,7 +94,7 @@ export default function OtpScreen() {
       },
       onError: (err) => {
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        const msg = err instanceof Error ? err.message : t("otp_invalid");
+         const msg = getErrorMessage(err, t("otp_invalid"));
         if (!isEmailMode) {
           // Phone mode: 404 means no account exists → guide to register
           const isNotFound = msg.toLowerCase().includes("404") || msg.toLowerCase().includes("introuvable") || msg.toLowerCase().includes("aucun compte");
@@ -128,7 +138,7 @@ export default function OtpScreen() {
         setDigits(res?.demoOtp?.length === 6 ? res.demoOtp.split("") : ["", "", "", "", "", ""]);
         setError("");
       },
-      onError: (err) => setError(err instanceof Error ? err.message : t("login_send_fail")),
+       onError: (err) => setError(getErrorMessage(err, t("login_send_fail"))),
     });
   };
 
@@ -146,13 +156,13 @@ export default function OtpScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.foreground} />
         </TouchableOpacity>
 
-        <View style={[styles.channelBadge, { backgroundColor: isSms ? colors.authTeal + "15" : colors.primary + "15" }]}>
+        <View style={[styles.channelBadge, { backgroundColor: isSms ? colors.authTeal + "15" : colors.authPrimary + "15" }]}>
           <Ionicons
             name={isSms ? "chatbubble-ellipses-outline" : "mail-outline"}
             size={16}
-            color={isSms ? colors.authTeal : colors.primary}
+            color={isSms ? colors.authTeal : colors.authPrimary}
           />
-          <Text style={[styles.channelBadgeText, { color: isSms ? colors.authTeal : colors.primary }]}>
+          <Text style={[styles.channelBadgeText, { color: isSms ? colors.authTeal : colors.authPrimary }]}>
             {isSms ? t("otp_via_sms") : t("otp_via_email")}
           </Text>
         </View>
@@ -179,7 +189,7 @@ export default function OtpScreen() {
               ref={(el) => { refs.current[i] = el; }}
               style={[styles.otpBox, {
                 backgroundColor: colors.card,
-                borderColor: digit ? colors.primary : colors.border,
+                borderColor: digit ? colors.authPrimary : colors.border,
                 color: colors.foreground,
               }]}
               value={digit}
@@ -201,7 +211,7 @@ export default function OtpScreen() {
             {(error.includes("Inscrivez") || error.includes("inscrivez")) && (
               <TouchableOpacity
                 onPress={() => router.replace("/(auth)/register")}
-                style={[styles.registerBtn, { backgroundColor: colors.primary }]}
+                style={[styles.registerBtn, { backgroundColor: colors.authPrimary }]}
                 activeOpacity={0.85}
               >
                 <Ionicons name="person-add-outline" size={18} color="#fff" />
@@ -211,7 +221,7 @@ export default function OtpScreen() {
           </View>
         ) : null}
 
-        {verifyOtp.isPending && <ActivityIndicator color={colors.primary} style={{ marginBottom: 14 }} />}
+        {verifyOtp.isPending && <ActivityIndicator color={colors.authPrimary} style={{ marginBottom: 14 }} />}
 
         <View style={styles.resendRow}>
           {countdown > 0 ? (
@@ -220,7 +230,7 @@ export default function OtpScreen() {
             </Text>
           ) : (
             <TouchableOpacity onPress={handleResend} disabled={sendOtp.isPending}>
-              <Text style={[styles.resendBtn, { color: colors.primary }]}>
+              <Text style={[styles.resendBtn, { color: colors.authPrimary }]}>
                 {sendOtp.isPending ? t("otp_sending") : t("otp_resend")}
               </Text>
             </TouchableOpacity>

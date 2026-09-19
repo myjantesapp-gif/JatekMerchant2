@@ -662,6 +662,9 @@ function HomeScreen() {
     const config = homeSections[key];
     if (!config?.visible) return null;
     const limit = Math.max(1, Number(config.limit) || 1);
+    // Keep the API key and configurable copy intact while using a compact
+    // mobile label that fits on one line in the home rail.
+    const sectionTitle = key === "recommended_restaurants" ? "Recommandés" : config.title;
     const productsFor = (source: string) => {
       if (source === "promos") return promoProducts;
       if (source === "newest") return newestProducts;
@@ -781,7 +784,7 @@ function HomeScreen() {
       case "recommended_restaurants":
         return (
           <View style={styles.restaurantSection}>
-            <SectionHeader title={config.title} variant="home" onPress={() => openSection(key)} testID="section-recommended-restaurants" />
+            <SectionHeader title={sectionTitle} variant="home" onPress={() => openSection(key)} testID="section-recommended-restaurants" />
             {recommendedRestaurantsLoading || recommendedRestaurantsError ? (
               <LoadingOrEmpty
                 loading={recommendedRestaurantsLoading}

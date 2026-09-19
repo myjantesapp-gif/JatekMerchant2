@@ -162,7 +162,7 @@ export default function LoginScreen() {
               onPress={() => { setMethod("email"); setPhoneError(""); }}
               activeOpacity={0.8}
             >
-              <Ionicons name="mail-outline" size={15} color={method === "email" ? colors.authTeal : colors.mutedForeground} />
+              <Ionicons name="mail-outline" size={15} color={method === "email" ? colors.authPrimary : colors.mutedForeground} />
               <Text style={[styles.toggleText, { color: method === "email" ? colors.authInk : colors.mutedForeground }]}>Email</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -178,9 +178,9 @@ export default function LoginScreen() {
           <View style={styles.form}>
             {method === "email" ? (
               <>
-                <View style={[styles.channelBadge, { backgroundColor: colors.authTeal }]}>
-                  <Ionicons name="lock-closed-outline" size={19} color={colors.authBadgeForeground} />
-                  <Text style={[styles.channelBadgeText, { color: colors.authBadgeForeground }]}>Connexion sécurisée par email</Text>
+                <View style={[styles.channelBadge, { backgroundColor: colors.authPrimary }]}>
+                  <Ionicons name="lock-closed-outline" size={19} color={colors.authPrimaryForeground} />
+                  <Text style={[styles.channelBadgeText, { color: colors.authPrimaryForeground }]}>Connexion sécurisée par email</Text>
                 </View>
                 <Text style={[styles.label, { color: colors.authInk }]}>Adresse email</Text>
                 <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: emailError ? colors.destructive : colors.authBorder }]}>
@@ -282,7 +282,7 @@ export default function LoginScreen() {
                 {phoneError ? <Text style={[styles.errorText, { color: colors.destructive }]}>{phoneError}</Text> : null}
                 {showEmailCta ? (
                   <TouchableOpacity
-                    style={[styles.emailCtaBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "40" }]}
+                     style={[styles.emailCtaBtn, { backgroundColor: colors.authPrimary + "15", borderColor: colors.authPrimary + "40" }]}
                     onPress={() => {
                       if (Platform.OS !== "web") Haptics.selectionAsync();
                       setMethod("email");
@@ -292,8 +292,8 @@ export default function LoginScreen() {
                     }}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="mail-outline" size={16} color={colors.primary} />
-                    <Text style={[styles.emailCtaText, { color: colors.primary }]}>Connexion par email →</Text>
+                    <Ionicons name="mail-outline" size={16} color={colors.authPrimary} />
+                    <Text style={[styles.emailCtaText, { color: colors.authPrimary }]}>Connexion par email →</Text>
                   </TouchableOpacity>
                 ) : null}
                 <TouchableOpacity
@@ -340,7 +340,7 @@ export default function LoginScreen() {
             {/* Register link */}
             <View style={[styles.divider, { borderTopColor: colors.authBorder }]} />
             <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={styles.switchRow} activeOpacity={0.7}>
-              <Ionicons name="person-add-outline" size={16} color={colors.authTeal} />
+              <Ionicons name="person-add-outline" size={16} color={colors.authPrimary} />
               <Text style={[styles.switchText, { color: colors.authPlum }]}>Pas encore de compte ? S'inscrire</Text>
             </TouchableOpacity>
           </View>

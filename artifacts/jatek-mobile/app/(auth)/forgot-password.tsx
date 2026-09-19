@@ -107,7 +107,7 @@ export default function ForgotPasswordScreen() {
     },
     btnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
     back: { alignItems: "center", marginTop: 8 },
-    backText: { color: colors.primary, fontSize: 14, fontWeight: "600" },
+     backText: { color: colors.authPrimary, fontSize: 14, fontWeight: "600" },
     resendRow: { alignItems: "center", gap: 8 },
     demo: { fontSize: 13, textAlign: "center" },
     error: { color: "#EF4444", fontSize: 13, textAlign: "center", backgroundColor: "#FEF2F2", borderRadius: 10, padding: 10 },

@@ -239,20 +239,63 @@ export async function checkTwilioVerify(to: string, code: string): Promise<"appr
 export { twilioConfigured, twilioVerifyConfigured };
 
 // ─── Resend (email OTP) ───────────────────────────────────────────────────────
-// RESEND_EMAIL_FROM is accepted as an alias for RESEND_FROM_EMAIL.
-function getResendApiKey(): string | undefined {
-  return process.env.RESEND_API_KEY;
-}
-function getResendFromEmail(): string | undefined {
-  return process.env.RESEND_FROM_EMAIL || process.env.RESEND_EMAIL_FROM;
-}
-function resendConfigured(): boolean {
-  return !!(getResendApiKey() && getResendFromEmail());
+// RESEND_EMAIL_FROM is accepted as an alias for RESEND_FROM_EMAIL. A second
+// pair is supported because a verified sender may live in a separate Resend
+// project while the original key/from pair is still present in the workspace.
+type ResendConfig = {
+  apiKey: string;
+  from: string;
+  label: string;
+};
+
+function getResendConfigs(): ResendConfig[] {
+  const candidates = [
+    {
+      apiKey: process.env.RESEND_API_KEY_3,
+      from: process.env.RESEND_FROM_EMAIL_3 ||
+        process.env.RESEND_EMAIL_FROM_3 ||
+        process.env.RESEND_FROM_EMAIL_2 ||
+        process.env.RESEND_EMAIL_FROM_2 ||
+        process.env.RESEND_FROM_EMAIL ||
+        process.env.RESEND_EMAIL_FROM,
+      label: "resend-email-new-key",
+    },
+    {
+      apiKey: process.env.RESEND_API_KEY,
+      from: process.env.RESEND_FROM_EMAIL || process.env.RESEND_EMAIL_FROM,
+      label: "resend-email",
+    },
+    {
+      apiKey: process.env.RESEND_API_KEY_2,
+      from: process.env.RESEND_FROM_EMAIL_2 || process.env.RESEND_EMAIL_FROM_2,
+      label: "resend-email-fallback",
+    },
+  ];
+
+  const seen = new Set<string>();
+  return candidates.filter((candidate): candidate is ResendConfig => {
+    const apiKey = candidate.apiKey?.trim();
+    const from = candidate.from?.trim();
+    if (!apiKey || !from) return false;
+    const identity = `${apiKey}:${from}`;
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
 }
 
-async function sendResendEmail(to: string, otp: string, fullBody: string, subject?: string): Promise<void> {
-  const apiKey = getResendApiKey()!;
-  const from = getResendFromEmail()!;
+function resendConfigured(): boolean {
+  return getResendConfigs().length > 0;
+}
+
+async function sendResendEmail(
+  config: ResendConfig,
+  to: string,
+  otp: string,
+  fullBody: string,
+  subject?: string,
+): Promise<void> {
+  const { apiKey, from } = config;
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -293,25 +336,29 @@ export async function sendOtpEmail(
   subject?: string,
 ): Promise<SendOtpResult> {
   const attempts: AttemptLog[] = [];
+  const configs = getResendConfigs();
 
-  if (!resendConfigured()) {
+  if (configs.length === 0) {
     attempts.push({ channel: "resend-email", ok: false, reason: "not configured" });
     const summary = attempts.map((a) => `${a.channel}=${a.reason}`).join(" | ");
     throw new Error(`Email OTP provider not configured: ${summary}`);
   }
 
-  try {
-    await sendResendEmail(email, otp, body, subject);
-    attempts.push({ channel: "resend-email", ok: true });
-    console.info(`[OTP] sent via resend-email to ${email}`);
-    return { channel: "resend-email", attempts };
-  } catch (err: any) {
-    const reason = err?.message ?? String(err);
-    attempts.push({ channel: "resend-email", ok: false, reason });
-    console.warn(`[OTP] resend-email failed for ${email}: ${reason}`);
-    const summary = attempts.map((a) => `${a.channel}=${a.ok ? "ok" : a.reason}`).join(" | ");
-    throw new Error(`Email OTP delivery failed: ${summary}`);
+  for (const config of configs) {
+    try {
+      await sendResendEmail(config, email, otp, body, subject);
+      attempts.push({ channel: "resend-email", ok: true });
+      console.info(`[OTP] sent via ${config.label} to ${email}`);
+      return { channel: "resend-email", attempts };
+    } catch (err: any) {
+      const reason = err?.message ?? String(err);
+      attempts.push({ channel: config.label as OtpChannel, ok: false, reason });
+      console.warn(`[OTP] ${config.label} failed for ${email}: ${reason}`);
+    }
   }
+
+  const summary = attempts.map((a) => `${a.channel}=${a.ok ? "ok" : a.reason}`).join(" | ");
+  throw new Error(`Email OTP delivery failed: ${summary}`);
 }
 
 // ─── Public: SMS OTP fallback ─────────────────────────────────────────────────

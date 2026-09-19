@@ -39,8 +39,18 @@ export default function RegisterScreen() {
         headers: { "Content-Type": "application/json", "X-Client": "mobile" },
         body: JSON.stringify({ email: trimEmail }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Impossible d'envoyer le code");
+      const raw = await res.text();
+      let data: { error?: unknown; demoOtp?: string; channel?: string } = {};
+      try {
+        data = JSON.parse(raw) as typeof data;
+      } catch {
+        // Preserve a useful user-facing fallback when a proxy returns HTML or
+        // an empty body instead of the API's JSON error envelope.
+      }
+      if (!res.ok) {
+        const apiError = typeof data.error === "string" ? data.error : "";
+        throw new Error(apiError || `Impossible d'envoyer le code (${res.status})`);
+      }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.push({
         pathname: "/(auth)/otp",
@@ -85,9 +95,9 @@ export default function RegisterScreen() {
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Créez votre compte</Text>
 
           <View style={styles.form}>
-            <View style={[styles.channelBadge, { backgroundColor: colors.primary + "15" }]}>
-              <Ionicons name="mail-outline" size={16} color={colors.primary} />
-              <Text style={[styles.channelBadgeText, { color: colors.primary }]}>Vérification par code email</Text>
+            <View style={[styles.channelBadge, { backgroundColor: colors.authPrimary + "15" }]}>
+              <Ionicons name="mail-outline" size={16} color={colors.authPrimary} />
+              <Text style={[styles.channelBadgeText, { color: colors.authPrimary }]}>Vérification par code email</Text>
             </View>
 
             <Text style={[styles.label, { color: colors.foreground }]}>Prénom</Text>
@@ -165,7 +175,7 @@ export default function RegisterScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => router.replace("/(auth)/login")} style={styles.switchRow} activeOpacity={0.7}>
-              <Ionicons name="log-in-outline" size={16} color={colors.primary} />
+               <Ionicons name="log-in-outline" size={16} color={colors.authPrimary} />
               <Text style={[styles.switchText, { color: colors.mutedForeground }]}>J'ai déjà un compte</Text>
             </TouchableOpacity>
           </View>

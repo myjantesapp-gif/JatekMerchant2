@@ -20,6 +20,7 @@ const INTRO_BACKGROUND = colors.light.introBackground;
 const INTRO_VIDEO = require("../assets/videos/jatek-intro.mp4");
 const INTRO_LOGO = require("../assets/images/jatek-intro-splash.png");
 const REDUCE_MOTION_LOGO_DURATION = 350;
+const VIDEO_START_DELAY = 260;
 const FADE_DURATION = 250;
 
 /**
@@ -27,19 +28,17 @@ const FADE_DURATION = 250;
  * AppState listener: returning from background must never restart it.
  */
 export default function SplashOverlay() {
-  const [source, setSource] = useState<string | number | null>(null);
+  // Start from the bundled 2-second intro immediately. The API-configured
+  // video can replace it only if it resolves during the same launch.
+  const [source, setSource] = useState<string | number>(INTRO_VIDEO);
   useEffect(() => {
     let active = true;
     void loadStartupVideoUrl(getApiBaseSafe()).then((url) => {
-      if (active) setSource(resolveMediaUrl(url) || INTRO_VIDEO);
+      const remoteUrl = resolveMediaUrl(url);
+      if (active && remoteUrl) setSource(remoteUrl);
     });
     return () => { active = false; };
   }, []);
-  if (source === null) {
-    return <View style={styles.root}><View style={styles.logoFrame}>
-      <Image source={INTRO_LOGO} style={styles.logo} resizeMode="contain" />
-    </View></View>;
-  }
   if (Platform.OS === "web") {
     return <WebIntroPlayback source={source} />;
   }
@@ -52,6 +51,7 @@ function WebIntroPlayback({ source }: { source: string | number }) {
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   const [playbackFinished, setPlaybackFinished] = useState(false);
   const [playbackError, setPlaybackError] = useState(false);
+  const [videoStarted, setVideoStarted] = useState(false);
   const transitionStarted = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const opacity = useSharedValue(1);
@@ -69,6 +69,12 @@ function WebIntroPlayback({ source }: { source: string | number }) {
 
   useEffect(() => {
     if (reduceMotion !== false) return;
+    const timer = setTimeout(() => setVideoStarted(true), VIDEO_START_DELAY);
+    return () => clearTimeout(timer);
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion !== false || !videoStarted) return;
     const video = videoRef.current;
     if (!video) return;
     const start = () => {
@@ -82,7 +88,7 @@ function WebIntroPlayback({ source }: { source: string | number }) {
     if (video.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) start();
     else video.addEventListener("canplay", start, { once: true });
     return () => video.removeEventListener("canplay", start);
-  }, [reduceMotion, source]);
+  }, [reduceMotion, source, videoStarted]);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(false), 12000);
@@ -113,7 +119,7 @@ function WebIntroPlayback({ source }: { source: string | number }) {
 
   if (!mounted) return null;
 
-  const showStaticLogo = reduceMotion !== false || playbackError;
+  const showStaticLogo = reduceMotion !== false || playbackError || !videoStarted;
   return (
     <Animated.View
       style={[styles.root, overlayStyle]}
@@ -122,9 +128,7 @@ function WebIntroPlayback({ source }: { source: string | number }) {
     >
       <View style={styles.background}>
         {showStaticLogo ? (
-          <View style={styles.logoFrame}>
-            <Image source={INTRO_LOGO} style={styles.logo} resizeMode="contain" />
-          </View>
+          <AnimatedStaticLogo reduceMotion={reduceMotion !== false} />
         ) : (
           React.createElement("video", {
             ref: videoRef,
@@ -161,6 +165,7 @@ function IntroPlayback({ source }: { source: string | number }) {
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   const [playbackFinished, setPlaybackFinished] = useState(false);
   const [playbackError, setPlaybackError] = useState(false);
+  const [videoStarted, setVideoStarted] = useState(false);
   const transitionStarted = useRef(false);
   const playbackStarted = useRef(false);
   const opacity = useSharedValue(1);
@@ -216,12 +221,16 @@ function IntroPlayback({ source }: { source: string | number }) {
 
   useEffect(() => {
     if (reduceMotion !== false || playbackStarted.current || playbackError) return;
-    playbackStarted.current = true;
-    try { player.play(); }
-    catch {
-      setPlaybackError(true);
-      setPlaybackFinished(true);
-    }
+    const timer = setTimeout(() => {
+      playbackStarted.current = true;
+      setVideoStarted(true);
+      try { player.play(); }
+      catch {
+        setPlaybackError(true);
+        setPlaybackFinished(true);
+      }
+    }, VIDEO_START_DELAY);
+    return () => clearTimeout(timer);
   }, [playbackError, player, reduceMotion]);
 
   useEffect(() => {
@@ -256,7 +265,7 @@ function IntroPlayback({ source }: { source: string | number }) {
   }, [navigationReady, opacity, playbackFinished, reduceMotion, player]);
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  const showStaticLogo = reduceMotion !== false || playbackError;
+  const showStaticLogo = reduceMotion !== false || playbackError || !videoStarted;
 
   if (!mounted) return null;
 
@@ -269,9 +278,7 @@ function IntroPlayback({ source }: { source: string | number }) {
       <StatusBar style="light" backgroundColor={INTRO_BACKGROUND} translucent={false} />
       <View style={styles.background}>
         {showStaticLogo ? (
-          <View style={styles.logoFrame}>
-            <Image source={INTRO_LOGO} style={styles.logo} resizeMode="contain" />
-          </View>
+          <AnimatedStaticLogo reduceMotion={reduceMotion !== false} />
         ) : (
           <VideoView
             player={player}
@@ -292,6 +299,31 @@ function IntroPlayback({ source }: { source: string | number }) {
           />
         )}
       </View>
+    </Animated.View>
+  );
+}
+
+function AnimatedStaticLogo({ reduceMotion }: { reduceMotion: boolean }) {
+  const opacity = useSharedValue(reduceMotion ? 1 : 0);
+  const scale = useSharedValue(reduceMotion ? 1 : 0.94);
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
+
+  useEffect(() => {
+    if (reduceMotion) {
+      opacity.value = 1;
+      scale.value = 1;
+      return;
+    }
+    opacity.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) });
+    scale.value = withTiming(1, { duration: 650, easing: Easing.out(Easing.back(1.15)) });
+  }, [opacity, reduceMotion, scale]);
+
+  return (
+    <Animated.View style={[styles.logoFrame, animatedStyle]}>
+      <Image source={INTRO_LOGO} style={styles.logo} resizeMode="contain" />
     </Animated.View>
   );
 }
