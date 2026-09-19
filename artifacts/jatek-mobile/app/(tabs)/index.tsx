@@ -92,6 +92,26 @@ function normalize(value: unknown): string {
     .replace(/\p{Diacritic}/gu, "");
 }
 
+function sectionCategoryTerms(key: HomeSectionKey, title?: string): string[] {
+  const titleText = normalize(title);
+  if (key === "supermarkets" || titleText.includes("supermarch")) {
+    return ["supermarket", "supermarch", "grocery", "epicer", "market"];
+  }
+  if (key === "shops" || titleText.includes("boutique")) {
+    return ["shop", "boutique", "store"];
+  }
+  if (
+    key === "new_restaurants" ||
+    key === "recommended_restaurants" ||
+    key === "all" ||
+    titleText.includes("restauration") ||
+    titleText.includes("restaurant")
+  ) {
+    return ["restaurant", "restauration", "food"];
+  }
+  return [];
+}
+
 function getCategoryIcon(category: any): keyof typeof Ionicons.glyphMap {
   const categoryText = normalize(`${category?.slug} ${category?.name} ${category?.businessType}`);
   if (categoryText.includes("pharm") || categoryText.includes("sant")) return "add-circle";
@@ -598,8 +618,22 @@ function HomeScreen() {
     router.push({ pathname: "/category/[slug]", params: { slug: category.slug } });
   };
 
+  const findSectionCategory = (key: HomeSectionKey): HomeCategory | undefined => {
+    const terms = sectionCategoryTerms(key, homeSections[key]?.title);
+    if (terms.length === 0) return undefined;
+    return categories.find((category) => {
+      const categoryText = normalize(`${category.slug} ${category.label} ${category.businessType}`);
+      return terms.some((term) => categoryText.includes(normalize(term)));
+    });
+  };
+
   const openSection = (key: HomeSectionKey) => {
     if (!homeSections[key]) return;
+    const category = findSectionCategory(key);
+    if (category) {
+      openCategory(category);
+      return;
+    }
     router.push({ pathname: "/home-section/[key]", params: { key } });
   };
 

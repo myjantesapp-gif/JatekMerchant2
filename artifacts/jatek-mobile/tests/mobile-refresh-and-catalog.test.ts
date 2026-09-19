@@ -476,6 +476,20 @@ test("home renders reusable sections and live product recommendations", () => {
   assert.match(storeCard, /location-outline/);
 });
 
+test("home section arrows open the matching API category when one exists", () => {
+  const code = source("app/(tabs)/index.tsx");
+
+  assert.match(code, /function sectionCategoryTerms/);
+  assert.match(code, /key === "supermarkets"/);
+  assert.match(code, /key === "shops"/);
+  assert.match(code, /key === "new_restaurants"/);
+  assert.match(code, /key === "recommended_restaurants"/);
+  assert.match(code, /key === "all"/);
+  assert.match(code, /findSectionCategory/);
+  assert.match(code, /openCategory\(category\)/);
+  assert.match(code, /pathname: "\/category\/\[slug\]"/);
+});
+
 test("app applies the Montserrat family to text by default", () => {
   const layout = source("app/_layout.tsx");
 
