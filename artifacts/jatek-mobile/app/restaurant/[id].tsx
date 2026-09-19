@@ -86,7 +86,6 @@ export default function RestaurantScreen() {
   const floatingCategoryScrollRef = useRef<ScrollView>(null);
   const categoryBarOffsetRef = useRef<number | null>(null);
   const categoryOffsetsRef = useRef<Record<string, number>>({});
-  const pendingCategoryJumpRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!token || !restaurantId) return;
@@ -221,22 +220,15 @@ export default function RestaurantScreen() {
   }).current;
 
   const jumpToCategory = (categoryId: string) => {
-    setSelectedCategory("Tous");
+    // Category chips are filters. Keeping "Tous" selected here made every
+    // chip appear clickable while leaving the complete catalogue on screen.
+    setSelectedCategory(categoryId);
     setActiveCategory(categoryId);
-    if (categoryId === "Tous") {
-      menuScrollRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true });
-      return;
-    }
-    const sectionIndex = virtualSections.findIndex((section) => section.id === categoryId);
-    if (sectionIndex < 0) return;
-    pendingCategoryJumpRef.current = sectionIndex;
+
+    // The filtered SectionList has a new data shape after the state update.
+    // Reset its offset instead of jumping to an index from the previous list.
     requestAnimationFrame(() => {
-      menuScrollRef.current?.scrollToLocation({
-        sectionIndex,
-        itemIndex: 0,
-        viewOffset: insets.top + COMPACT_HEADER_HEIGHT + CATEGORY_STICKY_HEIGHT,
-        animated: true,
-      });
+      menuScrollRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true });
     });
   };
 
@@ -655,22 +647,6 @@ export default function RestaurantScreen() {
         updateCellsBatchingPeriod={40}
         windowSize={7}
         removeClippedSubviews={Platform.OS !== "web"}
-        onScrollToIndexFailed={(info) => {
-          menuScrollRef.current?.getScrollResponder()?.scrollTo({
-            y: Math.max(0, info.averageItemLength * info.index),
-            animated: false,
-          });
-          const sectionIndex = pendingCategoryJumpRef.current;
-          if (sectionIndex == null) return;
-          setTimeout(() => {
-            menuScrollRef.current?.scrollToLocation({
-              sectionIndex,
-              itemIndex: 0,
-              viewOffset: insets.top + COMPACT_HEADER_HEIGHT + CATEGORY_STICKY_HEIGHT,
-              animated: true,
-            });
-          }, 80);
-        }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{
           paddingTop: insets.top,

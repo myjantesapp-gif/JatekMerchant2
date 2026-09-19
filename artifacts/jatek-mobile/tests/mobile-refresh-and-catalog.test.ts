@@ -249,8 +249,10 @@ test("restaurant category navigation stays sticky and tracks visible sections", 
   assert.match(code, /setActiveCategory\(\(current\)/);
   assert.match(code, /CATEGORY_OVERLAY_TOP_GAP/);
   assert.match(code, /\(categoryBarY \?\? HERO_H\) - insets\.top - CATEGORY_OVERLAY_TOP_GAP/);
-  assert.match(code, /scrollToLocation\(\{/);
-  assert.match(code, /onScrollToIndexFailed/);
+  assert.match(code, /setSelectedCategory\(categoryId\)/);
+  assert.match(code, /setActiveCategory\(categoryId\)/);
+  assert.match(code, /getScrollResponder\(\)\?\.scrollTo\(\{ y: 0, animated: true \}\)/);
+  assert.doesNotMatch(code, /setSelectedCategory\("Tous"\);\s*setActiveCategory\(categoryId\)/);
   assert.doesNotMatch(code, /sectionOffsetsRef/);
   assert.match(code, /testID=\{`restaurant-category-\$\{cat\.id\}`\}/);
 });
