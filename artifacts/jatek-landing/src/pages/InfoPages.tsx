@@ -118,6 +118,33 @@ export function RgpdPage() {
   );
 }
 
+export function LegalNoticePage() {
+  return (
+    <PageShell
+      title="Mentions légales"
+      intro="Informations générales relatives à l’éditeur et au fonctionnement du service Jatek."
+    >
+      <Section title="Éditeur">
+        <p>Jatek SARL — Capital social : 100 000 MAD</p>
+        <p>Siège social : Oujda, Maroc</p>
+        <p>RC : 12345 — ICE : 002345678000099</p>
+      </Section>
+      <Section title="Directeur de publication">
+        <p>Direction Jatek</p>
+      </Section>
+      <Section title="Hébergement">
+        <p>Le service est hébergé auprès d’un prestataire technique sélectionné par Jatek. Les informations d’identification du prestataire peuvent être communiquées sur demande légitime.</p>
+      </Section>
+      <Section title="Contact">
+        <p>Pour toute question juridique ou relative au service, écrivez à <a href="mailto:contact@jatek.app" className="font-bold text-brand-pink">contact@jatek.app</a>.</p>
+      </Section>
+      <Section title="Propriété intellectuelle">
+        <p>L’ensemble du contenu du service (textes, logos, visuels et éléments d’interface) appartient à Jatek SARL ou à ses partenaires, sauf mention contraire.</p>
+      </Section>
+    </PageShell>
+  );
+}
+
 type FormState = "idle" | "sending" | "success" | "error";
 
 export function SupportPage() {

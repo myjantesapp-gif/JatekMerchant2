@@ -7,6 +7,8 @@ import {
   homeSectionsSchema,
   validateHomeSections,
   splashVideoUrlSchema,
+  appConfigPatchSchema,
+  getDefaultLegalContent,
 } from "./appConfig";
 import { normalizeStoredMediaPath } from "./objectStorage";
 
@@ -70,4 +72,27 @@ test("Home section config rejects missing, extra and invalid fields", () => {
     ...valid,
     extra: valid.popular,
   }).success, false);
+});
+
+test("legal defaults stay generic and provider-specific mentions are rejected", () => {
+  const defaults = getDefaultLegalContent();
+  assert.equal(JSON.stringify(defaults).toLowerCase().includes("replit"), false);
+  const mentions = defaults.mentions as {
+    sections: Array<{ h: string; p: string }>;
+  };
+  assert.equal(appConfigPatchSchema.safeParse({
+    legalContent: {
+      ...defaults,
+      mentions: {
+        ...defaults.mentions,
+        sections: mentions.sections.map((section, index) =>
+          index === 0 ? { ...section, p: "Hébergé par Replit." } : section,
+        ),
+      },
+    },
+  }).success, false);
+});
+
+test("app configuration patch rejects unknown keys", () => {
+  assert.equal(appConfigPatchSchema.safeParse({ unsupported: true }).success, false);
 });

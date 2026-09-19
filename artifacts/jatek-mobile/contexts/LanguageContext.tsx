@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef, ReactNod
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { I18nManager } from "react-native";
 import { translations, type Lang, type TKey } from "@/lib/translations";
-import { fetchNotifPrefs, updateNotifPrefs } from "@/lib/api";
+import { fetchNotifPrefs, getPublicAppConfig, updateNotifPrefs } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "jatek_lang_v1";
@@ -29,9 +29,22 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   // Hydrate from local storage immediately, then reconcile with backend.
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((v) => {
-      if (v === "fr" || v === "en" || v === "ar") setLangState(v);
-    });
+    AsyncStorage.getItem(STORAGE_KEY).then(async (v) => {
+      if (v === "fr" || v === "en" || v === "ar") {
+        setLangState(v);
+        return;
+      }
+      try {
+        const config = await getPublicAppConfig();
+        const defaultLanguage = config.defaultLanguage;
+        if (defaultLanguage === "fr" || defaultLanguage === "en" || defaultLanguage === "ar") {
+          setLangState(defaultLanguage);
+          await AsyncStorage.setItem(STORAGE_KEY, defaultLanguage);
+        }
+      } catch {
+        // Keep the French client default if public config is unavailable.
+      }
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {

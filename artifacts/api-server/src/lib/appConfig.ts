@@ -190,16 +190,22 @@ export function getDefaultHomeSections(): HomeSectionsConfig {
   return homeSectionsSchema.parse(DEFAULT_HOME_SECTIONS);
 }
 
+const genericLegalText = (min: number, max: number) => z.string()
+  .trim()
+  .min(min)
+  .max(max)
+  .refine((value) => !/\breplit\b/i.test(value), "Les pages légales ne doivent pas citer un hébergeur de plateforme spécifique.");
+
 const legalSectionSchema = z.object({
-  h: z.string().trim().min(1).max(160),
-  p: z.string().trim().min(1).max(5000),
+  h: genericLegalText(1, 160),
+  p: genericLegalText(1, 5000),
 }).strict();
 
 export const legalDocumentSchema = z.object({
-  title: z.string().trim().min(1).max(160),
-  intro: z.string().trim().max(2000),
+  title: genericLegalText(1, 160),
+  intro: genericLegalText(0, 2000),
   sections: z.array(legalSectionSchema).min(1).max(40),
-  updatedAt: z.string().trim().min(1).max(80),
+  updatedAt: genericLegalText(1, 80),
 }).strict();
 
 export const legalContentSchema = z.object({
@@ -252,12 +258,12 @@ export const DEFAULT_LEGAL_CONTENT: LegalContent = {
   },
   mentions: {
     title: "Mentions légales",
-    intro: "Informations relatives à l'éditeur et à l'hébergement de Jatek.",
+    intro: "Informations relatives à l'éditeur et aux conditions techniques du service Jatek.",
     updatedAt: "avril 2026",
     sections: [
       { h: "Éditeur", p: "Jatek SARL — Capital 100 000 MAD\nSiège social : Oujda, Maroc\nRC : 12345 — ICE : 002345678000099" },
       { h: "Directeur de publication", p: "Direction Jatek" },
-      { h: "Hébergement", p: "Replit, Inc. — 548 Market Street, San Francisco, CA 94104, USA" },
+      { h: "Hébergement", p: "Le service est hébergé auprès d'un prestataire technique sélectionné par Jatek. Les informations d'identification du prestataire peuvent être communiquées sur demande légitime." },
       { h: "Contact", p: "contact@jatek.ma" },
       { h: "Propriété intellectuelle", p: "L'ensemble du contenu de l'application (textes, logos, design) est la propriété exclusive de Jatek SARL ou de ses partenaires." },
     ],
@@ -291,3 +297,19 @@ export const splashVideoUrlSchema = z.string().trim().max(2048)
     },
     "splashVideoUrl must be a direct HTTPS MP4 URL or an App Storage splash path",
   );
+
+/**
+ * The dashboard saves the complete mobile configuration in one request.
+ * Keep this contract closed so a typo or an arbitrary key cannot silently
+ * become public configuration.
+ */
+export const appConfigPatchSchema = z.object({
+  defaultLanguage: z.enum(["fr", "en", "ar"]).optional(),
+  maintenanceMode: z.boolean().optional(),
+  featuredCount: z.number().int().min(1).max(20).optional(),
+  homeOrder: homeOrderSchema.optional(),
+  welcomeMessage: z.string().trim().max(160).optional(),
+  homeSections: homeSectionsSchema.optional(),
+  legalContent: legalContentSchema.optional(),
+  splashVideoUrl: splashVideoUrlSchema.optional(),
+}).strict();

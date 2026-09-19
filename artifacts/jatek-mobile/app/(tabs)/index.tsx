@@ -565,7 +565,10 @@ function HomeScreen() {
   );
   const addressLabel = selectedAddress || "Choisir une adresse";
   const customerFirstName = user?.name?.trim().split(/\s+/)[0] || "";
-  const greetingLabel = customerFirstName ? `Bonjour ${customerFirstName}` : "Bonjour";
+  const configuredWelcomeMessage = typeof appConfig?.welcomeMessage === "string"
+    ? appConfig.welcomeMessage.trim()
+    : "";
+  const greetingLabel = configuredWelcomeMessage || (customerFirstName ? `Bonjour ${customerFirstName}` : "Bonjour");
 
   const onRefresh = async () => {
     setRefreshing(true);

@@ -19,7 +19,7 @@ import {
   Menu,
   X,
 } from 'lucide-react';
-import { PrivacyPage, RgpdPage, SupportPage } from './pages/InfoPages';
+import { LegalNoticePage, PrivacyPage, RgpdPage, SupportPage } from './pages/InfoPages';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 16 },
@@ -573,6 +573,7 @@ const Footer = () => (
           <a href="/support" className="hover:text-brand-pink transition-colors">Support</a>
           <a href="/confidentialite" className="hover:text-brand-pink transition-colors">Confidentialité</a>
           <a href="/rgpd" className="hover:text-brand-pink transition-colors">RGPD</a>
+          <a href="/mentions-legales" className="hover:text-brand-pink transition-colors">Mentions légales</a>
           <span className="text-[#D1D5DB]">|</span>
           <a href="/admin/" className="hover:text-brand-pink transition-colors">Admin</a>
           <span className="text-[#D1D5DB]">|</span>
@@ -588,6 +589,7 @@ export default function App() {
   if (path === '/support') return <SupportPage />;
   if (path === '/confidentialite') return <PrivacyPage />;
   if (path === '/rgpd') return <RgpdPage />;
+  if (path === '/mentions-legales') return <LegalNoticePage />;
 
   return (
     <div className="min-h-screen bg-white text-[#0A1B3D] selection:bg-brand-pink selection:text-white">

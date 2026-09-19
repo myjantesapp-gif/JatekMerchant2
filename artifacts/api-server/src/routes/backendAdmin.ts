@@ -35,6 +35,7 @@ import {
   splashVideoUrlSchema,
   getDefaultHomeSections,
   getDefaultLegalContent,
+  appConfigPatchSchema,
   type AppConfig,
 } from "../lib/appConfig";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
@@ -1218,57 +1219,18 @@ router.put("/backend/app-config", requireAuth, async (req: AuthedRequest, res, n
     }
     const entries = Object.entries(body);
     if (entries.length === 0) { res.status(400).json({ error: "No config keys provided" }); return; }
-    const validatedEntries: Array<[string, unknown]> = entries.map(([key, value]) => [key, value]);
-    const homeSectionsEntry = validatedEntries.find(([key]) => key === "homeSections");
-    if (homeSectionsEntry) {
-      const parsedHomeSections = homeSectionsSchema.safeParse(homeSectionsEntry[1]);
-      if (!parsedHomeSections.success) {
-        res.status(400).json({
-          error: "Invalid homeSections",
-          details: parsedHomeSections.error.issues,
-        });
-        return;
-      }
-      homeSectionsEntry[1] = parsedHomeSections.data;
+    const parsedConfig = appConfigPatchSchema.safeParse(body);
+    if (!parsedConfig.success) {
+      res.status(400).json({
+        error: "Invalid app configuration",
+        details: parsedConfig.error.issues,
+      });
+      return;
     }
-    const homeOrderEntry = validatedEntries.find(([key]) => key === "homeOrder");
-    if (homeOrderEntry) {
-      const parsedHomeOrder = homeOrderSchema.safeParse(homeOrderEntry[1]);
-      if (!parsedHomeOrder.success) {
-        res.status(400).json({
-          error: "Invalid homeOrder",
-          details: parsedHomeOrder.error.issues,
-        });
-        return;
-      }
-      homeOrderEntry[1] = parsedHomeOrder.data;
-    }
-    const legalContentEntry = validatedEntries.find(([key]) => key === "legalContent");
-    if (legalContentEntry) {
-      const parsedLegalContent = legalContentSchema.safeParse(legalContentEntry[1]);
-      if (!parsedLegalContent.success) {
-        res.status(400).json({
-          error: "Invalid legalContent",
-          details: parsedLegalContent.error.issues,
-        });
-        return;
-      }
-      legalContentEntry[1] = parsedLegalContent.data;
-    }
+    const validatedEntries = Object.entries(parsedConfig.data) as Array<[string, unknown]>;
     const splashVideoEntry = validatedEntries.find(([key]) => key === "splashVideoUrl");
     if (splashVideoEntry) {
-      const parsedSplashVideoUrl = splashVideoUrlSchema.safeParse(splashVideoEntry[1]);
-      if (!parsedSplashVideoUrl.success) {
-        res.status(400).json({ error: "Invalid splashVideoUrl", details: parsedSplashVideoUrl.error.issues });
-        return;
-      }
-      const normalizedSplashVideoUrl = normalizeStoredMediaPath(parsedSplashVideoUrl.data) ?? "";
-      const parsedNormalizedSplashVideoUrl = splashVideoUrlSchema.safeParse(normalizedSplashVideoUrl);
-      if (!parsedNormalizedSplashVideoUrl.success) {
-        res.status(400).json({ error: "Invalid normalized splashVideoUrl", details: parsedNormalizedSplashVideoUrl.error.issues });
-        return;
-      }
-      splashVideoEntry[1] = parsedNormalizedSplashVideoUrl.data;
+      splashVideoEntry[1] = normalizeStoredMediaPath(splashVideoEntry[1]) ?? "";
     }
     for (const [key, value] of validatedEntries) {
       await db
@@ -1279,7 +1241,14 @@ router.put("/backend/app-config", requireAuth, async (req: AuthedRequest, res, n
           set: { value: value as any, updatedAt: new Date() },
         });
     }
-    res.json({ ok: true, updated: entries.length });
+    await logActivity({
+      userId: req.userId,
+      action: "update",
+      entity: "app_config",
+      details: { keys: validatedEntries.map(([key]) => key) },
+      ip: req.ip,
+    });
+    res.json({ ok: true, updated: validatedEntries.length, keys: validatedEntries.map(([key]) => key) });
   } catch (err) { next(err); }
 });
 

@@ -13,8 +13,8 @@ import { Ionicons, MaterialCommunityIcons, MaterialIcons, FontAwesome, FontAweso
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useRef } from "react";
-import { Platform, Text, TextInput } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Platform, Text, TextInput, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -31,6 +31,7 @@ import { FriendlyAlertProvider } from "@/components/FriendlyAlert";
 import { useFriendlyAlert } from "@/components/FriendlyAlert";
 import { OrderStatusToast } from "@/components/OrderStatusToast";
 import { getApiBaseSafe } from "@/lib/apiBase";
+import { getPublicAppConfig } from "@/lib/api";
 import colors from "@/constants/colors";
 
 const INTRO_BACKGROUND = colors.light.introBackground;
@@ -65,18 +66,58 @@ function applyDefaultFont(component: typeof Text | typeof TextInput) {
 applyDefaultFont(Text);
 applyDefaultFont(TextInput);
 
+function MaintenanceGate({ children }: { children: React.ReactNode }) {
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getPublicAppConfig()
+      .then((config) => {
+        if (active) setMaintenanceMode(config.maintenanceMode === true);
+      })
+      .catch(() => {
+        // A temporary config outage must not lock users out of the app.
+      })
+      .finally(() => {
+        if (active) setHasLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (hasLoaded && maintenanceMode) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 28, backgroundColor: colors.light.background }}>
+        <ActivityIndicator color={colors.light.primary} size="small" />
+        <Text style={{ marginTop: 18, color: colors.light.heading, fontSize: 22, fontWeight: "700", textAlign: "center" }}>
+          Application temporairement indisponible
+        </Text>
+        <Text style={{ marginTop: 10, color: colors.light.mutedForeground, fontSize: 15, lineHeight: 22, textAlign: "center" }}>
+          Une maintenance est en cours. Revenez dans quelques instants.
+        </Text>
+      </View>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="category/[slug]" options={{ headerShown: false }} />
-      <Stack.Screen name="home-section/[key]" options={{ headerShown: false }} />
-      <Stack.Screen name="cart" options={{ headerShown: false }} />
-      <Stack.Screen name="order/[id]" options={{ headerShown: false }} />
-    </Stack>
+    <MaintenanceGate>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="restaurant/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="category/[slug]" options={{ headerShown: false }} />
+        <Stack.Screen name="home-section/[key]" options={{ headerShown: false }} />
+        <Stack.Screen name="cart" options={{ headerShown: false }} />
+        <Stack.Screen name="order/[id]" options={{ headerShown: false }} />
+      </Stack>
+    </MaintenanceGate>
   );
 }
 

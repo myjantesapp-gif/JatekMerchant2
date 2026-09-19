@@ -555,6 +555,9 @@ export interface LegalContent {
 }
 
 export interface PublicAppConfig {
+  defaultLanguage?: "fr" | "en" | "ar";
+  maintenanceMode?: boolean;
+  welcomeMessage?: string;
   homeSections?: Record<HomeSectionKey, Omit<HomeSectionConfig, "key">>;
   homeOrder?: string[];
   legalContent?: LegalContent;
