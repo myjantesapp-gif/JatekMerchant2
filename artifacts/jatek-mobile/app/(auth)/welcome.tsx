@@ -117,8 +117,11 @@ export default function WelcomeScreen() {
           message: disabled
             ? "Activez les services de localisation, puis réessayez. La carte reste disponible."
             : "Impossible d'obtenir votre position à temps. Réessayez ou choisissez-la sur la carte.",
-          primary: { label: "OK" },
-          hideSecondary: true,
+          primary: disabled
+            ? { label: "Ouvrir les réglages", onPress: () => void openLocationSettings() }
+            : { label: "OK" },
+          secondary: disabled ? { label: "Plus tard" } : undefined,
+          hideSecondary: !disabled,
         });
       }
     } finally {

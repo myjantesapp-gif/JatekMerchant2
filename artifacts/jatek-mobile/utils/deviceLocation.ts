@@ -95,6 +95,7 @@ export async function getDeviceLocation(): Promise<{
     const position = await withLocationTimeout(
       Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
+          mayShowUserSettingsDialog: true,
       }),
     );
     return {

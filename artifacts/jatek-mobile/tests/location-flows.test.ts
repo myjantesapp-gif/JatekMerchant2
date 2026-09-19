@@ -31,6 +31,7 @@ test("location acquisition handles native denial, disabled services, and timeout
   assert.match(utility, /services-disabled/);
   assert.match(utility, /Promise\.race/);
   assert.match(utility, /Linking\.openSettings/);
+  assert.match(utility, /mayShowUserSettingsDialog: true/);
 });
 
 test("dismissible location flows invalidate stale asynchronous work", () => {
@@ -44,6 +45,14 @@ test("dismissible location flows invalidate stale asynchronous work", () => {
     assert.match(contents, /mountedRef/);
     assert.match(contents, /current \+= 1|current = false/);
   }
+});
+
+test("GPS selection keeps working when reverse geocoding is unavailable", () => {
+  const picker = source("../components/AddressQuickPicker.tsx");
+  assert.match(picker, /toFixed\(5\)/);
+  assert.match(picker, /reverseGeocode/);
+  assert.match(picker, /coordinates are still valid/i);
+  assert.match(picker, /checkDeliveryZone\(coords\.latitude, coords\.longitude\)/);
 });
 
 test("reverse geocoding is bounded and accepts cancellation", () => {

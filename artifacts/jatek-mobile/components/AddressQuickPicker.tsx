@@ -82,7 +82,17 @@ export function AddressQuickPicker({ visible, onClose }: Props) {
     setLocating(true);
     try {
       const coords = await getDeviceLocation();
-      const { address } = await reverseGeocode(coords.latitude, coords.longitude);
+      if (operation !== operationRef.current || !mountedRef.current) return;
+      // GPS acquisition must not depend on a second network request. Google
+      // or Nominatim can be unavailable on mobile even when the device has a
+      // valid position, so keep a useful coordinate fallback.
+      let address = `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`;
+      try {
+        const reverse = await reverseGeocode(coords.latitude, coords.longitude);
+        address = reverse.address || address;
+      } catch {
+        // The coordinates are still valid and can be used for zone checking.
+      }
       if (operation !== operationRef.current || !mountedRef.current) return;
       const zone = checkDeliveryZone(coords.latitude, coords.longitude);
       setSelectedAddress(address, zone.inZone);
@@ -108,6 +118,12 @@ export function AddressQuickPicker({ visible, onClose }: Props) {
           disabled
             ? "Activez les services de localisation, puis réessayez."
             : "Nous n’avons pas pu déterminer votre adresse. Réessayez ou choisissez-la manuellement.",
+          disabled
+            ? [
+              { text: "Plus tard", style: "cancel" },
+              { text: "Ouvrir les réglages", onPress: () => void openLocationSettings() },
+            ]
+            : undefined,
         );
       }
     }
