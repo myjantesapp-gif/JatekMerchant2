@@ -15,6 +15,8 @@ const colors = {
     primaryForeground: "#FFFFFF",
     primarySoft: "#FDE8F4",
     primarySoftForeground: "#EC176B",
+    authPrimary: "#D9147E",
+    authPrimaryForeground: "#FFFFFF",
     pinkBg: "#FFF0F8",
     introBackground: "#E80868",
 
@@ -59,6 +61,8 @@ const colors = {
     primaryForeground: "#FFFFFF",
     primarySoft: "#3D0E26",
     primarySoftForeground: "#FF6BB0",
+    authPrimary: "#F04A9A",
+    authPrimaryForeground: "#FFFFFF",
     pinkBg: "#3D0E26",
     introBackground: "#E80868",
 

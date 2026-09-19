@@ -37,6 +37,7 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [showEmailCta, setShowEmailCta] = useState(false);
+  const [isChecked, setIsChecked] = useState(false);
 
   const emailInputRef = useRef<any>(null);
 
@@ -47,6 +48,10 @@ export default function LoginScreen() {
   const fullPhone = `${country.dialCode}${phone.replace(/^0+/, "").replace(/\s/g, "")}`;
 
   const handleEmailLogin = () => {
+    if (!isChecked) {
+      setEmailError("Vous devez accepter les conditions générales et la politique RGPD.");
+      return;
+    }
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setEmailError(t("login_email_error"));
@@ -75,6 +80,10 @@ export default function LoginScreen() {
   };
 
   const handleSmsLogin = () => {
+    if (!isChecked) {
+      setPhoneError("Vous devez accepter les conditions générales et la politique RGPD.");
+      return;
+    }
     const local = phone.trim().replace(/\s/g, "");
     if (local.length < 5) {
       setPhoneError(t("login_phone_error"));
@@ -202,9 +211,29 @@ export default function LoginScreen() {
                 </View>
                 {emailError ? <Text style={[styles.errorText, { color: colors.destructive }]}>{emailError}</Text> : null}
                 <TouchableOpacity
-                  style={[styles.btn, { backgroundColor: colors.authTeal, opacity: pending ? 0.7 : 1 }]}
+                  style={[styles.consentRow, { borderColor: colors.authBorder }]}
+                  onPress={() => setIsChecked((checked) => !checked)}
+                  activeOpacity={0.75}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isChecked }}
+                  testID="login-consent-checkbox"
+                >
+                  <Ionicons
+                    name={isChecked ? "checkbox" : "square-outline"}
+                    size={24}
+                    color={isChecked ? colors.authPrimary : colors.mutedForeground}
+                  />
+                  <Text style={[styles.consentText, { color: colors.authInk }]}>
+                    J'accepte les conditions générales et la politique RGPD
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.btn, {
+                    backgroundColor: colors.authPrimary,
+                    opacity: pending ? 0.7 : isChecked ? 1 : 0.45,
+                  }]}
                   onPress={handleEmailLogin}
-                  disabled={pending}
+                  disabled={pending || !isChecked}
                   activeOpacity={0.8}
                   testID="login-submit"
                 >
@@ -265,9 +294,29 @@ export default function LoginScreen() {
                   </TouchableOpacity>
                 ) : null}
                 <TouchableOpacity
-                  style={[styles.btn, { backgroundColor: "#25D366", opacity: pending ? 0.7 : 1 }]}
+                  style={[styles.consentRow, { borderColor: colors.authBorder }]}
+                  onPress={() => setIsChecked((checked) => !checked)}
+                  activeOpacity={0.75}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isChecked }}
+                  testID="login-sms-consent-checkbox"
+                >
+                  <Ionicons
+                    name={isChecked ? "checkbox" : "square-outline"}
+                    size={24}
+                    color={isChecked ? colors.authPrimary : colors.mutedForeground}
+                  />
+                  <Text style={[styles.consentText, { color: colors.authInk }]}>
+                    J'accepte les conditions générales et la politique RGPD
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.btn, {
+                    backgroundColor: colors.authPrimary,
+                    opacity: pending ? 0.7 : isChecked ? 1 : 0.45,
+                  }]}
                   onPress={handleSmsLogin}
-                  disabled={pending}
+                  disabled={pending || !isChecked}
                   activeOpacity={0.8}
                   testID="login-sms-submit"
                 >
@@ -320,6 +369,8 @@ const styles = StyleSheet.create({
   helperText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
   btn: { height: 58, borderRadius: 22, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 4 },
   btnText: { color: "#fff", fontSize: 17, fontFamily: "Montserrat_700Bold" },
+  consentRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 4, marginTop: 4 },
+  consentText: { flex: 1, fontSize: 13, lineHeight: 19, fontFamily: "Inter_500Medium" },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 18 },
   switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14 },
   secondaryRow: { alignItems: "center", paddingVertical: 6 },

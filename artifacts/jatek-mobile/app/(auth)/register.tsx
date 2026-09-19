@@ -19,8 +19,13 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isChecked, setIsChecked] = useState(false);
 
   const handleSendOtp = async () => {
+    if (!isChecked) {
+      setError("Vous devez accepter les conditions générales et la politique RGPD.");
+      return;
+    }
     const trimName = name.trim();
     const trimEmail = email.trim().toLowerCase();
     if (trimName.length < 2) { setError("Saisissez votre prénom (2 caractères minimum)."); return; }
@@ -122,10 +127,32 @@ export default function RegisterScreen() {
             {error ? <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text> : null}
 
             <TouchableOpacity
-              style={[styles.btn, { backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }]}
+              style={styles.consentRow}
+              onPress={() => setIsChecked((checked) => !checked)}
+              activeOpacity={0.75}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isChecked }}
+              testID="register-consent-checkbox"
+            >
+              <Ionicons
+                name={isChecked ? "checkbox" : "square-outline"}
+                size={24}
+                color={isChecked ? colors.authPrimary : colors.mutedForeground}
+              />
+              <Text style={[styles.consentText, { color: colors.foreground }]}>
+                J'accepte les conditions générales et la politique RGPD
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.btn, {
+                backgroundColor: colors.authPrimary,
+                opacity: loading ? 0.7 : isChecked ? 1 : 0.45,
+              }]}
               onPress={handleSendOtp}
-              disabled={loading}
+              disabled={loading || !isChecked}
               activeOpacity={0.8}
+              testID="register-submit"
             >
               {loading ? <ActivityIndicator color="#fff" size="small" /> : (
                 <>
@@ -161,6 +188,8 @@ const styles = StyleSheet.create({
   input: { flex: 1, minWidth: 0, fontSize: 16, fontFamily: "Inter_400Regular", paddingHorizontal: 14 },
   helperText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, textAlign: "center", paddingHorizontal: 4 },
   errorText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  consentRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 4 },
+  consentText: { flex: 1, fontSize: 13, lineHeight: 19, fontFamily: "Inter_500Medium" },
   btn: { height: 80, borderRadius: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 11, marginTop: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 14, elevation: 6 },
   btnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
   switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, marginTop: 4 },
