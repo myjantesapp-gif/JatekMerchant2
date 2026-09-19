@@ -141,14 +141,14 @@ test("SMS destination errors remain actionable without another delivery channel"
   });
 });
 
-test("email OTP falls back through all configured Resend key/sender pairs", async () => {
+test("email OTP uses only the third Resend key/sender pair", async () => {
   await withEnv({
     RESEND_API_KEY: "key-1",
-    RESEND_FROM_EMAIL: "one@example.test",
+    RESEND_FROM_EMAIL: "one@other.example",
     RESEND_API_KEY_2: "key-2",
-    RESEND_FROM_EMAIL_2: "two@example.test",
+    RESEND_FROM_EMAIL_2: "two@other.example",
     RESEND_API_KEY_3: "key-3",
-    RESEND_FROM_EMAIL_3: "three@example.test",
+    RESEND_EMAIL_FROM_3: "Jatek <no-reply@ma.jatek.app>",
   }, async () => {
     const originalFetch = globalThis.fetch;
     const attempts: Array<{ authorization: string; from: string }> = [];
@@ -158,9 +158,7 @@ test("email OTP falls back through all configured Resend key/sender pairs", asyn
         authorization: String(new Headers(init?.headers).get("authorization") ?? ""),
         from: String(body.from ?? ""),
       });
-      return attempts.length < 3
-        ? jsonResponse({ message: "sender domain is not verified" }, 403)
-        : jsonResponse({ id: "email-test" });
+      return jsonResponse({ id: "email-test" });
     }) as typeof fetch;
 
     try {
@@ -171,12 +169,22 @@ test("email OTP falls back through all configured Resend key/sender pairs", asyn
       );
       assert.equal(result.channel, "resend-email");
       assert.deepEqual(attempts, [
-        { authorization: "Bearer key-1", from: "one@example.test" },
-        { authorization: "Bearer key-2", from: "two@example.test" },
-        { authorization: "Bearer key-3", from: "three@example.test" },
+        { authorization: "Bearer key-3", from: "Jatek <no-reply@ma.jatek.app>" },
       ]);
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+test("email OTP refuses a sender outside ma.jatek.app", async () => {
+  await withEnv({
+    RESEND_API_KEY_3: "key-3",
+    RESEND_EMAIL_FROM_3: "no-reply@other.example",
+  }, async () => {
+    await assert.rejects(
+      () => sendOtpEmail("customer@example.test", "123456", "Votre code Jatek : 123456"),
+      /Email OTP provider not configured/,
+    );
   });
 });

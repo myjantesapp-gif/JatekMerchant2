@@ -1,10 +1,10 @@
 ---
-name: Resend OTP provider fallback
-description: Durable constraint for email OTP delivery when Resend sender domains or provider projects change.
+name: Resend OTP sender policy
+description: Durable constraint for the single Resend sender domain and credential pair used for email OTP.
 ---
 
-Email OTP delivery must not depend on one Resend API key and sender pair. Resend can accept the credentials but reject delivery with HTTP 403 when the sender domain is not verified, so configured fallback pairs should be tried before returning a generic delivery error.
+Email OTP delivery is intentionally pinned to the third Resend credential pair and the exact `ma.jatek.app` sender domain. Other Resend keys or sender values must not be used for OTP.
 
-**Why:** A valid-looking primary configuration can still fail at send time because domain verification belongs to the Resend project and sender identity, not only to the API key.
+**Why:** A valid-looking Resend credential can still fail at send time when its sender domain is not verified. Using one known project/domain pair avoids accidentally mixing credentials across Resend projects.
 
-**How to apply:** When changing OTP delivery configuration, keep the primary and fallback API key/sender pairs aligned where possible, and verify the sender domain in the corresponding Resend project before removing the fallback.
+**How to apply:** Configure `RESEND_API_KEY_3` with `RESEND_EMAIL_FROM_3`, and ensure the sender email ends exactly in `@ma.jatek.app`. Do not re-enable the other Resend pairs unless this policy changes explicitly.

@@ -12,7 +12,7 @@
 //   - Twilio SMS direct (Twilio credentials + TWILIO_FROM_NUMBER or
 //     TWILIO_PHONE_NUMBER), with a locally hashed code and expiry
 //
-// Email: Resend (RESEND_API_KEY + RESEND_FROM_EMAIL)
+// Email: Resend (RESEND_API_KEY_3 + RESEND_EMAIL_FROM_3 only)
 //
 // Twilio calls use the REST API directly (fetch) — no SDK dependency.
 
@@ -239,44 +239,27 @@ export async function checkTwilioVerify(to: string, code: string): Promise<"appr
 export { twilioConfigured, twilioVerifyConfigured };
 
 // ─── Resend (email OTP) ───────────────────────────────────────────────────────
-// RESEND_EMAIL_FROM is accepted as an alias for RESEND_FROM_EMAIL. Each
-// numbered key is deliberately paired with its numbered sender so a key from
-// one Resend project is never accidentally used with another project's sender.
+const RESEND_ALLOWED_DOMAIN = "ma.jatek.app";
+
 type ResendConfig = {
   apiKey: string;
   from: string;
   label: string;
 };
 
-function getResendConfigs(): ResendConfig[] {
-  const candidates = [
-    {
-      apiKey: process.env.RESEND_API_KEY,
-      from: process.env.RESEND_FROM_EMAIL || process.env.RESEND_EMAIL_FROM,
-      label: "resend-email-1",
-    },
-    {
-      apiKey: process.env.RESEND_API_KEY_2,
-      from: process.env.RESEND_FROM_EMAIL_2 || process.env.RESEND_EMAIL_FROM_2,
-      label: "resend-email-2",
-    },
-    {
-      apiKey: process.env.RESEND_API_KEY_3,
-      from: process.env.RESEND_FROM_EMAIL_3 || process.env.RESEND_EMAIL_FROM_3,
-      label: "resend-email-3",
-    },
-  ];
+function resendSenderUsesAllowedDomain(from: string): boolean {
+  const match = from.match(/<\s*([^>\s]+)\s*>/);
+  const email = (match?.[1] ?? from).trim();
+  const atIndex = email.lastIndexOf("@");
+  return atIndex > 0 && email.slice(atIndex + 1).toLowerCase() === RESEND_ALLOWED_DOMAIN;
+}
 
-  const seen = new Set<string>();
-  return candidates.filter((candidate): candidate is ResendConfig => {
-    const apiKey = candidate.apiKey?.trim();
-    const from = candidate.from?.trim();
-    if (!apiKey || !from) return false;
-    const identity = `${apiKey}:${from}`;
-    if (seen.has(identity)) return false;
-    seen.add(identity);
-    return true;
-  });
+function getResendConfigs(): ResendConfig[] {
+  const apiKey = process.env.RESEND_API_KEY_3?.trim();
+  const from = process.env.RESEND_EMAIL_FROM_3?.trim();
+  if (!apiKey || !from || !resendSenderUsesAllowedDomain(from)) return [];
+
+  return [{ apiKey, from, label: "resend-email-ma-jatek" }];
 }
 
 function resendConfigured(): boolean {
