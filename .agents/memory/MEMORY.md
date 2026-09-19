@@ -48,3 +48,4 @@
 - [Jatek target architecture](jatek-target-architecture.md) — treat zero-crash behavior, strict TypeScript, API-driven ordering, and branded fallbacks as ecosystem-wide standards.
 - [Public catalog seed](public-catalog-seed.md) — public catalog imports are explicit and non-destructive; media restore stays a separately verified operation.
 - [Account erasure retention](account-erasure-retention.md) — delete customer data transactionally; anonymize required order/accounting history instead of leaving identifying fields.
+- [Password reset OTP security](password-reset-otp.md) — reset codes are hashed, short-lived, attempt-limited, and temporarily support legacy rows.

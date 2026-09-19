@@ -16,6 +16,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useT } from "@/contexts/LanguageContext";
+import { updateConsents } from "@/lib/api";
 
 export default function OtpScreen() {
   const colors = useColors();
@@ -29,6 +30,7 @@ export default function OtpScreen() {
     channel?: string;
     intent?: string;
     name?: string;
+    consent?: string;
   }>();
   const identifier = params.email || params.phone || "";
   const isEmailMode = !!params.email && !params.phone;
@@ -75,6 +77,9 @@ export default function OtpScreen() {
           return;
         }
         await login(res.token, { ...res.user, phone: res.user.phone ?? null });
+        if (params.consent === "1") {
+          await updateConsents({ acceptTerms: true, acceptPrivacy: true }).catch(() => undefined);
+        }
         router.replace("/(tabs)");
       },
       onError: (err) => {
@@ -109,7 +114,7 @@ export default function OtpScreen() {
   };
 
   const handleResend = () => {
-    if (!identifier) return;
+    if (!identifier || countdown > 0 || sendOtp.isPending) return;
     // Preserve intent and name so a signup resend doesn't revert to login behaviour
     const basePayload = isEmailMode ? { email: identifier } : { phone: identifier };
     const resendPayload: SendOtpBody = {

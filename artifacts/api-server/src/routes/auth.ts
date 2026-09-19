@@ -673,7 +673,7 @@ router.get("/auth/me", requireAuth, async (req: AuthedRequest, res): Promise<voi
   res.json({ ...safeUser, driver });
 });
 
-// ─── Forgot password — send OTP to user's phone ──────────────────────────────
+// ─── Forgot password — send a short-lived OTP by email ───────────────────────
 router.post("/auth/forgot-password", async (req, res): Promise<void> => {
   const { email } = req.body ?? {};
   if (!email || typeof email !== "string") {
@@ -736,8 +736,9 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
   }
 
   const code = generateOtp();
+  const codeHash = await bcrypt.hash(code, 10);
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-  await db.insert(otpCodesTable).values({ phone: identifier, code, expiresAt });
+  await db.insert(otpCodesTable).values({ phone: identifier, code: codeHash, expiresAt });
 
   const messageBody = `Code de réinitialisation Jatek : ${code}\nValable ${OTP_EXPIRY_MINUTES} minutes.`;
   const resetEmailSubject = "Réinitialisation de votre mot de passe Jatek";
@@ -774,8 +775,8 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Email, code et nouveau mot de passe requis" });
     return;
   }
-  if (typeof newPassword !== "string" || newPassword.length < 6) {
-    res.status(400).json({ error: "Le mot de passe doit comporter au moins 6 caractères" });
+  if (typeof newPassword !== "string" || newPassword.length < 8) {
+    res.status(400).json({ error: "Le mot de passe doit comporter au moins 8 caractères" });
     return;
   }
 
@@ -826,11 +827,21 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
     return;
   }
 
-  if (otpRecord.code !== String(code).trim()) {
+  const suppliedCode = String(code).trim();
+  const codeMatches = otpRecord.code.startsWith("$2")
+    ? await bcrypt.compare(suppliedCode, otpRecord.code)
+    : (() => {
+        // Keep compatibility with reset codes created before hashing was added.
+        const expected = Buffer.from(otpRecord.code);
+        const actual = Buffer.from(suppliedCode);
+        return expected.length === actual.length && timingSafeEqual(expected, actual);
+      })();
+
+  if (!codeMatches) {
     await db
       .update(otpCodesTable)
       .set({ attempts: otpRecord.attempts + 1 })
-      .where(eq(otpCodesTable.id, otpRecord.id));
+      .where(and(eq(otpCodesTable.id, otpRecord.id), eq(otpCodesTable.attempts, otpRecord.attempts)));
     const remaining = OTP_MAX_ATTEMPTS - (otpRecord.attempts + 1);
     res.status(400).json({
       error: remaining > 0

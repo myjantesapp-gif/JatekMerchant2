@@ -15,6 +15,7 @@ import { DEFAULT_COUNTRY, type Country } from "@/lib/countries";
 import { useT } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { JatekWordmark } from "@/components/JatekWordmark";
+import { updateConsents } from "@/lib/api";
 
 type Method = "email" | "sms";
 
@@ -70,6 +71,7 @@ export default function LoginScreen() {
           return;
         }
         await login(res.token, { ...res.user, phone: res.user.phone ?? null });
+        await updateConsents({ acceptTerms: true, acceptPrivacy: true }).catch(() => undefined);
         router.replace("/(tabs)");
       },
       onError: (err: any) => {
@@ -99,6 +101,7 @@ export default function LoginScreen() {
           params: {
             phone: fullPhone,
             intent: "login",
+              consent: "1",
             demo: res?.demoOtp ? "1" : "0",
             demoOtp: res?.demoOtp ?? "",
             channel: res?.channel ?? "twilio-verify-sms",
@@ -367,7 +370,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, minWidth: 0, fontSize: 16, fontFamily: "Montserrat_400Regular", paddingHorizontal: 14 },
   errorText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   helperText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
-  btn: { height: 58, borderRadius: 22, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 4 },
+  btn: { height: 48, borderRadius: 18, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3 },
   btnText: { color: "#fff", fontSize: 17, fontFamily: "Montserrat_700Bold" },
   consentRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 4, marginTop: 4 },
   consentText: { flex: 1, fontSize: 13, lineHeight: 19, fontFamily: "Inter_500Medium" },

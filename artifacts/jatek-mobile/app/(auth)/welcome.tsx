@@ -326,6 +326,16 @@ export default function WelcomeScreen() {
             <Text style={{ color: PRIMARY, fontFamily: "Inter_700Bold" }}>Découvrir Jatek</Text>
           </Text>
         </TouchableOpacity>
+
+        <View style={styles.legalLinksRow}>
+          <TouchableOpacity onPress={() => router.push("/profile/legal?type=privacy" as any)} hitSlop={6}>
+            <Text style={[styles.legalLink, { color: PRIMARY }]}>Confidentialité</Text>
+          </TouchableOpacity>
+          <Text style={[styles.legalSeparator, { color: colors.mutedForeground }]}>·</Text>
+          <TouchableOpacity onPress={() => router.push("/profile/legal?type=terms" as any)} hitSlop={6}>
+            <Text style={[styles.legalLink, { color: PRIMARY }]}>Conditions générales</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -386,4 +396,7 @@ const styles = StyleSheet.create({
   confirmText: { color: "#fff", fontSize: 15, fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
   guestBtn: { alignItems: "center", paddingVertical: 4 },
   guestText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  legalLinksRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingTop: 2 },
+  legalLink: { fontSize: 11, fontFamily: "Inter_500Medium", textDecorationLine: "underline" },
+  legalSeparator: { fontSize: 11 },
 });
