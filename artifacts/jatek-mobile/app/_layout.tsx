@@ -237,7 +237,7 @@ export default function RootLayout() {
                       <OrderStatusToast />
                       <CookieConsentBanner />
                     </FriendlyAlertProvider>
-                    {Platform.OS === "web" ? null : <SplashOverlay />}
+                    <SplashOverlay />
                   </KeyboardProvider>
                 </GestureHandlerRootView>
               </CartProvider>

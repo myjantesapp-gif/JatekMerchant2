@@ -40,7 +40,111 @@ export default function SplashOverlay() {
       <Image source={INTRO_LOGO} style={styles.logo} resizeMode="contain" />
     </View></View>;
   }
+  if (Platform.OS === "web") {
+    return <WebIntroPlayback source={source} />;
+  }
   return <IntroErrorBoundary><IntroPlayback source={source} /></IntroErrorBoundary>;
+}
+
+function WebIntroPlayback({ source }: { source: string | number }) {
+  const rootNavigationState = useRootNavigationState();
+  const [mounted, setMounted] = useState(true);
+  const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
+  const [playbackFinished, setPlaybackFinished] = useState(false);
+  const [playbackError, setPlaybackError] = useState(false);
+  const transitionStarted = useRef(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const opacity = useSharedValue(1);
+  const overlayStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  const navigationReady = Boolean(rootNavigationState?.key);
+
+  useEffect(() => {
+    let active = true;
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then((value) => { if (active) setReduceMotion(value); })
+      .catch(() => { if (active) setReduceMotion(false); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion !== false) return;
+    const video = videoRef.current;
+    if (!video) return;
+    const start = () => {
+      void video.play().catch(() => {
+        // Browsers can reject autoplay even for a muted video. The logo
+        // fallback remains available and the app must still continue.
+        setPlaybackError(true);
+        setPlaybackFinished(true);
+      });
+    };
+    if (video.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) start();
+    else video.addEventListener("canplay", start, { once: true });
+    return () => video.removeEventListener("canplay", start);
+  }, [reduceMotion, source]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(false), 12000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion !== true) return;
+    const timer = setTimeout(() => setPlaybackFinished(true), REDUCE_MOTION_LOGO_DURATION);
+    return () => clearTimeout(timer);
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    if (!playbackFinished || !navigationReady || transitionStarted.current) return;
+    transitionStarted.current = true;
+    if (reduceMotion) {
+      setMounted(false);
+      return;
+    }
+    opacity.value = withTiming(
+      0,
+      { duration: FADE_DURATION, easing: Easing.out(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(setMounted)(false);
+      },
+    );
+  }, [navigationReady, opacity, playbackFinished, reduceMotion]);
+
+  if (!mounted) return null;
+
+  const showStaticLogo = reduceMotion !== false || playbackError;
+  return (
+    <Animated.View
+      style={[styles.root, overlayStyle]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <View style={styles.background}>
+        {showStaticLogo ? (
+          <View style={styles.logoFrame}>
+            <Image source={INTRO_LOGO} style={styles.logo} resizeMode="contain" />
+          </View>
+        ) : (
+          React.createElement("video", {
+            ref: videoRef,
+            src: source,
+            autoPlay: true,
+            muted: true,
+            playsInline: true,
+            preload: "auto",
+            onEnded: () => setPlaybackFinished(true),
+            onError: () => {
+              setPlaybackError(true);
+              setPlaybackFinished(true);
+            },
+            "aria-hidden": true,
+            style: styles.webVideo,
+          })
+        )}
+      </View>
+    </Animated.View>
+  );
 }
 
 /** A native video initialization failure must not take down the application. */
@@ -214,4 +318,11 @@ const styles = StyleSheet.create({
     maxWidth: 280,
     height: 110,
   },
+  webVideo: {
+    width: "100%",
+    height: "100%",
+    display: "block",
+    objectFit: "cover",
+    backgroundColor: INTRO_BACKGROUND,
+  } as any,
 });
