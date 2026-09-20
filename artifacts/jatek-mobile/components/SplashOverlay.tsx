@@ -1,6 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { router, useRootNavigationState } from "expo-router";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useRootNavigationState } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Image, Platform, StyleSheet, View, type ImageSourcePropType } from "react-native";
 import Animated, {
@@ -21,6 +20,7 @@ const INTRO_VIDEO = require("../assets/videos/jatek-intro.mp4");
 // Transparent local fallback prevents a visible rectangular image background
 // when the remote splash logo is unavailable during the first launch.
 const INTRO_LOGO = require("../assets/images/jatek-intro-logo-transparent.png");
+const NATIVE_INTRO_DURATION = 2500;
 const REDUCE_MOTION_LOGO_DURATION = 350;
 const VIDEO_START_DELAY = 260;
 const FADE_DURATION = 250;
@@ -30,8 +30,8 @@ const FADE_DURATION = 250;
  * AppState listener: returning from background must never restart it.
  */
 export default function SplashOverlay() {
-  // Start from the bundled 2-second intro immediately. The API-configured
-  // media can replace it only if it resolves during the same launch.
+  // Start from bundled media immediately. The API-configured App Storage
+  // image can replace the local fallback if it resolves during this launch.
   const [source, setSource] = useState<string | number>(INTRO_VIDEO);
   const [logoSource, setLogoSource] = useState<ImageSourcePropType>(INTRO_LOGO);
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function SplashOverlay() {
   if (Platform.OS === "web") {
     return <WebIntroPlayback source={source} logoSource={logoSource} />;
   }
-  return <IntroErrorBoundary><IntroPlayback source={source} logoSource={logoSource} /></IntroErrorBoundary>;
+  return <IntroErrorBoundary><IntroPlayback logoSource={logoSource} /></IntroErrorBoundary>;
 }
 
 function WebIntroPlayback({ source, logoSource }: { source: string | number; logoSource: ImageSourcePropType }) {
@@ -100,12 +100,6 @@ function WebIntroPlayback({ source, logoSource }: { source: string | number; log
     const timer = setTimeout(() => setMounted(false), 12000);
     return () => clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (reduceMotion !== true) return;
-    const timer = setTimeout(() => setPlaybackFinished(true), REDUCE_MOTION_LOGO_DURATION);
-    return () => clearTimeout(timer);
-  }, [reduceMotion]);
 
   useEffect(() => {
     if (!playbackFinished || !navigationReady || transitionStarted.current) return;
@@ -165,24 +159,13 @@ class IntroErrorBoundary extends React.Component<React.PropsWithChildren, { fail
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-function IntroPlayback({ source, logoSource }: { source: string | number; logoSource: ImageSourcePropType }) {
+function IntroPlayback({ logoSource }: { logoSource: ImageSourcePropType }) {
   const rootNavigationState = useRootNavigationState();
   const [mounted, setMounted] = useState(true);
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   const [playbackFinished, setPlaybackFinished] = useState(false);
-  const [playbackError, setPlaybackError] = useState(false);
-  const [videoStarted, setVideoStarted] = useState(false);
   const transitionStarted = useRef(false);
-  const playbackStarted = useRef(false);
   const opacity = useSharedValue(1);
-
-  const player = useVideoPlayer(source, (videoPlayer) => {
-    videoPlayer.loop = false;
-    videoPlayer.muted = true;
-    videoPlayer.audioMixingMode = "auto";
-    videoPlayer.staysActiveInBackground = false;
-    videoPlayer.keepScreenOnWhilePlaying = true;
-  });
 
   const navigationReady = Boolean(rootNavigationState?.key);
 
@@ -195,49 +178,15 @@ function IntroPlayback({ source, logoSource }: { source: string | number; logoSo
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // Hard deadline, independent of navigation readiness: never obscure
-      // the application's own recovery UI if navigation itself has failed.
-      try { player.pause(); } catch { /* Failed native players may reject pause. */ }
-      setMounted(false);
-    }, 12000);
+    // Native mobile uses the dashboard-selected App Storage image for a
+    // deterministic 2.5 second intro. Video playback remains available for
+    // the web preview, but cannot stretch or shorten the native splash.
+    const timer = setTimeout(
+      () => setPlaybackFinished(true),
+      Math.max(0, NATIVE_INTRO_DURATION - FADE_DURATION),
+    );
     return () => clearTimeout(timer);
-  }, [player]);
-
-  useEffect(() => {
-    const endSubscription = player.addListener("playToEnd", () => {
-      setPlaybackFinished(true);
-    });
-    const statusSubscription = player.addListener("statusChange", ({ status }) => {
-      if (status === "error") {
-        setPlaybackError(true);
-        setPlaybackFinished(true);
-      }
-    });
-    if (player.status === "error") {
-      setPlaybackError(true);
-      setPlaybackFinished(true);
-    }
-
-    return () => {
-      endSubscription.remove();
-      statusSubscription.remove();
-    };
-  }, [player]);
-
-  useEffect(() => {
-    if (reduceMotion !== false || playbackStarted.current || playbackError) return;
-    const timer = setTimeout(() => {
-      playbackStarted.current = true;
-      setVideoStarted(true);
-      try { player.play(); }
-      catch {
-        setPlaybackError(true);
-        setPlaybackFinished(true);
-      }
-    }, VIDEO_START_DELAY);
-    return () => clearTimeout(timer);
-  }, [playbackError, player, reduceMotion]);
+  }, []);
 
   useEffect(() => {
     if (reduceMotion !== true) return;
@@ -246,15 +195,8 @@ function IntroPlayback({ source, logoSource }: { source: string | number; logoSo
   }, [reduceMotion]);
 
   useEffect(() => {
-    // Preload the tab tree while the local intro asset is playing. The actual
-    // route/data state remains controlled by the existing auth redirect.
-    void router.prefetch("/(tabs)");
-  }, []);
-
-  useEffect(() => {
     if (!playbackFinished || !navigationReady || transitionStarted.current) return;
     transitionStarted.current = true;
-    try { player.pause(); } catch { /* Player may already have failed. */ }
 
     if (reduceMotion) {
       setMounted(false);
@@ -268,10 +210,9 @@ function IntroPlayback({ source, logoSource }: { source: string | number; logoSo
         if (finished) runOnJS(setMounted)(false);
       },
     );
-  }, [navigationReady, opacity, playbackFinished, reduceMotion, player]);
+  }, [navigationReady, opacity, playbackFinished, reduceMotion]);
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  const showStaticLogo = reduceMotion !== false || playbackError || !videoStarted;
 
   if (!mounted) return null;
 
@@ -283,27 +224,7 @@ function IntroPlayback({ source, logoSource }: { source: string | number; logoSo
     >
       <StatusBar style="light" backgroundColor={INTRO_BACKGROUND} translucent={false} />
       <View style={styles.background}>
-        {showStaticLogo ? (
-          <AnimatedStaticLogo source={logoSource} reduceMotion={reduceMotion !== false} />
-        ) : (
-          <VideoView
-            player={player}
-            style={StyleSheet.absoluteFill}
-            // The intro asset is a portrait 1080x1920 video. Cover keeps it
-            // edge-to-edge on modern phones instead of leaving letterboxing.
-            // The pink background remains visible behind the video on devices
-            // with a different aspect ratio.
-            contentFit="cover"
-            nativeControls={false}
-            allowsFullscreen={false}
-            fullscreenOptions={{ enable: false }}
-            requiresLinearPlayback
-            useExoShutter={false}
-            // TextureView keeps the native video surface compatible with the
-            // 250 ms alpha transition while remaining hardware accelerated.
-            surfaceType={Platform.OS === "android" ? "textureView" : undefined}
-          />
-        )}
+        <AnimatedStaticLogo source={logoSource} reduceMotion={reduceMotion !== false} />
       </View>
     </Animated.View>
   );

@@ -130,6 +130,12 @@ function getCategoryIcon(category: any): keyof typeof Ionicons.glyphMap {
 }
 
 function getCategoryAccent(category: any): string {
+  const configuredAccent = typeof category?.accentColor === "string"
+    && /^#[0-9a-f]{6}$/i.test(category.accentColor.trim())
+    ? category.accentColor.trim()
+    : null;
+  if (configuredAccent) return configuredAccent;
+
   const categoryText = normalize(`${category?.slug} ${category?.name} ${category?.businessType}`);
   if (categoryText.includes("restaurant") || categoryText.includes("restauration") || categoryText.includes("food")) {
     return "#E50068";
@@ -143,7 +149,7 @@ function getCategoryAccent(category: any): string {
   if (categoryText.includes("plus") || categoryText.includes("autre")) {
     return "#7828E8";
   }
-  return category?.accentColor || PINK;
+  return PINK;
 }
 
 function LoadingOrEmpty({

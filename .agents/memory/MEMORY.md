@@ -8,6 +8,7 @@
 - [Admin profile verification](admin-profile-verification.md) — admin-created restaurants/drivers are operationally verified and complete; never invent legal identity data for legacy profiles.
 - [Mobile production Expo project](mobile-production-expo-project.md) — published mobile manifest fallback must match the current static Expo config, EAS project, and preview channel.
 - [Expo tunnel availability](expo-tunnel-outage.md) — Ngrok may block Android previews even when the mobile app itself builds successfully.
+- [Expo static-build restart race](expo-static-build-restart-race.md) — restart the Expo workflow after the mobile web static build finishes, not concurrently.
 - [Expo driver workflow port](expo-driver-workflow-port.md) — driver Metro can be ready while a Replit port gate never detects 8099; use console-only workflow validation.
 - [Twilio Verify SID misconfigured](twilio-verify-misconfigured.md) — TWILIO_VERIFY_SID secret has invalid value (not "VA…"); ops fix needed, not code.
 - [Token-bound session invalidation](token-bound-session-invalidation.md) — reject only the session token that caused a 401; stale requests must not log out a newer login.

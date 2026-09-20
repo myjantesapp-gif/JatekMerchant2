@@ -260,7 +260,9 @@ export default function CategoryScreen() {
     );
     return {
       label: parent.name,
-      color: parent.accentColor || PINK,
+      color: typeof parent.accentColor === "string" && /^#[0-9a-f]{6}$/i.test(parent.accentColor.trim())
+        ? parent.accentColor.trim()
+        : PINK,
       bannerImageUrl: parent.bannerImageUrl ?? null,
       businessType: parent.businessType || "restaurant",
       subcategories: [
@@ -320,7 +322,7 @@ export default function CategoryScreen() {
     <View style={[styles.root]}>
       {/* ─── Banner header — image served from backend bannerImageUrl ─── */}
       <LinearGradient
-        colors={[config.color, PINK]}
+        colors={[config.color, config.color]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.bannerWrap, { paddingTop: insets.top + 6 }]}
