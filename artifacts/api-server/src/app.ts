@@ -16,6 +16,7 @@ const app: Express = express();
 const mobileStaticPort = Number(process.env["MOBILE_STATIC_PORT"] ?? "25896");
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const bannerAssetsDir = path.resolve(currentDir, "../public/banners");
+const splashAssetsDir = path.resolve(currentDir, "../public/splash");
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
@@ -31,6 +32,9 @@ app.use(compression());
 if (existsSync(bannerAssetsDir)) {
   app.use("/banners", express.static(bannerAssetsDir, { maxAge: "1d" }));
   app.use("/api/banners", express.static(bannerAssetsDir, { maxAge: "1d" }));
+}
+if (existsSync(splashAssetsDir)) {
+  app.use("/api/splash", express.static(splashAssetsDir, { maxAge: "1d", immutable: true }));
 }
 
 // In production, restrict CORS to known origins. Set ALLOWED_ORIGINS as a

@@ -306,6 +306,7 @@ export const splashLogoUrlSchema = z.string().trim().max(2048)
   .refine(
     (value) => {
       if (value === "") return true;
+      if (value === "/api/splash/jatek-intro-splash.png") return true;
       if (/^\/api\/storage\/objects\/splash\/[a-zA-Z0-9_-]+(?:\.(?:png|jpe?g|webp|gif|svg))?(?:\?[^#]*)?$/.test(value)) return true;
       try {
         const url = new URL(value);

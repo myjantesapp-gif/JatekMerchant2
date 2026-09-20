@@ -49,7 +49,7 @@ test("startup video accepts only direct MP4 or managed splash media and supports
 });
 
 test("startup logo accepts only direct image URLs or managed splash media", () => {
-  for (const value of ["", "/api/storage/objects/splash/logo.png", "/api/storage/objects/splash/logo.webp?version=2",
+  for (const value of ["", "/api/splash/jatek-intro-splash.png", "/api/storage/objects/splash/logo.png", "/api/storage/objects/splash/logo.webp?version=2",
     "https://cdn.example.com/logo.png"]) {
     assert.equal(splashLogoUrlSchema.safeParse(value).success, true, value);
   }

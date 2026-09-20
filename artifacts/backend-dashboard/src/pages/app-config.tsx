@@ -330,7 +330,7 @@ export default function AppConfig() {
                 previewClassName="h-24 w-full object-contain bg-muted"
               />
               <p className="mt-2 text-xs text-muted-foreground">
-                Le mobile utilise ce logo distant en priorité. Laissez vide pour utiliser le logo intégré dans l’application.
+                Le mobile utilise ce logo distant en priorité. Laissez vide pour conserver le logo Jatek par défaut servi par l’API.
               </p>
               <div className="my-5 border-t" />
               <VideoUploadField

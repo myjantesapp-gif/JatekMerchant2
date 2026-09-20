@@ -1151,7 +1151,7 @@ const DEFAULT_APP_CONFIG = {
   featuredCount: 6,
   homeOrder: ["categories", "banners", "shorts", "popular", "new_restaurants", "supermarkets", "new_products", "shops", "all", "free_delivery", "newest", "support"],
   welcomeMessage: "Bienvenue sur Jatek !",
-  splashLogoUrl: "",
+  splashLogoUrl: "/api/splash/jatek-intro-splash.png",
   homeSections: getDefaultHomeSections(),
   legalContent: getDefaultLegalContent(),
 } satisfies AppConfig;
@@ -1187,7 +1187,10 @@ async function getAppConfig(): Promise<AppConfig> {
   }
   const parsedHomeOrder = homeOrderSchema.safeParse(config.homeOrder);
   const parsedSplash = splashVideoUrlSchema.safeParse(config.splashVideoUrl ?? "");
-  const parsedSplashLogo = splashLogoUrlSchema.safeParse(config.splashLogoUrl ?? "");
+  const splashLogoValue = typeof config.splashLogoUrl === "string" && config.splashLogoUrl.trim()
+    ? config.splashLogoUrl
+    : DEFAULT_APP_CONFIG.splashLogoUrl;
+  const parsedSplashLogo = splashLogoUrlSchema.safeParse(splashLogoValue);
   const parsedLegalContent = legalContentSchema.safeParse(config.legalContent);
   return {
     ...config,
