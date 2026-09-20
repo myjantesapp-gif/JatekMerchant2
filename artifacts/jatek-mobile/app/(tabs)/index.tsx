@@ -577,8 +577,13 @@ function HomeScreen() {
   );
   const homeOrder = useMemo(() => {
     const configured = Array.isArray(appConfig?.homeOrder) ? appConfig.homeOrder : [];
-    return [...new Set(configured.filter((key): key is HomeSectionKey => typeof key === "string"))];
-  }, [appConfig?.homeOrder]);
+    return [...new Set(configured.filter((key): key is HomeSectionKey => {
+      if (typeof key !== "string") return false;
+      const section = appConfig?.homeSections?.[key as HomeSectionKey] as HomeSectionViewConfig | undefined;
+      const sectionText = normalize(`${key} ${section?.title ?? ""} ${section?.source ?? ""}`);
+      return !sectionText.includes("mention") && !sectionText.includes("legal");
+    }))];
+  }, [appConfig?.homeOrder, appConfig?.homeSections]);
   const freeDeliveryProducts = useMemo(
     () => (popularProducts ?? []).filter((product) => product.deliveryFee === 0),
     [popularProducts],
@@ -661,6 +666,8 @@ function HomeScreen() {
   const renderHomeSection = (key: HomeSectionKey): React.ReactNode => {
     const config = homeSections[key];
     if (!config?.visible) return null;
+    const sectionText = normalize(`${key} ${config.title} ${config.source}`);
+    if (sectionText.includes("mention") || sectionText.includes("legal")) return null;
     const limit = Math.max(1, Number(config.limit) || 1);
     // Keep the API key and configurable copy intact while using a compact
     // mobile label that fits on one line in the home rail.

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Modal,
   StyleSheet,
@@ -18,7 +18,6 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { JatekWordmark } from "@/components/JatekWordmark";
-import { useListCategories } from "@workspace/api-client-react";
 
 const PINK      = "#FF4593";
 const PINK_DEEP = "#E91E63";
@@ -47,22 +46,6 @@ const ENTRIES: MenuEntry[] = [
   { id: "help",      label: "Aide",                icon: "chatbubbles", color: "#0EA5E9", route: "/profile/help" },
 ];
 
-function normalize(value: unknown): string {
-  return String(value ?? "")
-    .toLocaleLowerCase("fr-FR")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-}
-
-function categoryIcon(category: any): keyof typeof Ionicons.glyphMap {
-  const value = normalize(`${category?.slug} ${category?.name} ${category?.businessType}`);
-  if (value.includes("pharm") || value.includes("sant")) return "medkit";
-  if (value.includes("market") || value.includes("grocery") || value.includes("supermarch") || value.includes("epicer")) return "basket";
-  if (value.includes("shop") || value.includes("boutique") || value.includes("store")) return "bag-handle";
-  if (value.includes("restaurant") || value.includes("restauration") || value.includes("food")) return "restaurant";
-  return "grid";
-}
-
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -73,21 +56,6 @@ export function SideMenu({ visible, onClose }: Props) {
   const insets  = useSafeAreaInsets();
   const slide   = useRef(new Animated.Value(-DRAWER_W)).current;
   const overlay = useRef(new Animated.Value(0)).current;
-  const { data: categories } = useListCategories();
-  const categoryEntries = useMemo<MenuEntry[]>(
-    () =>
-      (categories ?? [])
-        .filter((category: any) => category.parentId == null && category.isActive !== false && typeof category.slug === "string")
-        .map((category: any) => ({
-          id: `category-${category.slug}`,
-          label: category.name || category.slug,
-          icon: categoryIcon(category),
-          color: category.accentColor || PINK_DEEP,
-          route: `/category/${encodeURIComponent(category.slug)}`,
-        })),
-    [categories],
-  );
-  const menuEntries = useMemo(() => [...ENTRIES, ...categoryEntries], [categoryEntries]);
 
   useEffect(() => {
     if (visible) {
@@ -152,7 +120,7 @@ export function SideMenu({ visible, onClose }: Props) {
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
-            {menuEntries.map((entry, i) => (
+            {ENTRIES.map((entry, i) => (
               <IconItem
                 key={entry.id}
                 entry={entry}

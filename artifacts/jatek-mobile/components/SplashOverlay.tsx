@@ -18,7 +18,9 @@ import { loadStartupMedia } from "@/lib/startupVideo";
 
 const INTRO_BACKGROUND = colors.light.introBackground;
 const INTRO_VIDEO = require("../assets/videos/jatek-intro.mp4");
-const INTRO_LOGO = require("../assets/images/jatek-intro-splash.png");
+// Transparent local fallback prevents a visible rectangular image background
+// when the remote splash logo is unavailable during the first launch.
+const INTRO_LOGO = require("../assets/images/jatek-intro-logo-transparent.png");
 const REDUCE_MOTION_LOGO_DURATION = 350;
 const VIDEO_START_DELAY = 260;
 const FADE_DURATION = 250;
