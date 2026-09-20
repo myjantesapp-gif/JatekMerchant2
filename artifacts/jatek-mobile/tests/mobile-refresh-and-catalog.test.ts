@@ -306,12 +306,12 @@ test("long mobile catalog grids use bounded virtualization and cached recycled i
   assert.match(mediaImage, /failedSource\.key === sourceKey/);
 });
 
-test("home renders discovery videos as a horizontal 9:16 card rail", () => {
+test("home renders every active discovery video as a horizontal 9:16 card rail", () => {
   const page = source("app/(tabs)/index.tsx");
   const card = source("components/ShortCard.tsx");
 
   assert.match(page, /case "shorts":/);
-  assert.match(page, /shorts\.slice\(0, limit\)\.map/);
+  assert.match(page, /shorts\.map/);
   assert.match(page, /<ShortCard/);
   assert.match(card, /height: 200/);
   assert.match(card, /borderRadius: 18/);
@@ -346,7 +346,7 @@ test("category headers use business-specific illustrated backgrounds", () => {
   assert.match(page, /includes\("market"\)[\s\S]*return "cart"/);
   assert.match(page, /includes\("shop"\)[\s\S]*return "bag-handle"/);
   assert.match(page, /includes\("service"\)[\s\S]*return "construct"/);
-  assert.match(page, /colors=\{\[config\.color, PINK\]\}/);
+  assert.match(page, /colors=\{\[config\.color, config\.color\]\}/);
   assert.match(page, /style=\{styles\.categoryPattern\}/);
 });
 
@@ -415,7 +415,7 @@ test("home header uses the branded logo while retaining its actions and pink wav
   assert.match(source("components/JatekIcon.tsx"), /jatek-icon-white/);
   assert.match(code, /style=\{styles\.logoButton\}/);
   assert.match(code, /const HEADER_PINK = "#E91E63"/);
-  assert.match(code, /<WaveEdge color=\{HEADER_PINK\} height=\{28\} \/>/);
+  assert.match(code, /<WaveEdge color=\{HEADER_PINK\} height=\{36\} \/>/);
   assert.match(code, /accessibilityLabel="Ouvrir le menu"/);
   assert.match(code, /accessibilityLabel="Ouvrir le panier"/);
   assert.match(code, /accessibilityLabel="Ouvrir le profil"/);

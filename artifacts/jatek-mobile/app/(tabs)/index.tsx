@@ -732,7 +732,7 @@ function HomeScreen() {
                 nestedScrollEnabled
                 decelerationRate="normal"
               >
-                {shorts.slice(0, limit).map((short, index) => (
+                {shorts.map((short, index) => (
                   <ShortCard
                     key={short.id}
                     short={short}

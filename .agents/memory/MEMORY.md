@@ -41,6 +41,7 @@
 - [Home promotional content](home-promotional-content.md) — admin-managed promo ads and discounted products take priority, with bundled banner fallbacks for an empty content feed.
 - [Home reference layout](home-reference-layout.md) — screenshot direction uses Poppins, navy/pink styling, soft waves, three product columns, and compact nearby-store cards.
 - [Mobile content source](mobile-content-source.md) — Home content, metadata, and section navigation must come from dashboard/API data, never local live-content samples.
+- [Mobile Shorts feed pagination](mobile-shorts-pagination.md) — fetch all active Shorts through cursor pages; the legacy default response is not a complete feed.
 - [Home config normalization](home-config-normalization.md) — partial public app-config responses must be completed client-side before rendering Home sections.
 - [Legal content configuration](legal-content-config.md) — legal documents live in validated public app_config and are edited from the dashboard, not embedded in mobile screens.
 - [Database backup connection](database-backup-connection.md) — managed SQL access can work while shell pg_dump credentials are stale or invalid; verify dumps before presenting them.

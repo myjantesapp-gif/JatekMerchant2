@@ -457,12 +457,44 @@ export interface Short {
   sortOrder: number;
 }
 
+type ShortsPage = {
+  items: Short[];
+  nextCursor: string | null;
+  hasMore: boolean;
+};
+
 export async function listAds(type?: string): Promise<Ad[]> {
   return jsonFetch(`/api/ads${type ? `?type=${encodeURIComponent(type)}` : ""}`);
 }
 
 export async function listShorts(): Promise<Short[]> {
-  return jsonFetch("/api/shorts");
+  const allShorts: Short[] = [];
+  let cursor: string | null = null;
+
+  // Public Shorts uses cursor pagination for larger feeds. Keep accepting the
+  // historical array response so an older deployed API remains compatible.
+  for (let page = 0; page < 100; page += 1) {
+    const params = new URLSearchParams({ limit: "50" });
+    if (cursor) params.set("cursor", cursor);
+
+    const response = await jsonFetch<Short[] | ShortsPage>(`/api/shorts?${params.toString()}`);
+    if (Array.isArray(response)) {
+      allShorts.push(...response);
+      break;
+    }
+
+    if (!Array.isArray(response.items)) {
+      throw new Error("Réponse Shorts invalide");
+    }
+    allShorts.push(...response.items);
+
+    if (!response.hasMore || !response.nextCursor || response.nextCursor === cursor) {
+      break;
+    }
+    cursor = response.nextCursor;
+  }
+
+  return allShorts;
 }
 
 export async function trackShortView(
