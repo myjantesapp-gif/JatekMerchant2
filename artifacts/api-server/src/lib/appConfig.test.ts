@@ -6,6 +6,7 @@ import {
   getDefaultHomeSections,
   homeSectionsSchema,
   validateHomeSections,
+  splashLogoUrlSchema,
   splashVideoUrlSchema,
   appConfigPatchSchema,
   getDefaultLegalContent,
@@ -44,6 +45,18 @@ test("startup video accepts only direct MP4 or managed splash media and supports
     "/api/storage/objects/splash/../secret", "/api/storage/objects/splash/abc#fragment",
     "https://name:password@example.com/intro.mp4"]) {
     assert.equal(splashVideoUrlSchema.safeParse(value).success, false, String(value));
+  }
+});
+
+test("startup logo accepts only direct image URLs or managed splash media", () => {
+  for (const value of ["", "/api/storage/objects/splash/logo.png", "/api/storage/objects/splash/logo.webp?version=2",
+    "https://cdn.example.com/logo.png"]) {
+    assert.equal(splashLogoUrlSchema.safeParse(value).success, true, value);
+  }
+  for (const value of [null, 42, "https://", "http://cdn.example.com/logo.png",
+    "https://youtube.com/watch?v=123", "/api/storage/objects/splash/logo.mp4",
+    "https://name:password@example.com/logo.png"]) {
+    assert.equal(splashLogoUrlSchema.safeParse(value).success, false, String(value));
   }
 });
 

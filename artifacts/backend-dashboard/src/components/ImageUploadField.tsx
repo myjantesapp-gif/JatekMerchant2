@@ -14,6 +14,7 @@ type ImageUploadFieldProps = {
   previewClassName?: string;
   inputId?: string;
   uploadKind?: MediaUploadKind;
+  disabled?: boolean;
 };
 
 /**
@@ -29,6 +30,7 @@ export function ImageUploadField({
   previewClassName = "h-24 w-full",
   inputId,
   uploadKind = "image",
+  disabled = false,
 }: ImageUploadFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -99,7 +101,7 @@ export function ImageUploadField({
             variant="outline"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
+            disabled={disabled || isUploading}
             title="Choisir une image depuis l’appareil"
             aria-label={`Choisir une image depuis l’appareil pour ${label}`}
           >
@@ -110,7 +112,7 @@ export function ImageUploadField({
             variant="outline"
             size="icon"
             onClick={() => cameraInputRef.current?.click()}
-            disabled={isUploading}
+            disabled={disabled || isUploading}
             title="Prendre une photo avec la caméra"
             aria-label={`Prendre une photo avec la caméra pour ${label}`}
           >

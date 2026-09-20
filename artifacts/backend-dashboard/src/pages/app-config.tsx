@@ -13,6 +13,7 @@ import { Settings, Save, Loader2, Globe, AlertTriangle, Star, LayoutGrid, Messag
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { VideoUploadField } from "@/components/VideoUploadField";
+import { ImageUploadField } from "@/components/ImageUploadField";
 
 type HomeSectionConfig = {
   visible: boolean;
@@ -78,6 +79,7 @@ const DEFAULT_CONFIG = {
   homeOrder: ["categories", "banners", "shorts", "recommended_products", "recommended_restaurants", "popular", "new_restaurants", "supermarkets", "new_products", "shops", "all", "free_delivery", "newest", "support"],
   welcomeMessage: "Bienvenue sur Jatek !",
   splashVideoUrl: "",
+  splashLogoUrl: "",
   legalContent: DEFAULT_LEGAL_CONTENT,
   homeSections: {
     categories: { visible: true, title: "Catégories", source: "categories", limit: 4 },
@@ -315,9 +317,22 @@ export default function AppConfig() {
           {/* Featured count */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Vidéo de démarrage</CardTitle>
+              <CardTitle className="text-base">Médias de démarrage</CardTitle>
             </CardHeader>
             <CardContent>
+              <ImageUploadField
+                label="Logo affiché dans le splash"
+                value={form.splashLogoUrl}
+                uploadKind="splash"
+                disabled={saveMutation.isPending}
+                onValueChange={(splashLogoUrl) => setForm(prev => ({ ...prev, splashLogoUrl }))}
+                onUploadingChange={setUploadingSplash}
+                previewClassName="h-24 w-full object-contain bg-muted"
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Le mobile utilise ce logo distant en priorité. Laissez vide pour utiliser le logo intégré dans l’application.
+              </p>
+              <div className="my-5 border-t" />
               <VideoUploadField
                 label="Intro MP4 affichée au lancement de l’application"
                 value={form.splashVideoUrl}

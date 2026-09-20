@@ -2,7 +2,7 @@ import { StatusBar } from "expo-status-bar";
 import { router, useRootNavigationState } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import React, { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Image, Platform, StyleSheet, View } from "react-native";
+import { AccessibilityInfo, Image, Platform, StyleSheet, View, type ImageSourcePropType } from "react-native";
 import Animated, {
   Easing,
   runOnJS,
@@ -14,7 +14,7 @@ import Animated, {
 import colors from "@/constants/colors";
 import { getApiBaseSafe } from "@/lib/apiBase";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
-import { loadStartupVideoUrl } from "@/lib/startupVideo";
+import { loadStartupMedia } from "@/lib/startupVideo";
 
 const INTRO_BACKGROUND = colors.light.introBackground;
 const INTRO_VIDEO = require("../assets/videos/jatek-intro.mp4");
@@ -29,23 +29,27 @@ const FADE_DURATION = 250;
  */
 export default function SplashOverlay() {
   // Start from the bundled 2-second intro immediately. The API-configured
-  // video can replace it only if it resolves during the same launch.
+  // media can replace it only if it resolves during the same launch.
   const [source, setSource] = useState<string | number>(INTRO_VIDEO);
+  const [logoSource, setLogoSource] = useState<ImageSourcePropType>(INTRO_LOGO);
   useEffect(() => {
     let active = true;
-    void loadStartupVideoUrl(getApiBaseSafe()).then((url) => {
-      const remoteUrl = resolveMediaUrl(url);
-      if (active && remoteUrl) setSource(remoteUrl);
+    void loadStartupMedia(getApiBaseSafe()).then(({ videoUrl, logoUrl }) => {
+      const remoteVideoUrl = resolveMediaUrl(videoUrl);
+      const remoteLogoUrl = resolveMediaUrl(logoUrl);
+      if (!active) return;
+      if (remoteVideoUrl) setSource(remoteVideoUrl);
+      if (remoteLogoUrl) setLogoSource({ uri: remoteLogoUrl });
     });
     return () => { active = false; };
   }, []);
   if (Platform.OS === "web") {
-    return <WebIntroPlayback source={source} />;
+    return <WebIntroPlayback source={source} logoSource={logoSource} />;
   }
-  return <IntroErrorBoundary><IntroPlayback source={source} /></IntroErrorBoundary>;
+  return <IntroErrorBoundary><IntroPlayback source={source} logoSource={logoSource} /></IntroErrorBoundary>;
 }
 
-function WebIntroPlayback({ source }: { source: string | number }) {
+function WebIntroPlayback({ source, logoSource }: { source: string | number; logoSource: ImageSourcePropType }) {
   const rootNavigationState = useRootNavigationState();
   const [mounted, setMounted] = useState(true);
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
@@ -128,7 +132,7 @@ function WebIntroPlayback({ source }: { source: string | number }) {
     >
       <View style={styles.background}>
         {showStaticLogo ? (
-          <AnimatedStaticLogo reduceMotion={reduceMotion !== false} />
+          <AnimatedStaticLogo source={logoSource} reduceMotion={reduceMotion !== false} />
         ) : (
           React.createElement("video", {
             ref: videoRef,
@@ -159,7 +163,7 @@ class IntroErrorBoundary extends React.Component<React.PropsWithChildren, { fail
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-function IntroPlayback({ source }: { source: string | number }) {
+function IntroPlayback({ source, logoSource }: { source: string | number; logoSource: ImageSourcePropType }) {
   const rootNavigationState = useRootNavigationState();
   const [mounted, setMounted] = useState(true);
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
@@ -278,7 +282,7 @@ function IntroPlayback({ source }: { source: string | number }) {
       <StatusBar style="light" backgroundColor={INTRO_BACKGROUND} translucent={false} />
       <View style={styles.background}>
         {showStaticLogo ? (
-          <AnimatedStaticLogo reduceMotion={reduceMotion !== false} />
+          <AnimatedStaticLogo source={logoSource} reduceMotion={reduceMotion !== false} />
         ) : (
           <VideoView
             player={player}
@@ -303,13 +307,18 @@ function IntroPlayback({ source }: { source: string | number }) {
   );
 }
 
-function AnimatedStaticLogo({ reduceMotion }: { reduceMotion: boolean }) {
+function AnimatedStaticLogo({ source, reduceMotion }: { source: ImageSourcePropType; reduceMotion: boolean }) {
   const opacity = useSharedValue(reduceMotion ? 1 : 0);
   const scale = useSharedValue(reduceMotion ? 1 : 0.94);
+  const [imageSource, setImageSource] = useState<ImageSourcePropType>(source);
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ scale: scale.value }],
   }));
+
+  useEffect(() => {
+    setImageSource(source);
+  }, [source]);
 
   useEffect(() => {
     if (reduceMotion) {
@@ -323,7 +332,12 @@ function AnimatedStaticLogo({ reduceMotion }: { reduceMotion: boolean }) {
 
   return (
     <Animated.View style={[styles.logoFrame, animatedStyle]}>
-      <Image source={INTRO_LOGO} style={styles.logo} resizeMode="contain" />
+      <Image
+        source={imageSource}
+        style={styles.logo}
+        resizeMode="contain"
+        onError={() => setImageSource(INTRO_LOGO)}
+      />
     </Animated.View>
   );
 }

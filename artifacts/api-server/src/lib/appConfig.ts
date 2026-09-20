@@ -285,6 +285,7 @@ export type AppConfig = Record<string, unknown> & {
   homeSections: HomeSectionsConfig;
   legalContent: LegalContent;
   splashVideoUrl?: string;
+  splashLogoUrl?: string;
 };
 
 export const splashVideoUrlSchema = z.string().trim().max(2048)
@@ -301,6 +302,20 @@ export const splashVideoUrlSchema = z.string().trim().max(2048)
     "splashVideoUrl must be a direct HTTPS MP4 URL or an App Storage splash path",
   );
 
+export const splashLogoUrlSchema = z.string().trim().max(2048)
+  .refine(
+    (value) => {
+      if (value === "") return true;
+      if (/^\/api\/storage\/objects\/splash\/[a-zA-Z0-9_-]+(?:\.(?:png|jpe?g|webp|gif|svg))?(?:\?[^#]*)?$/.test(value)) return true;
+      try {
+        const url = new URL(value);
+        return url.protocol === "https:" && !url.username && !url.password
+          && /\.(?:png|jpe?g|webp|gif|svg)$/i.test(url.pathname);
+      } catch { return false; }
+    },
+    "splashLogoUrl must be a direct HTTPS image URL or an App Storage splash path",
+  );
+
 /**
  * The dashboard saves the complete mobile configuration in one request.
  * Keep this contract closed so a typo or an arbitrary key cannot silently
@@ -315,4 +330,5 @@ export const appConfigPatchSchema = z.object({
   homeSections: homeSectionsSchema.optional(),
   legalContent: legalContentSchema.optional(),
   splashVideoUrl: splashVideoUrlSchema.optional(),
+  splashLogoUrl: splashLogoUrlSchema.optional(),
 }).strict();

@@ -32,6 +32,7 @@ import {
   homeOrderSchema,
   homeSectionsSchema,
   legalContentSchema,
+  splashLogoUrlSchema,
   splashVideoUrlSchema,
   getDefaultHomeSections,
   getDefaultLegalContent,
@@ -1150,6 +1151,7 @@ const DEFAULT_APP_CONFIG = {
   featuredCount: 6,
   homeOrder: ["categories", "banners", "shorts", "popular", "new_restaurants", "supermarkets", "new_products", "shops", "all", "free_delivery", "newest", "support"],
   welcomeMessage: "Bienvenue sur Jatek !",
+  splashLogoUrl: "",
   homeSections: getDefaultHomeSections(),
   legalContent: getDefaultLegalContent(),
 } satisfies AppConfig;
@@ -1185,6 +1187,7 @@ async function getAppConfig(): Promise<AppConfig> {
   }
   const parsedHomeOrder = homeOrderSchema.safeParse(config.homeOrder);
   const parsedSplash = splashVideoUrlSchema.safeParse(config.splashVideoUrl ?? "");
+  const parsedSplashLogo = splashLogoUrlSchema.safeParse(config.splashLogoUrl ?? "");
   const parsedLegalContent = legalContentSchema.safeParse(config.legalContent);
   return {
     ...config,
@@ -1192,6 +1195,7 @@ async function getAppConfig(): Promise<AppConfig> {
     homeSections: parsedHomeSections.data,
     legalContent: parsedLegalContent.success ? parsedLegalContent.data : getDefaultLegalContent(),
     splashVideoUrl: parsedSplash.success ? parsedSplash.data : "",
+    splashLogoUrl: parsedSplashLogo.success ? parsedSplashLogo.data : "",
   } as AppConfig;
 }
 
@@ -1231,6 +1235,10 @@ router.put("/backend/app-config", requireAuth, async (req: AuthedRequest, res, n
     const splashVideoEntry = validatedEntries.find(([key]) => key === "splashVideoUrl");
     if (splashVideoEntry) {
       splashVideoEntry[1] = normalizeStoredMediaPath(splashVideoEntry[1]) ?? "";
+    }
+    const splashLogoEntry = validatedEntries.find(([key]) => key === "splashLogoUrl");
+    if (splashLogoEntry) {
+      splashLogoEntry[1] = normalizeStoredMediaPath(splashLogoEntry[1]) ?? "";
     }
     for (const [key, value] of validatedEntries) {
       await db
