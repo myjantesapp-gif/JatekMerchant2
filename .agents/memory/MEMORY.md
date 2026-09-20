@@ -50,3 +50,4 @@
 - [Account erasure retention](account-erasure-retention.md) — delete customer data transactionally; anonymize required order/accounting history instead of leaving identifying fields.
 - [Password reset OTP security](password-reset-otp.md) — reset codes are hashed, short-lived, attempt-limited, and temporarily support legacy rows.
 - [Resend OTP sender policy](resend-otp-provider-fallback.md) — OTP email is pinned to the verified ma.jatek.app sender and third Resend credential pair.
+- [Expo project authorization](expo-project-authorization.md) — the Expo MCP connection can be healthy while the Jatek project still rejects build access.
