@@ -333,7 +333,7 @@ export async function notifyDrivers(
   data?: Record<string, unknown>,
   opts?: Partial<Omit<PushMessage, "to" | "title" | "body" | "data">> & ExpoPushOptions,
 ): Promise<boolean> {
-  const valid = tokens.filter(isExpoPushToken);
+  const valid = Array.from(new Set(tokens.filter(isExpoPushToken)));
   if (!valid.length) return false;
 
   const {

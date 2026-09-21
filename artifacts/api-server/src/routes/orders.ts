@@ -31,9 +31,10 @@ import * as tracking from "../lib/trackingService";
 import { pushNotification } from "./notifications";
 import { dispatchNotificationToUsers } from "./notificationPrefs";
 import { isExpoPushToken, notifyDrivers } from "../lib/expoPush";
+import { clearInvalidExpoPushToken } from "../lib/pushTokenCleanup";
+import { queueDriverOrderPush } from "../lib/driverOrderPush";
 import { sendFcmPush } from "../lib/fcmPush";
 import { sendWebPush } from "../lib/vapid";
-import { clearInvalidExpoPushToken } from "../lib/pushTokenCleanup";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
 import { calculateOrderPricing } from "../lib/orderPricing";
 import {
@@ -830,18 +831,12 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
         // Driver remuneration is a separate order snapshot. Never derive it
         // from the customer's total or from Jatek's shop commission.
         const earning = order.driverEarning;
-        await notifyDrivers(
-          tokens,
-          "🏍️ Nouvelle course disponible !",
-          `${order.restaurantName} → ${order.deliveryAddress}\nGain estimé : ${earning} DH`,
-          { orderId: order.id, type: "new_order" },
-          {
-            channelId: "incoming-order",
-            priority: "high",
-            ttl: 60,
-            onInvalidToken: clearInvalidExpoPushToken,
-          },
-        );
+        queueDriverOrderPush(tokens, {
+          orderId: order.id,
+          restaurantName: order.restaurantName,
+          deliveryAddress: order.deliveryAddress,
+          driverEarning: earning,
+        });
       } catch (err) {
         console.warn("[orders] push-to-drivers failed:", err);
       }
