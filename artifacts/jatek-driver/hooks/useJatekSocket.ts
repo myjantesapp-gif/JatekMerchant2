@@ -16,7 +16,7 @@ export type UseJatekSocketOptions = {
   onOrderStatus?: (order: OrderPayload) => void;
 };
 
-const PRIMARY_URL = "https://api.jatek.app";
+const PRIMARY_URL = (process.env.EXPO_PUBLIC_API_URL ?? "https://api.jatek.app").replace(/\/api\/?$/, "");
 const FALLBACK_URL = "https://ma.jatek.app";
 
 function getPayloadDriverId(payload: OrderPayload): string | null {

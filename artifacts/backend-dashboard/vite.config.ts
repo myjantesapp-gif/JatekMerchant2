@@ -18,6 +18,7 @@ if (rawPort && (Number.isNaN(port) || port <= 0)) {
 }
 
 const basePath = process.env.BASE_PATH;
+const apiOrigin = process.env.BACKEND_API_ORIGIN ?? process.env.VITE_API_ORIGIN ?? "http://127.0.0.1:8080";
 
 if (!basePath) {
   throw new Error("BASE_PATH environment variable is required but was not provided.");
@@ -62,8 +63,13 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api": {
-        target: "https://ma.jatek.app",
+        target: apiOrigin,
         changeOrigin: true,
+      },
+      "/socket.io": {
+        target: apiOrigin,
+        changeOrigin: true,
+        ws: true,
       },
     },
     fs: {

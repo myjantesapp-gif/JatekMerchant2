@@ -37,10 +37,30 @@ function parseId(value: unknown): number | null {
 }
 
 function isAllowedOrigin(origin: string | undefined): boolean {
-  return !origin
-    || origin === "https://driver.jatek.app"
-    || origin === "https://admin.jatek.app"
-    || /^https:\/\/.*\.replit\.dev$/.test(origin);
+  if (!origin || process.env.NODE_ENV !== "production") return true;
+  const configuredOrigins = [
+    process.env.ALLOWED_ORIGINS ?? "",
+    process.env.DRIVER_APP_ORIGINS ?? "",
+    process.env.DRIVER_APP_ORIGIN ?? "",
+  ].flatMap((value) => value.split(",").map((item) => item.trim()).filter(Boolean));
+  if (
+    configuredOrigins.includes(origin) ||
+    origin === "https://driver.jatek.app" ||
+    origin === "https://admin.jatek.app"
+  ) return true;
+  try {
+    const host = new URL(origin).hostname;
+    const configuredDomain = (process.env.EXPO_PUBLIC_DOMAIN ?? "").trim().replace(/^https?:\/\//, "");
+    if (configuredDomain && host === configuredDomain) return true;
+    const isReplitDeployment = !!(
+      process.env.REPLIT_DEPLOYMENT ||
+      process.env.REPLIT_DEPLOYMENT_ID ||
+      process.env.REPLIT_DEPLOYMENT_DOMAIN
+    );
+    return isReplitDeployment && (host.endsWith(".replit.dev") || host.endsWith(".replit.app"));
+  } catch {
+    return false;
+  }
 }
 
 async function authenticateSocketToken(token: unknown): Promise<SocketUser | null> {

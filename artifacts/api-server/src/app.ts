@@ -42,7 +42,11 @@ if (existsSync(splashAssetsDir)) {
 // We also auto-allow Replit's hosted preview/deploy subdomains and same-origin
 // (no Origin header — typical for native mobile apps that just send a host).
 const isProd = process.env["NODE_ENV"] === "production";
-const allowedOrigins: string[] = (process.env["ALLOWED_ORIGINS"] ?? "")
+const allowedOrigins: string[] = [
+  process.env["ALLOWED_ORIGINS"] ?? "",
+  process.env["DRIVER_APP_ORIGINS"] ?? "",
+  process.env["DRIVER_APP_ORIGIN"] ?? "",
+].join(",")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);

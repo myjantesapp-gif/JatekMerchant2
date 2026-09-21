@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { io } from "socket.io-client";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { endBackendSession } from "@/lib/session";
@@ -167,6 +168,52 @@ function useAdminTrackingSSE(onEvent: () => void) {
   return sseConnected;
 }
 
+function useAdminTrackingSocket(onEvent: () => void) {
+  const [socketConnected, setSocketConnected] = useState(false);
+  const onEventRef = useRef(onEvent);
+  useEffect(() => { onEventRef.current = onEvent; });
+
+  useEffect(() => {
+    const token = localStorage.getItem("jatek_backend_token");
+    if (!token) return;
+
+    const configuredOrigin = import.meta.env.VITE_API_ORIGIN as string | undefined;
+    const origin = configuredOrigin?.replace(/\/+$/, "") || window.location.origin;
+    const socket = io(origin, {
+      path: "/socket.io/",
+      transports: ["websocket", "polling"],
+      auth: { token },
+      reconnection: true,
+    });
+
+    const handler = () => onEventRef.current();
+    socket.on("connect", () => {
+      setSocketConnected(true);
+      socket.emit("admin_register");
+    });
+    socket.on("disconnect", () => setSocketConnected(false));
+    socket.on("connect_error", () => setSocketConnected(false));
+    [
+      "order_status",
+      "driver_location",
+      "driver_offline",
+      "driver_status_change",
+      "driver_location_update",
+      "order_created",
+      "order_assigned",
+      "order_delivered",
+    ].forEach((eventName) => socket.on(eventName, handler));
+
+    return () => {
+      socket.removeAllListeners();
+      socket.disconnect();
+      setSocketConnected(false);
+    };
+  }, []);
+
+  return socketConnected;
+}
+
 export default function LiveTracking() {
   const { data, isLoading, dataUpdatedAt, refetch } = useQuery<LiveTrackingData>({
     queryKey: ["backend/live-tracking"],
@@ -177,6 +224,8 @@ export default function LiveTracking() {
   });
 
   const sseConnected = useAdminTrackingSSE(() => refetch());
+  const socketConnected = useAdminTrackingSocket(() => refetch());
+  const realtimeConnected = socketConnected || sseConnected;
 
   const lastUpdate = dataUpdatedAt ? format(new Date(dataUpdatedAt), "HH:mm:ss") : "—";
 
@@ -195,12 +244,16 @@ export default function LiveTracking() {
           </div>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {sseConnected ? (
+          {realtimeConnected ? (
             <Wifi className="h-3.5 w-3.5 text-green-500" />
           ) : (
             <RefreshCw className="h-3.5 w-3.5" />
           )}
-          {sseConnected ? "Temps réel SSE" : "Actualisation auto (30 s)"}
+          {socketConnected
+            ? "Temps réel Socket.IO"
+            : sseConnected
+              ? "Temps réel SSE"
+              : "Actualisation auto (30 s)"}
           {" · "}Dernière mise à jour : {lastUpdate}
         </div>
       </div>

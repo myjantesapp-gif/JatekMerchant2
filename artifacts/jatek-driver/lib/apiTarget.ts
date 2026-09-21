@@ -6,6 +6,7 @@ export type ApiTarget = "local" | "prod";
 export const TARGET_KEY = "jatek_driver_api_target";
 
 const PROD_BASE = "https://api.jatek.app/api";
+const DEFAULT_TARGET: ApiTarget = process.env.EXPO_PUBLIC_API_TARGET === "local" ? "local" : "prod";
 
 const DOMAIN = process.env.EXPO_PUBLIC_DOMAIN;
 const LOCAL_BASE = DOMAIN ? `https://${DOMAIN}/api` : "/api";
@@ -29,15 +30,15 @@ export async function getApiTarget(): Promise<ApiTarget> {
   if (cached) return cached;
   try {
     const stored = await store.getItemAsync(TARGET_KEY);
-    cached = stored === "prod" ? "prod" : "local";
+    cached = stored === "local" ? "local" : DEFAULT_TARGET;
   } catch {
-    cached = "local";
+    cached = DEFAULT_TARGET;
   }
   return cached;
 }
 
 export function getApiTargetSync(): ApiTarget {
-  return cached ?? "local";
+  return cached ?? DEFAULT_TARGET;
 }
 
 export async function setApiTarget(target: ApiTarget): Promise<void> {
