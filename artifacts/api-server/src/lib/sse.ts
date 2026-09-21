@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { publishSocketEvent } from "./socket";
 
 /**
  * Lightweight SSE (Server-Sent Events) bus.
@@ -62,6 +63,7 @@ export function publish(channel: string, eventName: string, data: unknown): void
       sub.res.write(payload);
     }
   }
+  publishSocketEvent(channel, eventName, data);
 }
 
 /** Immediately closes all live streams belonging to an account. */

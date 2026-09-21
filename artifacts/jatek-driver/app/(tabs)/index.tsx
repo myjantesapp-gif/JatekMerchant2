@@ -18,7 +18,7 @@ import { PromotionsCarousel } from "@/components/PromotionsCarousel";
 import { useAuth } from "@/context/AuthContext";
 import { useOnline } from "@/context/OnlineContext";
 import { useColors } from "@/hooks/useColors";
-import { useSSE } from "@/hooks/useSSE";
+import { useJatekSocket } from "@/hooks/useJatekSocket";
 import { getEarnings, listAvailableOrders, type Order } from "@/lib/api";
 import { addMoney, formatExact, formatMad } from "@/lib/money";
 import { fireNewOrderNotification } from "@/services/notificationService";
@@ -27,7 +27,7 @@ export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user } = useAuth();
+  const { token, user } = useAuth();
   const { isOnline, toggling, toggleOnline } = useOnline();
   const [incoming, setIncoming] = useState<Order | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
@@ -46,19 +46,18 @@ export default function HomeScreen() {
     refetchInterval: isOnline ? 12_000 : false,
   });
 
-  useSSE({
-    channels: `available_orders${user?.driver?.id ? `,driver_orders:${user.driver.id}` : ""}`,
+  useJatekSocket({
+    token,
+    driverId: user?.driver?.id,
     enabled: isOnline && !!user?.driver?.id,
-    events: {
-      order_ready: () => {
-        void available.refetch();
-      },
-      order_assigned: () => {
-        void available.refetch();
-      },
-      order_status: () => {
-        void available.refetch();
-      },
+    onOrderReady: () => {
+      void available.refetch();
+    },
+    onOrderAssigned: () => {
+      void available.refetch();
+    },
+    onOrderStatus: () => {
+      void available.refetch();
     },
   });
 

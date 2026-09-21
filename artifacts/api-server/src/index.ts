@@ -1,7 +1,9 @@
+import { createServer } from "node:http";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { runSeedIfEmpty } from "./seed";
 import { startTrackingWatchdog } from "./lib/trackingService";
+import { attachSocketServer, closeSocketServer } from "./lib/socket";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -10,12 +12,15 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const server = app.listen(port, "0.0.0.0", (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+const server = createServer(app);
+attachSocketServer(server);
 
+server.on("error", (err) => {
+  logger.error({ err }, "Error listening on port");
+  process.exit(1);
+});
+
+server.listen(port, "0.0.0.0", () => {
   logger.info({ port }, "Server listening on 0.0.0.0");
 
   runSeedIfEmpty().catch((e) => logger.error({ err: e }, "Seed error"));
@@ -34,6 +39,7 @@ server.requestTimeout = 120_000;
 
 const shutdown = (signal: string) => {
   logger.info({ signal }, "Received shutdown signal, closing server...");
+  closeSocketServer();
   server.close((err) => {
     if (err) {
       logger.error({ err }, "Error during server close");

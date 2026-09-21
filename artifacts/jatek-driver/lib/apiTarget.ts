@@ -5,7 +5,7 @@ export type ApiTarget = "local" | "prod";
 
 export const TARGET_KEY = "jatek_driver_api_target";
 
-const PROD_BASE = "https://ma.jatek.app/api";
+const PROD_BASE = "https://api.jatek.app/api";
 
 const DOMAIN = process.env.EXPO_PUBLIC_DOMAIN;
 const LOCAL_BASE = DOMAIN ? `https://${DOMAIN}/api` : "/api";
