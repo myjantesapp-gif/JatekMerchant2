@@ -350,6 +350,17 @@ test("category headers use business-specific illustrated backgrounds", () => {
   assert.match(page, /style=\{styles\.categoryPattern\}/);
 });
 
+test("category banners prioritize backend artwork over the pink fallback", () => {
+  const page = source("app/category/[slug].tsx");
+
+  assert.match(page, /config\.bannerImageUrl \? styles\.bannerWithImage : null/);
+  assert.match(page, /config\.bannerImageUrl \? <View style=\{styles\.bannerImageOverlay\} \/> : null/);
+  assert.match(page, /backgroundColor: "transparent"/);
+  assert.match(page, /bannerImageOverlay:[\s\S]*backgroundColor: "rgba\(10,27,61,0\.3\)"/);
+  assert.match(page, /bannerImg:[\s\S]*opacity: 1/);
+  assert.doesNotMatch(page, /bannerImg:[\s\S]*opacity: 0\.16/);
+});
+
 test("category search stays fixed above the scrolling results", () => {
   const page = source("app/category/[slug].tsx");
   const search = page.indexOf("style={styles.searchWrap}");

@@ -325,12 +325,16 @@ export default function CategoryScreen() {
         colors={[config.color, config.color]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.bannerWrap, { paddingTop: insets.top + 6 }]}
+        style={[
+          styles.bannerWrap,
+          { paddingTop: insets.top + 6 },
+          config.bannerImageUrl ? styles.bannerWithImage : null,
+        ]}
       >
         {config.bannerImageUrl ? (
           <Image source={{ uri: resolveMediaUrl(config.bannerImageUrl) }} style={styles.bannerImg} resizeMode="cover" />
         ) : null}
-        <View style={styles.bannerOverlay} />
+        {config.bannerImageUrl ? <View style={styles.bannerImageOverlay} /> : null}
         <View style={styles.categoryPattern} pointerEvents="none">
           <Ionicons name={headerPatternIcon} size={104} color="rgba(255,255,255,0.13)" style={styles.patternIconMain} />
           <Ionicons name={headerPatternIcon} size={52} color="rgba(255,255,255,0.11)" style={styles.patternIconTop} />
@@ -505,17 +509,20 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderBottomLeftRadius: 26,
     borderBottomRightRadius: 26,
-    backgroundColor: PINK,
+    backgroundColor: "transparent",
+  },
+  bannerWithImage: {
+    backgroundColor: "#0A1B3D",
   },
   bannerImg: {
     ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%",
-    opacity: 0.16,
+    opacity: 1,
   },
-  bannerOverlay: {
+  bannerImageOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(194,24,91,0.16)",
+    backgroundColor: "rgba(10,27,61,0.3)",
   },
   bannerWaves: {
     position: "absolute",
