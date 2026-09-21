@@ -67,7 +67,11 @@ const corsOriginCheck: cors.CorsOptions["origin"] = (origin, callback) => {
   // Dev: open CORS to make local browsers + multiple ports painless.
   if (!isProd) return callback(null, true);
   // Explicit allow-list match.
-  if (allowedOrigins.includes(origin)) return callback(null, true);
+   if (
+     allowedOrigins.includes(origin) ||
+     origin === "https://driver.jatek.app" ||
+     origin === "https://admin.jatek.app"
+   ) return callback(null, true);
   try {
     const host = new URL(origin).hostname;
     // Auto-allow the production custom domain (configured via EXPO_PUBLIC_DOMAIN).

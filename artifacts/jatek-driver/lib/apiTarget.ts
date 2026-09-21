@@ -5,7 +5,8 @@ export type ApiTarget = "local" | "prod";
 
 export const TARGET_KEY = "jatek_driver_api_target";
 
-const PROD_BASE = "https://api.jatek.app/api";
+const PROD_BASE = "https://driver.jatek.app/api";
+const PROD_FALLBACK_BASE = "https://api.jatek.app/api";
 const DEFAULT_TARGET: ApiTarget = process.env.EXPO_PUBLIC_API_TARGET === "local" ? "local" : "prod";
 
 const DOMAIN = process.env.EXPO_PUBLIC_DOMAIN;
@@ -50,4 +51,9 @@ export function getBaseUrl(target: ApiTarget): string {
   return target === "prod" ? PROD_BASE : LOCAL_BASE;
 }
 
-export const API_BASES = { local: LOCAL_BASE, prod: PROD_BASE };
+export function getBaseUrls(target: ApiTarget): string[] {
+  if (target === "local") return [LOCAL_BASE];
+  return [PROD_BASE, PROD_FALLBACK_BASE];
+}
+
+export const API_BASES = { local: LOCAL_BASE, prod: PROD_BASE, prodFallback: PROD_FALLBACK_BASE };

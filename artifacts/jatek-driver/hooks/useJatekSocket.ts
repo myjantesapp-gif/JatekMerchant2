@@ -16,8 +16,8 @@ export type UseJatekSocketOptions = {
   onOrderStatus?: (order: OrderPayload) => void;
 };
 
-const PRIMARY_URL = (process.env.EXPO_PUBLIC_API_URL ?? "https://api.jatek.app").replace(/\/api\/?$/, "");
-const FALLBACK_URL = "https://ma.jatek.app";
+const PRIMARY_URL = (process.env.EXPO_PUBLIC_API_URL ?? "https://driver.jatek.app").replace(/\/api\/?$/, "");
+const FALLBACK_URL = "https://api.jatek.app";
 
 function getPayloadDriverId(payload: OrderPayload): string | null {
   const driverId = payload.driverId ?? payload.order?.driverId;
@@ -105,7 +105,7 @@ export function useJatekSocket({
         setIsConnected(false);
         if (serverUrl === PRIMARY_URL && !fallbackStarted) {
           fallbackStarted = true;
-          console.warn("[driver-socket] api.jatek.app unavailable, switching to ma.jatek.app", error.message);
+          console.warn("[driver-socket] driver.jatek.app unavailable, switching to api.jatek.app", error.message);
           start(FALLBACK_URL);
         }
       });

@@ -65,7 +65,7 @@ export default function ProfileScreen() {
             <Feather name="lock" size={16} color={colors.success} />
             <View>
               <Text style={[styles.rowLabel, { color: colors.foreground, fontFamily: "Inter_500Medium" }]}>Source des données</Text>
-              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 11 }}>api.jatek.app · production</Text>
+              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 11 }}>driver.jatek.app · production</Text>
             </View>
           </View>
           <Feather name="check-circle" size={20} color={colors.success} />

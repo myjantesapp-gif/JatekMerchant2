@@ -1,5 +1,5 @@
 import { clearTokenIfMatches, getToken } from "./auth";
-import { getApiTarget, getBaseUrl } from "./apiTarget";
+import { getApiTarget, getBaseUrl, getBaseUrls } from "./apiTarget";
 import { isDeliveryCodeValid } from "./deliveryCode";
 
 export type ApiError = { status: number; message: string; data?: unknown };
@@ -18,7 +18,7 @@ async function request<T>(
   auth = true,
 ): Promise<T> {
   const target = await getApiTarget();
-  const base = getBaseUrl(target);
+  const bases = getBaseUrls(target);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((init.headers as Record<string, string>) ?? {}),
@@ -28,41 +28,47 @@ async function request<T>(
     requestToken = await getToken();
     if (requestToken) headers["Authorization"] = `Bearer ${requestToken}`;
   }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
-  try {
-    const res = await fetch(`${base}${path}`, {
-      ...init,
-      headers,
-      signal: controller.signal,
-    });
-    const text = await res.text();
-    let data: unknown = null;
-    if (text) {
-      try { data = JSON.parse(text); } catch { data = text; }
-    }
-    if (!res.ok) {
-      const message =
-        (data && typeof data === "object" && "message" in data
-          ? String((data as { message: unknown }).message)
-          : data && typeof data === "object" && "error" in data
-            ? String((data as { error: unknown }).error)
-            : null) ?? `Request failed (${res.status})`;
-      const err: ApiError = { status: res.status, message, data };
-      if (res.status === 401) {
-        await clearTokenIfMatches(requestToken);
+  for (const [index, base] of bases.entries()) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    try {
+      const res = await fetch(`${base}${path}`, {
+        ...init,
+        headers,
+        signal: controller.signal,
+      });
+      const text = await res.text();
+      let data: unknown = null;
+      if (text) {
+        try { data = JSON.parse(text); } catch { data = text; }
       }
-      throw err;
+      if (!res.ok) {
+        const message =
+          (data && typeof data === "object" && "message" in data
+            ? String((data as { message: unknown }).message)
+            : data && typeof data === "object" && "error" in data
+              ? String((data as { error: unknown }).error)
+              : null) ?? `Request failed (${res.status})`;
+        const err: ApiError = { status: res.status, message, data };
+        if (res.status === 401) {
+          await clearTokenIfMatches(requestToken);
+        }
+        if (res.status === 404 && index < bases.length - 1) continue;
+        throw err;
+      }
+      return data as T;
+    } catch (e: any) {
+      if (e?.name === "AbortError") {
+        if (index < bases.length - 1) continue;
+        throw { status: 408, message: "La requête a expiré. Vérifiez votre connexion." } as ApiError;
+      }
+      if (index < bases.length - 1 && !(e && typeof e === "object" && "status" in e)) continue;
+      throw e;
+    } finally {
+      clearTimeout(timer);
     }
-    return data as T;
-  } catch (e: any) {
-    if (e?.name === "AbortError") {
-      throw { status: 408, message: "La requête a expiré. Vérifiez votre connexion." } as ApiError;
-    }
-    throw e;
-  } finally {
-    clearTimeout(timer);
   }
+  throw { status: 503, message: "Le serveur API est indisponible." } as ApiError;
 }
 
 // ─────────────────── Common types ───────────────────

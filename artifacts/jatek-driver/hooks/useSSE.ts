@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { AppState, type AppStateStatus, Platform } from "react-native";
 import { getToken } from "@/lib/auth";
-import { getApiTarget, getBaseUrl } from "@/lib/apiTarget";
+import { getApiTarget, getBaseUrls } from "@/lib/apiTarget";
 
 type EventHandler = (data: unknown) => void;
 
@@ -31,6 +31,7 @@ export function useSSE({ channels, events, enabled = true }: SSEOptions): void {
     let controller: AbortController | null = null;
     let browserSource: EventSource | null = null;
     let backoff = INITIAL_BACKOFF_MS;
+    let baseIndex = 0;
     let isActive = AppState.currentState === "active";
 
     const scheduleReconnect = () => {
@@ -67,7 +68,8 @@ export function useSSE({ channels, events, enabled = true }: SSEOptions): void {
       if (cancelled || !isActive) return;
       const requestToken = await getToken();
       if (!requestToken) return;
-      const base = getBaseUrl(await getApiTarget());
+      const bases = getBaseUrls(await getApiTarget());
+      const base = bases[baseIndex] ?? bases[0];
       const query = `channels=${encodeURIComponent(channels)}&token=${encodeURIComponent(requestToken)}`;
 
       if (Platform.OS === "web" && typeof EventSource !== "undefined") {
@@ -86,6 +88,11 @@ export function useSSE({ channels, events, enabled = true }: SSEOptions): void {
         source.onerror = () => {
           source.close();
           if (browserSource === source) browserSource = null;
+          if (!cancelled && isActive && baseIndex < bases.length - 1) {
+            baseIndex += 1;
+            void connect();
+            return;
+          }
           if (!cancelled && isActive) scheduleReconnect();
         };
         return;
@@ -104,9 +111,15 @@ export function useSSE({ channels, events, enabled = true }: SSEOptions): void {
           signal: nextController.signal,
         });
         if (!response.ok || !response.body) {
+          if (response.status === 404 && baseIndex < bases.length - 1) {
+            baseIndex += 1;
+            void connect();
+            return;
+          }
           if (response.status >= 400 && response.status < 500) return;
           throw new Error(`SSE HTTP ${response.status}`);
         }
+        baseIndex = 0;
         backoff = INITIAL_BACKOFF_MS;
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -140,6 +153,11 @@ export function useSSE({ channels, events, enabled = true }: SSEOptions): void {
         flush();
         if (!cancelled && isActive) scheduleReconnect();
       } catch (error) {
+        if (!cancelled && isActive && baseIndex < bases.length - 1) {
+          baseIndex += 1;
+          void connect();
+          return;
+        }
         if (!cancelled && isActive && (error as { name?: string })?.name !== "AbortError") {
           scheduleReconnect();
         } else if (!cancelled && isActive) {

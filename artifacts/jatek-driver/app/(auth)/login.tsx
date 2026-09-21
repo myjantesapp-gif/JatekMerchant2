@@ -125,7 +125,7 @@ export default function LoginScreen() {
           </Pressable>
         )}
         <Text style={[styles.legal, { color: colors.mutedForeground, fontFamily: "Inter_400Regular" }]}>
-          Connecté à api.jatek.app
+          Connecté à driver.jatek.app
         </Text>
         <Pressable onPress={onContinue} disabled={!valid || loading} style={({ pressed }) => [styles.button, { backgroundColor: valid ? colors.primary : colors.muted, opacity: pressed ? 0.85 : 1 }]}>
           {loading ? <ActivityIndicator color={colors.primaryForeground} /> : (
