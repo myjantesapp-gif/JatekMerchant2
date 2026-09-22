@@ -165,7 +165,7 @@ expertMode = true
 
   [nix]
 channel = "stable-25_05"
-packages = ["eas-cli", "unzipNLS", "gir-rs"]
+packages = ["eas-cli", "freetype", "gir-rs", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf", "openjpeg", "swig", "unzipNLS", "xcbuild"]
 
   [userenv]
 
