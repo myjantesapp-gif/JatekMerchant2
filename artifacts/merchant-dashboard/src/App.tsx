@@ -9,16 +9,64 @@ import {
 } from 'lucide-react';
 import {
   getBackendMeQueryKey, getGetBackendDashboardQueryKey, getGetMenuItemQueryKey,
-  getListBackendOrdersQueryKey, getListBackendProductsPageQueryKey, getListBackendTodosQueryKey,
+  getListBackendOrdersQueryKey, getListBackendProductsPageQueryKey, getListBackendTodosQueryKey, getListBackendShopsQueryKey,
   useBackendLogin, useBackendMe, useCreateBackendTodo, useDeleteBackendTodo, useDeleteMenuItem,
   useGetBackendDashboard, useGetMenuItem, useListBackendOrders, useListBackendProductsPage,
   useListBackendReviews, useListBackendShops, useListBackendTodos, useListMenuCategories,
-  useToggleBackendTodo, useUpdateMenuItem, useUpdateOrderStatus,
+  useToggleBackendTodo, useUpdateOrderStatus, customFetch,
 } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
 import { clearToken, getStoredToken, storeToken } from '@/lib/merchant-auth';
 import './index.css';
+
+import { useMutation } from '@tanstack/react-query';
+
+function useCreateBackendProduct() {
+  return useMutation({
+    mutationFn: async (data: { restaurantId: number; name: string; price: number; menuItemCategoryId?: number; category?: string; description?: string; isAvailable?: boolean }) => {
+      return customFetch('/api/backend/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    },
+  });
+}
+
+function useUpdateBackendProduct() {
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return customFetch(`/api/backend/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    },
+  });
+}
+
+function useDeleteBackendProduct() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      return customFetch(`/api/backend/products/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  });
+}
+
+function useUpdateBackendShop() {
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return customFetch(`/api/backend/shops/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    },
+  });
+}
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 20_000, refetchOnWindowFocus: false } } });
 
@@ -76,8 +124,8 @@ function Login() {
         <h1 className="mt-3 display text-3xl font-bold tracking-tight">Good to see you.</h1>
         <p className="mt-2 text-sm text-muted-foreground">Sign in to keep service moving.</p>
         <form onSubmit={submit} className="mt-9 space-y-5">
-          <label className="block"><span className="mb-2 block text-sm font-semibold">Work email</span><input data-testid="input-email" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@restaurant.com" className="h-12 w-full rounded-xl border border-input bg-background px-4 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10" /></label>
-          <label className="block"><span className="mb-2 block text-sm font-semibold">Password</span><input data-testid="input-password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" className="h-12 w-full rounded-xl border border-input bg-background px-4 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10" /></label>
+          <label className="block"><span className="mb-2 block text-sm font-semibold">Work email</span><input data-testid="input-email" required type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@restaurant.com" className="h-12 w-full rounded-xl border border-input bg-background px-4 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10" /></label>
+          <label className="block"><span className="mb-2 block text-sm font-semibold">Password</span><input data-testid="input-password" required type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" className="h-12 w-full rounded-xl border border-input bg-background px-4 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10" /></label>
           {login.isError && <div data-testid="status-login-error" className="flex gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700"><CircleAlert size={17} className="mt-0.5 shrink-0" />Email or password not recognised. Check your details and try again.</div>}
           <Button data-testid="button-sign-in" type="submit" className="h-12 w-full" disabled={login.isPending}>{login.isPending ? 'Signing you in…' : 'Enter workspace'}<ArrowUpRight size={16} /></Button>
         </form>
@@ -200,23 +248,267 @@ function Orders() {
   </div>;
 }
 
+
 function MenuPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  
+  // NEW: Add state for the add product flow
+  const [isAdding, setIsAdding] = useState(false);
+  const [addData, setAddData] = useState<any>({ name: '', price: 0, category: '', description: '', isAvailable: true });
+  
+  // NEW: Add state for editing product details
+  const [editData, setEditData] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
   const products = useListBackendProductsPage({ search: search || undefined, category: category === 'all' ? undefined : category, page: 1, pageSize: 100 });
   const categories = useListMenuCategories();
   const detail = useGetMenuItem(selectedId ?? 0, { query: { enabled: selectedId !== null, queryKey: getGetMenuItemQueryKey(selectedId ?? 0) } });
-  const update = useUpdateMenuItem();
-  const remove = useDeleteMenuItem();
+  
+  const create = useCreateBackendProduct();
+  const update = useUpdateBackendProduct();
+  const remove = useDeleteBackendProduct();
+  
+  const shops = useListBackendShops();
+  const shopId = shops.data?.[0]?.id;
+
   const client = useQueryClient();
   const items = products.data?.items || [];
-  return <div className="page-in"><PageHeading eyebrow="Your offering" title="Menu" description={`${products.data?.total ?? 0} items in the live catalogue.`} action={<Button data-testid="button-add-product" disabled title="Product creation is not exposed by the current generated client"><Plus size={16} />Add item</Button>} />
-    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-card-border bg-card p-3 shadow-sm sm:flex-row"><div className="relative flex-1"><Search size={16} className="absolute left-3 top-3 text-muted-foreground" /><input data-testid="input-product-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your menu" className="h-10 w-full rounded-xl bg-muted/60 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="no-scrollbar flex gap-2 overflow-x-auto"><button data-testid="button-category-all" onClick={() => setCategory('all')} className={`whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold ${category === 'all' ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground'}`}>All items</button>{(categories.data || []).map((item) => <button key={item.id} data-testid={`button-category-${item.id}`} onClick={() => setCategory(item.name)} className={`whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold ${category === item.name ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground'}`}>{item.name}</button>)}</div></div>
-    <QueryState loading={products.isLoading} error={products.isError} empty={!products.isLoading && !products.isError && items.length === 0} onRetry={() => products.refetch()}><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{items.map((product) => <article key={product.id} data-testid={`card-product-${product.id}`} className="group overflow-hidden rounded-2xl border border-card-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><div className="relative h-36 overflow-hidden bg-secondary">{product.imageUrl ? <img data-testid={`img-product-${product.id}`} src={product.imageUrl} alt="" className="h-full w-full object-cover transition group-hover:scale-105" /> : <div className="grid h-full place-items-center text-secondary-foreground/60"><UtensilsCrossed size={30} /></div>}<span className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] ${product.isAvailable ? 'bg-card/90 text-secondary-foreground' : 'bg-sidebar/85 text-sidebar-foreground'}`}>{product.isAvailable ? 'Available' : 'Paused'}</span>{product.isPopular && <span className="absolute right-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-accent-foreground">Popular</span>}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="font-bold">{product.name}</h2><p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{product.description || 'No description added yet.'}</p></div><button data-testid={`button-menu-more-${product.id}`} onClick={() => setSelectedId(product.id)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"><MoreHorizontal size={18} /></button></div><div className="mt-4 flex items-center justify-between"><div><span className="font-bold">{money(product.price)}</span>{product.compareAtPrice && <span className="ml-2 text-xs text-muted-foreground line-through">{money(product.compareAtPrice)}</span>}</div><span className="rounded-lg bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">{product.category}</span></div><div className="mt-4 flex gap-2"><Button data-testid={`button-toggle-product-${product.id}`} variant={product.isAvailable ? 'soft' : 'primary'} className="flex-1 py-2 text-xs" disabled={update.isPending} onClick={() => update.mutate({ id: product.id, data: { isAvailable: !product.isAvailable } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendProductsPageQueryKey({ search: search || undefined, category: category === 'all' ? undefined : category, page: 1, pageSize: 100 }) }); client.invalidateQueries({ queryKey: getGetBackendDashboardQueryKey({ range: 'week' }) }); } })}>{product.isAvailable ? 'Pause item' : 'Make available'}</Button><button data-testid={`button-edit-product-${product.id}`} onClick={() => setSelectedId(product.id)} className="rounded-xl border border-border px-3 text-muted-foreground hover:bg-muted"><Pencil size={15} /></button></div></div></article>)}</div></QueryState>
-    {selectedId !== null && <div className="fixed inset-0 z-50 grid place-items-center bg-sidebar/45 p-4" onClick={(event) => { if (event.target === event.currentTarget) setSelectedId(null); }}><div className="w-full max-w-md rounded-2xl border border-card-border bg-card p-6 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-[.15em] text-primary">Menu item</p><h2 className="mt-1 display text-2xl font-bold">{detail.data?.name || 'Loading item'}</h2></div><button data-testid="button-close-product" onClick={() => setSelectedId(null)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button></div>{detail.isLoading ? <div className="mt-6 space-y-3"><Skeleton className="h-12" /><Skeleton className="h-20" /></div> : detail.data && <div className="mt-6 space-y-4"><div className="rounded-xl bg-muted p-4"><div className="flex items-center justify-between"><span className="text-sm font-semibold">Live availability</span><span className={`text-sm font-bold ${detail.data.isAvailable ? 'text-secondary-foreground' : 'text-red-600'}`}>{detail.data.isAvailable ? 'On' : 'Off'}</span></div><p className="mt-2 text-xs text-muted-foreground">Changes are applied to the customer-facing menu immediately.</p></div><div className="flex gap-2"><Button data-testid="button-modal-toggle-product" className="flex-1" disabled={update.isPending} onClick={() => update.mutate({ id: detail.data!.id, data: { isAvailable: !detail.data!.isAvailable } }, { onSuccess: () => { setSelectedId(null); client.invalidateQueries({ queryKey: getListBackendProductsPageQueryKey() }); } })}>{detail.data.isAvailable ? 'Pause item' : 'Make available'}</Button><Button data-testid="button-delete-product" variant="danger" disabled={remove.isPending} onClick={() => { if (window.confirm('Remove this menu item from your catalogue?')) remove.mutate({ id: detail.data!.id }, { onSuccess: () => { setSelectedId(null); client.invalidateQueries({ queryKey: getListBackendProductsPageQueryKey() }); } }); }}><Trash2 size={16} />Remove</Button></div></div>}</div></div>}
+  
+  const startAdd = () => {
+    setAddData({ name: '', price: 0, category: categories.data?.[0]?.name || '', description: '', isAvailable: true });
+    setIsAdding(true);
+  };
+  
+  const submitAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shopId) return;
+    
+    // We send category as string since the schema allows it, or map to ID if needed.
+    create.mutate({
+      restaurantId: shopId,
+      name: addData.name,
+      price: addData.price,
+      category: addData.category,
+      description: addData.description,
+      isAvailable: addData.isAvailable
+    }, {
+      onSuccess: () => {
+        setIsAdding(false);
+        client.invalidateQueries({ queryKey: getListBackendProductsPageQueryKey() });
+        client.invalidateQueries({ queryKey: getGetBackendDashboardQueryKey() });
+      }
+    });
+  };
+  
+  const startEdit = () => {
+    if (detail.data) {
+      setEditData({
+        name: detail.data.name,
+        price: detail.data.price,
+        category: detail.data.category,
+        description: detail.data.description || '',
+        isAvailable: detail.data.isAvailable
+      });
+      setIsEditing(true);
+    }
+  };
+
+  const submitEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedId) return;
+    update.mutate({ id: selectedId, data: editData }, {
+      onSuccess: () => {
+        setIsEditing(false);
+        client.invalidateQueries({ queryKey: getListBackendProductsPageQueryKey() });
+        client.invalidateQueries({ queryKey: getGetMenuItemQueryKey(selectedId) });
+      }
+    });
+  };
+  
+  return <div className="page-in">
+    <PageHeading eyebrow="Your offering" title="Menu" description={`${products.data?.total ?? 0} items in the live catalogue.`} action={<Button data-testid="button-add-product" onClick={startAdd} disabled={!shopId}><Plus size={16} />Add item</Button>} />
+    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-card-border bg-card p-3 shadow-sm sm:flex-row">
+      <div className="relative flex-1">
+        <Search size={16} className="absolute left-3 top-3 text-muted-foreground" />
+        <input data-testid="input-product-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your menu" className="h-10 w-full rounded-xl bg-muted/60 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" />
+      </div>
+      <div className="no-scrollbar flex gap-2 overflow-x-auto">
+        <button data-testid="button-category-all" onClick={() => setCategory('all')} className={`whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold ${category === 'all' ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground'}`}>All items</button>
+        {(categories.data || []).map((item) => <button key={item.id} data-testid={`button-category-${item.id}`} onClick={() => setCategory(item.name)} className={`whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold ${category === item.name ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground'}`}>{item.name}</button>)}
+      </div>
+    </div>
+    <QueryState loading={products.isLoading} error={products.isError} empty={!products.isLoading && !products.isError && items.length === 0} onRetry={() => products.refetch()}>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {items.map((product) => (
+          <article key={product.id} data-testid={`card-product-${product.id}`} className="group overflow-hidden rounded-2xl border border-card-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <div className="relative h-36 overflow-hidden bg-secondary">
+              {product.imageUrl ? <img data-testid={`img-product-${product.id}`} src={product.imageUrl} alt="" className="h-full w-full object-cover transition group-hover:scale-105" /> : <div className="grid h-full place-items-center text-secondary-foreground/60"><UtensilsCrossed size={30} /></div>}
+              <span className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] ${product.isAvailable ? 'bg-card/90 text-secondary-foreground' : 'bg-sidebar/85 text-sidebar-foreground'}`}>{product.isAvailable ? 'Available' : 'Paused'}</span>
+              {product.isPopular && <span className="absolute right-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-accent-foreground">Popular</span>}
+            </div>
+            <div className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-bold">{product.name}</h2>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{product.description || 'No description added yet.'}</p>
+                </div>
+                <button data-testid={`button-menu-more-${product.id}`} onClick={() => setSelectedId(product.id)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"><MoreHorizontal size={18} /></button>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <div>
+                  <span className="font-bold">{money(product.price)}</span>
+                  {product.compareAtPrice && <span className="ml-2 text-xs text-muted-foreground line-through">{money(product.compareAtPrice)}</span>}
+                </div>
+                <span className="rounded-lg bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">{product.category}</span>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button data-testid={`button-toggle-product-${product.id}`} variant={product.isAvailable ? 'soft' : 'primary'} className="flex-1 py-2 text-xs" disabled={update.isPending} onClick={() => update.mutate({ id: product.id, data: { isAvailable: !product.isAvailable } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendProductsPageQueryKey() }); client.invalidateQueries({ queryKey: getGetBackendDashboardQueryKey() }); } })}>
+                  {product.isAvailable ? 'Pause item' : 'Make available'}
+                </Button>
+                <button data-testid={`button-edit-product-${product.id}`} onClick={() => setSelectedId(product.id)} className="rounded-xl border border-border px-3 text-muted-foreground hover:bg-muted"><Pencil size={15} /></button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </QueryState>
+
+    {isAdding && (
+      <div className="fixed inset-0 z-50 grid place-items-center bg-sidebar/45 p-4 overflow-y-auto" onClick={(event) => { if (event.target === event.currentTarget) setIsAdding(false); }}>
+        <div className="w-full max-w-lg rounded-2xl border border-card-border bg-card p-6 shadow-2xl">
+          <div className="flex items-start justify-between mb-6 border-b border-border pb-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[.15em] text-primary">Menu item</p>
+              <h2 className="mt-1 display text-2xl font-bold">Add new item</h2>
+            </div>
+            <button type="button" data-testid="button-close-add-product" onClick={() => setIsAdding(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
+          </div>
+          {create.isError && (
+             <div className="mb-6 flex items-center gap-2 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+               <CircleAlert size={18} className="shrink-0" /> Failed to add product. Please try again.
+             </div>
+          )}
+          <form onSubmit={submitAdd} className="space-y-4">
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold">Name</span>
+              <input required value={addData.name} onChange={e => setAddData({...addData, name: e.target.value})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold">Price (MAD)</span>
+                <input required type="number" step="0.01" value={addData.price} onChange={e => setAddData({...addData, price: Number(e.target.value)})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold">Category</span>
+                <select required value={addData.category} onChange={e => setAddData({...addData, category: e.target.value})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary">
+                  <option value="" disabled>Select a category</option>
+                  {(categories.data || []).map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                </select>
+              </label>
+            </div>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold">Description</span>
+              <textarea rows={3} value={addData.description} onChange={e => setAddData({...addData, description: e.target.value})} className="w-full rounded-xl border border-input bg-background p-3 outline-none focus:border-primary" />
+            </label>
+            <label className="flex items-center gap-3 rounded-xl border border-border p-4 bg-muted/30">
+              <input type="checkbox" checked={addData.isAvailable} onChange={e => setAddData({...addData, isAvailable: e.target.checked})} className="h-5 w-5 rounded text-primary focus:ring-primary accent-primary" />
+              <div>
+                <span className="block text-sm font-bold text-foreground">Available to order</span>
+                <span className="text-xs text-muted-foreground">Customers can order this immediately.</span>
+              </div>
+            </label>
+            <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-border">
+              <Button type="button" variant="soft" onClick={() => setIsAdding(false)}>Cancel</Button>
+              <Button type="submit" disabled={create.isPending}>{create.isPending ? 'Adding...' : 'Add item'}</Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {selectedId !== null && (
+      <div className="fixed inset-0 z-50 grid place-items-center bg-sidebar/45 p-4 overflow-y-auto" onClick={(event) => { if (event.target === event.currentTarget) { setSelectedId(null); setIsEditing(false); } }}>
+        <div className="w-full max-w-md rounded-2xl border border-card-border bg-card p-6 shadow-2xl">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[.15em] text-primary">Menu item</p>
+              <h2 className="mt-1 display text-2xl font-bold">{detail.data?.name || 'Loading item'}</h2>
+            </div>
+            <button data-testid="button-close-product" onClick={() => { setSelectedId(null); setIsEditing(false); }} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
+          </div>
+          
+          {detail.isLoading ? (
+            <div className="mt-6 space-y-3"><Skeleton className="h-12" /><Skeleton className="h-20" /></div>
+          ) : isEditing ? (
+            <form onSubmit={submitEdit} className="mt-6 space-y-4">
+               {update.isError && (
+                 <div className="flex items-center gap-2 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+                   <CircleAlert size={18} className="shrink-0" /> Failed to update product.
+                 </div>
+               )}
+               <label className="block">
+                 <span className="mb-2 block text-sm font-semibold">Name</span>
+                 <input required value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" />
+               </label>
+               <div className="grid gap-4 sm:grid-cols-2">
+                 <label className="block">
+                   <span className="mb-2 block text-sm font-semibold">Price (MAD)</span>
+                   <input required type="number" step="0.01" value={editData.price} onChange={e => setEditData({...editData, price: Number(e.target.value)})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" />
+                 </label>
+                 <label className="block">
+                   <span className="mb-2 block text-sm font-semibold">Category</span>
+                   <select required value={editData.category} onChange={e => setEditData({...editData, category: e.target.value})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary">
+                     <option value="" disabled>Select a category</option>
+                     {(categories.data || []).map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                   </select>
+                 </label>
+               </div>
+               <label className="block">
+                 <span className="mb-2 block text-sm font-semibold">Description</span>
+                 <textarea rows={3} value={editData.description} onChange={e => setEditData({...editData, description: e.target.value})} className="w-full rounded-xl border border-input bg-background p-3 outline-none focus:border-primary" />
+               </label>
+               <label className="flex items-center gap-3 rounded-xl border border-border p-4 bg-muted/30">
+                 <input type="checkbox" checked={editData.isAvailable} onChange={e => setEditData({...editData, isAvailable: e.target.checked})} className="h-5 w-5 rounded text-primary focus:ring-primary accent-primary" />
+                 <div>
+                   <span className="block text-sm font-bold text-foreground">Available to order</span>
+                   <span className="text-xs text-muted-foreground">Customers can order this immediately.</span>
+                 </div>
+               </label>
+               <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-border">
+                 <Button type="button" variant="soft" onClick={() => setIsEditing(false)}>Cancel</Button>
+                 <Button type="submit" disabled={update.isPending}>{update.isPending ? 'Saving...' : 'Save changes'}</Button>
+               </div>
+            </form>
+          ) : detail.data && (
+            <div className="mt-6 space-y-4">
+              <div className="rounded-xl bg-muted p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">Live availability</span>
+                  <span className={`text-sm font-bold ${detail.data.isAvailable ? 'text-secondary-foreground' : 'text-red-600'}`}>{detail.data.isAvailable ? 'On' : 'Off'}</span>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">Changes are applied to the customer-facing menu immediately.</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button data-testid="button-modal-edit-product" variant="soft" onClick={startEdit}><Pencil size={15} /> Edit product details</Button>
+                <div className="flex gap-2">
+                  <Button data-testid="button-modal-toggle-product" className="flex-1" disabled={update.isPending} onClick={() => update.mutate({ id: detail.data!.id, data: { isAvailable: !detail.data!.isAvailable } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendProductsPageQueryKey() }); client.invalidateQueries({ queryKey: getGetMenuItemQueryKey(detail.data!.id) }); } })}>
+                    {detail.data.isAvailable ? 'Pause item' : 'Make available'}
+                  </Button>
+                  <Button data-testid="button-delete-product" variant="danger" disabled={remove.isPending} onClick={() => { if (window.confirm('Remove this menu item from your catalogue?')) remove.mutate(detail.data!.id, { onSuccess: () => { setSelectedId(null); setIsEditing(false); client.invalidateQueries({ queryKey: getListBackendProductsPageQueryKey() }); } }); }}>
+                    <Trash2 size={16} />Remove
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
   </div>;
 }
+
 
 function Reviews() {
   const reviews = useListBackendReviews();
@@ -224,11 +516,139 @@ function Reviews() {
   return <div className="page-in"><PageHeading eyebrow="Customer voice" title="Reviews" description="A quiet place to notice what regulars love and where the experience can get sharper." action={<Button data-testid="button-refresh-reviews" variant="soft" onClick={() => reviews.refetch()}><RefreshCw size={15} />Refresh</Button>} /><QueryState loading={reviews.isLoading} error={reviews.isError} empty={!reviews.isLoading && !reviews.isError && (reviews.data || []).length === 0} onRetry={() => reviews.refetch()}>{reviews.data && <div className="space-y-5"><section className="grid gap-4 sm:grid-cols-3"><div className="rounded-2xl border border-card-border bg-sidebar p-5 text-sidebar-foreground"><p className="text-xs font-bold uppercase tracking-[.14em] text-sidebar-foreground/50">Average score</p><p data-testid="text-average-rating" className="mt-3 display text-4xl font-bold">{average}<span className="ml-1 text-lg text-accent">/ 5</span></p><p className="mt-2 text-xs text-sidebar-foreground/55">Across {reviews.data.length} published reviews</p></div><div className="rounded-2xl border border-card-border bg-card p-5"><p className="text-xs font-bold uppercase tracking-[.14em] text-muted-foreground">Response habit</p><p className="mt-3 display text-4xl font-bold">{reviews.data.filter((review) => review.comment).length}</p><p className="mt-2 text-xs text-muted-foreground">Reviews with written feedback</p></div><div className="rounded-2xl border border-card-border bg-card p-5"><p className="text-xs font-bold uppercase tracking-[.14em] text-muted-foreground">Latest signal</p><p className="mt-3 display text-2xl font-bold">{reviews.data[0] ? dateLabel(reviews.data[0].createdAt).split(',')[0] : 'No date'}</p><p className="mt-2 text-xs text-muted-foreground">Most recent customer note</p></div></section><section className="rounded-2xl border border-card-border bg-card shadow-sm"><div className="border-b border-border px-5 py-4"><h2 className="display text-lg font-bold">Recent customer notes</h2></div><div className="divide-y divide-border">{reviews.data.map((review) => <div key={review.id} data-testid={`card-review-${review.id}`} className="flex gap-4 p-5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-secondary text-sm font-bold text-secondary-foreground">{review.userName?.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'C'}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><div><span data-testid={`text-review-customer-${review.id}`} className="font-bold">{review.userName || 'Customer'}</span><span className="ml-3 text-xs text-muted-foreground">{dateLabel(review.createdAt)}</span></div><span data-testid={`text-review-rating-${review.id}`} className="rounded-lg bg-accent px-2 py-1 text-xs font-bold text-accent-foreground">{review.rating} / 5</span></div><p data-testid={`text-review-comment-${review.id}`} className="mt-3 text-sm leading-6 text-muted-foreground">{review.comment || 'No written note from this visit.'}</p></div></div>)}</div></section></div>}</QueryState></div>;
 }
 
+
 function Shop() {
   const shops = useListBackendShops();
   const shop = shops.data?.[0];
-  return <div className="page-in"><PageHeading eyebrow="Customer-facing presence" title="Shop profile" description="The details customers see when they discover and order from your business." action={<Button data-testid="button-edit-shop" variant="soft" disabled title="Shop profile updates are not exposed by the current generated client"><Pencil size={15} />Edit profile</Button>} /><QueryState loading={shops.isLoading} error={shops.isError} empty={!shops.isLoading && !shops.isError && !shop} onRetry={() => shops.refetch()}>{shop && <div className="grid gap-6 xl:grid-cols-[1.1fr_.9fr]"><section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-sm"><div className="relative h-52 bg-secondary">{shop.imageUrl ? <img data-testid="img-shop-cover" src={shop.imageUrl} alt="" className="h-full w-full object-cover" /> : <div className="paper-grid grid h-full place-items-center text-secondary-foreground/35"><Store size={55} /></div>}<div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-sidebar/75 to-transparent p-5 pt-16"><h2 data-testid="text-shop-name" className="display text-2xl font-bold text-white">{shop.name}</h2><p className="mt-1 text-sm text-white/75">{shop.category} · {shop.businessType}</p></div></div><div className="grid gap-5 p-5 sm:grid-cols-2"><div><p className="text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">About</p><p data-testid="text-shop-description" className="mt-2 text-sm leading-6">{shop.description || 'No description added yet.'}</p></div><div><p className="text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">Address</p><p data-testid="text-shop-address" className="mt-2 text-sm leading-6">{shop.address}</p></div></div></section><section className="space-y-4"><div className="rounded-2xl border border-card-border bg-card p-5 shadow-sm"><div className="flex items-center justify-between"><h2 className="display text-lg font-bold">Service settings</h2><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] ${shop.isOpen ? 'bg-secondary text-secondary-foreground' : 'bg-red-100 text-red-700'}`}>{shop.isOpen ? 'Open' : 'Closed'}</span></div><div className="mt-5 divide-y divide-border">{[['Delivery fee', money(shop.deliveryFee)], ['Minimum order', money(shop.minimumOrder)], ['Phone', shop.phone || 'Not listed'], ['Rating', shop.rating ? `${shop.rating.toFixed(1)} / 5 (${shop.reviewCount})` : 'Not rated']].map(([label, value]) => <div key={label} className="flex items-center justify-between py-3 text-sm"><span className="text-muted-foreground">{label}</span><span data-testid={`text-shop-${String(label).toLowerCase().replaceAll(' ', '-')}`} className="font-bold">{value}</span></div>)}</div></div><div className="rounded-2xl border border-primary/20 bg-primary/10 p-5"><div className="flex gap-3"><ShieldCheck className="shrink-0 text-primary" size={20} /><div><h3 className="font-bold">A trusted storefront</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">Keep hours, contact details, and your menu current to make ordering effortless for customers.</p></div></div></div></section></div>}</QueryState></div>;
+  const updateShop = useUpdateBackendShop();
+  const client = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState<any>(null);
+
+  const startEdit = () => {
+    if (shop) {
+      setEditData({
+        name: shop.name,
+        description: shop.description || '',
+        address: shop.address || '',
+        phone: shop.phone || '',
+        deliveryFee: shop.deliveryFee ?? 0,
+        minimumOrder: shop.minimumOrder ?? 0,
+        isOpen: shop.isOpen
+      });
+      setIsEditing(true);
+    }
+  };
+
+  const submitEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shop || !editData) return;
+    updateShop.mutate({ id: shop.id, data: editData }, {
+      onSuccess: () => {
+        setIsEditing(false);
+        client.invalidateQueries({ queryKey: getListBackendShopsQueryKey() });
+      }
+    });
+  };
+
+  return <div className="page-in"><PageHeading eyebrow="Customer-facing presence" title="Shop profile" description="The details customers see when they discover and order from your business." action={<Button data-testid="button-edit-shop" variant="soft" onClick={startEdit} disabled={!shop}><Pencil size={15} />Edit profile</Button>} />
+    <QueryState loading={shops.isLoading} error={shops.isError} empty={!shops.isLoading && !shops.isError && !shop} onRetry={() => shops.refetch()}>
+      {shop && !isEditing && (
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_.9fr]">
+          <section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-sm">
+            <div className="relative h-52 bg-secondary">
+              {shop.imageUrl ? <img data-testid="img-shop-cover" src={shop.imageUrl} alt="" className="h-full w-full object-cover" /> : <div className="paper-grid grid h-full place-items-center text-secondary-foreground/35"><Store size={55} /></div>}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-sidebar/75 to-transparent p-5 pt-16">
+                <h2 data-testid="text-shop-name" className="display text-2xl font-bold text-white">{shop.name}</h2>
+                <p className="mt-1 text-sm text-white/75">{shop.category} · {shop.businessType}</p>
+              </div>
+            </div>
+            <div className="grid gap-5 p-5 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">About</p>
+                <p data-testid="text-shop-description" className="mt-2 text-sm leading-6">{shop.description || 'No description added yet.'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">Address</p>
+                <p data-testid="text-shop-address" className="mt-2 text-sm leading-6">{shop.address}</p>
+              </div>
+            </div>
+          </section>
+          <section className="space-y-4">
+            <div className="rounded-2xl border border-card-border bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="display text-lg font-bold">Service settings</h2>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] ${shop.isOpen ? 'bg-secondary text-secondary-foreground' : 'bg-red-100 text-red-700'}`}>{shop.isOpen ? 'Open' : 'Closed'}</span>
+              </div>
+              <div className="mt-5 divide-y divide-border">
+                {[['Delivery fee', money(shop.deliveryFee)], ['Minimum order', money(shop.minimumOrder)], ['Phone', shop.phone || 'Not listed'], ['Rating', shop.rating ? `${shop.rating.toFixed(1)} / 5 (${shop.reviewCount})` : 'Not rated']].map(([label, value]) => <div key={label} className="flex items-center justify-between py-3 text-sm"><span className="text-muted-foreground">{label}</span><span data-testid={`text-shop-${String(label).toLowerCase().replaceAll(' ', '-')}`} className="font-bold">{value}</span></div>)}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-primary/20 bg-primary/10 p-5">
+              <div className="flex gap-3"><ShieldCheck className="shrink-0 text-primary" size={20} />
+                <div>
+                  <h3 className="font-bold">A trusted storefront</h3>
+                  <p className="mt-1 text-sm leading-5 text-muted-foreground">Keep hours, contact details, and your menu current to make ordering effortless for customers.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+      {shop && isEditing && (
+        <form onSubmit={submitEdit} className="rounded-2xl border border-card-border bg-card p-6 shadow-sm">
+          <div className="mb-6 flex items-center justify-between border-b border-border pb-4">
+            <h2 className="display text-xl font-bold">Edit shop profile</h2>
+            <button type="button" onClick={() => setIsEditing(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
+          </div>
+          {updateShop.isError && (
+             <div className="mb-6 flex items-center gap-2 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+               <CircleAlert size={18} className="shrink-0" /> Failed to save shop settings. Please try again.
+             </div>
+          )}
+          <div className="grid gap-6 sm:grid-cols-2">
+            <label className="block sm:col-span-2">
+              <span className="mb-2 block text-sm font-semibold">Shop name</span>
+              <input required value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="mb-2 block text-sm font-semibold">Description</span>
+              <textarea rows={3} value={editData.description} onChange={e => setEditData({...editData, description: e.target.value})} className="w-full rounded-xl border border-input bg-background p-3 outline-none focus:border-primary" />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold">Address</span>
+              <input required value={editData.address} onChange={e => setEditData({...editData, address: e.target.value})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold">Phone</span>
+              <input type="tel" value={editData.phone} onChange={e => setEditData({...editData, phone: e.target.value})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold">Delivery fee (MAD)</span>
+              <input required type="number" step="0.01" value={editData.deliveryFee} onChange={e => setEditData({...editData, deliveryFee: Number(e.target.value)})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold">Minimum order (MAD)</span>
+              <input required type="number" step="0.01" value={editData.minimumOrder} onChange={e => setEditData({...editData, minimumOrder: Number(e.target.value)})} className="h-10 w-full rounded-xl border border-input bg-background px-3 outline-none focus:border-primary" />
+            </label>
+            <label className="flex items-center gap-3 sm:col-span-2 rounded-xl border border-border p-4 bg-muted/30">
+              <input type="checkbox" checked={editData.isOpen} onChange={e => setEditData({...editData, isOpen: e.target.checked})} className="h-5 w-5 rounded text-primary focus:ring-primary accent-primary" />
+              <div>
+                <span className="block text-sm font-bold text-foreground">Open for business</span>
+                <span className="text-xs text-muted-foreground">Customers can discover and order from your shop.</span>
+              </div>
+            </label>
+          </div>
+          <div className="mt-8 flex justify-end gap-3">
+            <Button type="button" variant="soft" onClick={() => setIsEditing(false)}>Cancel</Button>
+            <Button type="submit" disabled={updateShop.isPending}>{updateShop.isPending ? 'Saving...' : 'Save changes'}</Button>
+          </div>
+        </form>
+      )}
+    </QueryState>
+  </div>;
 }
+
 
 function SettingsPage() {
   const [, setLocation] = useLocation();
