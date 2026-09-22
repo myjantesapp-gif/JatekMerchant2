@@ -55,3 +55,4 @@
 - [Resend OTP sender policy](resend-otp-provider-fallback.md) — OTP email is pinned to the verified ma.jatek.app sender and third Resend credential pair.
 - [Expo project authorization](expo-project-authorization.md) — the Expo MCP connection can be healthy while the Jatek project still rejects build access.
 - [Driver Socket.IO deployment](driver-socketio-deployment.md) — the client fallback cannot enable realtime until the API domain mounts Socket.IO and bridges the existing event bus.
+- [Security dependency lock refresh](security-dependency-lock-refresh.md) — after adding pnpm security overrides, refresh node_modules online before offline validation because the store may lack new tarballs.

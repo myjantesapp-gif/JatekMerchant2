@@ -14,8 +14,12 @@ const fs = require("fs");
 const path = require("path");
 
 const STATIC_ROOT = path.resolve(__dirname, "..", "static-build");
+const STATIC_ROOT_REAL = fs.existsSync(STATIC_ROOT)
+  ? fs.realpathSync(STATIC_ROOT)
+  : STATIC_ROOT;
 const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
+const ALLOWED_MANIFEST_PLATFORMS = new Set(["ios", "android"]);
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -45,8 +49,62 @@ function getAppName() {
   }
 }
 
+function resolvePublicPath(requestPath) {
+  if (typeof requestPath !== "string" || requestPath.length > 4096 || requestPath.includes("\0")) {
+    return null;
+  }
+
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(requestPath);
+  } catch {
+    return null;
+  }
+
+  if (decodedPath.includes("\\")) return null;
+  const relativePath = decodedPath.replace(/^\/+/, "");
+  const segments = relativePath.split("/");
+  if (segments.some((segment) => segment === "." || segment === "..")) return null;
+
+  const candidate = path.resolve(STATIC_ROOT, relativePath);
+  const relativeToRoot = path.relative(STATIC_ROOT, candidate);
+  if (
+    !relativeToRoot ||
+    relativeToRoot === ".." ||
+    relativeToRoot.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeToRoot)
+  ) {
+    return null;
+  }
+
+  if (fs.existsSync(candidate)) {
+    const realCandidate = fs.realpathSync(candidate);
+    const realRelativeToRoot = path.relative(STATIC_ROOT_REAL, realCandidate);
+    if (
+      !realRelativeToRoot ||
+      realRelativeToRoot === ".." ||
+      realRelativeToRoot.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(realRelativeToRoot)
+    ) {
+      return null;
+    }
+  }
+
+  return candidate;
+}
+
 function serveManifest(platform, res) {
-  const manifestPath = path.join(STATIC_ROOT, platform, "manifest.json");
+  if (!ALLOWED_MANIFEST_PLATFORMS.has(platform)) {
+    res.writeHead(404, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "Unsupported platform" }));
+    return;
+  }
+  const manifestPath = resolvePublicPath(`${platform}/manifest.json`);
+  if (!manifestPath) {
+    res.writeHead(403, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "Forbidden" }));
+    return;
+  }
 
   if (!fs.existsSync(manifestPath)) {
     res.writeHead(404, { "content-type": "application/json" });
@@ -56,6 +114,7 @@ function serveManifest(platform, res) {
     return;
   }
 
+  // nosemgrep: javascript.express.file.fs-express.fs-express — manifestPath is an allowlisted platform path confined by resolvePublicPath.
   const manifest = fs.readFileSync(manifestPath, "utf-8");
   res.writeHead(200, {
     "content-type": "application/json",
@@ -84,10 +143,8 @@ function serveLandingPage(req, res, landingPageTemplate, appName) {
 }
 
 function serveStaticFile(urlPath, res, req) {
-  const safePath = path.normalize(urlPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const filePath = path.join(STATIC_ROOT, safePath);
-
-  if (!filePath.startsWith(STATIC_ROOT)) {
+  const filePath = resolvePublicPath(urlPath);
+  if (!filePath) {
     res.writeHead(403);
     res.end("Forbidden");
     return;
@@ -111,12 +168,14 @@ function serveStaticFile(urlPath, res, req) {
 
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || "application/octet-stream";
+  // nosemgrep: javascript.express.file.fs-express.fs-express — filePath is confined by resolvePublicPath before this read.
   const content = fs.readFileSync(filePath);
   // Hashed Expo bundles (timestamped folders + content-hashed filenames)
   // can be cached aggressively. Everything else (HTML, manifests, fallback
   // assets) must revalidate on every load so a fresh deploy is picked up
   // immediately instead of being masked by CDN/proxy caches.
-  const isHashedBundle = /\/_expo\/static\//.test(safePath);
+  const relativePath = path.relative(STATIC_ROOT, filePath).split(path.sep).join("/");
+  const isHashedBundle = relativePath.startsWith("_expo/static/");
   const cacheControl = isHashedBundle
     ? "public, max-age=31536000, immutable"
     : "no-store, no-cache, must-revalidate";
