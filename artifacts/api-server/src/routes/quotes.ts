@@ -190,15 +190,35 @@ router.get("/orders/:id/invoice", requireAuth, async (req: AuthedRequest, res): 
 
   const issued = new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
   const number = `JTK-${String(order.id).padStart(6, "0")}`;
-  const tva = 0; // VAT placeholder; customise per region
-  const total = order.total;
+  const escapeHtml = (value: unknown) => String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+  const money = (value: unknown) => `${Number(value ?? 0).toFixed(2)} MAD`;
+  const statusLabels: Record<string, string> = {
+    pending: "En attente",
+    accepted: "Acceptée",
+    confirmed: "Confirmée",
+    preparing: "En préparation",
+    ready: "Prête",
+    driver_at_restaurant: "Livreur arrivé",
+    picked_up: "Récupérée",
+    en_route: "En route",
+    out_for_delivery: "En livraison",
+    delivered: "Livrée",
+    cancelled: "Annulée",
+  };
+  const paymentLabel = order.paymentMethod === "cash" ? "Espèces" : order.paymentMethod === "card" ? "Carte bancaire" : String(order.paymentMethod);
+  const total = Number(order.total ?? 0);
 
   const itemsHtml = items.map((i) => `
     <tr>
-      <td>${i.menuItemName}</td>
+      <td>${escapeHtml(i.menuItemName)}</td>
       <td style="text-align:center">${i.quantity}</td>
-      <td style="text-align:right">${i.unitPrice.toFixed(2)} MAD</td>
-      <td style="text-align:right">${i.totalPrice.toFixed(2)} MAD</td>
+      <td style="text-align:right">${money(i.unitPrice)}</td>
+      <td style="text-align:right">${money(i.totalPrice)}</td>
     </tr>`).join("");
 
   res.set("Content-Type", "text/html; charset=utf-8");
@@ -226,10 +246,16 @@ router.get("/orders/:id/invoice", requireAuth, async (req: AuthedRequest, res): 
   .totals{margin-top:8px;margin-left:auto;width:300px}
   .totals .row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px}
   .totals .grand{border-top:2px solid #0A1B3D;margin-top:6px;padding-top:10px;font-size:18px;font-weight:800;color:#E2006A}
+  .details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px;margin:16px 0;padding:14px 16px;border:1px solid #E2E8F0;border-radius:10px;font-size:13px}
+  .details strong{display:block;color:#64748B;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+  .actions{display:flex;justify-content:flex-end;margin-bottom:16px}
+  .actions button{border:0;border-radius:8px;background:#E2006A;color:#fff;font-weight:700;padding:10px 14px;cursor:pointer}
   .footer{margin-top:40px;padding-top:16px;border-top:1px solid #E2E8F0;font-size:12px;color:#64748B;text-align:center}
-  @media print{body{padding:0}}
+  @media(max-width:560px){.parties,.details{grid-template-columns:1fr;display:grid}.meta{text-align:left}.header{gap:16px;flex-direction:column}}
+  @media print{body{padding:0}.actions{display:none}}
 </style>
 </head><body>
+  <div class="actions"><button type="button" onclick="window.print()">Imprimer / enregistrer en PDF</button></div>
   <div class="header">
     <div>
       <div class="brand">Jatek</div>
@@ -239,22 +265,32 @@ router.get("/orders/:id/invoice", requireAuth, async (req: AuthedRequest, res): 
       <strong>FACTURE</strong>
       N° ${number}<br/>
       Date : ${issued}<br/>
-      Statut : ${order.status === "delivered" ? "Payée" : order.status}
+      Référence : ${escapeHtml(order.reference || `#CMD${String(order.id).padStart(6, "0")}`)}<br/>
+      Statut : ${escapeHtml(statusLabels[order.status] || order.status)}
     </div>
   </div>
 
   <div class="parties">
     <div class="party">
       <h3>Vendeur</h3>
-      <p><strong>${restaurant?.name ?? order.restaurantName}</strong></p>
-      <p>${restaurant?.address ?? ""}</p>
-      ${restaurant?.phone ? `<p>${restaurant.phone}</p>` : ""}
+      <p><strong>${escapeHtml(restaurant?.name ?? order.restaurantName)}</strong></p>
+      <p>${escapeHtml(restaurant?.address ?? "")}</p>
+      ${restaurant?.phone ? `<p>${escapeHtml(restaurant.phone)}</p>` : ""}
+      ${restaurant?.ice ? `<p>ICE : ${escapeHtml(restaurant.ice)}</p>` : ""}
     </div>
     <div class="party">
       <h3>Client</h3>
-      <p><strong>${order.userName}</strong></p>
-      <p>${order.deliveryAddress}</p>
+      <p><strong>${escapeHtml(order.userName)}</strong></p>
+      <p>${escapeHtml(order.deliveryAddress)}</p>
+      ${order.notes ? `<p><em>Note : ${escapeHtml(order.notes)}</em></p>` : ""}
     </div>
+  </div>
+
+  <div class="details">
+    <div><strong>Mode de paiement</strong>${escapeHtml(paymentLabel)}</div>
+    <div><strong>Code cuisine</strong>${escapeHtml(order.kitchenCode || "—")}</div>
+    <div><strong>Nombre d’articles</strong>${items.reduce((sum, item) => sum + item.quantity, 0)}</div>
+    <div><strong>Devise</strong>${escapeHtml(order.currency || "MAD")}</div>
   </div>
 
   <table>
@@ -263,10 +299,13 @@ router.get("/orders/:id/invoice", requireAuth, async (req: AuthedRequest, res): 
   </table>
 
   <div class="totals">
-    <div class="row"><span>Sous-total</span><span>${order.subtotal.toFixed(2)} MAD</span></div>
-    <div class="row"><span>Frais de livraison</span><span>${order.deliveryFee.toFixed(2)} MAD</span></div>
-    ${tva > 0 ? `<div class="row"><span>TVA</span><span>${tva.toFixed(2)} MAD</span></div>` : ""}
-    <div class="row grand"><span>Total TTC</span><span>${total.toFixed(2)} MAD</span></div>
+    <div class="row"><span>Sous-total</span><span>${money(order.subtotal)}</span></div>
+    ${Number(order.discountAmount ?? 0) > 0 ? `<div class="row"><span>Remise</span><span>-${money(order.discountAmount)}</span></div>` : ""}
+    <div class="row"><span>Frais de livraison</span><span>${money(order.deliveryFee)}</span></div>
+    ${Number(order.vatAmount ?? 0) > 0 ? `<div class="row"><span>TVA (${Number(order.vatRate ?? 0)} %)</span><span>${money(order.vatAmount)}</span></div>` : ""}
+    ${Number(order.serviceFee ?? 0) > 0 ? `<div class="row"><span>Frais de service</span><span>${money(order.serviceFee)}</span></div>` : ""}
+    ${Number(order.refundedAmount ?? 0) > 0 ? `<div class="row"><span>Montant remboursé</span><span>-${money(order.refundedAmount)}</span></div>` : ""}
+    <div class="row grand"><span>Total TTC</span><span>${money(total)}</span></div>
   </div>
 
   <div class="footer">
