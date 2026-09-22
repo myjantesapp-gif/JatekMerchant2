@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: 36 36% 95%;
+  --foreground: 225 30% 17%;
+  --border: 34 19% 84%;
+  --input: 34 19% 84%;
+  --ring: 11 82% 61%;
+  --card: 38 38% 98%;
+  --card-foreground: 225 30% 17%;
+  --card-border: 34 19% 86%;
+  --popover: 38 38% 98%;
+  --popover-foreground: 225 30% 17%;
+  --primary: 11 82% 61%;
+  --primary-foreground: 36 36% 95%;
+  --secondary: 166 34% 88%;
+  --secondary-foreground: 170 31% 22%;
+  --muted: 35 23% 90%;
+  --muted-foreground: 222 13% 46%;
+  --accent: 44 96% 66%;
+  --accent-foreground: 35 35% 17%;
+  --destructive: 1 69% 51%;
+  --destructive-foreground: 36 36% 95%;
+  --chart-1: 11 82% 61%;
+  --chart-2: 165 44% 45%;
+  --chart-3: 43 93% 59%;
+  --chart-4: 225 30% 35%;
+  --chart-5: 29 71% 55%;
+  --sidebar: 225 30% 17%;
+  --sidebar-foreground: 37 33% 92%;
+  --sidebar-border: 225 25% 25%;
+  --sidebar-primary: 11 82% 61%;
+  --sidebar-primary-foreground: 36 36% 95%;
+  --sidebar-accent: 225 26% 24%;
+  --sidebar-accent-foreground: 37 33% 92%;
+  --sidebar-ring: 11 82% 61%;
+  --app-font-sans: 'DM Sans', sans-serif;
+  --app-font-serif: Georgia, serif;
+  --app-font-mono: 'DM Sans', sans-serif;
+  --radius: 0.8rem;
+  --shadow-sm: 0 2px 12px rgba(33, 39, 58, 0.06);
+  --shadow-md: 0 12px 32px rgba(33, 39, 58, 0.09);
+  --spacing: 0.25rem;
+}
+
+* { box-sizing: border-box; }
+html { background: hsl(var(--background)); }
+body {
+  margin: 0;
+  @apply font-sans antialiased bg-background text-foreground;
+  min-width: 320px;
+}
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.page-in { animation: rise .4s ease-out both; }
+.stagger-1 { animation-delay: .04s; }
+.stagger-2 { animation-delay: .08s; }
+.stagger-3 { animation-delay: .12s; }
+.skeleton {
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--card)) 50%, hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+.paper-grid {
+  background-image: linear-gradient(hsl(var(--border) / .38) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / .38) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.display { font-family: 'Syne', sans-serif; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
