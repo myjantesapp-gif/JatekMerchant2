@@ -22,6 +22,10 @@ function findWorkspaceRoot(startDir) {
 
 const workspaceRoot = findWorkspaceRoot(projectRoot);
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
+const imageSizeCompatPreload = path.join(
+  __dirname,
+  "image-size-compat.js",
+);
 // Static preview builds must not share the driver app's Expo workflow, which
 // owns Metro on 8081. A dedicated default keeps the two workflows independent.
 const metroPort = Number(process.env.METRO_PORT || "8090");
@@ -149,6 +153,12 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
     ...process.env,
     EXPO_PUBLIC_DOMAIN: expoPublicDomain,
     EXPO_PUBLIC_REPL_ID: expoPublicReplId,
+    NODE_OPTIONS: [
+      process.env.NODE_OPTIONS,
+      `--require=${imageSizeCompatPreload}`,
+    ]
+      .filter(Boolean)
+      .join(" "),
   };
 
   if (expoPublicReplId) {
