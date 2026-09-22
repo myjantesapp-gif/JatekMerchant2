@@ -99,6 +99,16 @@ const SAFE_REPAIR_QUERY = `
   FOR UPDATE
 `;
 
+const DANGLING_NOTIFICATION_CANDIDATES_QUERY = `
+  SELECT n.id
+  FROM notifications n
+  LEFT JOIN orders o ON o.id::text = n.data->>'orderId'
+  WHERE n.data->>'orderId' IS NOT NULL
+    AND o.id IS NULL
+  ORDER BY n.id ASC
+  FOR UPDATE OF n
+`;
+
 const APPLY_CONFIRMATION = "REVIEWED_ORPHAN_ORDER_REPORT";
 const DEFAULT_MAX_REPAIRS = 25;
 
@@ -128,12 +138,10 @@ function ensureApplyGuardrails(): void {
       `Refusing --apply. Set ORPHAN_ORDER_CLEANUP_CONFIRM=${APPLY_CONFIRMATION} only after reviewing the dry-run report.`,
     );
   }
-  if (
-    process.env.NODE_ENV === "production" &&
-    process.env.ORPHAN_ORDER_CLEANUP_ENV !== "production"
-  ) {
+  const expectedEnvironment = process.env.NODE_ENV === "production" ? "production" : "development";
+  if (process.env.ORPHAN_ORDER_CLEANUP_ENV !== expectedEnvironment) {
     throw new Error(
-      "Refusing production mutation without ORPHAN_ORDER_CLEANUP_ENV=production.",
+      `Refusing mutation without ORPHAN_ORDER_CLEANUP_ENV=${expectedEnvironment}.`,
     );
   }
 }
@@ -157,6 +165,7 @@ function printReport(
   console.log("Orphan order audit (dry-run by default)");
   console.log("Criteria: missing customer/restaurant, empty order, missing assigned driver, active delivery without driver.");
   console.log("Historical menu-item references are reported separately and are not deletion candidates.");
+  console.log("Notifications whose orderId points to a missing order are cleanup candidates; other notifications are preserved.");
   console.log(`Orders scanned: ${rows.length}`);
 
   const counts = issueCounts(rows);
@@ -233,26 +242,64 @@ async function run(): Promise<void> {
         );
       }
 
-      const repairIds = candidates.rows.map((candidate) => candidate.id);
-      if (repairIds.length === 0) {
-        await client.query("COMMIT");
-        console.log("No automatically repairable orders found. Manual-review anomalies were left unchanged.");
-        return;
+      const nonNotificationDangling = danglingResult.rows.filter(
+        (relation) => relation.source !== "notifications" && relation.row_count > 0,
+      );
+      if (nonNotificationDangling.length > 0) {
+        throw new Error(
+          `Refusing mutation while non-notification dangling records remain: ${nonNotificationDangling
+            .map((relation) => `${relation.source}=${relation.row_count}`)
+            .join(", ")}. Resolve the relation mismatch manually first.`,
+        );
       }
 
-      const repaired = await client.query<{ id: number; reference: string | null }>(
-        `
-          UPDATE orders
-          SET status = 'cancelled', updated_at = NOW()
-          WHERE id = ANY($1::int[])
-            AND status = 'pending'
-          RETURNING id, reference
-        `,
-        [repairIds],
+      const repairIds = candidates.rows.map((candidate) => candidate.id);
+      const danglingNotificationCandidates = await client.query<{ id: number }>(
+        DANGLING_NOTIFICATION_CANDIDATES_QUERY,
       );
+      if (repairIds.length + danglingNotificationCandidates.rows.length > limit) {
+        throw new Error(
+          `Refusing to mutate ${repairIds.length} order(s) and ${danglingNotificationCandidates.rows.length} notification(s); combined limit is ${limit}. Review the report and run in smaller batches.`,
+        );
+      }
+
+      let repaired: Array<{ id: number; reference: string | null }> = [];
+      if (repairIds.length > 0) {
+        const repairedResult = await client.query<{ id: number; reference: string | null }>(
+          `
+            UPDATE orders
+            SET status = 'cancelled', updated_at = NOW()
+            WHERE id = ANY($1::int[])
+              AND status = 'pending'
+            RETURNING id, reference
+          `,
+          [repairIds],
+        );
+        repaired = repairedResult.rows;
+      }
+
+      const danglingNotificationIds = danglingNotificationCandidates.rows.map((candidate) => candidate.id);
+      let deletedNotifications: Array<{ id: number }> = [];
+      if (danglingNotificationIds.length > 0) {
+        const deletedResult = await client.query<{ id: number }>(
+          `
+            DELETE FROM notifications
+            WHERE id = ANY($1::int[])
+            RETURNING id
+          `,
+          [danglingNotificationIds],
+        );
+        deletedNotifications = deletedResult.rows;
+      }
+
       await client.query("COMMIT");
-      console.log(`Safely repaired ${repaired.rows.length} empty pending order(s) by preserving them as cancelled.`);
-      for (const row of repaired.rows) console.log(JSON.stringify(row));
+      if (repaired.length > 0) {
+        console.log(`Safely repaired ${repaired.length} empty pending order(s) by preserving them as cancelled.`);
+        for (const row of repaired) console.log(JSON.stringify(row));
+      } else {
+        console.log("No automatically repairable orders found. Manual-review anomalies were left unchanged.");
+      }
+      console.log(`Removed ${deletedNotifications.length} notification(s) whose order no longer exists.`);
 
       const postRepair = await client.query<AuditRow>(AUDIT_QUERY);
       const remainingIssues = postRepair.rows.reduce(
@@ -260,6 +307,18 @@ async function run(): Promise<void> {
         0,
       );
       console.log(`Post-repair verification: ${remainingIssues} order(s) still require review.`);
+      const postRepairDangling = await client.query<{ source: string; row_count: number }>(
+        DANGLING_RELATIONS_QUERY,
+      );
+      const remainingDangling = postRepairDangling.rows.filter((relation) => relation.row_count > 0);
+      if (remainingDangling.length === 0) {
+        console.log("Post-repair relation verification: no dangling order-related records.");
+      } else {
+        console.log("Post-repair relation verification: manual-review records remain:");
+        for (const relation of remainingDangling) {
+          console.log(`- ${relation.source}: ${relation.row_count}`);
+        }
+      }
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

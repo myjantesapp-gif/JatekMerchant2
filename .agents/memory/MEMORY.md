@@ -45,6 +45,7 @@
 - [Home config normalization](home-config-normalization.md) — partial public app-config responses must be completed client-side before rendering Home sections.
 - [Legal content configuration](legal-content-config.md) — legal documents live in validated public app_config and are edited from the dashboard, not embedded in mobile screens.
 - [Database backup connection](database-backup-connection.md) — managed SQL access can work while shell pg_dump credentials are stale or invalid; verify dumps before presenting them.
+- [External production database access](external-production-db.md) — verify the external production endpoint before mutations; a disabled link is not represented by the managed read-only replica.
 - [Product promotion pricing](product-promotions.md) — active discounts keep the catalogue price in compareAtPrice and restore it when the promotion is removed.
 - [Product promo content](product-promo-content.md) — product promo cards reuse the ads/content feed and carry restaurant, product, price, image, order, and active-state metadata.
 - [Jatek target architecture](jatek-target-architecture.md) — treat zero-crash behavior, strict TypeScript, API-driven ordering, and branded fallbacks as ecosystem-wide standards.
