@@ -28,8 +28,8 @@ const ENDPOINTS = {
   deleteProduct: (id: number) => `/api/backend/products/${id}`,
   updateShop: (id: number) => `/api/backend/shops/${id}`,
   uploadImage: '/api/storage/uploads/image',
-  printReceipt: (id: number, token: string) => `${API_BASE_URL}/api/orders/${id}/receipt?token=${encodeURIComponent(token)}`,
-  printInvoice: (id: number, token: string) => `${API_BASE_URL}/api/orders/${id}/invoice?token=${encodeURIComponent(token)}`,
+  downloadReceipt: (id: number) => `${API_BASE_URL}/api/orders/${id}/receipt.pdf`,
+  downloadInvoice: (id: number) => `${API_BASE_URL}/api/orders/${id}/invoice.pdf`,
 };
 
 
@@ -360,14 +360,22 @@ function Orders() {
   const nextStatus = (current: string) => current === 'pending' ? 'accepted' : (current === 'accepted' || current === 'confirmed') ? 'preparing' : current === 'preparing' ? 'ready' : null;
   const selectedOrder = (orders.data || []).find(o => o.id === selectedOrderId);
 
-  const printReceipt = (id: number) => {
+  const downloadDocument = async (id: number, endpoint: string, fallbackName: string) => {
     const token = getStoredToken();
-    if (token) window.open(ENDPOINTS.printReceipt(id, token), '_blank', 'noopener,noreferrer');
-  };
-
-  const printInvoice = (id: number) => {
-    const token = getStoredToken();
-    if (token) window.open(ENDPOINTS.printInvoice(id, token), '_blank', 'noopener,noreferrer');
+    if (!token) return;
+    const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error('Le téléchargement du document a échoué.');
+    const blob = await response.blob();
+    const disposition = response.headers.get('content-disposition') || '';
+    const filename = disposition.match(/filename="([^"]+)"/i)?.[1] || fallbackName;
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(objectUrl);
   };
 
   return <div className="page-in"><PageHeading eyebrow="Tableau de service" title="Commandes" description="Gardez les relais fluides. Mettez à jour les commandes dès que la cuisine a terminé." action={<Button data-testid="button-refresh-orders" variant="soft" onClick={() => orders.refetch()}><RefreshCw size={15} />Actualiser</Button>} />
@@ -431,11 +439,11 @@ function Orders() {
                 <Button variant="danger" disabled={updateStatus.isPending} onClick={() => { if(window.confirm('Voulez-vous vraiment annuler cette commande ?')) updateStatus.mutate({ id: selectedOrder.id, data: { status: 'cancelled' as never } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendOrdersQueryKey() }); setSelectedOrderId(null); } }) }}>Annuler la commande</Button>
               )}
               <div className="ml-auto flex items-center gap-2">
-                <Button variant="soft" onClick={() => printReceipt(selectedOrder.id)}>Ticket cuisine</Button>
-                <Button variant="soft" onClick={() => printInvoice(selectedOrder.id)}>Facture / PDF</Button>
+                <Button variant="soft" onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadReceipt(selectedOrder.id), `jatek-ticket-${selectedOrder.id}.pdf`)}>Télécharger le ticket</Button>
+                <Button variant="soft" onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadInvoice(selectedOrder.id), `jatek-facture-${selectedOrder.id}.pdf`)}>Télécharger la facture PDF</Button>
               </div>
             </div>
-            <p className="mt-3 text-right text-xs text-muted-foreground">La boîte d'impression permet de choisir « Enregistrer au format PDF ».</p>
+            <p className="mt-3 text-right text-xs text-muted-foreground">PDF prêt à télécharger · QR code inclus pour identifier la commande.</p>
           </div>
         </div>
       </div>

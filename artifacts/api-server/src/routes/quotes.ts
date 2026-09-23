@@ -1,8 +1,9 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type NextFunction } from "express";
 import { db, quotesTable, restaurantsTable, usersTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 import { publish } from "../lib/sse";
+import { createOrderPdf, documentFilenamePart } from "../lib/orderDocuments";
 
 const router: IRouter = Router();
 
@@ -313,6 +314,42 @@ router.get("/orders/:id/invoice", requireAuth, async (req: AuthedRequest, res): 
     Cette facture a été générée automatiquement et ne nécessite pas de signature.
   </div>
 </body></html>`);
+});
+
+/** Downloadable invoice PDF with order identity QR code. */
+router.get("/orders/:id/invoice.pdf", requireAuth, async (req: AuthedRequest, res, next: NextFunction): Promise<void> => {
+  try {
+    const orderId = parseInt(String(req.params.id), 10);
+    if (isNaN(orderId)) { res.status(400).send("Invalid id"); return; }
+
+    const { ordersTable, orderItemsTable } = await import("@workspace/db");
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId)).limit(1);
+    if (!order) { res.status(404).send("Order not found"); return; }
+
+    const isOwner = order.userId === req.userId;
+    let isMerchant = req.userRole === "admin" || req.userRole === "super_admin";
+    if (!isMerchant && req.userRole === "restaurant_owner") {
+      const owned = await ownedRestaurantIds(req.userId!, req.userRole);
+      isMerchant = owned !== null && owned.includes(order.restaurantId);
+    }
+    if (!isOwner && !isMerchant) { res.status(403).send("Forbidden"); return; }
+
+    const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, orderId));
+    const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, order.restaurantId)).limit(1);
+    if (!restaurant) { res.status(404).send("Restaurant not found"); return; }
+
+    const pdf = await createOrderPdf({ ...order, items }, restaurant, "invoice");
+    const reference = documentFilenamePart(order.reference || `CMD${String(order.id).padStart(6, "0")}`);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="jatek-facture-${reference}.pdf"`,
+      "Content-Length": String(pdf.length),
+      "Cache-Control": "private, no-store",
+    });
+    res.send(pdf);
+  } catch (err) {
+    next(err);
+  }
 });
 
 /** HTML quote document — restricted to quote owner, owning merchant, or admin. */

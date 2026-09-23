@@ -37,7 +37,7 @@ async function decodeUser(req: Request): Promise<DecodedUser | null> {
     const rawPath = req.originalUrl.split("?")[0];
     const isAllowedQueryTokenPath =
       rawPath === "/api/events" ||
-      rawPath.endsWith("/invoice");
+      /\/(?:invoice|receipt)(?:\.pdf)?$/.test(rawPath);
     if (isAllowedQueryTokenPath) {
       token = req.query.token;
     }

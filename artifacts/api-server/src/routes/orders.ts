@@ -44,6 +44,7 @@ import {
   isValidDriverTransition,
   validateDeliveryCodeAttempt,
 } from "../lib/driverOrderFlow";
+import { createOrderPdf, documentFilenamePart } from "../lib/orderDocuments";
 
 const router: IRouter = Router();
 
@@ -1292,6 +1293,35 @@ router.get("/orders/:id/receipt", requireAuth, async (req: AuthedRequest, res, n
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   res.send(html);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Downloadable restaurant ticket PDF with a scan-safe order QR code. */
+router.get("/orders/:id/receipt.pdf", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
+  try {
+    const orderId = parseInt(String(req.params.id), 10);
+    if (isNaN(orderId)) { res.status(400).send("Invalid order id"); return; }
+
+    const order = await getOrderWithItems(orderId);
+    if (!order) { res.status(404).send("Order not found"); return; }
+    const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, order.restaurantId)).limit(1);
+    if (!restaurant) { res.status(404).send("Restaurant not found"); return; }
+    if (req.userRole !== "admin" && req.userRole !== "super_admin" && restaurant.ownerId !== req.userId) {
+      res.status(403).send("Forbidden");
+      return;
+    }
+
+    const pdf = await createOrderPdf(order, restaurant, "receipt");
+    const reference = documentFilenamePart(order.reference || `CMD${String(order.id).padStart(6, "0")}`);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="jatek-ticket-${reference}.pdf"`,
+      "Content-Length": String(pdf.length),
+      "Cache-Control": "private, no-store",
+    });
+    res.send(pdf);
   } catch (err) {
     next(err);
   }

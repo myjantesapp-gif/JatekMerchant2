@@ -539,13 +539,13 @@ export default function OrderDetailScreen() {
             onPress={async () => {
               const tok = await getAuthToken();
               const url = tok
-                ? `${getApiBase()}/api/orders/${order.id}/invoice?token=${encodeURIComponent(tok)}`
-                : `${getApiBase()}/api/orders/${order.id}/invoice`;
+                ? `${getApiBase()}/api/orders/${order.id}/invoice.pdf?token=${encodeURIComponent(tok)}`
+                : `${getApiBase()}/api/orders/${order.id}/invoice.pdf`;
               Linking.openURL(url);
             }}
           >
             <Ionicons name="receipt" size={20} color={colors.primary} />
-            <Text style={[styles.invoiceBtnText, { color: colors.primary }]}>{t("invoice_view")}</Text>
+            <Text style={[styles.invoiceBtnText, { color: colors.primary }]}>{t("invoice_download")}</Text>
             <Ionicons name="open-outline" size={16} color={colors.primary} />
           </TouchableOpacity>
         )}
