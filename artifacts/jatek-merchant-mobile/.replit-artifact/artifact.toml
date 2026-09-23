@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/merchant-mobile/"
+title = "Jatek Merchant"
+description = "Application mobile Expo pour les commerçants Jatek afin de suivre les commandes, gérer leur activité et recevoir les mises à jour opérationnelles."
+version = "1.0.0"
+id = "artifacts/jatek-merchant-mobile"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/merchant-mobile/" ]
+localPort = 22853
+
+[services.development]
+run = "pnpm --filter @workspace/jatek-merchant-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/jatek-merchant-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/jatek-merchant-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "22853"
+BASE_PATH = "/merchant-mobile/"
