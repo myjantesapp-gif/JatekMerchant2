@@ -8,7 +8,7 @@
  * - Active orders with kitchen code pill and workflow buttons
  * - Daily revenue + pending-count stats
  */
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View, Text, ScrollView, TouchableOpacity, RefreshControl,
   StyleSheet, Alert, ActivityIndicator, Platform, Modal, TextInput, Switch, KeyboardAvoidingView,
@@ -35,6 +35,13 @@ import { formatMad } from "@/lib/money";
 import { RefreshButton } from "@/components/RefreshButton";
 import { refreshAll } from "@/lib/mobileRefresh";
 import { sortOrdersByCreatedAt } from "@/lib/catalogUtils";
+import {
+  connectSunmiPrinter,
+  isSunmiPrinterAvailable,
+  printSunmiReceipt,
+  subscribeSunmiPrinterStatus,
+  type SunmiPrinterStatus,
+} from "@/lib/sunmiPrinter";
 
 function haptic(type: "light" | "medium" | "success" | "warning" | "error" = "light") {
   if (Platform.OS === "web") return;
@@ -78,11 +85,15 @@ function OrderRow({
   profileComplete,
   onAction,
   actionLoading,
+  onPrint,
+  canPrint,
 }: {
   order: any;
   profileComplete: boolean;
   onAction: (id: number, status: UpdateOrderStepBodyStep) => void;
   actionLoading: number | null;
+  onPrint?: (order: any) => void;
+  canPrint?: boolean;
 }) {
   const colors = useColors();
   const cfg = STATUS_FLOW[order.status] ?? STATUS_FLOW.pending;
@@ -186,6 +197,17 @@ function OrderRow({
             <Ionicons name="bicycle-outline" size={14} color={colors.primary} />
             <Text style={[styles.waitText, { color: colors.primary }]}>En attente d'un livreur…</Text>
           </View>
+        )}
+
+        {canPrint && onPrint && (
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: colors.muted, borderColor: colors.border, marginTop: 8 }]}
+            onPress={() => onPrint(order)}
+            testID={`btn-print-${order.id}`}
+          >
+            <Ionicons name="print-outline" size={14} color={colors.foreground} />
+            <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Imprimer le ticket</Text>
+          </TouchableOpacity>
         )}
       </View>
     </Animated.View>
@@ -420,6 +442,11 @@ export default function ManageScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [newOrderBanner, setNewOrderBanner] = useState<any | null>(null);
+  const [printerStatus, setPrinterStatus] = useState<SunmiPrinterStatus>({
+    state: isSunmiPrinterAvailable() ? "connecting" : "unavailable",
+    connected: false,
+  });
+  const printedOrderIds = useRef<Set<number>>(new Set());
 
   const activeOrders = (orders ?? []).filter(o => !["delivered", "cancelled"].includes(o.status));
   const pendingOrders = activeOrders.filter(o => o.status === "pending");
@@ -427,11 +454,57 @@ export default function ManageScreen() {
     .filter(o => o.status === "delivered" && new Date(o.createdAt).toDateString() === new Date().toDateString())
     .reduce((s, o) => s + o.total, 0);
 
+  const canPrintOnSunmi = isSunmiPrinterAvailable();
+
+  useEffect(() => {
+    if (!canPrintOnSunmi) return;
+    const subscription = subscribeSunmiPrinterStatus(setPrinterStatus);
+    void connectSunmiPrinter().then(setPrinterStatus).catch((error: any) => {
+      setPrinterStatus({
+        state: "error",
+        connected: false,
+        message: error?.message ?? "Connexion à l’imprimante Sunmi impossible",
+      });
+    });
+    return () => subscription.remove();
+  }, [canPrintOnSunmi]);
+
+  const printOrder = useCallback(async (order: any) => {
+    try {
+      await printSunmiReceipt({
+        restaurantName: myRestaurant?.name ?? "Jatek",
+        address: myRestaurant?.address,
+        phone: myRestaurant?.phone,
+        ice: myRestaurant?.ice,
+        reference: order.reference || `#CMD${String(order.id).padStart(6, "0")}`,
+        createdAt: order.createdAt ? new Date(order.createdAt).toLocaleString("fr-FR") : undefined,
+        kitchenCode: order.kitchenCode,
+        userName: order.userName,
+        deliveryAddress: order.deliveryAddress,
+        notes: order.notes,
+        items: (order.items ?? []).map((item: any) => ({
+          quantity: Number(item.quantity ?? 1),
+          menuItemName: String(item.menuItemName ?? "Article"),
+          totalPrice: Number(item.totalPrice ?? 0),
+        })),
+        subtotal: Number(order.subtotal ?? 0),
+        deliveryFee: Number(order.deliveryFee ?? 0),
+        total: Number(order.total ?? 0),
+      });
+    } catch (error: any) {
+      Alert.alert("Impression impossible", error?.message ?? "Vérifiez le papier et l’état de l’imprimante Sunmi.");
+    }
+  }, [myRestaurant]);
+
   const handleSSEOrderNew = useCallback((data: any) => {
     haptic("success");
     setNewOrderBanner(data);
     refetchOrders();
-  }, [refetchOrders]);
+    if (canPrintOnSunmi && Number.isFinite(Number(data?.id)) && !printedOrderIds.current.has(Number(data.id))) {
+      printedOrderIds.current.add(Number(data.id));
+      void printOrder(data);
+    }
+  }, [canPrintOnSunmi, printOrder, refetchOrders]);
 
   const handleSSEOrderStatus = useCallback(() => {
     refetchOrders();
@@ -582,6 +655,24 @@ export default function ManageScreen() {
           </Animated.View>
         )}
 
+        {canPrintOnSunmi && (
+          <View style={[styles.printerBanner, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Ionicons
+              name={printerStatus.state === "ready" ? "print" : "warning-outline"}
+              size={18}
+              color={printerStatus.state === "ready" ? colors.primary : colors.yellowForeground}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.printerTitle, { color: colors.foreground }]}>
+                Imprimante Sunmi · {printerStatus.state === "ready" ? "Prête" : "À vérifier"}
+              </Text>
+              <Text style={[styles.printerSub, { color: colors.mutedForeground }]} numberOfLines={2}>
+                {printerStatus.message ?? "Le terminal vérifie le service d’impression."}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -624,6 +715,8 @@ export default function ManageScreen() {
                     profileComplete={profileComplete}
                     onAction={handleAction}
                     actionLoading={actionLoading}
+                    canPrint={canPrintOnSunmi}
+                    onPrint={printOrder}
                   />
                 ))
             )}
@@ -659,6 +752,12 @@ const styles = StyleSheet.create({
     padding: 14, borderRadius: 14, marginBottom: 12,
   },
   newOrderText: { flex: 1, color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  printerBanner: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 14,
+  },
+  printerTitle: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  printerSub: { fontSize: 11, marginTop: 2 },
 
   statsRow: { flexDirection: "row", gap: 8, marginBottom: 18 },
   statBox: { flex: 1, padding: 12, borderRadius: 14, borderWidth: 1, alignItems: "center" },

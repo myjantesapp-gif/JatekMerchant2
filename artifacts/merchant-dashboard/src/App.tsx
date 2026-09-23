@@ -4,7 +4,7 @@ import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter
 import {
   Activity, ArrowUpRight, Bell, BookOpen, Check, ChevronDown, CircleAlert, Clock3,
   ExternalLink, LayoutDashboard, LogOut, Menu as MenuIcon, MessageSquareText, MoreHorizontal,
-  Package, Pencil, Plus, RefreshCw, Search, Settings, ShieldCheck, ShoppingBag, Store, Tags,
+  Package, Pencil, Plus, Printer, RefreshCw, Search, Settings, ShieldCheck, ShoppingBag, Store, Tags,
   Trash2, TrendingUp, UtensilsCrossed, X, UploadCloud, Loader2, Camera,
 } from 'lucide-react';
 import {
@@ -29,6 +29,7 @@ const ENDPOINTS = {
   updateShop: (id: number) => `/api/backend/shops/${id}`,
   uploadImage: '/api/storage/uploads/image',
   downloadReceipt: (id: number) => `${API_BASE_URL}/api/orders/${id}/receipt.pdf`,
+  printReceipt: (id: number, token: string) => `${API_BASE_URL}/api/orders/${id}/receipt?token=${encodeURIComponent(token)}`,
   downloadInvoice: (id: number) => `${API_BASE_URL}/api/orders/${id}/invoice.pdf`,
 };
 
@@ -368,6 +369,13 @@ function Orders() {
     }
   };
 
+  const openBrowserReceipt = (id: number) => {
+    const token = getStoredToken();
+    if (!token) return;
+    const popup = window.open(ENDPOINTS.printReceipt(id, token), '_blank', 'noopener,noreferrer');
+    if (!popup) setDownloadError('Le navigateur a bloqué la fenêtre d’impression. Autorisez les fenêtres pour Jatek puis réessayez.');
+  };
+
   return <div className="page-in"><PageHeading eyebrow="Tableau de service" title="Commandes" description="Gardez les relais fluides. Mettez à jour les commandes dès que la cuisine a terminé." action={<Button data-testid="button-refresh-orders" variant="soft" onClick={() => orders.refetch()}><RefreshCw size={15} />Actualiser</Button>} />
     <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-card-border bg-card p-3 shadow-sm sm:flex-row"><div className="relative flex-1"><Search size={16} className="absolute left-3 top-3 text-muted-foreground" /><input data-testid="input-order-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Chercher une référence ou un client" className="h-11 w-full rounded-xl bg-muted/60 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="no-scrollbar flex gap-2 overflow-x-auto">{['toutes', 'pending', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled'].map((filter) => <button key={filter} data-testid={`button-filter-${filter}`} onClick={() => setStatus(filter)} className={`min-h-11 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition ${status === filter ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary hover:text-secondary-foreground'}`}>{formatStatus(filter)}</button>)}</div></div>
     {downloadError && <div role="alert" className="mb-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><CircleAlert size={17} className="mt-0.5 shrink-0" /><span>{downloadError}</span><button type="button" aria-label="Fermer le message d’erreur" className="ml-auto rounded-lg p-1 hover:bg-red-100" onClick={() => setDownloadError('')}><X size={15} /></button></div>}
@@ -430,6 +438,7 @@ function Orders() {
                 <Button variant="danger" disabled={updateStatus.isPending} onClick={() => { if(window.confirm('Voulez-vous vraiment annuler cette commande ?')) updateStatus.mutate({ id: selectedOrder.id, data: { status: 'cancelled' as never } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendOrdersQueryKey() }); setSelectedOrderId(null); } }) }}>Annuler la commande</Button>
               )}
               <div className="ml-auto flex items-center gap-2">
+                 <Button variant="soft" onClick={() => openBrowserReceipt(selectedOrder.id)}><Printer size={15} />Imprimer dans le navigateur</Button>
                  <Button variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadReceipt(selectedOrder.id), `jatek-ticket-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-ticket-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}Télécharger le ticket</Button>
                  <Button variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadInvoice(selectedOrder.id), `jatek-facture-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-facture-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}Télécharger la facture PDF</Button>
               </div>

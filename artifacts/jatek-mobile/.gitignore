@@ -39,3 +39,41 @@ yarn-error.*
 .vercel
 
 .env
+
+# The Sunmi printer bridge is maintained native source, not generated output.
+# Keep the rest of the Expo-generated Android project ignored.
+!android/
+android/*
+!android/app/
+android/app/*
+!android/app/src/
+android/app/src/*
+!android/app/src/main/
+android/app/src/main/*
+!android/app/src/main/aidl/
+android/app/src/main/aidl/*
+!android/app/src/main/aidl/woyou/
+android/app/src/main/aidl/woyou/*
+!android/app/src/main/aidl/woyou/aidlservice/
+android/app/src/main/aidl/woyou/aidlservice/*
+!android/app/src/main/aidl/woyou/aidlservice/jiuiv5/
+!android/app/src/main/aidl/woyou/aidlservice/jiuiv5/ICallback.aidl
+!android/app/src/main/aidl/woyou/aidlservice/jiuiv5/IWoyouService.aidl
+!android/app/src/main/aidl/woyou/aidlservice/jiuiv5/TransBean.aidl
+!android/app/src/main/java/
+android/app/src/main/java/*
+!android/app/src/main/java/ma/
+android/app/src/main/java/ma/*
+!android/app/src/main/java/ma/jatek/
+android/app/src/main/java/ma/jatek/*
+!android/app/src/main/java/ma/jatek/app/
+android/app/src/main/java/ma/jatek/app/*
+!android/app/src/main/java/ma/jatek/app/MainApplication.kt
+!android/app/src/main/java/ma/jatek/app/SunmiPrinterModule.kt
+!android/app/src/main/java/ma/jatek/app/SunmiPrinterPackage.kt
+!android/app/src/main/java/woyou/
+android/app/src/main/java/woyou/*
+!android/app/src/main/java/woyou/aidlservice/
+android/app/src/main/java/woyou/aidlservice/*
+!android/app/src/main/java/woyou/aidlservice/jiuiv5/
+!android/app/src/main/java/woyou/aidlservice/jiuiv5/TransBean.java
