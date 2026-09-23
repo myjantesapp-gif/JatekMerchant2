@@ -41,6 +41,7 @@ type ManagedObjectFile = {
 export const MEDIA_FOLDERS = ["images", "logos", "banners", "medias", "shorts", "splash"] as const;
 export type MediaFolder = (typeof MEDIA_FOLDERS)[number];
 const ACCEPTED_OBJECT_ROOTS = new Set<string>([...MEDIA_FOLDERS, "uploads"]);
+const PRIVATE_DOCUMENT_ROOT = "documents";
 
 const MEDIA_FOLDER_BY_KIND = {
   image: "images",
@@ -410,22 +411,34 @@ export class ObjectStorageService {
     }
 
     const entityId = parts.slice(1).join("/");
+    return this.getManagedObjectFile(entityId, ACCEPTED_OBJECT_ROOTS);
+  }
+
+  /**
+   * Resolve a known App Storage object without exposing it through the public
+   * media route. This is used for generated documents and server-managed
+   * branding assets.
+   */
+  async getManagedObjectFile(
+    objectName: string,
+    allowedRoots: ReadonlySet<string> = ACCEPTED_OBJECT_ROOTS,
+  ): Promise<ManagedObjectFile> {
     // Object names are user-controlled through the public media route. Keep
-    // reads inside the managed media prefixes and reject traversal/control
-    // characters before passing the name to App Storage.
-    const objectParts = entityId.split("/");
+    // reads inside an explicitly allowed managed prefix and reject
+    // traversal/control characters before passing the name to App Storage.
+    const objectParts = objectName.split("/");
     if (
-      !ACCEPTED_OBJECT_ROOTS.has(objectParts[0] ?? "") ||
+      !allowedRoots.has(objectParts[0] ?? "") ||
       objectParts.some((part) => !part || part === "." || part === "..") ||
-      entityId.includes("\\") ||
-      /[\u0000-\u001f\u007f]/.test(entityId)
+      objectName.includes("\\") ||
+      /[\u0000-\u001f\u007f]/.test(objectName)
     ) {
       throw new ObjectNotFoundError();
     }
 
     let exists;
     try {
-      exists = await managedObjectStorageClient.exists(entityId);
+      exists = await managedObjectStorageClient.exists(objectName);
     } catch (error) {
       throw toObjectStorageError("read", error);
     }
@@ -436,7 +449,11 @@ export class ObjectStorageService {
       if (!exists.ok) throw toObjectStorageError("read", exists.error);
       throw new ObjectNotFoundError();
     }
-    return { objectName: entityId };
+    return { objectName };
+  }
+
+  async getDocumentFile(objectName: string): Promise<ManagedObjectFile> {
+    return this.getManagedObjectFile(objectName, new Set([PRIVATE_DOCUMENT_ROOT]));
   }
 
   /**
@@ -467,6 +484,40 @@ export class ObjectStorageService {
     }
 
     return `/objects/${objectName}`;
+  }
+
+  /**
+   * Upload a server-generated object at a stable name. Stable names make
+   * generated documents idempotent and avoid storing file bytes in PostgreSQL.
+   */
+  async uploadNamedBuffer(
+    objectName: string,
+    buffer: Buffer,
+    _contentType: string,
+  ): Promise<void> {
+    const root = objectName.split("/")[0] ?? "";
+    if (!ACCEPTED_OBJECT_ROOTS.has(root) && root !== PRIVATE_DOCUMENT_ROOT) {
+      throw new Error(`Unsupported managed object root: ${root}`);
+    }
+    if (
+      objectName.split("/").some((part) => !part || part === "." || part === "..") ||
+      objectName.includes("\\") ||
+      /[\u0000-\u001f\u007f]/.test(objectName)
+    ) {
+      throw new Error("Invalid managed object name");
+    }
+
+    let result;
+    try {
+      result = await managedObjectStorageClient.uploadFromBytes(objectName, buffer, {
+        compress: false,
+      });
+    } catch (error) {
+      throw toObjectStorageError("upload", error);
+    }
+    if (!result.ok) {
+      throw toObjectStorageError("upload", result.error);
+    }
   }
 
   normalizeObjectEntityPath(rawPath: string): string {
