@@ -97,7 +97,7 @@ function Button({ children, className = '', variant = 'primary', ...props }: But
     quiet: 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
     danger: 'bg-destructive text-destructive-foreground hover:brightness-95',
   };
-  return <button className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition ${styles[variant]} disabled:cursor-not-allowed disabled:opacity-50 ${className}`} {...props}>{children}</button>;
+  return <button className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition ${styles[variant]} disabled:cursor-not-allowed disabled:opacity-50 ${className}`} {...props}>{children}</button>;
 }
 
 function StatusPill({ status }: { status?: string }) {
@@ -160,31 +160,11 @@ function Brand({ light = false }: { light?: boolean }) {
 }
 
 const navItems = [
-  { 
-    href: '/', label: 'Aperçu', icon: LayoutDashboard,
-    activeCls: 'bg-rose-500 text-white shadow-lg shadow-rose-500/20',
-    hoverCls: 'hover:bg-rose-500/15 hover:text-rose-100 focus-visible:ring-rose-400'
-  },
-  { 
-    href: '/orders', label: 'Commandes', icon: ShoppingBag,
-    activeCls: 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-600/20',
-    hoverCls: 'hover:bg-fuchsia-500/15 hover:text-fuchsia-100 focus-visible:ring-fuchsia-400'
-  },
-  { 
-    href: '/menu', label: 'Menu', icon: UtensilsCrossed,
-    activeCls: 'bg-pink-600 text-white shadow-lg shadow-pink-600/20',
-    hoverCls: 'hover:bg-pink-500/15 hover:text-pink-100 focus-visible:ring-pink-400'
-  },
-  { 
-    href: '/reviews', label: 'Avis clients', icon: MessageSquareText,
-    activeCls: 'bg-purple-500 text-white shadow-lg shadow-purple-500/20',
-    hoverCls: 'hover:bg-purple-500/15 hover:text-purple-100 focus-visible:ring-purple-400'
-  },
-  { 
-    href: '/shop', label: 'Boutique', icon: Store,
-    activeCls: 'bg-pink-600 text-white shadow-lg shadow-pink-600/20',
-    hoverCls: 'hover:bg-pink-500/15 hover:text-pink-100 focus-visible:ring-pink-400'
-  },
+  { href: '/', label: 'Aperçu', icon: LayoutDashboard },
+  { href: '/orders', label: 'Commandes', icon: ShoppingBag },
+  { href: '/menu', label: 'Menu', icon: UtensilsCrossed },
+  { href: '/reviews', label: 'Avis clients', icon: MessageSquareText },
+  { href: '/shop', label: 'Boutique', icon: Store },
 ];
 
 function Shell({ children }: { children: ReactNode }) {
@@ -195,22 +175,22 @@ function Shell({ children }: { children: ReactNode }) {
   const user = me.data?.user;
   const logout = () => { clearToken(); setLocation('/login'); };
   return <div className="min-h-[100dvh] bg-background">
-    <aside className={`fixed inset-y-0 left-0 z-40 flex w-[248px] -translate-x-full flex-col bg-[linear-gradient(165deg,#831843_0%,#be185d_52%,#d9468f_100%)] px-4 py-5 text-white shadow-[12px_0_40px_rgba(131,24,67,.22)] transition-transform lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : ''}`}>
+    <aside className={`fixed inset-y-0 left-0 z-40 flex w-[248px] -translate-x-full flex-col bg-sidebar px-4 py-5 text-sidebar-foreground shadow-[12px_0_40px_rgba(33,39,58,.16)] transition-transform lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : ''}`}>
       <div className="flex items-center justify-between px-3"><Brand light /><button data-testid="button-close-menu" aria-label="Fermer le menu" className="rounded-lg p-2 text-white/75 hover:bg-white/15 hover:text-white lg:hidden" onClick={() => setMobileOpen(false)}><X size={18} /></button></div>
-      <div className="mt-10 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-white/55">Espace de travail</div>
-      <nav className="mt-3 space-y-1">{navItems.map(({ href, label, icon: Icon, activeCls, hoverCls }) => <Link key={href} href={href} data-testid={`link-nav-${label.toLowerCase().replace(' ', '-')}`} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar ${active(href) ? activeCls : `text-sidebar-foreground/65 ${hoverCls}`}`}><Icon size={18} strokeWidth={active(href) ? 2.4 : 1.8} /><span>{label}</span>{label === 'Commandes' && <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active(href) ? 'bg-white/25 text-white' : 'bg-fuchsia-500/20 text-fuchsia-200'}`}>en direct</span>}</Link>)}</nav>
+      <div className="mt-10 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-sidebar-foreground/45">Espace de travail</div>
+      <nav className="mt-3 space-y-1">{navItems.map(({ href, label, icon: Icon }) => <Link key={href} href={href} data-testid={`link-nav-${label.toLowerCase().replace(' ', '-')}`} onClick={() => setMobileOpen(false)} className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar ${active(href) ? 'bg-primary text-primary-foreground shadow-sm' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}><Icon size={18} strokeWidth={active(href) ? 2.4 : 1.8} /><span>{label}</span>{label === 'Commandes' && <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active(href) ? 'bg-white/25 text-white' : 'bg-sidebar-accent text-sidebar-accent-foreground'}`}>en direct</span>}</Link>)}</nav>
       <div className="mt-auto">
-        <div className="mb-3 rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-sm"><div className="flex items-center gap-2 text-xs font-semibold"><span className="h-2 w-2 rounded-full bg-[#74d4a4]" />{me.isLoading ? 'Vérification de la connexion' : 'Connecté à Jatek'}</div><p className="mt-2 text-[11px] leading-4 text-white/60">Synchronisation en direct activée. Changements visibles par toute l'équipe.</p></div>
-        <Link href="/settings" data-testid="link-nav-settings" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-white/70 ${active('/settings') ? 'bg-white/20 text-white shadow-sm' : 'text-white/75 hover:bg-white/10 hover:text-white'}`}><Settings size={18} />Paramètres</Link>
-        <button data-testid="button-sign-out" onClick={logout} className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-white/75 outline-none transition hover:bg-red-950/25 hover:text-white focus-visible:ring-2 focus-visible:ring-white/70"><LogOut size={18} />Se déconnecter</button>
+        <div className="mb-3 rounded-2xl border border-sidebar-border bg-sidebar-accent/60 p-3"><div className="flex items-center gap-2 text-xs font-semibold"><span className="h-2 w-2 rounded-full bg-[#74d4a4]" />{me.isLoading ? 'Vérification de la connexion' : 'Connecté à Jatek'}</div><p className="mt-2 text-[11px] leading-4 text-sidebar-foreground/55">Synchronisation en direct activée. Changements visibles par toute l'équipe.</p></div>
+         <Link href="/settings" data-testid="link-nav-settings" className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-sidebar-ring ${active('/settings') ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}><Settings size={18} />Paramètres</Link>
+         <button data-testid="button-sign-out" onClick={logout} className="mt-1 flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-sidebar-foreground/70 outline-none transition hover:bg-destructive/20 hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"><LogOut size={18} />Se déconnecter</button>
       </div>
     </aside>
     {mobileOpen && <button aria-label="Fermer la navigation" data-testid="button-overlay-menu" className="fixed inset-0 z-30 bg-fuchsia-950/40 backdrop-blur-[2px] lg:hidden" onClick={() => setMobileOpen(false)} />}
     <div className="lg:pl-[248px]">
       <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-border/80 bg-background/90 px-5 backdrop-blur-md sm:px-8">
-        <button data-testid="button-open-menu" aria-label="Ouvrir le menu" className="rounded-xl bg-primary p-2 text-primary-foreground shadow-sm hover:brightness-95 lg:hidden" onClick={() => setMobileOpen(true)}><MenuIcon size={21} /></button>
+        <div className="flex items-center gap-3 lg:hidden"><button data-testid="button-open-menu" aria-label="Ouvrir le menu" className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm hover:brightness-95" onClick={() => setMobileOpen(true)}><MenuIcon size={21} /></button><Brand /></div>
         <div className="hidden text-xs font-semibold text-muted-foreground sm:block">Espace Commerçant <span className="mx-2 text-border">/</span> {location === '/' ? 'Aperçu' : location.slice(1).replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
-        <div className="ml-auto flex items-center gap-3"><button data-testid="button-notifications" className="relative rounded-xl p-2.5 text-muted-foreground hover:bg-muted"><Bell size={18} /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" /></button><div className="hidden h-7 w-px bg-border sm:block" /><div className="flex items-center gap-2"><span data-testid="text-user-initials" className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">{user?.name?.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'JT'}</span><div className="hidden leading-tight sm:block"><div data-testid="text-user-name" className="text-sm font-bold">{user?.name || 'Équipe commerçant'}</div><div className="text-[11px] text-muted-foreground">{formatRôle(user?.role) || 'Membre de l\'équipe'}</div></div><ChevronDown size={15} className="hidden text-muted-foreground sm:block" /></div></div>
+        <div className="ml-auto flex items-center gap-3"><Link href="/orders" data-testid="button-notifications" aria-label="Voir les commandes" className="relative grid h-11 w-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted"><Bell size={18} /><span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-primary" /></Link><div className="hidden h-7 w-px bg-border sm:block" /><Link href="/settings" aria-label="Ouvrir les paramètres du compte" className="flex min-h-11 items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-muted"><span data-testid="text-user-initials" className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">{user?.name?.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'JT'}</span><div className="hidden leading-tight sm:block"><div data-testid="text-user-name" className="text-sm font-bold">{user?.name || 'Équipe commerçant'}</div><div className="text-[11px] text-muted-foreground">{formatRôle(user?.role) || 'Membre de l\'équipe'}</div></div><ChevronDown size={15} className="hidden text-muted-foreground sm:block" /></Link></div>
       </header>
       <main className="mx-auto max-w-[1500px] p-5 sm:p-8">{children}</main>
     </div>
@@ -352,6 +332,8 @@ function Orders() {
   const [status, setStatus] = useState('toutes');
   const [search, setSearch] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [downloadError, setDownloadError] = useState('');
+  const [downloadingDocument, setDownloadingDocument] = useState<string | null>(null);
   
   const orders = useListBackendOrders({ status: status === 'toutes' ? undefined : status, search: search || undefined, limit: 100 });
   const updateStatus = useUpdateOrderStatus();
@@ -363,31 +345,40 @@ function Orders() {
   const downloadDocument = async (id: number, endpoint: string, fallbackName: string) => {
     const token = getStoredToken();
     if (!token) return;
-    const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
-    if (!response.ok) throw new Error('Le téléchargement du document a échoué.');
-    const blob = await response.blob();
-    const disposition = response.headers.get('content-disposition') || '';
-    const filename = disposition.match(/filename="([^"]+)"/i)?.[1] || fallbackName;
-    const objectUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = objectUrl;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(objectUrl);
+    setDownloadError('');
+    setDownloadingDocument(fallbackName);
+    try {
+      const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error('Le téléchargement du document a échoué.');
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition') || '';
+      const filename = disposition.match(/filename="([^"]+)"/i)?.[1] || fallbackName;
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      setDownloadError('Le document n’a pas pu être téléchargé. Vérifiez votre connexion puis réessayez.');
+    } finally {
+      setDownloadingDocument(null);
+    }
   };
 
   return <div className="page-in"><PageHeading eyebrow="Tableau de service" title="Commandes" description="Gardez les relais fluides. Mettez à jour les commandes dès que la cuisine a terminé." action={<Button data-testid="button-refresh-orders" variant="soft" onClick={() => orders.refetch()}><RefreshCw size={15} />Actualiser</Button>} />
-    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-card-border bg-card p-3 shadow-sm sm:flex-row"><div className="relative flex-1"><Search size={16} className="absolute left-3 top-3 text-muted-foreground" /><input data-testid="input-order-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Chercher une référence ou un client" className="h-10 w-full rounded-xl bg-muted/60 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="no-scrollbar flex gap-2 overflow-x-auto">{['toutes', 'pending', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled'].map((filter) => <button key={filter} data-testid={`button-filter-${filter}`} onClick={() => setStatus(filter)} className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition ${status === filter ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary hover:text-secondary-foreground'}`}>{formatStatus(filter)}</button>)}</div></div>
+    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-card-border bg-card p-3 shadow-sm sm:flex-row"><div className="relative flex-1"><Search size={16} className="absolute left-3 top-3 text-muted-foreground" /><input data-testid="input-order-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Chercher une référence ou un client" className="h-11 w-full rounded-xl bg-muted/60 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="no-scrollbar flex gap-2 overflow-x-auto">{['toutes', 'pending', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled'].map((filter) => <button key={filter} data-testid={`button-filter-${filter}`} onClick={() => setStatus(filter)} className={`min-h-11 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition ${status === filter ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary hover:text-secondary-foreground'}`}>{formatStatus(filter)}</button>)}</div></div>
+    {downloadError && <div role="alert" className="mb-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><CircleAlert size={17} className="mt-0.5 shrink-0" /><span>{downloadError}</span><button type="button" aria-label="Fermer le message d’erreur" className="ml-auto rounded-lg p-1 hover:bg-red-100" onClick={() => setDownloadError('')}><X size={15} /></button></div>}
     <QueryState loading={orders.isLoading} error={orders.isError} empty={!orders.isLoading && !orders.isError && (orders.data || []).length === 0} onRetry={() => orders.refetch()}>
-      <section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-sm"><div className="hidden grid-cols-[1.25fr_1fr_.8fr_.7fr_1fr] gap-4 border-b border-border bg-muted/50 px-5 py-3 text-[10px] font-bold uppercase tracking-[.15em] text-muted-foreground md:grid"><span>Commande</span><span>Client</span><span>Placée</span><span>Total</span><span className="text-right">Statut</span></div><div className="divide-y divide-border">{(orders.data || []).map((order) => { const next = nextStatus(order.status); return <div key={order.id} data-testid={`row-order-${order.id}`} onClick={() => setSelectedOrderId(order.id)} className="grid cursor-pointer gap-3 px-5 py-4 transition hover:bg-muted/30 md:grid-cols-[1.25fr_1fr_.8fr_.7fr_1fr] md:items-center"><div><div className="flex items-center gap-2"><span className="font-bold">#{order.reference || order.id}</span><span className="text-[10px] text-muted-foreground">ID {order.id}</span></div><p className="mt-1 text-xs text-muted-foreground">{order.items?.length || 0} article{order.items?.length === 1 ? '' : 's'} · {order.restaurantName}</p></div><div className="text-sm font-medium">{order.userName || 'Client'}<p className="mt-1 text-xs text-muted-foreground md:hidden">{dateLabel(order.createdAt)}</p></div><div className="hidden text-xs text-muted-foreground md:block">{dateLabel(order.createdAt)}</div><div className="font-bold">{money(order.total)}</div><div className="flex items-center justify-between gap-2 md:justify-end">{next && <Button data-testid={`button-advance-order-${order.id}`} variant="soft" className="px-2.5 py-2 text-xs" disabled={updateStatus.isPending} onClick={(e) => { e.stopPropagation(); updateStatus.mutate({ id: order.id, data: { status: next as never } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendOrdersQueryKey({ status: status === 'toutes' ? undefined : status, search: search || undefined, limit: 100 }) }); client.invalidateQueries({ queryKey: getGetBackendDashboardQueryKey({ range: 'week' }) }); } })}}>{next === 'accepted' ? 'Accepter' : `Marquer ${formatStatus(next).toLowerCase()}`}<ArrowUpRight size={13} /></Button>}<StatusPill status={order.status} /></div></div>; })}</div></section>
+      <section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-sm"><div className="hidden grid-cols-[1.25fr_1fr_.8fr_.7fr_1fr] gap-4 border-b border-border bg-muted/50 px-5 py-3 text-[10px] font-bold uppercase tracking-[.15em] text-muted-foreground md:grid"><span>Commande</span><span>Client</span><span>Placée</span><span>Total</span><span className="text-right">Statut</span></div><div className="divide-y divide-border">{(orders.data || []).map((order) => { const next = nextStatus(order.status); return <div key={order.id} data-testid={`row-order-${order.id}`} role="button" tabIndex={0} aria-label={`Ouvrir la commande ${order.reference || order.id}`} onClick={() => setSelectedOrderId(order.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedOrderId(order.id); } }} className="grid cursor-pointer gap-3 px-5 py-4 transition hover:bg-muted/30 focus-visible:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary md:grid-cols-[1.25fr_1fr_.8fr_.7fr_1fr] md:items-center"><div><div className="flex items-center gap-2"><span className="font-bold">#{order.reference || order.id}</span><span className="text-[10px] text-muted-foreground">ID {order.id}</span></div><p className="mt-1 text-xs text-muted-foreground">{order.items?.length || 0} article{order.items?.length === 1 ? '' : 's'} · {order.restaurantName}</p></div><div className="text-sm font-medium">{order.userName || 'Client'}<p className="mt-1 text-xs text-muted-foreground md:hidden">{dateLabel(order.createdAt)}</p></div><div className="hidden text-xs text-muted-foreground md:block">{dateLabel(order.createdAt)}</div><div className="font-bold">{money(order.total)}</div><div className="flex items-center justify-between gap-2 md:justify-end">{next && <Button data-testid={`button-advance-order-${order.id}`} variant="soft" className="px-2.5 py-2 text-xs" disabled={updateStatus.isPending} onClick={(e) => { e.stopPropagation(); updateStatus.mutate({ id: order.id, data: { status: next as never } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendOrdersQueryKey({ status: status === 'toutes' ? undefined : status, search: search || undefined, limit: 100 }) }); client.invalidateQueries({ queryKey: getGetBackendDashboardQueryKey({ range: 'week' }) }); } })}}>{next === 'accepted' ? 'Accepter' : `Marquer ${formatStatus(next).toLowerCase()}`}<ArrowUpRight size={13} /></Button>}<StatusPill status={order.status} /></div></div>; })}</div></section>
     </QueryState>
 
     {selectedOrder && (
       <div className="fixed inset-0 z-50 grid place-items-center bg-sidebar/45 p-4 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) setSelectedOrderId(null); }}>
         <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-card shadow-2xl">
-          <button onClick={() => setSelectedOrderId(null)} className="absolute right-4 top-4 rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
+          <button aria-label="Fermer le détail de la commande" onClick={() => setSelectedOrderId(null)} className="absolute right-4 top-4 rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
           <div className="border-b border-border p-6">
             <h2 className="text-xl font-bold">Commande #{selectedOrder.reference || selectedOrder.id}</h2>
             <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
@@ -439,8 +430,8 @@ function Orders() {
                 <Button variant="danger" disabled={updateStatus.isPending} onClick={() => { if(window.confirm('Voulez-vous vraiment annuler cette commande ?')) updateStatus.mutate({ id: selectedOrder.id, data: { status: 'cancelled' as never } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendOrdersQueryKey() }); setSelectedOrderId(null); } }) }}>Annuler la commande</Button>
               )}
               <div className="ml-auto flex items-center gap-2">
-                <Button variant="soft" onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadReceipt(selectedOrder.id), `jatek-ticket-${selectedOrder.id}.pdf`)}>Télécharger le ticket</Button>
-                <Button variant="soft" onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadInvoice(selectedOrder.id), `jatek-facture-${selectedOrder.id}.pdf`)}>Télécharger la facture PDF</Button>
+                 <Button variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadReceipt(selectedOrder.id), `jatek-ticket-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-ticket-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}Télécharger le ticket</Button>
+                 <Button variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadInvoice(selectedOrder.id), `jatek-facture-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-facture-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}Télécharger la facture PDF</Button>
               </div>
             </div>
             <p className="mt-3 text-right text-xs text-muted-foreground">PDF prêt à télécharger · QR code inclus pour identifier la commande.</p>
