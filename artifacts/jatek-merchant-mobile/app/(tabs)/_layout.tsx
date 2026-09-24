@@ -19,23 +19,7 @@ function NativeTabLayout() {
         <NativeTabs.Trigger.Icon
           sf={{ default: 'house', selected: 'house.fill' }}
         />
-        <NativeTabs.Trigger.Label>Aperçu</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="orders">
-        <NativeTabs.Trigger.Icon sf={{ default: 'shippingbox', selected: 'shippingbox.fill' }} />
-        <NativeTabs.Trigger.Label>Commandes</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="menu">
-        <NativeTabs.Trigger.Icon sf={{ default: 'fork.knife', selected: 'fork.knife' }} />
-        <NativeTabs.Trigger.Label>Menu</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="reviews">
-        <NativeTabs.Trigger.Icon sf={{ default: 'star', selected: 'star.fill' }} />
-        <NativeTabs.Trigger.Label>Avis</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="shop">
-        <NativeTabs.Trigger.Icon sf={{ default: 'storefront', selected: 'storefront.fill' }} />
-        <NativeTabs.Trigger.Label>Boutique</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -53,7 +37,7 @@ function ClassicTabLayout() {
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
-        headerShown: false,
+        headerShown: true,
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: isIOS ? 'transparent' : colors.background,
@@ -82,45 +66,12 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Aperçu',
+          title: 'Home',
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="house" tintColor={color} size={24} />
             ) : (
               <Feather name="home" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="orders"
-        options={{
-          title: 'Commandes',
-          tabBarIcon: ({ color }) => <Feather name="package" size={21} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="menu"
-        options={{
-          title: 'Menu',
-          tabBarIcon: ({ color }) => <Feather name="book-open" size={21} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="reviews"
-        options={{
-          title: 'Avis',
-          tabBarIcon: ({ color }) => <Feather name="star" size={21} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="shop"
-        options={{
-          title: 'Boutique',
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="storefront" tintColor={color} size={23} />
-            ) : (
-              <Feather name="shopping-bag" size={21} color={color} />
             ),
         }}
       />
