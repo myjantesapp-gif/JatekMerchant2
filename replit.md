@@ -58,6 +58,7 @@ Jatek is a full-stack food delivery application serving Oujda, Morocco, connecti
 - **Monorepo Structure**: Uses pnpm workspaces for managing multiple related packages, enabling shared dependencies and streamlined development across frontend, backend, and mobile applications.
 - **API-first Design**: OpenAPI specification (`openapi.yaml`) is the single source of truth for all API contracts, driving code generation for client-side hooks and Zod schemas to ensure consistency.
 - **Multi-Client Support**: Separate frontend applications for customer web, customer mobile, driver mobile, and an admin dashboard, all consuming the same core API but tailored for their respective user experiences.
+- **Merchant Data Source**: The merchant mobile app must obtain all business data exclusively from `https://api.jatek.app`. This is an explicit product requirement: no local/demo business data, direct database access, development API, or alternative-host fallback. API failures must be visible rather than replaced with invented content.
 - **Production Hardening**: API server includes security (helmet, CORS), performance (gzip compression), rate limiting, and robust error handling for stability in production environments.
 - **Mobile Build Process**: Utilizes EAS for mobile app builds, with a custom shell script to manage profiles and platforms, explicitly bypassing Replit's auto-inclusion of build workflows.
 
