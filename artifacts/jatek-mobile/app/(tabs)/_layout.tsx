@@ -9,7 +9,7 @@ import { ACTIVE_ORDER_STATUSES } from "@/lib/orderStatus";
 
 const PINK = "#E91E63";
 const INACTIVE = "#B5B5B5";
-const TAB_H = Platform.OS === "web" ? 84 : 72;
+const TAB_H = Platform.OS === "web" ? 88 : 82;
 
 function useActiveOrdersCount(): number {
   const { token, user } = useAuth();
@@ -93,13 +93,17 @@ export default function TabLayout() {
         tabBarActiveTintColor: PINK,
         tabBarInactiveTintColor: INACTIVE,
         headerShown: false,
-        tabBarShowLabel: false,
-        tabBarItemStyle: { paddingTop: 6 },
+        tabBarShowLabel: true,
+        tabBarLabelStyle: { fontFamily: "Inter_600SemiBold", fontSize: 11, marginTop: 1 },
+        tabBarItemStyle: { paddingTop: 4, paddingBottom: 5 },
         tabBarStyle: {
           backgroundColor: "#FFFFFF",
           borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: "#EBEBEB",
           height: TAB_H,
+          width: "100%",
+          maxWidth: 640,
+          alignSelf: "center",
         },
       }}
     >
@@ -107,7 +111,6 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Accueil",
-          tabBarLabel: () => null,
           tabBarIcon: ({ focused }) => <JatekTabIcon focused={focused} />,
         }}
       />

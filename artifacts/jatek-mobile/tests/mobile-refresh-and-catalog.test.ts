@@ -538,9 +538,9 @@ test("home keeps whitespace between the header, categories, and banners without 
   assert.match(page, /bannerSlot:\s*\{[\s\S]*paddingVertical: 6/);
 });
 
-test("home shows three products at once in one horizontal row for promos and nouveautés", () => {
+test("home adapts visible product count to phone and tablet widths", () => {
   const page = source("app/(tabs)/index.tsx");
-  assert.match(page, /const PROMO_PRODUCT_WIDTH = \(width - 48\) \/ 3/);
+  assert.match(page, /const PROMO_PRODUCT_WIDTH = \(layoutWidth - 48\) \/ \(isTablet \? 4 : 3\)/);
   assert.match(page, /styles\.promoProductGrid/);
   assert.match(page, /queryKey: \["home-products-newest"\]/);
   assert.match(page, /products=\{newestProducts\?\.slice\(0, limit\)\}/);

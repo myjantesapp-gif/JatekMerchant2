@@ -40,7 +40,9 @@
         "paths": ["~/.gradle/caches", "~/.gradle/wrapper"]
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "ma.jatek.app",
+        "EXPO_PUBLIC_DOMAIN": "api.jatek.app",
+        "EXPO_PUBLIC_API_URL": "https://api.jatek.app",
+        "EAS_UPDATE_CHANNEL": "preview",
         "EXPO_PUBLIC_PROJECT_ID": "73e947fb-0a5a-4064-aafe-c856e231c9d4",
         "PNPM_VERSION": "10.26.1",
         "EXPO_OWNER": "jatekapp",
@@ -58,13 +60,15 @@
       "node": "20.20.0",
       "pnpm": "10.26.1",
       "channel": "production",
+      "credentialsSource": "remote",
       "cache": {
         "key": "gradle-prod-v1",
         "paths": ["~/.gradle/caches", "~/.gradle/wrapper"]
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "ma.jatek.app",
-        "EXPO_PUBLIC_API_URL": "https://ma.jatek.app",
+        "EXPO_PUBLIC_DOMAIN": "api.jatek.app",
+        "EXPO_PUBLIC_API_URL": "https://api.jatek.app",
+        "EAS_UPDATE_CHANNEL": "production",
         "EXPO_PUBLIC_PROJECT_ID": "73e947fb-0a5a-4064-aafe-c856e231c9d4",
         "PNPM_VERSION": "10.26.1",
         "EXPO_OWNER": "jatekapp",
@@ -75,10 +79,22 @@
       },
       "android": {
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "testflight": {
+      "extends": "production",
+      "distribution": "store",
+      "channel": "production",
+      "ios": {
+        "simulator": false
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "testflight": {}
   }
 }

@@ -7,23 +7,33 @@ import {
   getYouTubeVideoId,
   resolveMediaUrl,
 } from "../lib/mediaUrl";
+import { getApiBase, getApiBaseSafe } from "../lib/apiBase";
+
+test("pins all business requests to the canonical remote API", () => {
+  assert.equal(getApiBase(), "https://api.jatek.app");
+  assert.equal(getApiBaseSafe(), "https://api.jatek.app");
+});
 
 test("resolves every supported App Storage path through the real API route", () => {
   assert.equal(
     resolveMediaUrl("/objects/medias/product-id"),
-    "https://ma.jatek.app/api/storage/objects/medias/product-id",
+    "https://api.jatek.app/api/storage/objects/medias/product-id",
   );
   assert.equal(
     resolveMediaUrl("objects/shorts/video-id?version=2"),
-    "https://ma.jatek.app/api/storage/objects/shorts/video-id?version=2",
+    "https://api.jatek.app/api/storage/objects/shorts/video-id?version=2",
   );
   assert.equal(
     resolveMediaUrl("/api/storage/objects/banners/banner-id"),
-    "https://ma.jatek.app/api/storage/objects/banners/banner-id",
+    "https://api.jatek.app/api/storage/objects/banners/banner-id",
   );
   assert.equal(
     resolveMediaUrl("https://api.jatek.app/objects/logos/logo-id"),
     "https://api.jatek.app/api/storage/objects/logos/logo-id",
+  );
+  assert.equal(
+    resolveMediaUrl("https://ma.jatek.app/objects/logos/logo-id?size=small"),
+    "https://api.jatek.app/api/storage/objects/logos/logo-id?size=small",
   );
 });
 
@@ -43,7 +53,7 @@ test("deduplicates fallbacks and derives posters for supported YouTube URLs", ()
   assert.deepEqual(
     getMediaUrlCandidates("/objects/images/a", " /objects/images/a ", null, "https://cdn.example.com/a"),
     [
-      "https://ma.jatek.app/api/storage/objects/images/a",
+      "https://api.jatek.app/api/storage/objects/images/a",
       "https://cdn.example.com/a",
     ],
   );

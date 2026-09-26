@@ -3,7 +3,7 @@
 - [OpenAPI Zod codegen compatibility](openapi-zod-codegen.md) — Orval emits Zod 4 helpers while this workspace uses Zod 3; preserve the compatibility adapter when regenerating.
 - [Jatek notification route order](jatek-notification-routes.md) — PATCH /notifications/read-all must be registered before /notifications/:id/read in Express to avoid route-param capture.
 - [Jatek mobile API base resolution](jatek-mobile-apibase.md) — Always use getApiBaseSafe() from lib/apiBase.ts, never raw process.env.EXPO_PUBLIC_DOMAIN, which is empty in LAN/Expo-Go dev mode.
-- [Jatek mobile EAS build setup](jatek-mobile-eas.md) — EAS + pnpm workspace quirks: use app.config.js not .ts, set PNPM_VERSION=10.0.0, run via node_modules/.bin/eas.
+- [Jatek mobile plist parsing](jatek-mobile-plist-compatibility.md) — Keep the safe XML parser pin and Expo plist MIME-type patch for iOS app configuration.
 - [GitHub push auth](git-push-auth.md) — push via GIT_TOKEN as Basic auth header, never in the remote URL; Git pane pushes fail until user connects GitHub to Replit.
 - [Admin profile verification](admin-profile-verification.md) — admin-created restaurants/drivers are operationally verified and complete; never invent legal identity data for legacy profiles.
 - [Mobile production Expo project](mobile-production-expo-project.md) — published mobile manifest fallback must match the current static Expo config, EAS project, and preview channel.
@@ -56,5 +56,5 @@
 - [Expo project authorization](expo-project-authorization.md) — the Expo MCP connection can be healthy while the Jatek project still rejects build access.
 - [Driver Socket.IO deployment](driver-socketio-deployment.md) — the client fallback cannot enable realtime until the API domain mounts Socket.IO and bridges the existing event bus.
 - [Security dependency lock refresh](security-dependency-lock-refresh.md) — after adding pnpm security overrides, refresh node_modules online before offline validation because the store may lack new tarballs.
-- [Metro image-size compatibility](metro-image-size-compat.md) — keep the safe image-size override and preload the path-to-buffer adapter for Expo production bundles.
+- [Metro image-size compatibility](metro-image-size-compat.md) — pass the file-path adapter to Metro’s CLI and worker processes through NODE_OPTIONS.
 - [PDFKit runtime dependency](pdfkit-runtime-dependency.md) — bundled PDFKit/fontkit output can require @swc/helpers directly at API runtime.

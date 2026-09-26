@@ -1,0 +1,8 @@
+diff --git a/build/parse.js b/build/parse.js
+index 8cc98c4..7fe4b4b 100644
+--- a/build/parse.js
++++ b/build/parse.js
+@@ -69,1 +69,1 @@
+-    const doc = new xmldom_1.DOMParser({ errorHandler() { } }).parseFromString(xml);
++    const doc = new xmldom_1.DOMParser({ errorHandler() { } }).parseFromString(xml, 'text/xml');
+*** End Patch

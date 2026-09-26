@@ -36,8 +36,7 @@ import colors from "@/constants/colors";
 
 const INTRO_BACKGROUND = colors.light.introBackground;
 
-// Configure the API base URL — robustly resolves from EXPO_PUBLIC_DOMAIN, then
-// expo-constants extra, then Metro hostUri (LAN dev). Never throws at boot.
+// Configure the customer API client to use the canonical remote backend.
 const apiBase = getApiBaseSafe();
 console.log(`[Boot] API base = ${apiBase}`);
 setBaseUrl(apiBase);

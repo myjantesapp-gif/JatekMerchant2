@@ -1,6 +1,23 @@
+// Expo's dev Metro process does not use scripts/build.js, so preload the same
+// compatibility adapter in Metro workers before they transform image assets.
+const path = require("path");
+const imageSizeCompatPath = path.join(
+  __dirname,
+  "scripts/image-size-compat.js",
+);
+const currentNodeOptions = process.env.NODE_OPTIONS || "";
+if (!currentNodeOptions.includes(imageSizeCompatPath)) {
+  process.env.NODE_OPTIONS = [
+    currentNodeOptions,
+    `--require=${imageSizeCompatPath}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+require(imageSizeCompatPath);
+
 const { getDefaultConfig } = require("expo/metro-config");
 const fs = require("fs");
-const path = require("path");
 
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, "../..");

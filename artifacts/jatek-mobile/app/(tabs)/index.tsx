@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   Image,
   Linking,
   Pressable,
@@ -56,7 +55,6 @@ import { JatekLogoBadge } from "@/components/JatekLogoBadge";
 import { JatekIcon } from "@/components/JatekIcon";
 import colors from "@/constants/colors";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PINK = "#E91E63";
 const NAVY = "#0F172A";
 const MUTED = colors.light.mutedForeground;
@@ -69,10 +67,7 @@ const TURQUOISE_TINT = "#F0FAFB";
 const HEADER_PINK = "#E91E63";
 const HEADER_ACCENT = "#FFD0E0";
 const CATEGORY_GAP = 8;
-const CATEGORY_WIDTH = (SCREEN_WIDTH - 32 - CATEGORY_GAP * 3) / 4;
 const SHORT_GAP = 8;
-const SHORT_WIDTH = (SCREEN_WIDTH - 32 - SHORT_GAP * 2) / 3;
-const STORE_WIDTH = Math.max(0, (SCREEN_WIDTH - 32 - 12) / 2);
 const HORIZONTAL_PRODUCT_LIMIT = 12;
 type HomeSectionViewConfig = Omit<HomeSectionConfig, "key">;
 
@@ -184,7 +179,7 @@ function RemoteBackendNotice({ onRetry }: { onRetry: () => void }) {
       <View style={styles.remoteNoticeCopy}>
         <Text style={styles.remoteNoticeTitle}>Service Jatek indisponible</Text>
         <Text style={styles.remoteNoticeText}>
-          Le catalogue et les contenus doivent venir de ma.jatek.app. Aucun contenu local n’est affiché.
+          Le catalogue et les contenus doivent venir de api.jatek.app. Aucun contenu local n’est affiché.
         </Text>
       </View>
       <Pressable onPress={onRetry} accessibilityRole="button" style={styles.remoteNoticeRetry}>
@@ -196,9 +191,11 @@ function RemoteBackendNotice({ onRetry }: { onRetry: () => void }) {
 
 function CategoryRow({
   categories,
+  itemWidth,
   onPress,
 }: {
   categories: HomeCategory[];
+  itemWidth: number;
   onPress: (category: HomeCategory) => void;
 }) {
   return (
@@ -215,7 +212,7 @@ function CategoryRow({
           testID={`home-category-${category.key}`}
           accessibilityRole="button"
           accessibilityLabel={category.label}
-          style={({ pressed }) => [styles.categoryItem, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.categoryItem, { width: itemWidth }, pressed && styles.pressed]}
         >
           <View style={styles.categoryIcon}>
             <Ionicons name={category.icon} size={33} color={category.accent} />
@@ -394,8 +391,14 @@ function ProductRail({
 
 function HomeScreen() {
   const { width } = useWindowDimensions();
-  const PROMO_PRODUCT_WIDTH = (width - 48) / 3;
-  const OFFER_CARD_WIDTH = Math.max(0, width - 32);
+  const layoutWidth = Math.min(width, 1280);
+  const isTablet = width >= 768;
+  const categoryColumns = Math.max(4, Math.min(8, Math.floor((layoutWidth - 32 + CATEGORY_GAP) / (112 + CATEGORY_GAP))));
+  const categoryWidth = (layoutWidth - 32 - CATEGORY_GAP * (categoryColumns - 1)) / categoryColumns;
+  const shortWidth = Math.min(152, (layoutWidth - 32 - SHORT_GAP * 2) / 3);
+  const PROMO_PRODUCT_WIDTH = (layoutWidth - 48) / (isTablet ? 4 : 3);
+  const OFFER_CARD_WIDTH = Math.max(0, Math.min(layoutWidth - 32, 680));
+  const storeRailWidth = Math.min(layoutWidth - 32, isTablet ? 360 : width * 0.65);
   const PRODUCT_GRID_WIDTH = PROMO_PRODUCT_WIDTH;
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -697,7 +700,7 @@ function HomeScreen() {
                 onRetry={() => void refetchCategories()}
               />
             ) : categories.length > 0 ? (
-              <CategoryRow categories={categories} onPress={openCategory} />
+              <CategoryRow categories={categories} itemWidth={categoryWidth} onPress={openCategory} />
             ) : (
               <Text style={styles.empty}>Aucune catégorie disponible</Text>
             )}
@@ -736,7 +739,7 @@ function HomeScreen() {
                   <ShortCard
                     key={short.id}
                     short={short}
-                    width={SHORT_WIDTH}
+                    width={shortWidth}
                     variant="home"
                     avatarUrl={
                       short.restaurantLogoUrl ??
@@ -767,7 +770,7 @@ function HomeScreen() {
               error={config.source === "promos" ? promoProductsError : config.source === "newest" ? newestProductsError : popularProductsError}
               empty="Aucun produit populaire pour le moment"
               onRetry={() => void (config.source === "promos" ? refetchPromoProducts() : config.source === "newest" ? refetchNewestProducts() : refetchPopularProducts())}
-              width={PRODUCT_GRID_WIDTH}
+              width={PROMO_PRODUCT_WIDTH}
               onProductPress={openProduct}
               variant="home-popular"
               keyPrefix="popular"
@@ -786,7 +789,7 @@ function HomeScreen() {
               error={recommendedProductsError}
               empty="Aucun produit recommandé pour le moment"
               onRetry={() => void refetchRecommendedProducts()}
-              width={PRODUCT_GRID_WIDTH}
+              width={PROMO_PRODUCT_WIDTH}
               onProductPress={openProduct}
               variant="home-popular"
               keyPrefix="recommended-products"
@@ -811,7 +814,7 @@ function HomeScreen() {
                   <StoreCard
                     key={`recommended-${restaurant.id}`}
                     restaurant={restaurant as Restaurant}
-                    width={SCREEN_WIDTH * 0.65}
+                    width={storeRailWidth}
                     variant="home"
                     showFee
                     onPress={() => router.push({ pathname: "/restaurant/[id]", params: { id: String(restaurant.id) } })}
@@ -867,7 +870,7 @@ function HomeScreen() {
                   <StoreCard
                     key={`${key}-${restaurant.id}`}
                     restaurant={restaurant}
-                    width={SCREEN_WIDTH * 0.65}
+                    width={storeRailWidth}
                     variant="home"
                      badgeLabel={
                        (promoRestaurantIds.has(restaurant.id) || promoProducts?.some((product) => product.restaurantId === restaurant.id))
@@ -1080,9 +1083,11 @@ function HomeScreen() {
         }
       >
         {appConfigError ? <RemoteBackendNotice onRetry={() => void refetchAppConfig()} /> : null}
-        {homeOrder.map((key) => (
-          <React.Fragment key={key}>{renderHomeSection(key)}</React.Fragment>
-        ))}
+        <View style={styles.wideContent}>
+          {homeOrder.map((key) => (
+            <React.Fragment key={key}>{renderHomeSection(key)}</React.Fragment>
+          ))}
+        </View>
       </ScrollView>
 
       <AddressQuickPicker visible={addressPickerOpen} onClose={() => setAddressPickerOpen(false)} />
@@ -1233,7 +1238,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   categoryItem: {
-    width: CATEGORY_WIDTH,
     minHeight: 90,
     paddingTop: 8,
     paddingBottom: 8,
@@ -1274,6 +1278,11 @@ const styles = StyleSheet.create({
     marginTop: 0,
     paddingBottom: 0,
     backgroundColor: WHITE,
+  },
+  wideContent: {
+    width: "100%",
+    maxWidth: 1280,
+    alignSelf: "center",
   },
   shortsSection: {
     marginTop: 18,

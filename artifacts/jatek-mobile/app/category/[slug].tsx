@@ -10,8 +10,8 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
-  Dimensions,
   RefreshControl,
+  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,7 +46,6 @@ const TEXT_MUTED = "#6B7280";
 const CARD_BG = "#FFFFFF";
 const BG = "#FAFAFA";
 const STAR = "#FFB400";
-const { width: SCREEN_W } = Dimensions.get("window");
 
 // ─── Sub-category config per slug ─────────────────────────────────────────────
 type SubcatConfig = {
@@ -123,16 +122,18 @@ function PromoBannerCard({
   subtitle,
   bgColor,
   badge,
+  width,
   onPress,
 }: {
   title: string;
   subtitle: string;
   bgColor: string;
   badge: string;
+  width: number;
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.promoCard, { backgroundColor: bgColor }, pressed && { opacity: 0.92 }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.promoCard, { backgroundColor: bgColor, width }, pressed && { opacity: 0.92 }]}>
       <View style={styles.promoBadge}>
         <Ionicons name="star" size={11} color="#fff" />
         <Text style={styles.promoBadgeTxt}>{badge}</Text>
@@ -219,6 +220,8 @@ function EmptyCategorySection({ color, label }: { color: string; label: string }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CategoryScreen() {
+  const { width } = useWindowDimensions();
+  const gridColumns = width >= 1200 ? 4 : width >= 760 ? 3 : 2;
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const insets = useSafeAreaInsets();
   const { selectedAddress } = useCart();
@@ -392,7 +395,7 @@ export default function CategoryScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(r) => String(r.id)}
-        numColumns={2}
+        numColumns={gridColumns}
         contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 24 }]}
         columnWrapperStyle={{ gap: 12 }}
         showsVerticalScrollIndicator={false}
@@ -438,6 +441,7 @@ export default function CategoryScreen() {
                       subtitle={i % 2 === 0 ? "-20% sur votre première commande" : "Livraison gratuite aujourd'hui"}
                       bgColor={i % 2 === 0 ? config.color : "#0A1B3D"}
                       badge={i % 2 === 0 ? "VIP" : "PROMO"}
+                      width={Math.min(width * 0.78, 480)}
                       onPress={() => {
                         trackBannerClick(p.id);
                         goRestaurant(p.id);
@@ -648,7 +652,6 @@ const styles = StyleSheet.create({
   vipTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: TEXT_DARK, letterSpacing: -0.2 },
   vipRow: { paddingHorizontal: SIDE, gap: 12, paddingVertical: 2 },
   promoCard: {
-    width: SCREEN_W * 0.78,
     height: 110,
     borderRadius: 16,
     padding: 16,

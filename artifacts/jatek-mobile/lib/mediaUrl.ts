@@ -1,4 +1,4 @@
-import { getApiBaseSafe } from "./apiBase";
+import { getApiBaseSafe, REMOTE_API_BASE } from "./apiBase";
 
 /**
  * API media fields may contain either an external URL or a server-relative
@@ -26,6 +26,9 @@ export function resolveMediaUrl(url?: string | null): string | undefined {
       const parsed = new URL(normalizedValue);
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
       const pathname = canonicalPath(parsed.pathname);
+      if (parsed.hostname.toLowerCase() === "ma.jatek.app" || parsed.hostname.toLowerCase() === "api.jatek.app") {
+        return `${REMOTE_API_BASE}${pathname}${parsed.search}${parsed.hash}`;
+      }
       return pathname === parsed.pathname
         ? parsed.toString()
         : `${parsed.origin}${pathname}${parsed.search}${parsed.hash}`;

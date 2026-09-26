@@ -1,6 +1,6 @@
-// The mobile product is intentionally pinned to the public API. Do not route
-// customer data through Metro, localhost, or a Replit preview server.
-const REMOTE_API_BASE = "https://ma.jatek.app";
+// Customer and merchant business data must use the canonical remote API. Never
+// route requests through Metro, localhost, or a Replit preview server.
+export const REMOTE_API_BASE = "https://api.jatek.app";
 
 /** Resolves the only permitted mobile API host. */
 export function getApiBase(): string {

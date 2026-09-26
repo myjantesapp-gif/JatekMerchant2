@@ -77,6 +77,7 @@ export default function HomeSectionScreen() {
   const { key } = useLocalSearchParams<{ key: string }>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const gridColumns = width >= 1100 ? 4 : width >= 760 ? 3 : 2;
   const sectionKey = key as HomeSectionKey;
   const { data: appConfig, isLoading: configLoading } = useQuery({
     queryKey: ["public-app-config", "home-section", sectionKey],
@@ -164,7 +165,8 @@ export default function HomeSectionScreen() {
     restaurants,
     source,
   ]);
-  const cardWidth = Math.max(0, (width - 48) / 2);
+  const contentWidth = Math.min(width, 1280);
+  const cardWidth = Math.max(0, (contentWidth - 32 - 16 * (gridColumns - 1)) / gridColumns);
   const renderItem = useCallback(({ item }: { item: GridEntry }) => {
     if (item.kind === "product") {
       const product = item.value;
@@ -226,12 +228,12 @@ export default function HomeSectionScreen() {
         keyExtractor={(item) => item.kind === "product"
           ? `product-${item.value.restaurantId}-${item.value.id}`
           : `restaurant-${item.value.id}`}
-        numColumns={2}
+        numColumns={gridColumns}
         columnWrapperStyle={styles.gridRow}
         ItemSeparatorComponent={() => <View style={styles.rowSeparator} />}
         ListEmptyComponent={emptyContent}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[styles.content, { width: "100%", maxWidth: 1280, alignSelf: "center", paddingBottom: insets.bottom + 32 }]}
         initialNumToRender={8}
         maxToRenderPerBatch={8}
         updateCellsBatchingPeriod={40}
