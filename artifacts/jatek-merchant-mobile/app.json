@@ -2,6 +2,7 @@
   "expo": {
     "name": "Jatek Merchant",
     "slug": "jatek-merchant-mobile",
+    "owner": "jateksys",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +11,10 @@
     "ios": {
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "package": "app.jatek.merchant",
+      "versionCode": 1
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -28,6 +32,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "894f0535-7157-444f-9641-a4e0f2430b98"
+      }
     }
   }
 }
