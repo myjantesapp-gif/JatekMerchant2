@@ -10,8 +10,25 @@ import { ScreenHeader, useBottomPad } from '@/components/ScreenHeader';
 import type { Order } from '@/lib/api-core';
 
 const ACTIVE = new Set(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'assigned', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'on_the_way', 'delivering']);
-const CLOSED = new Set(['delivered', 'completed', 'cancelled', 'rejected', 'refunded']);
-type Filter = 'all' | 'active' | 'done';
+type Filter = 'all' | 'pending' | 'accepted' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+const FILTERS = [
+  { key: 'all', label: 'Toutes' },
+  { key: 'pending', label: 'En attente' },
+  { key: 'accepted', label: 'Acceptées' },
+  { key: 'preparing', label: 'En préparation' },
+  { key: 'ready', label: 'Prêtes' },
+  { key: 'delivered', label: 'Livrées' },
+  { key: 'cancelled', label: 'Annulées' },
+] as const;
+const EMPTY_FILTER_LABEL: Record<Filter, string> = {
+  all: 'Aucune commande',
+  pending: 'Aucune commande en attente',
+  accepted: 'Aucune commande acceptée',
+  preparing: 'Aucune commande en préparation',
+  ready: 'Aucune commande prête',
+  delivered: 'Aucune commande livrée',
+  cancelled: 'Aucune commande annulée',
+};
 
 export default function OrdersScreen() {
   const c = useColors();
@@ -25,14 +42,19 @@ export default function OrdersScreen() {
 
   const counts = useMemo(() => ({
     all: orders.length,
-    active: orders.filter((o) => ACTIVE.has(o.status)).length,
-    done: orders.filter((o) => CLOSED.has(o.status)).length,
+    pending: orders.filter((o) => o.status === 'pending').length,
+    accepted: orders.filter((o) => o.status === 'accepted').length,
+    preparing: orders.filter((o) => o.status === 'preparing').length,
+    ready: orders.filter((o) => o.status === 'ready').length,
+    delivered: orders.filter((o) => o.status === 'delivered').length,
+    cancelled: orders.filter((o) => o.status === 'cancelled').length,
   }), [orders]);
+  const activeCount = useMemo(() => orders.filter((o) => ACTIVE.has(o.status)).length, [orders]);
   const pendingCount = useMemo(() => orders.filter((o) => o.status === 'pending').length, [orders]);
   const list = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('fr');
     return orders
-      .filter((o) => filter === 'all' || (filter === 'active' ? ACTIVE : CLOSED).has(o.status))
+      .filter((o) => filter === 'all' || o.status === filter)
       .filter((o) => {
         if (!term) return true;
         return [o.reference, String(o.id), o.userName, o.restaurantName]
@@ -79,7 +101,7 @@ export default function OrdersScreen() {
     );
   };
 
-  const filterLabel = search.trim() ? 'Aucun résultat' : filter === 'all' ? 'Aucune commande' : filter === 'active' ? 'Aucune commande en cours' : 'Aucune commande clôturée';
+  const filterLabel = search.trim() ? 'Aucun résultat' : EMPTY_FILTER_LABEL[filter];
   const emptyMessage = search.trim()
     ? 'Essayez une autre référence, un autre client ou une autre boutique.'
     : 'Les nouvelles commandes de vos boutiques apparaîtront ici. Tirez pour actualiser.';
@@ -87,7 +109,7 @@ export default function OrdersScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
       <ScreenHeader
-        kicker={q.data ? pendingCount ? `${pendingCount} à confirmer` : `${counts.active} en cours` : 'Jatek marchand'}
+        kicker={q.data ? pendingCount ? `${pendingCount} à confirmer` : `${activeCount} en cours` : 'Jatek marchand'}
         title="Commandes"
       />
       {q.data ? (
@@ -119,12 +141,9 @@ export default function OrdersScreen() {
             ) : null}
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.chips, { paddingHorizontal: horizontalPadding }]} style={{ flexGrow: 0 }}>
-            {([
-              ['all', `Toutes · ${counts.all}`],
-              ['active', `En cours · ${counts.active}`],
-              ['done', `Clôturées · ${counts.done}`],
-            ] as const).map(([key, label]) => {
+            {FILTERS.map(({ key, label }) => {
               const selected = filter === key;
+              const count = key === 'all' ? counts.all : counts[key];
               return (
                 <Pressable
                   key={key}
@@ -134,7 +153,7 @@ export default function OrdersScreen() {
                   onPress={() => setFilter(key)}
                   style={[s.chip, { backgroundColor: selected ? c.ink : c.card, borderColor: selected ? c.ink : c.border }]}
                 >
-                  <Text style={[s.chipText, { color: selected ? c.inkForeground : c.foreground }]}>{label}</Text>
+                  <Text style={[s.chipText, { color: selected ? c.inkForeground : c.foreground }]}>{label} · {count}</Text>
                 </Pressable>
               );
             })}

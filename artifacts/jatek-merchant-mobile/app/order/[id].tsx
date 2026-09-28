@@ -1,12 +1,55 @@
 import React from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Linking, Platform, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { useMutation } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { nextMerchantOrderStatus, useOrder, useUpdateOrderStatus } from '@/lib/merchant-data';
 import { dateTime, money, parseExtras } from '@/lib/format';
 import { Button, ErrorState, SkeletonCards, StateView, StatusPill, font, styles as ui } from '@/components/ui';
+import { API_BASE_URL, ApiError, buildApiUrl, frenchMessage } from '@/lib/api-core';
+import { getSessionToken, notifyUnauthorized } from '@/lib/query-client';
+import { useAuth } from '@/lib/auth';
+
+const cancellableStatuses = new Set(['pending', 'accepted', 'confirmed', 'preparing']);
+
+async function fetchDocument(path: string, filename: string, token: string): Promise<void> {
+  const endpoint = buildApiUrl(path);
+  if (Platform.OS === 'web') {
+    const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) {
+      if (response.status === 401) notifyUnauthorized(token);
+      throw new ApiError(response.status, frenchMessage(response.status));
+    }
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(objectUrl);
+    return;
+  }
+  if (!FileSystem.documentDirectory) throw new ApiError(0, 'Le stockage local est indisponible.');
+  const result = await FileSystem.downloadAsync(endpoint, `${FileSystem.documentDirectory}${filename}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (result.status < 200 || result.status >= 300) {
+    if (result.status === 401) notifyUnauthorized(token);
+    throw new ApiError(result.status, frenchMessage(result.status));
+  }
+  if (!(await Sharing.isAvailableAsync())) throw new ApiError(0, 'Le partage de fichiers est indisponible sur cet appareil.');
+  await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', dialogTitle: 'Partager le document Jatek' });
+}
+
+function receiptUrl(id: number, token: string) {
+  return `${API_BASE_URL}/api/orders/${id}/receipt?token=${encodeURIComponent(token)}`;
+}
 
 export default function OrderDetailScreen() {
   const c = useColors();
@@ -16,6 +59,26 @@ export default function OrderDetailScreen() {
   const orderId = Number(id);
   const q = useOrder(orderId);
   const updateStatus = useUpdateOrderStatus();
+  const { token } = useAuth();
+  const [documentError, setDocumentError] = React.useState('');
+  const [downloading, setDownloading] = React.useState<string | null>(null);
+  const cancelOrder = useMutation({
+    mutationFn: async () => {
+      const capturedToken = token || getSessionToken();
+      if (!capturedToken) throw new ApiError(401, 'Session absente.');
+      const response = await fetch(buildApiUrl(`/api/orders/${orderId}/status`), {
+        method: 'PATCH',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: `Bearer ${capturedToken}` },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+      if (!response.ok) {
+        if (response.status === 401) notifyUnauthorized(capturedToken);
+        throw new ApiError(response.status, frenchMessage(response.status));
+      }
+      return response;
+    },
+    onSuccess: () => void q.refetch(),
+  });
   const o = q.data;
   const nextStatus = o ? nextMerchantOrderStatus(o.status) : null;
   const action = nextStatus === 'accepted'
@@ -26,6 +89,51 @@ export default function OrderDetailScreen() {
         ? { label: 'Marquer prête', icon: 'check' as const }
         : null;
   const horizontalPadding = width < 360 ? 14 : 16;
+  const busy = updateStatus.isPending || cancelOrder.isPending || downloading !== null;
+
+  const confirmCancel = () => {
+    const run = () => cancelOrder.mutate();
+    if (Platform.OS === 'web') {
+      if (window.confirm('Voulez-vous vraiment annuler cette commande ?')) run();
+    } else {
+      Alert.alert('Annuler la commande ?', 'Cette action ne peut pas être annulée.', [
+        { text: 'Garder la commande', style: 'cancel' },
+        { text: 'Annuler', style: 'destructive', onPress: run },
+      ]);
+    }
+  };
+
+  const download = async (kind: 'receipt' | 'invoice') => {
+    const capturedToken = token || getSessionToken();
+    if (!capturedToken) {
+      setDocumentError('Session absente. Reconnectez-vous puis réessayez.');
+      return;
+    }
+    const filename = kind === 'receipt' ? `jatek-ticket-${orderId}.pdf` : `jatek-facture-${orderId}.pdf`;
+    setDocumentError('');
+    setDownloading(kind);
+    try {
+      await fetchDocument(`/api/orders/${orderId}/${kind === 'receipt' ? 'receipt' : 'invoice'}.pdf`, filename, capturedToken);
+    } catch (error) {
+      setDocumentError(error instanceof Error ? error.message : 'Le document n’a pas pu être téléchargé.');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const printReceipt = async () => {
+    const capturedToken = token || getSessionToken();
+    if (!capturedToken) {
+      setDocumentError('Session absente. Reconnectez-vous puis réessayez.');
+      return;
+    }
+    try {
+      const opened = await Linking.openURL(receiptUrl(orderId, capturedToken));
+      void opened;
+    } catch {
+      setDocumentError('Impossible d’ouvrir le reçu. Vérifiez votre connexion puis réessayez.');
+    }
+  };
 
   if (!Number.isInteger(orderId) || orderId <= 0) return <StateView icon="alert-triangle" title="Commande invalide" />;
 
@@ -100,24 +208,25 @@ export default function OrderDetailScreen() {
               <Line label="Total" value={money(o.total, o.currency)} strong />
             </View>
           </ScrollView>
-          {action && nextStatus ? (
+          {o && (action || cancellableStatuses.has(o.status) || documentError) ? (
             <View style={[s.actionFooter, { paddingHorizontal: horizontalPadding, paddingBottom: Math.max(insets.bottom, 12), backgroundColor: c.card, borderTopColor: c.border }]} testID="order-action-footer">
-              {updateStatus.isError ? (
+              {(updateStatus.isError || cancelOrder.isError || documentError) ? (
                 <View accessibilityRole="alert" style={[s.actionError, { backgroundColor: '#d8393514', borderRadius: c.radius }]}>
                   <Feather name="alert-circle" size={16} color={c.destructive} />
                   <Text style={[s.meta, { color: c.destructive, flex: 1 }]}>
-                    {updateStatus.error instanceof Error ? updateStatus.error.message : 'Mise à jour impossible. Réessayez.'}
+                    {documentError || (cancelOrder.error instanceof Error ? cancelOrder.error.message : updateStatus.error instanceof Error ? updateStatus.error.message : 'Mise à jour impossible. Réessayez.')}
                   </Text>
                 </View>
               ) : null}
-              <Button
-                testID="order-status-action"
-                label={action.label}
-                icon={action.icon}
-                loading={updateStatus.isPending}
-                onPress={() => updateStatus.mutate({ id: orderId, status: nextStatus })}
-                accessibilityHint="Mettre à jour le statut et prévenir le client"
-              />
+              <View style={s.actionRow}>
+                {action && nextStatus ? <Button testID="order-status-action" label={action.label} icon={action.icon} loading={busy} onPress={() => updateStatus.mutate({ id: orderId, status: nextStatus }, { onSuccess: () => void q.refetch() })} accessibilityHint="Mettre à jour le statut et prévenir le client" /> : null}
+                {cancellableStatuses.has(o.status) ? <Button testID="order-cancel-action" label="Annuler" icon="x-circle" variant="danger" loading={busy} onPress={confirmCancel} /> : null}
+              </View>
+              <View style={s.actionRow}>
+                <Button testID="order-print-receipt" label="Imprimer le reçu" icon="printer" variant="outline" disabled={busy} onPress={() => void printReceipt()} accessibilityHint="Ouvrir le reçu dans le navigateur pour impression" />
+                <Button testID="order-share-receipt" label={Platform.OS === 'web' ? 'Télécharger le ticket PDF' : 'Partager le ticket PDF'} icon="file-text" variant="outline" loading={downloading === 'receipt'} disabled={busy} onPress={() => void download('receipt')} accessibilityHint="Partager le PDF ou le télécharger pour l’imprimer" />
+              </View>
+              <Button testID="order-share-invoice" label={Platform.OS === 'web' ? 'Télécharger la facture PDF' : 'Partager la facture PDF'} icon="download" variant="outline" loading={downloading === 'invoice'} disabled={busy} onPress={() => void download('invoice')} accessibilityHint="Partager le PDF ou le télécharger pour l’imprimer" />
             </View>
           ) : null}
         </>
@@ -153,6 +262,7 @@ const s = StyleSheet.create({
   hero: { padding: 20, gap: 8 },
   stale: { flexDirection: 'row', gap: 8, padding: 10, alignItems: 'center' },
   actionFooter: { gap: 10, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionError: { flexDirection: 'row', gap: 8, padding: 10, alignItems: 'flex-start' },
   total: { fontFamily: font.bold, fontSize: 32, marginTop: 6 },
   heroMeta: { fontFamily: font.regular, fontSize: 13 },

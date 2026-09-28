@@ -711,6 +711,19 @@ importers:
         version: 7.3.6(@types/node@25.9.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0)
 
   artifacts/jatek-merchant-mobile:
+    dependencies:
+      '@expo-google-fonts/dm-sans':
+        specifier: ^0.4.2
+        version: 0.4.2
+      '@expo-google-fonts/syne':
+        specifier: ^0.4.2
+        version: 0.4.2
+      expo-file-system:
+        specifier: ~57.0.7
+        version: 57.0.7(expo@57.0.24)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))
+      expo-sharing:
+        specifier: ~57.0.22
+        version: 57.0.22(expo@57.0.24)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
     devDependencies:
       '@babel/core':
         specifier: ^7.25.2
@@ -2031,6 +2044,9 @@ packages:
     cpu: [x64]
     os: [linux]
 
+  '@expo-google-fonts/dm-sans@0.4.2':
+    resolution: {integrity: sha512-e/fLH5aCJzkEenz7axvEn8N7IJAKhUwNjIxS75h9j+Ip1M9S7d22M19gJN3A7QW4egVkBJRyQh1hQFhngQn9yA==}
+
   '@expo-google-fonts/inter@0.4.2':
     resolution: {integrity: sha512-syfiImMaDmq7cFi0of+waE2M4uSCyd16zgyWxdPOY7fN2VBmSLKEzkfbZgeOjJq61kSqPBNNtXjggiQiSD6gMQ==}
 
@@ -2039,6 +2055,9 @@ packages:
 
   '@expo-google-fonts/montserrat@0.4.2':
     resolution: {integrity: sha512-Xyq7rKJhhZOE1Xk4wKSSVoUeOkFmQEMhtZ3pdFrgYckGZMs115Apmld1AI8Ju+yrl5GzDdfRCCqRr33dvEDYUA==}
+
+  '@expo-google-fonts/syne@0.4.2':
+    resolution: {integrity: sha512-H8VJqvbZRfbfhzAcBa0N++j/2b//RuadZE+VhZ6hzUUtlCw4CyTBrQN7G2UZ+w5DCkFQyRgZ17pmFYy6b0or4Q==}
 
   '@expo/apple-utils@2.1.22':
     resolution: {integrity: sha512-3EWFfJ8lN0whytDSyyEMS9c+RixGQarb2NEtDYJLwN9q4blhEcMUI/XQox4f2Sfl18FXPrln1nLaCe2jHCruOA==}
@@ -5559,6 +5578,13 @@ packages:
   expo-server@57.0.3:
     resolution: {integrity: sha512-aK+LdKzauHSGmsOStZtyxdzv0zWssCkxTw3m4QuOhfDSJsZaMRTd9O41d8ixU/QfELTbaJ0oRNcF7JFV/7O9YQ==}
     engines: {node: '>=20.16.0'}
+
+  expo-sharing@57.0.22:
+    resolution: {integrity: sha512-IWmiz0Dnjd7ifsZ2Gg5XODxb6DQoJ4/H6FofW9bTL9gDjfX2+va8SV1BYVkFvJ8vKQoKR4HgkMCKDCZlrrbKkg==}
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
 
   expo-splash-screen@31.0.13:
     resolution: {integrity: sha512-1epJLC1cDlwwj089R2h8cxaU5uk4ONVAC+vzGiTZH4YARQhL4Stlz1MbR6yAS173GMosvkE6CAeihR7oIbCkDA==}
@@ -9750,11 +9776,15 @@ snapshots:
   '@esbuild/linux-x64@0.27.3':
     optional: true
 
+  '@expo-google-fonts/dm-sans@0.4.2': {}
+
   '@expo-google-fonts/inter@0.4.2': {}
 
   '@expo-google-fonts/material-symbols@0.4.48': {}
 
   '@expo-google-fonts/montserrat@0.4.2': {}
+
+  '@expo-google-fonts/syne@0.4.2': {}
 
   '@expo/apple-utils@2.1.22': {}
 
@@ -14882,6 +14912,18 @@ snapshots:
   expo-server@1.0.7: {}
 
   expo-server@57.0.3: {}
+
+  expo-sharing@57.0.22(expo@57.0.24)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)(typescript@6.0.3):
+    dependencies:
+      '@expo/config-plugins': 57.0.9(typescript@6.0.3)
+      '@expo/config-types': 57.0.2
+      '@expo/plist': 0.8.1
+      expo: 57.0.24(@babel/core@7.29.7)(@expo/metro-runtime@57.0.16)(expo-router@57.0.22)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-webview@13.15.0(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native-worklets@0.10.1(@babel/core@7.29.7)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
+      react: 19.2.3
+      react-native: 0.86.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
 
   expo-splash-screen@31.0.13(expo@54.0.37)(typescript@5.9.3):
     dependencies:

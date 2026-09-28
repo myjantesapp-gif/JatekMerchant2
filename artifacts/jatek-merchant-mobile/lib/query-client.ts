@@ -13,6 +13,10 @@ let onUnauthorized: ((staleToken: string) => void) | null = null;
 export function setSessionToken(token: string | null) { currentToken = token; }
 export function getSessionToken() { return currentToken; }
 export function setUnauthorizedHandler(fn: ((staleToken: string) => void) | null) { onUnauthorized = fn; }
+/** Notify auth only when a raw request receives a 401 for its captured token. */
+export function notifyUnauthorized(staleToken: string | null | undefined) {
+  if (staleToken) onUnauthorized?.(staleToken);
+}
 
 /** Performs a request on the fixed host using the token captured at call time. */
 export async function apiRequest(path: string, opts: Omit<RequestOptions, 'token'> & { token?: string | null } = {}) {
@@ -21,7 +25,7 @@ export async function apiRequest(path: string, opts: Omit<RequestOptions, 'token
     return await requestJson(fetch, path, { ...opts, token });
   } catch (e) {
     // Only the token that actually received the 401 can be invalidated.
-    if (e instanceof ApiError && e.status === 401 && token) onUnauthorized?.(token);
+    if (e instanceof ApiError && e.status === 401) notifyUnauthorized(token);
     throw e;
   }
 }

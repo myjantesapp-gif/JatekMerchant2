@@ -14,7 +14,17 @@
     "web": {
       "favicon": "./assets/images/icon.png"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Autorisez Jatek Merchant à accéder à vos photos pour illustrer votre menu et votre boutique.",
+          "cameraPermission": "Autorisez Jatek Merchant à photographier vos produits et votre boutique."
+        }
+      ],
+      "expo-sharing"
+    ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

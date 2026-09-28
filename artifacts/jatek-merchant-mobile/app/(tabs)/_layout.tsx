@@ -8,20 +8,30 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColors } from '@/hooks/useColors';
 import { font } from '@/components/ui';
 
+export const unstable_settings = { initialRouteName: 'overview' };
+
 function NativeTabLayout() {
   return (
     <NativeTabs>
-      <NativeTabs.Trigger name="index">
+      <NativeTabs.Trigger name="overview">
+        <NativeTabs.Trigger.Icon sf={{ default: 'chart.bar', selected: 'chart.bar.fill' }} />
+        <NativeTabs.Trigger.Label>Aperçu</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="orders">
         <NativeTabs.Trigger.Icon sf={{ default: 'bag', selected: 'bag.fill' }} />
         <NativeTabs.Trigger.Label>Commandes</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="menu">
+        <NativeTabs.Trigger.Icon sf={{ default: 'fork.knife', selected: 'fork.knife' }} />
+        <NativeTabs.Trigger.Label>Menu</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="shops">
         <NativeTabs.Trigger.Icon sf={{ default: 'storefront', selected: 'storefront.fill' }} />
         <NativeTabs.Trigger.Label>Boutiques</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="account">
-        <NativeTabs.Trigger.Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} />
-        <NativeTabs.Trigger.Label>Compte</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="more">
+        <NativeTabs.Trigger.Icon sf={{ default: 'ellipsis.circle', selected: 'ellipsis.circle.fill' }} />
+        <NativeTabs.Trigger.Label>Plus</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -53,9 +63,11 @@ function ClassicTabLayout() {
             : <View style={[StyleSheet.absoluteFill, { backgroundColor: c.background }]} />,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Commandes', tabBarIcon: icon('shopping-bag') }} />
+      <Tabs.Screen name="overview" options={{ title: 'Aperçu', tabBarIcon: icon('bar-chart-2') }} />
+      <Tabs.Screen name="orders" options={{ title: 'Commandes', tabBarIcon: icon('shopping-bag') }} />
+      <Tabs.Screen name="menu" options={{ title: 'Menu', tabBarIcon: icon('grid') }} />
       <Tabs.Screen name="shops" options={{ title: 'Boutiques', tabBarIcon: icon('home') }} />
-      <Tabs.Screen name="account" options={{ title: 'Compte', tabBarIcon: icon('user') }} />
+      <Tabs.Screen name="more" options={{ title: 'Plus', tabBarIcon: icon('more-horizontal') }} />
     </Tabs>
   );
 }

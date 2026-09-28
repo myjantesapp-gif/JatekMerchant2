@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, FlatList, Linking, Pressable, RefreshControl, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -87,7 +88,22 @@ export default function ShopsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
-      <ScreenHeader kicker={q.data ? `${shops.length} boutique${shops.length > 1 ? 's' : ''}` : 'Votre réseau'} title="Boutiques" />
+      <ScreenHeader
+        kicker={q.data ? `${shops.length} boutique${shops.length > 1 ? 's' : ''}` : 'Votre réseau'}
+        title="Boutiques"
+        right={q.data?.length ? (
+          <Pressable
+            testID="edit-shop-profile"
+            accessibilityRole="button"
+            accessibilityLabel="Modifier le profil de la boutique"
+            onPress={() => router.push('/shop-profile')}
+            style={({ pressed }) => [s.profileButton, { backgroundColor: c.primary, opacity: pressed ? 0.82 : 1 }]}
+          >
+            <Feather name="edit-3" size={15} color={c.primaryForeground} />
+            <Text style={[s.profileButtonText, { color: c.primaryForeground }]}>Profil</Text>
+          </Pressable>
+        ) : undefined}
+      />
       {q.isPending ? <SkeletonCards count={4} /> : q.isError && !q.data ? (
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
@@ -152,5 +168,7 @@ const s = StyleSheet.create({
   search: { minHeight: 48, borderWidth: 1, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   searchInput: { flex: 1, minWidth: 0, minHeight: 46, paddingVertical: 0, fontFamily: font.regular, fontSize: 14 },
   clear: { minWidth: 32, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
+  profileButton: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 12 },
+  profileButtonText: { fontFamily: font.semibold, fontSize: 12 },
   list: { paddingTop: 4, gap: 10, flexGrow: 1, width: '100%', maxWidth: 900, alignSelf: 'center' },
 });

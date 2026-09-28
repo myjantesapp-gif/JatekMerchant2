@@ -4,7 +4,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
+import {
+  DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold,
+  useFonts as useDMSansFonts,
+} from '@expo-google-fonts/dm-sans';
+import { Syne_600SemiBold, Syne_700Bold, Syne_800ExtraBold } from '@expo-google-fonts/syne';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { queryClient } from '@/lib/query-client';
@@ -28,9 +32,13 @@ function RootLayoutNav() {
       contentStyle: { backgroundColor: c.background },
       headerShadowVisible: false,
     }}>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="order/[id]" options={{ title: 'Commande' }} />
+        <Stack.Screen name="reviews" options={{ headerShown: false }} />
+        <Stack.Screen name="shop-profile" options={{ headerShown: false }} />
+        <Stack.Screen name="settings" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -40,7 +48,15 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
+  const [fontsLoaded, fontError] = useDMSansFonts({
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
+    Syne_600SemiBold,
+    Syne_700Bold,
+    Syne_800ExtraBold,
+  });
 
   useEffect(() => {
     if (fontsLoaded || fontError) SplashScreen.hideAsync();

@@ -5,10 +5,12 @@ import { useColors } from '@/hooks/useColors';
 import { statusInfo } from '@/lib/format';
 
 export const font = {
-  regular: 'Inter_400Regular',
-  medium: 'Inter_500Medium',
-  semibold: 'Inter_600SemiBold',
-  bold: 'Inter_700Bold',
+  regular: 'DMSans_400Regular',
+  medium: 'DMSans_500Medium',
+  semibold: 'DMSans_600SemiBold',
+  bold: 'DMSans_700Bold',
+  display: 'Syne_700Bold',
+  displayStrong: 'Syne_800ExtraBold',
 } as const;
 
 export function Skeleton({ height = 16, width = '100%', style }: { height?: number; width?: number | `${number}%`; style?: ViewStyle }) {
@@ -114,7 +116,7 @@ export const styles = StyleSheet.create({
   card: { borderWidth: 1, padding: 16 },
   state: { alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10, flexGrow: 1, minHeight: 320 },
   stateIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  stateTitle: { fontFamily: font.bold, fontSize: 18, textAlign: 'center' },
+  stateTitle: { fontFamily: font.display, fontSize: 18, textAlign: 'center' },
   stateMsg: { fontFamily: font.regular, fontSize: 14, textAlign: 'center', lineHeight: 20, maxWidth: 300, marginBottom: 8 },
   btn: { minHeight: 50, paddingVertical: 12, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5 },
   btnText: { fontFamily: font.semibold, fontSize: 15 },
