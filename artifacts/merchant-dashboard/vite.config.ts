@@ -61,7 +61,10 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, 'dist/public'),
+    outDir: path.resolve(
+      import.meta.dirname,
+      process.env.MERCHANT_BUILD_OUT_DIR ?? 'dist/public',
+    ),
     emptyOutDir: true,
   },
   server: {

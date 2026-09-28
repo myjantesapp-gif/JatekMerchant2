@@ -40,6 +40,7 @@ export SKIP_PRODUCTION_MIGRATIONS=1
 export DATABASE_URL="${DATABASE_URL:-postgres://smoke:smoke@127.0.0.1:5/smoke}"
 # auth.ts hard-fails when NODE_ENV=production and SESSION_SECRET is missing.
 export SESSION_SECRET="${SESSION_SECRET:-smoke-test-session-secret-not-used}"
+export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:+$ALLOWED_ORIGINS,}https://merchant.jatek.app"
 
 bash "$START_SCRIPT" >"$LOG_FILE" 2>&1 &
 SERVER_PID=$!
@@ -97,13 +98,63 @@ check() {
   echo "[smoke]   GET $path → 200"
 }
 
+check-host() {
+  local host="$1"
+  local path="$2"
+  local code
+  code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+    -H "Host: $host" "$BASE_URL$path" || echo "000")"
+  if [ "$code" != "200" ]; then
+    echo "[smoke] --- server log ---" >&2
+    cat "$LOG_FILE" >&2
+    echo "[smoke] --- end log ---" >&2
+    fail "GET $path for host $host returned $code"
+  fi
+  echo "[smoke]   GET $path (Host: $host) → 200"
+}
+
 echo "[smoke] Probing routes…"
 check "/"
+check-host "merchant.jatek.app" "/"
+check-host "merchant.jatek.app" "/sw.js"
+MERCHANT_INDEX_FILE="$(mktemp -t smoke-merchant-index-XXXXXX.html)"
+curl -fsS --max-time 10 \
+  -H "Host: merchant.jatek.app" \
+  "$BASE_URL/" >"$MERCHANT_INDEX_FILE" ||
+  fail "GET / for merchant.jatek.app failed"
+grep -Fq '<title>Espace Commerçant Jatek</title>' "$MERCHANT_INDEX_FILE" ||
+  fail "merchant.jatek.app root did not return the merchant app"
+rm -f "$MERCHANT_INDEX_FILE"
+echo "[smoke]   merchant.jatek.app serves the merchant app at /"
 check "/admin/"
 check "/api/healthz"
 check "/health"
 check "/mobile/"
 check "/mobile/status"
+
+MERCHANT_CORS_ORIGIN="$(curl -sS -D - -o /dev/null --max-time 10 -X OPTIONS \
+  -H "Origin: https://merchant.jatek.app" \
+  -H "Access-Control-Request-Method: GET" \
+  "$BASE_URL/api/healthz" |
+  grep -i '^Access-Control-Allow-Origin:' |
+  head -n 1 |
+  sed 's/^[^:]*: *//;s/\r$//')"
+[ "$MERCHANT_CORS_ORIGIN" = "https://merchant.jatek.app" ] ||
+  fail "API CORS did not allow https://merchant.jatek.app"
+echo "[smoke]   API CORS allows https://merchant.jatek.app"
+
+MERCHANT_MANIFEST_FILE="$(mktemp -t smoke-merchant-manifest-XXXXXX.json)"
+curl -fsS --max-time 10 \
+  -H "Host: merchant.jatek.app" \
+  "$BASE_URL/manifest.webmanifest" >"$MERCHANT_MANIFEST_FILE" ||
+  fail "GET /manifest.webmanifest for merchant.jatek.app failed"
+node - "$MERCHANT_MANIFEST_FILE" <<'NODE'
+const manifest = JSON.parse(require("fs").readFileSync(process.argv[2], "utf8"));
+if (manifest.id !== "/" || manifest.start_url !== "/" || manifest.scope !== "/") {
+  throw new Error("Merchant PWA manifest does not launch from the domain root");
+}
+NODE
+rm -f "$MERCHANT_MANIFEST_FILE"
 
 MANIFEST_FILE="$(mktemp -t smoke-mobile-manifest-XXXXXX.json)"
 curl -fsS --max-time 10 \

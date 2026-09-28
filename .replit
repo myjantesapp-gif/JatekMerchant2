@@ -187,7 +187,7 @@ MEDIA_RESTORE_TARGET_BUCKET_ID = "replit-objstore-2ba35714-7412-4601-99fd-279b16
 
   [userenv.production]
   EXPO_PUBLIC_DOMAIN = "ma.jatek.app"
-ALLOWED_ORIGINS = "https://c242aedf-c2ef-40b5-8095-e3992aa34a14-00-1y412fgtbqgy8.kirk.replit.dev,https://ma.jatek.app"
+ALLOWED_ORIGINS = "https://c242aedf-c2ef-40b5-8095-e3992aa34a14-00-1y412fgtbqgy8.kirk.replit.dev,https://ma.jatek.app,https://merchant.jatek.app"
 TWILIO_VERIFY_SID = "VA48870bcbd6ed8274d1bd988d730059db"
 TWILIO_FROM_NUMBER = "+15072600620"
 INFOBIP_BASE_URL = "w4kgd8.api.infobip.com"

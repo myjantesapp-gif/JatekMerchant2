@@ -225,16 +225,47 @@ function proxyMobileStatic(req: Request, res: Response): void {
 
 // ─── Production static file serving ──────────────────────────────────────────
 // In production the API server serves:
-//   /        → jatek-landing (built to artifacts/jatek-landing/dist/public)
+//   /        → merchant PWA on merchant.jatek.app; jatek-landing on other hosts
 //   /admin/* → backend-dashboard (built to artifacts/backend-dashboard/dist/public)
 if (process.env.NODE_ENV === "production") {
   const landingDir = path.resolve(__dirname, "../../jatek-landing/dist/public");
   const dashboardDir = path.resolve(__dirname, "../../backend-dashboard/dist/public");
+  const merchantRootDir = path.resolve(__dirname, "../../merchant-dashboard/dist/root-public");
+  const merchantRootHost = "merchant.jatek.app";
+  const merchantReservedPrefixes = ["/api", "/admin", "/mobile", "/merchant"];
+  const isMerchantAppRequest = (req: Request): boolean =>
+    req.hostname.toLowerCase() === merchantRootHost &&
+    !merchantReservedPrefixes.some(
+      (prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`),
+    );
 
   // The deployment exposes the API port publicly. Route mobile Expo requests
   // through it to the dedicated static server so /mobile/ manifests, bundles,
   // and assets use the same public deployment domain as the rest of the app.
   app.use("/mobile", proxyMobileStatic);
+
+  // Serve the merchant PWA from the domain root without changing the landing
+  // page served by the other custom domains on this shared deployment.
+  if (existsSync(merchantRootDir)) {
+    const merchantStatic = express.static(merchantRootDir, { index: "index.html" });
+    app.use((req, res, next) => {
+      if (!isMerchantAppRequest(req)) return next();
+      merchantStatic(req, res, next);
+    });
+    app.get("/*splat", (req, res, next) => {
+      if (!isMerchantAppRequest(req) || !req.accepts("html")) return next();
+      res.sendFile(path.join(merchantRootDir, "index.html"), (error) => {
+        if (error) next(error);
+      });
+    });
+    logger.info(`Serving merchant PWA at https://${merchantRootHost}/ from ${merchantRootDir}`);
+  } else {
+    app.use((req, res, next) => {
+      if (!isMerchantAppRequest(req)) return next();
+      logger.error({ merchantRootDir }, "Merchant PWA build is missing");
+      res.status(503).type("text").send("Merchant app is temporarily unavailable.");
+    });
+  }
 
   // Landing page at root
   if (existsSync(landingDir)) {
@@ -258,8 +289,12 @@ if (process.env.NODE_ENV === "production") {
 
   // SPA fallback for the landing page at root (after /admin and /api routes)
   app.get("/*splat", (req, res): void => {
-    // API and admin paths should not be served by the landing page SPA
-    if (req.path.startsWith("/api") || req.path.startsWith("/admin")) {
+    // App and API paths should not be served by the landing page SPA
+    if (
+      ["/api", "/admin", "/mobile", "/merchant"].some(
+        (prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`),
+      )
+    ) {
       res.status(404).json({ error: "Not found", path: req.path }); return;
     }
     res.sendFile(path.join(landingDir, "index.html"));
