@@ -113,10 +113,33 @@ check-host() {
   echo "[smoke]   GET $path (Host: $host) → 200"
 }
 
+check-redirect-host() {
+  local host="$1"
+  local path="$2"
+  local expected_location="$3"
+  local headers_file
+  local code
+  local location
+
+  headers_file="$(mktemp -t smoke-redirect-XXXXXX.headers)"
+  code="$(curl -sS -o /dev/null -D "$headers_file" -w '%{http_code}' --max-time 10 \
+    -H "Host: $host" "$BASE_URL$path" || echo "000")"
+  location="$(grep -i '^Location:' "$headers_file" | head -n 1 | sed 's/^[^:]*: *//;s/\r$//')"
+  rm -f "$headers_file"
+
+  if [ "$code" != "302" ] || [ "$location" != "$expected_location" ]; then
+    fail "GET $path for host $host returned HTTP $code with Location '$location' (expected 302 to $expected_location)"
+  fi
+  echo "[smoke]   GET $path (Host: $host) → 302 $location"
+}
+
 echo "[smoke] Probing routes…"
 check "/"
 check-host "merchant.jatek.app" "/"
 check-host "merchant.jatek.app" "/sw.js"
+check-redirect-host "merchant.jatek.app" "/merchant" "/"
+check-redirect-host "merchant.jatek.app" "/merchant/" "/"
+check-redirect-host "merchant.jatek.app" "/merchant/orders?from=legacy" "/orders?from=legacy"
 MERCHANT_INDEX_FILE="$(mktemp -t smoke-merchant-index-XXXXXX.html)"
 curl -fsS --max-time 10 \
   -H "Host: merchant.jatek.app" \

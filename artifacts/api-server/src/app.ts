@@ -244,6 +244,24 @@ if (process.env.NODE_ENV === "production") {
   // and assets use the same public deployment domain as the rest of the app.
   app.use("/mobile", proxyMobileStatic);
 
+  // Preserve the old merchant URL on its dedicated host while the app now
+  // lives at /. Strip the legacy prefix so deep links keep their route.
+  app.use((req, res, next) => {
+    if (
+      req.hostname.toLowerCase() !== merchantRootHost ||
+      (req.method !== "GET" && req.method !== "HEAD") ||
+      (req.path !== "/merchant" && !req.path.startsWith("/merchant/"))
+    ) {
+      return next();
+    }
+
+    const suffix = req.path.slice("/merchant".length);
+    const targetPath = suffix ? suffix.replace(/^\/+/, "/") : "/";
+    const queryIndex = req.originalUrl.indexOf("?");
+    const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : "";
+    res.redirect(302, `${targetPath}${query}`);
+  });
+
   // Serve the merchant PWA from the domain root without changing the landing
   // page served by the other custom domains on this shared deployment.
   if (existsSync(merchantRootDir)) {
