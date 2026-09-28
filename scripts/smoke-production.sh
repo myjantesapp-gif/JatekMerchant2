@@ -135,20 +135,6 @@ check-redirect-host() {
 
 echo "[smoke] Probing routes…"
 check "/"
-check-host "merchant.jatek.app" "/"
-check-host "merchant.jatek.app" "/sw.js"
-check-redirect-host "merchant.jatek.app" "/merchant" "/"
-check-redirect-host "merchant.jatek.app" "/merchant/" "/"
-check-redirect-host "merchant.jatek.app" "/merchant/orders?from=legacy" "/orders?from=legacy"
-MERCHANT_INDEX_FILE="$(mktemp -t smoke-merchant-index-XXXXXX.html)"
-curl -fsS --max-time 10 \
-  -H "Host: merchant.jatek.app" \
-  "$BASE_URL/" >"$MERCHANT_INDEX_FILE" ||
-  fail "GET / for merchant.jatek.app failed"
-grep -Fq '<title>Espace Commerçant Jatek</title>' "$MERCHANT_INDEX_FILE" ||
-  fail "merchant.jatek.app root did not return the merchant app"
-rm -f "$MERCHANT_INDEX_FILE"
-echo "[smoke]   merchant.jatek.app serves the merchant app at /"
 check "/admin/"
 check "/api/healthz"
 check "/health"
@@ -165,19 +151,6 @@ MERCHANT_CORS_ORIGIN="$(curl -sS -D - -o /dev/null --max-time 10 -X OPTIONS \
 [ "$MERCHANT_CORS_ORIGIN" = "https://merchant.jatek.app" ] ||
   fail "API CORS did not allow https://merchant.jatek.app"
 echo "[smoke]   API CORS allows https://merchant.jatek.app"
-
-MERCHANT_MANIFEST_FILE="$(mktemp -t smoke-merchant-manifest-XXXXXX.json)"
-curl -fsS --max-time 10 \
-  -H "Host: merchant.jatek.app" \
-  "$BASE_URL/manifest.webmanifest" >"$MERCHANT_MANIFEST_FILE" ||
-  fail "GET /manifest.webmanifest for merchant.jatek.app failed"
-node - "$MERCHANT_MANIFEST_FILE" <<'NODE'
-const manifest = JSON.parse(require("fs").readFileSync(process.argv[2], "utf8"));
-if (manifest.id !== "/" || manifest.start_url !== "/" || manifest.scope !== "/") {
-  throw new Error("Merchant PWA manifest does not launch from the domain root");
-}
-NODE
-rm -f "$MERCHANT_MANIFEST_FILE"
 
 MANIFEST_FILE="$(mktemp -t smoke-mobile-manifest-XXXXXX.json)"
 curl -fsS --max-time 10 \

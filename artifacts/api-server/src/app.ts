@@ -225,65 +225,17 @@ function proxyMobileStatic(req: Request, res: Response): void {
 
 // ─── Production static file serving ──────────────────────────────────────────
 // In production the API server serves:
-//   /        → merchant PWA on merchant.jatek.app; jatek-landing on other hosts
+//   /        → jatek-landing
 //   /admin/* → backend-dashboard (built to artifacts/backend-dashboard/dist/public)
+// The merchant PWA is served separately by the artifact router at /merchant/.
 if (process.env.NODE_ENV === "production") {
   const landingDir = path.resolve(__dirname, "../../jatek-landing/dist/public");
   const dashboardDir = path.resolve(__dirname, "../../backend-dashboard/dist/public");
-  const merchantRootDir = path.resolve(__dirname, "../../merchant-dashboard/dist/root-public");
-  const merchantRootHost = "merchant.jatek.app";
-  const merchantReservedPrefixes = ["/api", "/admin", "/mobile", "/merchant"];
-  const isMerchantAppRequest = (req: Request): boolean =>
-    req.hostname.toLowerCase() === merchantRootHost &&
-    !merchantReservedPrefixes.some(
-      (prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`),
-    );
 
   // The deployment exposes the API port publicly. Route mobile Expo requests
   // through it to the dedicated static server so /mobile/ manifests, bundles,
   // and assets use the same public deployment domain as the rest of the app.
   app.use("/mobile", proxyMobileStatic);
-
-  // Preserve the old merchant URL on its dedicated host while the app now
-  // lives at /. Strip the legacy prefix so deep links keep their route.
-  app.use((req, res, next) => {
-    if (
-      req.hostname.toLowerCase() !== merchantRootHost ||
-      (req.method !== "GET" && req.method !== "HEAD") ||
-      (req.path !== "/merchant" && !req.path.startsWith("/merchant/"))
-    ) {
-      return next();
-    }
-
-    const suffix = req.path.slice("/merchant".length);
-    const targetPath = suffix ? suffix.replace(/^\/+/, "/") : "/";
-    const queryIndex = req.originalUrl.indexOf("?");
-    const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : "";
-    res.redirect(302, `${targetPath}${query}`);
-  });
-
-  // Serve the merchant PWA from the domain root without changing the landing
-  // page served by the other custom domains on this shared deployment.
-  if (existsSync(merchantRootDir)) {
-    const merchantStatic = express.static(merchantRootDir, { index: "index.html" });
-    app.use((req, res, next) => {
-      if (!isMerchantAppRequest(req)) return next();
-      merchantStatic(req, res, next);
-    });
-    app.get("/*splat", (req, res, next) => {
-      if (!isMerchantAppRequest(req) || !req.accepts("html")) return next();
-      res.sendFile(path.join(merchantRootDir, "index.html"), (error) => {
-        if (error) next(error);
-      });
-    });
-    logger.info(`Serving merchant PWA at https://${merchantRootHost}/ from ${merchantRootDir}`);
-  } else {
-    app.use((req, res, next) => {
-      if (!isMerchantAppRequest(req)) return next();
-      logger.error({ merchantRootDir }, "Merchant PWA build is missing");
-      res.status(503).type("text").send("Merchant app is temporarily unavailable.");
-    });
-  }
 
   // Landing page at root
   if (existsSync(landingDir)) {
