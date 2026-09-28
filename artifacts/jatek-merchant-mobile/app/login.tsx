@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
@@ -49,7 +49,7 @@ export default function LoginScreen() {
           <View style={{ gap: 6 }}>
             <Text style={[s.label, { color: c.foreground }]}>E-mail</Text>
             <TextInput
-              testID="email" style={input} value={email} onChangeText={setEmail}
+              testID="email" accessibilityLabel="E-mail" style={input} value={email} onChangeText={setEmail}
               placeholder="vous@boutique.ma" placeholderTextColor={c.mutedForeground}
               autoCapitalize="none" autoComplete="email" keyboardType="email-address" returnKeyType="next"
               onSubmitEditing={() => pwRef.current?.focus()}
@@ -59,11 +59,20 @@ export default function LoginScreen() {
             <Text style={[s.label, { color: c.foreground }]}>Mot de passe</Text>
             <View>
               <TextInput
-                ref={pwRef} testID="password" style={[input, { paddingRight: 48 }]} value={password} onChangeText={setPassword}
+                ref={pwRef} testID="password" accessibilityLabel="Mot de passe" style={[input, { paddingRight: 56 }]} value={password} onChangeText={setPassword}
                 placeholder="••••••••" placeholderTextColor={c.mutedForeground}
                 secureTextEntry={!show} autoComplete="password" returnKeyType="go" onSubmitEditing={submit}
               />
-              <Feather name={show ? 'eye-off' : 'eye'} size={18} color={c.mutedForeground} style={s.eye} onPress={() => setShow((v) => !v)} />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={show ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                accessibilityState={{ checked: show }}
+                hitSlop={6}
+                style={s.eye}
+                onPress={() => setShow((v) => !v)}
+              >
+                <Feather name={show ? 'eye-off' : 'eye'} size={18} color={c.mutedForeground} />
+              </Pressable>
             </View>
           </View>
           {error ? (
@@ -90,7 +99,7 @@ const s = StyleSheet.create({
   sub: { fontFamily: font.regular, fontSize: 14, lineHeight: 20 },
   label: { fontFamily: font.medium, fontSize: 13 },
   input: { height: 50, borderWidth: 1, paddingHorizontal: 14, fontFamily: font.regular, fontSize: 15 },
-  eye: { position: 'absolute', right: 14, top: 16 },
+  eye: { position: 'absolute', right: 3, top: 3, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   err: { flexDirection: 'row', gap: 8, padding: 12, alignItems: 'flex-start' },
   errText: { fontFamily: font.medium, fontSize: 13, flex: 1, lineHeight: 18 },
   foot: { fontFamily: font.regular, fontSize: 12, textAlign: 'center' },

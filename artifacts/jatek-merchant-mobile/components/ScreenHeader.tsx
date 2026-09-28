@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { font } from '@/components/ui';
@@ -7,11 +7,12 @@ import { font } from '@/components/ui';
 export function ScreenHeader({ kicker, title, right }: { kicker: string; title: string; right?: React.ReactNode }) {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   return (
     <View style={[s.wrap, { paddingTop: (Platform.OS === 'web' ? 67 : insets.top) + 8 }]}>
       <View style={{ flex: 1 }}>
         <Text style={[s.kicker, { color: c.primary }]}>{kicker}</Text>
-        <Text style={[s.title, { color: c.foreground }]} numberOfLines={1}>{title}</Text>
+        <Text style={[s.title, { color: c.foreground, fontSize: width < 360 ? 26 : 28 }]} numberOfLines={1}>{title}</Text>
       </View>
       {right}
     </View>

@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
-import { meSchema, orderDetailSchema, ordersSchema, parseWith, shopsSchema } from '@/lib/api-core';
-import { sessionKey } from '@/lib/query-client';
+import { ApiError, meSchema, orderDetailSchema, ordersSchema, parseWith, shopsSchema } from '@/lib/api-core';
+import { apiRequest, sessionKey } from '@/lib/query-client';
 import { useAuth } from '@/lib/auth';
 
 // All hooks use the shared default fetcher; schemas validate via `select`.
@@ -50,5 +50,37 @@ export function useOrder(id: number) {
     queryKey: sessionKey(`/api/backend/orders/${valid ? id : 0}`, token),
     enabled: !!token && valid,
     select: (d: unknown) => parseWith(orderDetailSchema, d, 'commande'),
+  });
+}
+
+export type MerchantOrderStatus = 'accepted' | 'preparing' | 'ready';
+
+export function nextMerchantOrderStatus(status: string): MerchantOrderStatus | null {
+  if (status === 'pending') return 'accepted';
+  if (status === 'accepted' || status === 'confirmed') return 'preparing';
+  if (status === 'preparing') return 'ready';
+  return null;
+}
+
+export function useUpdateOrderStatus() {
+  const { token } = useAuth();
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: MerchantOrderStatus }) => {
+      if (!token) throw new ApiError(401, 'Session absente.');
+      const data = await apiRequest(`/api/orders/${id}/status`, {
+        method: 'PATCH',
+        body: { status },
+        token,
+      });
+      return parseWith(orderDetailSchema, data, 'commande');
+    },
+    onSuccess: async (order) => {
+      client.setQueryData(sessionKey(`/api/backend/orders/${order.id}`, token), order);
+      await client.invalidateQueries({
+        queryKey: sessionKey('/api/backend/orders?limit=100', token),
+      });
+    },
   });
 }

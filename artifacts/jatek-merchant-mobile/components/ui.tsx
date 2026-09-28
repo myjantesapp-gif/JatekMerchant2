@@ -62,19 +62,25 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry: () => 
   return <StateView icon="wifi-off" tone="destructive" title="Chargement impossible" message={msg} actionLabel="Réessayer" onAction={onRetry} />;
 }
 
-export function Button({ label, onPress, icon, variant = 'primary', loading, disabled, testID }: {
-  label: string; onPress: () => void; icon?: keyof typeof Feather.glyphMap; variant?: 'primary' | 'outline' | 'danger'; loading?: boolean; disabled?: boolean; testID?: string;
+export function Button({ label, onPress, icon, variant = 'primary', loading, disabled, testID, accessibilityLabel, accessibilityHint }: {
+  label: string; onPress: () => void; icon?: keyof typeof Feather.glyphMap; variant?: 'primary' | 'outline' | 'danger'; loading?: boolean; disabled?: boolean; testID?: string; accessibilityLabel?: string; accessibilityHint?: string;
 }) {
   const c = useColors();
   const bg = variant === 'primary' ? c.primary : 'transparent';
   const fg = variant === 'primary' ? c.primaryForeground : variant === 'danger' ? c.destructive : c.foreground;
   const border = variant === 'primary' ? c.primary : variant === 'danger' ? c.destructive : c.border;
+  const isDisabled = !!disabled || !!loading;
   return (
     <Pressable
       testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: isDisabled, busy: !!loading }}
+      hitSlop={3}
       onPress={onPress}
-      disabled={disabled || loading}
-      style={({ pressed }) => [styles.btn, { backgroundColor: bg, borderColor: border, borderRadius: c.radius, opacity: disabled ? 0.5 : pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+      disabled={isDisabled}
+      style={({ pressed }) => [styles.btn, { backgroundColor: bg, borderColor: border, borderRadius: c.radius, opacity: isDisabled ? 0.55 : pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
     >
       {loading ? <ActivityIndicator color={fg} /> : (
         <>
@@ -110,7 +116,7 @@ export const styles = StyleSheet.create({
   stateIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   stateTitle: { fontFamily: font.bold, fontSize: 18, textAlign: 'center' },
   stateMsg: { fontFamily: font.regular, fontSize: 14, textAlign: 'center', lineHeight: 20, maxWidth: 300, marginBottom: 8 },
-  btn: { height: 50, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5 },
+  btn: { minHeight: 50, paddingVertical: 12, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5 },
   btnText: { fontFamily: font.semibold, fontSize: 15 },
   pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, alignSelf: 'flex-start' },
   pillText: { fontFamily: font.semibold, fontSize: 12 },

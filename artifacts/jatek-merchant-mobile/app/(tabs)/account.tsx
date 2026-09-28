@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/lib/auth';
 import { useMe } from '@/lib/merchant-data';
@@ -15,6 +15,8 @@ export default function AccountScreen() {
   const { logout } = useAuth();
   const q = useMe();
   const bottom = useBottomPad();
+  const { width } = useWindowDimensions();
+  const horizontalPadding = Math.min(24, Math.max(14, Math.round(width * 0.05)));
 
   const confirmLogout = () => {
     if (Platform.OS === 'web') { void logout(); return; }
@@ -30,7 +32,7 @@ export default function AccountScreen() {
     <View style={{ flex: 1, backgroundColor: c.background }}>
       <ScreenHeader kicker="Profil" title="Compte" />
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 16, paddingBottom: bottom, flexGrow: 1 }}
+        contentContainerStyle={[s.content, { paddingHorizontal: horizontalPadding, paddingBottom: bottom }]}
         refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => q.refetch()} tintColor={c.primary} colors={[c.primary]} />}
       >
         {q.isPending ? (
@@ -44,8 +46,8 @@ export default function AccountScreen() {
               <View style={[s.avatar, { backgroundColor: c.primary }]}>
                 <Text style={[s.avatarText, { color: c.primaryForeground }]}>{name.slice(0, 2).toUpperCase()}</Text>
               </View>
-              <Text style={[s.name, { color: c.inkForeground }]} numberOfLines={1}>{name}</Text>
-              <Text style={[s.email, { color: '#b9b3aa' }]} numberOfLines={1}>{u.email}</Text>
+              <Text style={[s.name, { color: c.inkForeground }]}>{name}</Text>
+              <Text style={[s.email, { color: '#b9b3aa' }]}>{u.email}</Text>
               <View style={[s.role, { backgroundColor: c.accent }]}>
                 <Text style={[s.roleText, { color: c.accentForeground }]}>{ROLE[u.role] ?? u.role}</Text>
               </View>
@@ -75,6 +77,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 const s = StyleSheet.create({
+  content: { paddingTop: 4, gap: 16, flexGrow: 1, width: '100%', maxWidth: 720, alignSelf: 'center' },
   idCard: { padding: 20, gap: 4 },
   avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   avatarText: { fontFamily: font.bold, fontSize: 18 },
@@ -82,7 +85,7 @@ const s = StyleSheet.create({
   email: { fontFamily: font.regular, fontSize: 14 },
   role: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, marginTop: 10 },
   roleText: { fontFamily: font.semibold, fontSize: 12 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  rowLabel: { fontFamily: font.regular, fontSize: 14 },
-  rowValue: { fontFamily: font.semibold, fontSize: 14 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6 },
+  rowLabel: { fontFamily: font.regular, fontSize: 14, flexShrink: 1 },
+  rowValue: { fontFamily: font.semibold, fontSize: 14, flexShrink: 1, textAlign: 'right' },
 });

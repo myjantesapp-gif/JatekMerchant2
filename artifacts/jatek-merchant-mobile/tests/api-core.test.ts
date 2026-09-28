@@ -1,7 +1,7 @@
 // @ts-nocheck -- run with node:test via tsx (node types not in app tsconfig)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { API_BASE_URL, ApiError, buildApiUrl, requestJson, parseWith, ordersSchema } from '../lib/api-core';
+import { API_BASE_URL, ApiError, buildApiUrl, frenchMessage, requestJson, parseWith, ordersSchema } from '../lib/api-core';
 
 test('host is pinned', () => {
   assert.equal(API_BASE_URL, 'https://api.jatek.app');
@@ -30,6 +30,23 @@ test('sends bearer + json body to fixed host', async () => {
   assert.equal(h.Authorization, 'Bearer T');
   assert.equal(seen!.init!.body, '{"email":"a"}');
   assert.equal(seen!.init!.redirect, 'error');
+});
+
+test('supports authenticated PATCH status updates', async () => {
+  let seen: { url: string; init?: RequestInit } | null = null;
+  const f = async (url: string, init?: RequestInit) => { seen = { url, init }; return new Response('{"id":7}', { status: 200 }); };
+  await requestJson(f, '/api/orders/7/status', { method: 'PATCH', body: { status: 'accepted' }, token: 'T' });
+  assert.equal(seen!.url, 'https://api.jatek.app/api/orders/7/status');
+  assert.equal(seen!.init!.method, 'PATCH');
+  assert.deepEqual(JSON.parse(String(seen!.init!.body)), { status: 'accepted' });
+  assert.equal((seen!.init!.headers as Record<string, string>).Authorization, 'Bearer T');
+});
+
+test('explains the merchant profile acceptance requirement in French', () => {
+  assert.equal(
+    frenchMessage(412, 'Complete your business profile (legal name + ICE) before accepting orders.'),
+    'Complétez le profil légal de votre boutique avant d’accepter une commande.',
+  );
 });
 
 test('maps http errors, network errors, bad json', async () => {

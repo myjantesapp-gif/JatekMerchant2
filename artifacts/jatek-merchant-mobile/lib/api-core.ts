@@ -29,7 +29,7 @@ export function buildApiUrl(path: string): string {
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PATCH';
   body?: unknown;
   token?: string | null;
   signal?: AbortSignal;
@@ -41,6 +41,9 @@ export function frenchMessage(status: number, serverMsg?: string): string {
     ? "Ce compte n'a pas accès à l'espace marchand."
     : serverMsg === 'Account disabled' ? 'Ce compte est désactivé.' : 'Accès refusé.';
   if (status === 404) return 'Élément introuvable.';
+  if (status === 412 && serverMsg?.includes('Complete your business profile')) {
+    return 'Complétez le profil légal de votre boutique avant d’accepter une commande.';
+  }
   if (status >= 500) return 'Le serveur Jatek rencontre un problème. Réessayez.';
   return serverMsg || `Erreur ${status}`;
 }

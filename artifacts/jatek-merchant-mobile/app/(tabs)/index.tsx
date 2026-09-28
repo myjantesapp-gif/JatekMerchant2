@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -10,58 +10,136 @@ import { ScreenHeader, useBottomPad } from '@/components/ScreenHeader';
 import type { Order } from '@/lib/api-core';
 
 const ACTIVE = new Set(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'assigned', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'on_the_way', 'delivering']);
-const CLOSED = new Set(['delivered', 'cancelled']);
+const CLOSED = new Set(['delivered', 'completed', 'cancelled', 'rejected', 'refunded']);
 type Filter = 'all' | 'active' | 'done';
 
 export default function OrdersScreen() {
   const c = useColors();
   const q = useOrders();
   const bottom = useBottomPad();
+  const { width } = useWindowDimensions();
   const [filter, setFilter] = useState<Filter>('all');
-  const orders = q.data;
-  const list = useMemo(() => (orders ?? []).filter((o) =>
-    filter === 'all' ? true : filter === 'active' ? ACTIVE.has(o.status) : CLOSED.has(o.status)), [orders, filter]);
-  const activeCount = useMemo(() => (orders ?? []).filter((o) => ACTIVE.has(o.status)).length, [orders]);
+  const [search, setSearch] = useState('');
+  const horizontalPadding = Math.min(24, Math.max(14, Math.round(width * 0.05)));
+  const orders = q.data ?? [];
 
-  const renderItem = ({ item }: { item: Order }) => (
-    <Pressable
-      testID={`order-${item.id}`}
-      onPress={() => router.push({ pathname: '/order/[id]', params: { id: String(item.id) } })}
-      style={({ pressed }) => [ui.card, s.row, { backgroundColor: c.card, borderColor: c.cardBorder, borderRadius: c.radius, opacity: pressed ? 0.85 : 1 }]}
-    >
-      <View style={[s.bar, { backgroundColor: ACTIVE.has(item.status) ? c.primary : c.border }]} />
-      <View style={{ flex: 1, gap: 6 }}>
-        <View style={s.between}>
-          <Text style={[s.ref, { color: c.foreground }]}>#{item.reference || item.id}</Text>
-          <Text style={[s.total, { color: c.foreground }]}>{money(item.total, item.currency)}</Text>
+  const counts = useMemo(() => ({
+    all: orders.length,
+    active: orders.filter((o) => ACTIVE.has(o.status)).length,
+    done: orders.filter((o) => CLOSED.has(o.status)).length,
+  }), [orders]);
+  const pendingCount = useMemo(() => orders.filter((o) => o.status === 'pending').length, [orders]);
+  const list = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase('fr');
+    return orders
+      .filter((o) => filter === 'all' || (filter === 'active' ? ACTIVE : CLOSED).has(o.status))
+      .filter((o) => {
+        if (!term) return true;
+        return [o.reference, String(o.id), o.userName, o.restaurantName]
+          .filter(Boolean)
+          .join(' ')
+          .toLocaleLowerCase('fr')
+          .includes(term);
+      })
+      .sort((a, b) => {
+        const aPriority = a.status === 'pending' ? 0 : ACTIVE.has(a.status) ? 1 : 2;
+        const bPriority = b.status === 'pending' ? 0 : ACTIVE.has(b.status) ? 1 : 2;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return (Date.parse(b.createdAt ?? '') || 0) - (Date.parse(a.createdAt ?? '') || 0);
+      });
+  }, [orders, filter, search]);
+
+  const renderItem = ({ item }: { item: Order }) => {
+    const reference = item.reference || String(item.id);
+    return (
+      <Pressable
+        testID={`order-${item.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={`Commande ${reference}, ${statusInfo(item.status).label}, ${money(item.total, item.currency)}`}
+        accessibilityHint="Ouvrir le détail de la commande et ses actions"
+        onPress={() => router.push({ pathname: '/order/[id]', params: { id: String(item.id) } })}
+        style={({ pressed }) => [ui.card, s.row, { backgroundColor: c.card, borderColor: c.cardBorder, borderRadius: c.radius, opacity: pressed ? 0.84 : 1 }]}
+      >
+        <View style={[s.bar, { backgroundColor: item.status === 'pending' ? c.accent : ACTIVE.has(item.status) ? c.primary : c.border }]} />
+        <View style={s.content}>
+          <View style={s.between}>
+            <Text style={[s.ref, { color: c.foreground }]} numberOfLines={1}>#{reference}</Text>
+            <Text style={[s.total, { color: c.foreground }]} numberOfLines={1}>{money(item.total, item.currency)}</Text>
+          </View>
+          <Text style={[s.meta, { color: c.mutedForeground }]} numberOfLines={2}>
+            {item.userName || 'Client'} · {item.restaurantName || 'Boutique'}
+          </Text>
+          <View style={s.statusLine}>
+            <StatusPill status={item.status} />
+            <Text style={[s.meta, s.date, { color: c.mutedForeground }]}>{dateTime(item.createdAt)}</Text>
+          </View>
         </View>
-        <Text style={[s.meta, { color: c.mutedForeground }]} numberOfLines={1}>
-          {item.userName || 'Client'} · {item.restaurantName || 'Boutique'}
-        </Text>
-        <View style={s.between}>
-          <StatusPill status={item.status} />
-          <Text style={[s.meta, { color: c.mutedForeground }]}>{dateTime(item.createdAt)}</Text>
-        </View>
-      </View>
-      <Feather name="chevron-right" size={18} color={c.mutedForeground} />
-    </Pressable>
-  );
+        <Feather name="chevron-right" size={18} color={c.mutedForeground} />
+      </Pressable>
+    );
+  };
+
+  const filterLabel = search.trim() ? 'Aucun résultat' : filter === 'all' ? 'Aucune commande' : filter === 'active' ? 'Aucune commande en cours' : 'Aucune commande clôturée';
+  const emptyMessage = search.trim()
+    ? 'Essayez une autre référence, un autre client ou une autre boutique.'
+    : 'Les nouvelles commandes de vos boutiques apparaîtront ici. Tirez pour actualiser.';
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
-      <ScreenHeader kicker={q.data ? `${activeCount} en cours` : 'Jatek marchand'} title="Commandes" />
+      <ScreenHeader
+        kicker={q.data ? pendingCount ? `${pendingCount} à confirmer` : `${counts.active} en cours` : 'Jatek marchand'}
+        title="Commandes"
+      />
       {q.data ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips} style={{ flexGrow: 0 }}>
-          {([['all', 'Toutes'], ['active', 'En cours'], ['done', 'Clôturées']] as const).map(([k, label]) => {
-            const on = filter === k;
-            return (
-              <Pressable key={k} testID={`filter-${k}`} onPress={() => setFilter(k)}
-                style={[s.chip, { backgroundColor: on ? c.ink : c.card, borderColor: on ? c.ink : c.border }]}>
-                <Text style={[s.chipText, { color: on ? c.inkForeground : c.foreground }]}>{label}</Text>
+        <>
+          <View style={[s.search, { marginHorizontal: horizontalPadding, backgroundColor: c.card, borderColor: c.border, borderRadius: c.radius }]}>
+            <Feather name="search" size={17} color={c.mutedForeground} />
+            <TextInput
+              testID="orders-search"
+              accessibilityLabel="Rechercher une commande"
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Référence, client ou boutique"
+              placeholderTextColor={c.mutedForeground}
+              returnKeyType="search"
+              autoCapitalize="none"
+              style={[s.searchInput, { color: c.foreground }]}
+            />
+            {search ? (
+              <Pressable
+                testID="orders-search-clear"
+                accessibilityRole="button"
+                accessibilityLabel="Effacer la recherche"
+                hitSlop={8}
+                onPress={() => setSearch('')}
+                style={s.clear}
+              >
+                <Feather name="x-circle" size={18} color={c.mutedForeground} />
               </Pressable>
-            );
-          })}
-        </ScrollView>
+            ) : null}
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.chips, { paddingHorizontal: horizontalPadding }]} style={{ flexGrow: 0 }}>
+            {([
+              ['all', `Toutes · ${counts.all}`],
+              ['active', `En cours · ${counts.active}`],
+              ['done', `Clôturées · ${counts.done}`],
+            ] as const).map(([key, label]) => {
+              const selected = filter === key;
+              return (
+                <Pressable
+                  key={key}
+                  testID={`filter-${key}`}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  onPress={() => setFilter(key)}
+                  style={[s.chip, { backgroundColor: selected ? c.ink : c.card, borderColor: selected ? c.ink : c.border }]}
+                >
+                  <Text style={[s.chipText, { color: selected ? c.inkForeground : c.foreground }]}>{label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </>
       ) : null}
       {q.isPending ? <SkeletonCards /> : q.isError && !q.data ? (
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
@@ -70,15 +148,12 @@ export default function OrdersScreen() {
           data={list}
           keyExtractor={(o) => String(o.id)}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 10, paddingBottom: bottom, flexGrow: 1 }}
+          contentContainerStyle={[s.list, { paddingHorizontal: horizontalPadding, paddingBottom: bottom }]}
           refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => q.refetch()} tintColor={c.primary} colors={[c.primary]} />}
           ListHeaderComponent={q.isError ? (
-            <Text style={[s.stale, { color: c.destructive }]}>Actualisation échouée, données affichées possiblement obsolètes : {q.error.message}</Text>
+            <Text accessibilityRole="alert" style={[s.stale, { color: c.destructive }]}>Actualisation échouée. Faites glisser vers le bas pour réessayer.</Text>
           ) : null}
-          ListEmptyComponent={
-            <StateView icon="inbox" title={filter === 'all' ? 'Aucune commande' : `Aucune commande ${statusInfo(filter === 'active' ? 'pending' : 'delivered') && (filter === 'active' ? 'en cours' : 'clôturée')}`}
-              message="Les nouvelles commandes de vos boutiques apparaîtront ici. Tirez pour actualiser." actionLabel="Actualiser" onAction={() => q.refetch()} />
-          }
+          ListEmptyComponent={<StateView icon={search ? 'search' : 'inbox'} title={filterLabel} message={emptyMessage} actionLabel="Actualiser" onAction={() => q.refetch()} />}
         />
       )}
     </View>
@@ -88,12 +163,19 @@ export default function OrdersScreen() {
 const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 12, overflow: 'hidden' },
   bar: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
+  content: { flex: 1, minWidth: 0, gap: 7 },
   between: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  ref: { fontFamily: font.bold, fontSize: 15 },
-  total: { fontFamily: font.bold, fontSize: 15 },
-  meta: { fontFamily: font.regular, fontSize: 13 },
-  chips: { paddingHorizontal: 16, gap: 8, paddingBottom: 10 },
-  chip: { paddingHorizontal: 14, height: 34, borderRadius: 17, borderWidth: 1, justifyContent: 'center' },
+  statusLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  ref: { flex: 1, fontFamily: font.bold, fontSize: 15 },
+  total: { flexShrink: 0, fontFamily: font.bold, fontSize: 15 },
+  meta: { fontFamily: font.regular, fontSize: 13, lineHeight: 18 },
+  date: { flexShrink: 0, textAlign: 'right' },
+  search: { minHeight: 48, borderWidth: 1, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  searchInput: { flex: 1, minWidth: 0, minHeight: 46, paddingVertical: 0, fontFamily: font.regular, fontSize: 14 },
+  clear: { minWidth: 32, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
+  chips: { gap: 8, paddingBottom: 10 },
+  chip: { paddingHorizontal: 14, minHeight: 44, borderRadius: 22, borderWidth: 1, justifyContent: 'center' },
   chipText: { fontFamily: font.semibold, fontSize: 13 },
+  list: { paddingTop: 4, gap: 10, flexGrow: 1, width: '100%', maxWidth: 900, alignSelf: 'center' },
   stale: { fontFamily: font.medium, fontSize: 12, marginBottom: 6 },
 });
