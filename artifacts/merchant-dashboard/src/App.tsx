@@ -129,15 +129,15 @@ function Login() {
     event.preventDefault();
     login.mutate({ data: { email, password } }, { onSuccess: (response) => { storeToken(response.token); setLocation('/'); } });
   };
-  return <main className="paper-grid flex min-h-[100dvh] items-center justify-center p-5" onPointerDownCapture={() => void unlockAudioContext()} onKeyDownCapture={() => void unlockAudioContext()}>
-    <div className="grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-border bg-card shadow-[0_24px_70px_rgba(33,39,58,.12)] md:grid-cols-[.9fr_1.1fr]">
+  return <main className="paper-grid flex min-h-[100dvh] items-center justify-center p-3 sm:p-5" onPointerDownCapture={() => void unlockAudioContext()} onKeyDownCapture={() => void unlockAudioContext()}>
+    <div className="grid w-full max-w-5xl overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_24px_70px_rgba(33,39,58,.12)] sm:rounded-[2rem] md:grid-cols-[.9fr_1.1fr]">
       <section className="relative hidden overflow-hidden bg-sidebar p-10 text-sidebar-foreground md:flex md:flex-col md:justify-between">
         <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full border-[34px] border-primary/40" />
         <div className="absolute -bottom-28 -left-16 h-64 w-64 rounded-full border-[28px] border-accent/30" />
         <div className="relative"><Brand light /><p className="mt-20 max-w-xs text-4xl font-bold leading-[1.08] display">Le calme au cœur d'une cuisine animée.</p><p className="mt-5 max-w-sm text-sm leading-6 text-sidebar-foreground/65">Commandes, menu et activité de la boutique, dans un espace clair.</p></div>
         <div className="relative flex items-center gap-3 text-xs text-sidebar-foreground/55"><ShieldCheck size={15} />Espace privé partenaires Jatek</div>
       </section>
-      <section className="p-7 sm:p-12">
+      <section className="p-5 sm:p-12">
         <div className="mb-10 md:hidden"><Brand /></div>
         <p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Espace Commerçant</p>
         <h1 className="mt-3 display text-3xl font-bold tracking-tight">Heureux de vous revoir.</h1>
@@ -226,7 +226,7 @@ function Shell({ children }: { children: ReactNode }) {
       <nav className="mt-3 space-y-1">{navItems.map(({ href, label, icon: Icon }) => <Link key={href} href={href} data-testid={`link-nav-${label.toLowerCase().replace(' ', '-')}`} onClick={() => setMobileOpen(false)} className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar ${active(href) ? 'bg-primary text-primary-foreground shadow-sm' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}><Icon size={18} strokeWidth={active(href) ? 2.4 : 1.8} /><span>{label}</span>{label === 'Commandes' && <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active(href) ? 'bg-white/25 text-white' : 'bg-sidebar-accent text-sidebar-accent-foreground'}`}>en direct</span>}</Link>)}</nav>
       <div className="mt-auto">
         <div className="mb-3 rounded-2xl border border-sidebar-border bg-sidebar-accent/60 p-3"><div className="flex items-center gap-2 text-xs font-semibold"><span className="h-2 w-2 rounded-full bg-[#74d4a4]" />{me.isLoading ? 'Vérification de la connexion' : 'Connecté à Jatek'}</div><p className="mt-2 text-[11px] leading-4 text-sidebar-foreground/55">Synchronisation en direct activée. Changements visibles par toute l'équipe.</p></div>
-         <Link href="/settings" data-testid="link-nav-settings" className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-sidebar-ring ${active('/settings') ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}><Settings size={18} />Paramètres</Link>
+          <Link href="/settings" data-testid="link-nav-settings" onClick={() => setMobileOpen(false)} className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-sidebar-ring ${active('/settings') ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}><Settings size={18} />Paramètres</Link>
          <button data-testid="button-sign-out" onClick={logout} className="mt-1 flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-sidebar-foreground/70 outline-none transition hover:bg-destructive/20 hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"><LogOut size={18} />Se déconnecter</button>
       </div>
     </aside>
@@ -477,7 +477,6 @@ function Orders() {
   const [downloadingDocument, setDownloadingDocument] = useState<string | null>(null);
   const [prepTimeMinutes, setPrepTimeMinutes] = useState(20);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const autoOpenedPendingIds = useRef(new Set<number>());
 
   const orders = useListBackendOrders({ status: status === 'toutes' ? undefined : status, search: search || undefined, limit: 100 });
   const pendingOrders = useListBackendOrders(
@@ -496,6 +495,7 @@ function Orders() {
   });
   const updateStatus = useUpdateOrderStatus();
   const client = useQueryClient();
+  const visibleOrders = sortOrdersOldestFirst(orders.data || []);
   
   const nextStatus = (current: string) => current === 'pending' ? 'accepted' : (current === 'accepted' || current === 'confirmed') ? 'preparing' : current === 'preparing' ? 'ready' : null;
   const selectedOrder = orderDetail.data;
@@ -511,9 +511,9 @@ function Orders() {
 
   useEffect(() => {
     if (!pendingOrders.data || selectedOrderId !== null) return;
-    const nextPending = pendingOrders.data.find(order => !autoOpenedPendingIds.current.has(order.id));
+    const nextPending = sortOrdersOldestFirst(pendingOrders.data).find(order => !openedPendingOrderIds.has(order.id));
     if (nextPending) {
-      autoOpenedPendingIds.current.add(nextPending.id);
+      openedPendingOrderIds.add(nextPending.id);
       setSelectedOrderId(nextPending.id);
     }
   }, [pendingOrders.data, selectedOrderId]);
@@ -628,10 +628,10 @@ function Orders() {
           <span>Commande</span><span>Client</span><span>Placée</span><span>Total</span><span className="text-right">Statut</span>
         </div>
         <div className="divide-y divide-border">
-          {(orders.data || []).map((order) => {
+          {visibleOrders.map((order) => {
             const next = nextStatus(order.status);
             const openOrder = () => {
-              if (order.status === 'pending') autoOpenedPendingIds.current.add(order.id);
+              if (order.status === 'pending') openedPendingOrderIds.add(order.id);
               setSelectedOrderId(order.id);
             };
             return <div key={order.id} data-testid={`row-order-${order.id}`} role="button" tabIndex={0} aria-label={`Ouvrir la commande ${order.reference || order.id}`} onClick={openOrder} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openOrder(); } }} className="grid cursor-pointer gap-3 px-5 py-4 transition hover:bg-muted/30 focus-visible:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary md:grid-cols-[1.25fr_1fr_.8fr_.7fr_1fr] md:items-center">
@@ -654,15 +654,15 @@ function Orders() {
     </QueryState>
 
     {selectedOrderId !== null && (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-sidebar/45 p-4 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) setSelectedOrderId(null); }}>
-        <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-card shadow-2xl">
+      <div className="fixed inset-0 z-50 grid place-items-start overflow-y-auto overscroll-contain bg-sidebar/55 p-2 pt-[max(env(safe-area-inset-top),0.5rem)] pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:place-items-center sm:p-4" onClick={(e) => { if (e.target === e.currentTarget) setSelectedOrderId(null); }}>
+        <div className="dashboard-dialog relative my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-card shadow-2xl">
           {!selectedOrder ? <div className="p-8 text-center">
             <button aria-label="Fermer le détail de la commande" onClick={() => setSelectedOrderId(null)} className="absolute right-4 top-4 rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
             {orderDetail.isError ? <><CircleAlert className="mx-auto text-red-600" /><p className="mt-3 text-sm">Impossible de charger les articles. Aucune action n’a été effectuée.</p><Button className="mt-4" onClick={() => void orderDetail.refetch()}><RefreshCw size={15} />Réessayer</Button></> : <><Loader2 className="mx-auto animate-spin text-primary" /><p className="mt-3 text-sm text-muted-foreground">Chargement des articles de la commande…</p></>}
           </div> : <>
           <button aria-label="Fermer le détail de la commande" onClick={() => setSelectedOrderId(null)} className="absolute right-4 top-4 rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
-          <div className="border-b border-border p-6">
-            <h2 className="text-xl font-bold">Commande #{selectedOrder.reference || selectedOrder.id}</h2>
+          <div className="shrink-0 border-b border-border p-4 sm:p-6">
+            <h2 className="pr-10 text-lg font-bold sm:text-xl">Commande #{selectedOrder.reference || selectedOrder.id}</h2>
             <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
               <span>{dateLabel(selectedOrder.createdAt)}</span>
               <StatusPill status={selectedOrder.status} />
@@ -673,7 +673,7 @@ function Orders() {
             </div>
             <div className="mt-4"><OrderTimestampSummary order={selectedOrder} /></div>
           </div>
-          <div className="max-h-[60vh] overflow-y-auto p-6">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
             <div className="grid gap-6 md:grid-cols-2">
               <div>
                 <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Client</h3>
@@ -709,25 +709,25 @@ function Orders() {
               <div className="flex justify-between pt-2 text-base font-bold"><span>Total</span><span>{money(selectedOrder.total)}</span></div>
             </div>
           </div>
-          <div className="border-t border-border bg-muted/30 p-6">
+          <div className="max-h-[42dvh] shrink-0 overflow-y-auto overscroll-contain border-t border-border bg-muted/30 p-4 sm:max-h-none sm:overflow-visible sm:p-6">
             <div className="flex flex-wrap items-center gap-3">
               {selectedOrder.status === 'pending' && <div className="w-full rounded-xl border border-border bg-card p-4">
                 <div className="text-sm font-bold">Temps de préparation estimé</div>
-                <div className="mt-3 grid grid-cols-4 gap-2">
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[15, 20, 30, 45].map(minutes => <button key={minutes} type="button" aria-pressed={prepTimeMinutes === minutes} onClick={() => setPrepTimeMinutes(minutes)} className={`min-h-10 rounded-lg border px-2 text-sm font-bold ${prepTimeMinutes === minutes ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background hover:bg-muted'}`}>{minutes} min</button>)}
                 </div>
                 <Button data-testid="button-accept-print-order" className="mt-3 w-full bg-emerald-600 text-white hover:bg-emerald-700" disabled={updateStatus.isPending} onClick={() => void acceptAndStartPreparation()}><Check size={16} />Accepter & imprimer le ticket</Button>
               </div>}
-              {['accepted', 'confirmed'].includes(selectedOrder.status) && <Button data-testid="button-start-preparing" className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={updateStatus.isPending} onClick={() => void advanceSelectedOrder()}><UtensilsCrossed size={16} />Démarrer la préparation</Button>}
-              {selectedOrder.status === 'preparing' && <Button data-testid="button-mark-order-ready" className="bg-cyan-700 text-white hover:bg-cyan-800" disabled={updateStatus.isPending} onClick={() => void advanceSelectedOrder()}><Check size={16} />Commande prête · appeler le livreur</Button>}
+              {['accepted', 'confirmed'].includes(selectedOrder.status) && <Button data-testid="button-start-preparing" className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto" disabled={updateStatus.isPending} onClick={() => void advanceSelectedOrder()}><UtensilsCrossed size={16} />Démarrer la préparation</Button>}
+              {selectedOrder.status === 'preparing' && <Button data-testid="button-mark-order-ready" className="w-full bg-cyan-700 text-white hover:bg-cyan-800 sm:w-auto" disabled={updateStatus.isPending} onClick={() => void advanceSelectedOrder()}><Check size={16} />Commande prête · appeler le livreur</Button>}
               {selectedOrder.status === 'ready' && <div className="w-full rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">Commande prête · en attente du livreur. La remise est confirmée par le livreur.</div>}
               {['pending', 'accepted', 'confirmed', 'preparing'].includes(selectedOrder.status) && (
-                <Button variant="danger" disabled={updateStatus.isPending} onClick={() => void refuseSelectedOrder()}>{selectedOrder.status === 'pending' ? 'Refuser' : 'Annuler la commande'}</Button>
+                <Button variant="danger" className="w-full sm:w-auto" disabled={updateStatus.isPending} onClick={() => void refuseSelectedOrder()}>{selectedOrder.status === 'pending' ? 'Refuser' : 'Annuler la commande'}</Button>
               )}
-              <div className="ml-auto flex flex-wrap items-center gap-2">
-                 <Button variant="soft" onClick={() => void printTicket(selectedOrder.id)}><Printer size={15} />Ticket 80 mm</Button>
-                 <Button variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadReceipt(selectedOrder.id), `jatek-ticket-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-ticket-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}PDF du ticket</Button>
-                 <Button variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadInvoice(selectedOrder.id), `jatek-facture-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-facture-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}Facture PDF A4</Button>
+              <div className="ml-0 flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap">
+                 <Button className="w-full sm:w-auto" variant="soft" onClick={() => void printTicket(selectedOrder.id)}><Printer size={15} />Ticket 80 mm</Button>
+                 <Button className="w-full sm:w-auto" variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadReceipt(selectedOrder.id), `jatek-ticket-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-ticket-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}PDF du ticket</Button>
+                 <Button className="w-full sm:w-auto" variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadInvoice(selectedOrder.id), `jatek-facture-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-facture-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}Facture PDF A4</Button>
               </div>
             </div>
             <p className="mt-3 text-right text-xs text-muted-foreground">PDF prêt à télécharger · QR code inclus pour identifier la commande.</p>
@@ -825,9 +825,9 @@ function MenuPage() {
         <Search size={16} className="absolute left-3 top-3 text-muted-foreground" />
         <input data-testid="input-menu-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Chercher dans le menu" className="h-10 w-full rounded-xl bg-muted/60 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" />
       </div>
-      <div className="no-scrollbar flex gap-2 overflow-x-auto">
-        <button data-testid="button-category-tous" onClick={() => setCategory('toutes')} className={`whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold ${category === 'toutes' ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground'}`}>Tous les articles</button>
-        {(categories.data || []).map((item) => <button key={item.id} data-testid={`button-category-${item.id}`} onClick={() => setCategory(item.name)} className={`whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold ${category === item.name ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground'}`}>{item.name}</button>)}
+      <div className="no-scrollbar flex gap-2 overflow-x-auto overscroll-x-contain touch-pan-x">
+        <button data-testid="button-category-tous" onClick={() => setCategory('toutes')} className={`min-h-11 shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold ${category === 'toutes' ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground'}`}>Tous les articles</button>
+        {(categories.data || []).map((item) => <button key={item.id} data-testid={`button-category-${item.id}`} onClick={() => setCategory(item.name)} className={`min-h-11 shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold ${category === item.name ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground'}`}>{item.name}</button>)}
       </div>
     </div>
     
@@ -837,15 +837,15 @@ function MenuPage() {
           <div key={product.id} data-testid={`card-product-${product.id}`} className={`flex flex-col overflow-hidden rounded-2xl border border-card-border bg-card shadow-sm transition hover:shadow-md ${!product.isAvailable ? 'opacity-60 grayscale-[0.5]' : ''}`}>
             {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-32 w-full object-cover" /> : <div className="flex h-32 w-full items-center justify-center bg-muted/50 text-muted-foreground"><UtensilsCrossed size={32} className="opacity-20" /></div>}
             <div className="flex flex-1 flex-col p-4">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="font-bold leading-tight">{product.name}</h3>
-                <span className="rounded-lg bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">{product.category}</span>
+              <div className="flex min-w-0 items-start justify-between gap-2">
+                <h3 className="min-w-0 break-words font-bold leading-tight">{product.name}</h3>
+                <span className="max-w-[45%] shrink-0 truncate rounded-lg bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">{product.category}</span>
               </div>
               <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{product.description || 'Aucune description ajoutée pour le moment.'}</p>
               <div className="mt-auto pt-4 flex items-center justify-between">
                 <span className="font-bold">{money(product.price)}</span>
-                <div className="flex gap-2">
-                  <button data-testid={`button-edit-product-${product.id}`} onClick={() => setSelectedId(product.id)} className="rounded-xl border border-border px-3 text-muted-foreground hover:bg-muted"><Pencil size={15} /></button>
+                <div className="flex min-w-0 gap-2">
+                  <button data-testid={`button-edit-product-${product.id}`} aria-label={`Modifier ${product.name}`} onClick={() => setSelectedId(product.id)} className="grid min-h-11 w-11 shrink-0 place-items-center rounded-xl border border-border text-muted-foreground hover:bg-muted"><Pencil size={15} /></button>
                   <Button data-testid={`button-toggle-product-${product.id}`} variant={product.isAvailable ? 'soft' : 'primary'} className="flex-1 py-2 text-xs" disabled={update.isPending} onClick={() => update.mutate({ id: product.id, data: { isAvailable: !product.isAvailable } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendProductsPageQueryKey() }); client.invalidateQueries({ queryKey: getGetBackendDashboardQueryKey() }); } })}>
                     {product.isAvailable ? 'Mettre en pause' : 'Rendre disponible'}
                   </Button>
@@ -858,8 +858,8 @@ function MenuPage() {
     </QueryState>
 
     {isAdding && (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-sidebar/45 p-4 overflow-y-auto" onClick={(event) => { if (event.target === event.currentTarget) setIsAdding(false); }}>
-        <div className="relative w-full max-w-lg rounded-2xl bg-card p-6 shadow-2xl">
+      <div className="fixed inset-0 z-50 grid place-items-start overflow-y-auto overscroll-contain bg-sidebar/55 p-2 sm:place-items-center sm:p-4" onClick={(event) => { if (event.target === event.currentTarget) setIsAdding(false); }}>
+        <div className="dashboard-dialog relative my-auto w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-4 shadow-2xl sm:p-6">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-xl font-bold">Ajouter un nouvel article</h2>
             <button type="button" data-testid="button-close-add-product" onClick={() => setIsAdding(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
@@ -895,9 +895,9 @@ function MenuPage() {
                 <div className="text-xs text-muted-foreground">Les clients peuvent commander cet article immédiatement.</div>
               </div>
             </label>
-            <div className="mt-6 flex justify-end gap-3 border-t border-border pt-6">
-              <Button type="button" variant="quiet" onClick={() => setIsAdding(false)}>Annuler</Button>
-              <Button type="submit" disabled={create.isPending || isUploading}>{create.isPending ? 'Ajout...' : 'Ajouter un article'}</Button>
+            <div className="mt-6 flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end sm:gap-3 sm:pt-6">
+              <Button className="w-full sm:w-auto" type="button" variant="quiet" onClick={() => setIsAdding(false)}>Annuler</Button>
+              <Button className="w-full sm:w-auto" type="submit" disabled={create.isPending || isUploading}>{create.isPending ? 'Ajout...' : 'Ajouter un article'}</Button>
             </div>
           </form>
         </div>
@@ -905,10 +905,10 @@ function MenuPage() {
     )}
 
     {selectedId !== null && detail.data && !isAdding && (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-sidebar/45 p-4 overflow-y-auto" onClick={(event) => { if (event.target === event.currentTarget) { setSelectedId(null); setIsEditing(false); } }}>
-        <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-card shadow-2xl">
+      <div className="fixed inset-0 z-50 grid place-items-start overflow-y-auto overscroll-contain bg-sidebar/55 p-2 sm:place-items-center sm:p-4" onClick={(event) => { if (event.target === event.currentTarget) { setSelectedId(null); setIsEditing(false); } }}>
+        <div className="dashboard-dialog relative my-auto w-full max-w-lg overflow-y-auto rounded-2xl bg-card shadow-2xl">
           {detail.isLoading ? <div className="p-8 text-center text-muted-foreground">Chargement de l'article...</div> : isEditing && editData ? (
-             <div className="p-6">
+              <div className="p-4 sm:p-6">
                <div className="mb-6 flex items-center justify-between">
                  <h2 className="text-xl font-bold">Modifier les détails</h2>
                  <button type="button" onClick={() => setIsEditing(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
@@ -937,9 +937,9 @@ function MenuPage() {
                    <textarea rows={3} value={editData.description} onChange={e => setEditData({...editData, description: e.target.value})} className="w-full rounded-xl border border-input bg-background p-3 outline-none focus:border-primary" />
                  </label>
                  <ImageUploader label="Image du produit" kind="product_image" value={editData.imageUrl} onChange={url => setEditData({...editData, imageUrl: url})} onUploading={setIsUploading} />
-                 <div className="mt-6 flex justify-end gap-3 border-t border-border pt-6">
-                   <Button type="button" variant="quiet" onClick={() => setIsEditing(false)}>Annuler</Button>
-                   <Button type="submit" disabled={update.isPending || isUploading}>{update.isPending ? 'Enregistrement...' : 'Enregistrer'}</Button>
+                  <div className="mt-6 flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end sm:gap-3 sm:pt-6">
+                    <Button className="w-full sm:w-auto" type="button" variant="quiet" onClick={() => setIsEditing(false)}>Annuler</Button>
+                    <Button className="w-full sm:w-auto" type="submit" disabled={update.isPending || isUploading}>{update.isPending ? 'Enregistrement...' : 'Enregistrer'}</Button>
                  </div>
                </form>
              </div>
