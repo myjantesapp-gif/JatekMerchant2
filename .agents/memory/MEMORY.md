@@ -60,3 +60,4 @@
 - [Metro image-size compatibility](metro-image-size-compat.md) — pass the file-path adapter to Metro’s CLI and worker processes through NODE_OPTIONS.
 - [PDFKit runtime dependency](pdfkit-runtime-dependency.md) — bundled PDFKit/fontkit output can require @swc/helpers directly at API runtime.
 - [Merchant dashboard React Query dedupe](merchant-query-dedupe.md) — Vite must dedupe React Query when both the app and linked API client depend on it, or production hooks can miss the provider.
+- [Offline EAS config validation](offline-eas-config-validation.md) — validate the full build-profile schema locally when CLI version or project permissions block `eas config`.
