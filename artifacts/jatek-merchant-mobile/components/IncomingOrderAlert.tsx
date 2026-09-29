@@ -7,12 +7,23 @@ import { Button, font } from '@/components/ui';
 import { useColors } from '@/hooks/useColors';
 import type { Order } from '@/lib/api-core';
 import { money, parseExtras } from '@/lib/format';
-import { useOrder } from '@/lib/merchant-data';
 import { useOrderContext } from '@/lib/order-context';
+import { useOrder, useOrders } from '@/lib/merchant-data';
 
 const PREP_TIMES = [10, 15, 20, 30] as const;
 const alertSound = require('@/assets/sounds/order-alert.wav');
 
+export function IncomingOrderAlertHost() {
+  const orderFeed = useOrders();
+  const pendingOrders = useMemo(
+    () => (orderFeed.data ?? [])
+      .filter((order) => order.status === 'pending')
+      .sort((a, b) => (Date.parse(a.createdAt ?? '') || 0) - (Date.parse(b.createdAt ?? '') || 0)),
+    [orderFeed.data],
+  );
+
+  return <IncomingOrderAlert pendingOrders={pendingOrders} loading={orderFeed.isPending} />;
+}
 export function IncomingOrderAlert({ pendingOrders, loading }: { pendingOrders: Order[]; loading: boolean }) {
   const c = useColors();
   const pathname = usePathname();

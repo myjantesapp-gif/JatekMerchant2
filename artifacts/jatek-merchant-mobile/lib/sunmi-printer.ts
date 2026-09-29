@@ -63,6 +63,37 @@ export async function printKitchenTicket(order: OrderDetail) {
   ]);
 }
 
+export async function printOrderReceipt(order: OrderDetail) {
+  const items: PrintLine[] = order.items.flatMap((item) => {
+    const extras = parseExtras(item.selectedExtras);
+    return [
+      { text: `${item.quantity} × ${item.menuItemName}`, size: 26, bold: true },
+      ...(item.selectedSize ? [{ text: `Taille : ${item.selectedSize}` }] : []),
+      ...(extras.length ? [{ text: `Suppléments : ${extras.join(', ')}` }] : []),
+      { text: `${money(item.unitPrice, order.currency)} × ${item.quantity} = ${money(item.totalPrice, order.currency)}`, size: 20, align: 'right' },
+    ];
+  });
+
+  await printTicket([
+    { text: order.restaurantName || 'JATEK', size: 26, bold: true, align: 'center' },
+    { text: 'REÇU DE COMMANDE', size: 25, bold: true, align: 'center' },
+    { text: orderHeading(order), size: 24, bold: true, align: 'center' },
+    { text: dateTime(order.createdAt), size: 20, align: 'center' },
+    { text: `Client : ${order.userName || '—'}`, size: 22 },
+    ...(order.customerPhone ? [{ text: `Tél. client : ${order.customerPhone}` }] : []),
+    ...(order.deliveryAddress ? [{ text: `Adresse : ${order.deliveryAddress}`, size: 22 }] : []),
+    { text: '--------------------------------', size: 20 },
+    ...items,
+    ...(order.notes ? [{ text: `NOTE : ${order.notes}`, size: 22, bold: true }] : []),
+    { text: '--------------------------------', size: 20 },
+    { text: `Sous-total : ${money(order.subtotal, order.currency)}`, size: 21 },
+    ...(order.deliveryFee ? [{ text: `Livraison : ${money(order.deliveryFee, order.currency)}`, size: 21 }] : []),
+    ...(order.serviceFee ? [{ text: `Frais de service : ${money(order.serviceFee, order.currency)}`, size: 21 }] : []),
+    ...(order.discountAmount ? [{ text: `Remise : -${money(order.discountAmount, order.currency)}`, size: 21 }] : []),
+    { text: `TOTAL : ${money(order.total, order.currency)}`, size: 30, bold: true, align: 'center' },
+  ]);
+}
+
 export async function printCourierTicket(order: OrderDetail) {
   const items: PrintLine[] = order.items.flatMap((item) => {
     const extras = parseExtras(item.selectedExtras);
@@ -94,5 +125,6 @@ export async function printCourierTicket(order: OrderDetail) {
 export const SunmiInnerPrinter = {
   isSupported: Platform.OS === 'android',
   printKitchenTicket,
+  printOrderReceipt,
   printCourierTicket,
 };

@@ -31,9 +31,7 @@ const ENDPOINTS = {
   deleteProduct: (id: number) => `/api/backend/products/${id}`,
   updateShop: (id: number) => `/api/backend/shops/${id}`,
   uploadImage: '/api/storage/uploads/image',
-  downloadReceipt: (id: number) => `${API_BASE_URL}/api/orders/${id}/receipt.pdf`,
   printReceipt: (id: number) => `${API_BASE_URL}/api/orders/${id}/receipt`,
-  downloadInvoice: (id: number) => `${API_BASE_URL}/api/orders/${id}/invoice.pdf`,
 };
 
 
@@ -472,9 +470,8 @@ function Orders() {
   const [status, setStatus] = useState('toutes');
   const [search, setSearch] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [downloadError, setDownloadError] = useState('');
+  const [printError, setPrintError] = useState('');
   const [workflowError, setWorkflowError] = useState('');
-  const [downloadingDocument, setDownloadingDocument] = useState<string | null>(null);
   const [prepTimeMinutes, setPrepTimeMinutes] = useState(20);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
@@ -570,6 +567,7 @@ function Orders() {
     if (!selectedOrder) return;
     const next = nextStatus(selectedOrder.status);
     if (next && await changeOrderStatus(selectedOrder.id, next)) {
+      if (next === 'ready') void printTicket(selectedOrder.id);
       setSelectedOrderId(null);
     }
   };
@@ -581,46 +579,20 @@ function Orders() {
     }
   };
 
-  const downloadDocument = async (id: number, endpoint: string, fallbackName: string) => {
-    const token = getStoredToken();
-    if (!token) return;
-    setDownloadError('');
-    setDownloadingDocument(fallbackName);
-    try {
-      const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
-      if (!response.ok) throw new Error('Le téléchargement du document a échoué.');
-      const blob = await response.blob();
-      const disposition = response.headers.get('content-disposition') || '';
-      const filename = disposition.match(/filename="([^"]+)"/i)?.[1] || fallbackName;
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = objectUrl;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      setDownloadError('Le document n’a pas pu être téléchargé. Vérifiez votre connexion puis réessayez.');
-    } finally {
-      setDownloadingDocument(null);
-    }
-  };
-
   const printTicket = async (id: number) => {
     const token = getStoredToken();
     if (!token) return;
-    setDownloadError('');
+    setPrintError('');
     try {
       await printThermalTicket(ENDPOINTS.printReceipt(id), token);
     } catch {
-      setDownloadError('Le ticket n’a pas pu être imprimé. Vérifiez la connexion et les autorisations d’impression.');
+      setPrintError('Le document n’a pas pu être imprimé. Vérifiez la connexion et les autorisations d’impression.');
     }
   };
 
   return <div className="page-in"><PageHeading eyebrow="Tableau de service" title="Commandes" description="Gardez les relais fluides. Mettez à jour les commandes dès que la cuisine a terminé." action={<Button data-testid="button-refresh-orders" variant="soft" onClick={() => orders.refetch()}><RefreshCw size={15} />Actualiser</Button>} />
     <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-card-border bg-card p-3 shadow-sm sm:flex-row"><div className="relative flex-1"><Search size={16} className="absolute left-3 top-3 text-muted-foreground" /><input data-testid="input-order-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Chercher une référence ou un client" className="h-11 w-full rounded-xl bg-muted/60 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="no-scrollbar flex gap-2 overflow-x-auto">{['toutes', 'pending', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled'].map((filter) => <button key={filter} data-testid={`button-filter-${filter}`} onClick={() => setStatus(filter)} className={`min-h-11 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition ${status === filter ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary hover:text-secondary-foreground'}`}>{formatStatus(filter)}</button>)}</div></div>
-    {downloadError && <div role="alert" className="mb-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><CircleAlert size={17} className="mt-0.5 shrink-0" /><span>{downloadError}</span><button type="button" aria-label="Fermer le message d’erreur" className="ml-auto rounded-lg p-1 hover:bg-red-100" onClick={() => setDownloadError('')}><X size={15} /></button></div>}
+    {printError && <div role="alert" className="mb-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><CircleAlert size={17} className="mt-0.5 shrink-0" /><span>{printError}</span><button type="button" aria-label="Fermer le message d’erreur" className="ml-auto rounded-lg p-1 hover:bg-red-100" onClick={() => setPrintError('')}><X size={15} /></button></div>}
     {workflowError && <div role="alert" className="mb-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><CircleAlert size={17} className="mt-0.5 shrink-0" /><span>{workflowError}</span><button type="button" aria-label="Fermer le message d’erreur" className="ml-auto rounded-lg p-1 hover:bg-red-100" onClick={() => setWorkflowError('')}><X size={15} /></button></div>}
     <QueryState loading={orders.isLoading} error={orders.isError} empty={!orders.isLoading && !orders.isError && (orders.data || []).length === 0} onRetry={() => orders.refetch()}>
       <section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-sm">
@@ -724,13 +696,20 @@ function Orders() {
               {['pending', 'accepted', 'confirmed', 'preparing'].includes(selectedOrder.status) && (
                 <Button variant="danger" className="w-full sm:w-auto" disabled={updateStatus.isPending} onClick={() => void refuseSelectedOrder()}>{selectedOrder.status === 'pending' ? 'Refuser' : 'Annuler la commande'}</Button>
               )}
-              <div className="ml-0 flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap">
-                 <Button className="w-full sm:w-auto" variant="soft" onClick={() => void printTicket(selectedOrder.id)}><Printer size={15} />Ticket 80 mm</Button>
-                 <Button className="w-full sm:w-auto" variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadReceipt(selectedOrder.id), `jatek-ticket-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-ticket-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}PDF du ticket</Button>
-                 <Button className="w-full sm:w-auto" variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadInvoice(selectedOrder.id), `jatek-facture-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-facture-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}Facture PDF A4</Button>
-              </div>
+               {['accepted', 'confirmed', 'preparing', 'ready'].includes(selectedOrder.status) && (
+                 <div className="ml-0 flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap">
+                   <Button
+                     data-testid={selectedOrder.status === 'ready' ? 'button-print-order-receipt' : 'button-print-order-ticket'}
+                     className="w-full sm:w-auto"
+                     variant="soft"
+                     onClick={() => void printTicket(selectedOrder.id)}
+                   >
+                     <Printer size={15} />
+                     {selectedOrder.status === 'ready' ? 'Imprimer le reçu' : 'Imprimer le ticket'}
+                   </Button>
+                 </div>
+               )}
             </div>
-            <p className="mt-3 text-right text-xs text-muted-foreground">PDF prêt à télécharger · QR code inclus pour identifier la commande.</p>
           </div>
           </>}
         </div>

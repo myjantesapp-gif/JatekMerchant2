@@ -22,6 +22,8 @@
 - [Expo Android push credentials](expo-push-fcm-credentials.md) — Expo Push Service needs FCM v1 credentials on the EAS project; google-services.json alone is not enough.
 - [Product category compatibility](product-category-compatibility.md) — keep the stable category ID and legacy category name synchronized for older mobile clients.
 - [Mobile production dependency completeness](mobile-production-dependencies.md) — production bundles run the Expo mobile build, so native Expo modules imported transitively must be direct mobile workspace dependencies.
+- [Expo native-module autolinking](expo-native-module-autolinking.md) — Expo's Android Gradle integration can discover native packages even when the standalone `react-native config` CLI is absent.
+- [Merchant order-alert context boundary](merchant-order-alert-provider.md) — Keep the incoming-order alert host outside the order provider module to avoid a circular import.
 - [Mobile location resilience](mobile-location-resilience.md) — GPS selection must survive reverse-geocoding failures and provide settings access when services are disabled.
 - [App Storage deployment access](app-storage-deployment-access.md) — media 403s can require granting the deployment identity read/write access to the managed App Storage bucket.
 - [Order commission pricing](order-commission-pricing.md) — JATEK service fee is shop-specific and applies to discounted TTC products only; delivery remains separate.

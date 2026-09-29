@@ -12,6 +12,7 @@ import { Syne_600SemiBold, Syne_700Bold, Syne_800ExtraBold } from '@expo-google-
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { queryClient } from '@/lib/query-client';
+import { IncomingOrderAlertHost } from '@/components/IncomingOrderAlert';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { useMe } from '@/lib/merchant-data';
 import { OrderProvider } from '@/lib/order-context';
@@ -76,15 +77,18 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <AuthProvider>
-            <OrderProvider>
-              <ShopProvider>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <KeyboardProvider>
-                    <RootLayoutNav />
-                  </KeyboardProvider>
-                </GestureHandlerRootView>
-              </ShopProvider>
-            </OrderProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <KeyboardProvider>
+                <OrderProvider>
+                  <ShopProvider>
+                    <>
+                      <RootLayoutNav />
+                      <IncomingOrderAlertHost />
+                    </>
+                  </ShopProvider>
+                </OrderProvider>
+              </KeyboardProvider>
+            </GestureHandlerRootView>
           </AuthProvider>
         </ErrorBoundary>
       </SafeAreaProvider>

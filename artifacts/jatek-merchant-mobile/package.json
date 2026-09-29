@@ -61,6 +61,9 @@
     "axios": "^1.20.0",
     "expo-audio": "~57.0.5",
     "expo-file-system": "~57.0.7",
-    "expo-sharing": "~57.0.22"
+    "expo-sharing": "~57.0.22",
+    "expo": "~57.0.25",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
   }
 }

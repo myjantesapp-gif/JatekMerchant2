@@ -1,8 +1,6 @@
 import React from 'react';
 import { Alert, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import { useMutation } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -13,42 +11,12 @@ import { Button, ErrorState, SkeletonCards, StateView, StatusPill, font, styles 
 import { API_BASE_URL, ApiError, buildApiUrl, frenchMessage } from '@/lib/api-core';
 import { getSessionToken, notifyUnauthorized } from '@/lib/query-client';
 import { useAuth } from '@/lib/auth';
+import { useOrderContext } from '@/lib/order-context';
 import { OrderTimerBadge, OrderTimestampSummary } from '@/components/OrderTiming';
 import { statusInfo } from '@/lib/format';
 
 const cancellableStatuses = new Set(['pending', 'accepted', 'confirmed', 'preparing']);
 const PREP_TIMES = [15, 20, 30, 45] as const;
-
-async function fetchDocument(path: string, filename: string, token: string): Promise<void> {
-  const endpoint = buildApiUrl(path);
-  if (Platform.OS === 'web') {
-    const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
-    if (!response.ok) {
-      if (response.status === 401) notifyUnauthorized(token);
-      throw new ApiError(response.status, frenchMessage(response.status));
-    }
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = objectUrl;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(objectUrl);
-    return;
-  }
-  if (!FileSystem.documentDirectory) throw new ApiError(0, 'Le stockage local est indisponible.');
-  const result = await FileSystem.downloadAsync(endpoint, `${FileSystem.documentDirectory}${filename}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (result.status < 200 || result.status >= 300) {
-    if (result.status === 401) notifyUnauthorized(token);
-    throw new ApiError(result.status, frenchMessage(result.status));
-  }
-  if (!(await Sharing.isAvailableAsync())) throw new ApiError(0, 'Le partage de fichiers est indisponible sur cet appareil.');
-  await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', dialogTitle: 'Partager le document Jatek' });
-}
 
 function receiptUrl(id: number, token: string) {
   return `${API_BASE_URL}/api/orders/${id}/receipt?token=${encodeURIComponent(token)}`;
@@ -62,9 +30,9 @@ export default function OrderDetailScreen() {
   const orderId = Number(id);
   const q = useOrder(orderId);
   const updateStatus = useUpdateOrderStatus();
+  const orderActions = useOrderContext();
   const { token } = useAuth();
   const [documentError, setDocumentError] = React.useState('');
-  const [downloading, setDownloading] = React.useState<string | null>(null);
   const [prepTimeMinutes, setPrepTimeMinutes] = React.useState(20);
   const [workflowError, setWorkflowError] = React.useState('');
   const [nowMs, setNowMs] = React.useState(() => Date.now());
@@ -94,8 +62,10 @@ export default function OrderDetailScreen() {
       : nextStatus === 'ready'
         ? { label: 'Marquer prête', icon: 'check' as const }
         : null;
+  const canPrintOrderDocument = !!o && ['accepted', 'confirmed', 'preparing', 'ready'].includes(o.status);
+  const printButtonLabel = o?.status === 'ready' ? 'Imprimer le reçu' : 'Imprimer le ticket';
   const horizontalPadding = width < 360 ? 14 : 16;
-  const busy = updateStatus.isPending || cancelOrder.isPending || downloading !== null;
+  const busy = updateStatus.isPending || cancelOrder.isPending || orderActions.isBusy;
 
   React.useEffect(() => {
     const timer = setInterval(() => setNowMs(Date.now()), 1000);
@@ -110,15 +80,29 @@ export default function OrderDetailScreen() {
     if (!o || !nextStatus) return;
     setWorkflowError('');
     try {
+      if (Platform.OS === 'android') {
+        if (o.status === 'pending') {
+          const printError = await orderActions.acceptAndStart(orderId, prepTimeMinutes);
+          if (printError) setDocumentError(printError);
+        } else if (nextStatus === 'ready') {
+          const printError = await orderActions.markReady(orderId);
+          if (printError) setDocumentError(printError);
+        } else {
+          await updateStatus.mutateAsync({ id: orderId, status: nextStatus });
+        }
+        await q.refetch();
+        return;
+      }
       if (o.status === 'pending') {
         await updateStatus.mutateAsync({ id: orderId, status: 'accepted', prepTimeMinutes });
+        void printOrderDocument();
         await updateStatus.mutateAsync({ id: orderId, status: 'preparing' });
         await q.refetch();
-        void printReceipt();
         return;
       }
       await updateStatus.mutateAsync({ id: orderId, status: nextStatus });
       await q.refetch();
+      if (nextStatus === 'ready') void printOrderDocument();
     } catch {
       setWorkflowError('L’acceptation ou le changement de statut a échoué. Actualisez la commande avant de réessayer.');
       void q.refetch();
@@ -137,35 +121,29 @@ export default function OrderDetailScreen() {
     }
   };
 
-  const download = async (kind: 'receipt' | 'invoice') => {
+  const printOrderDocument = async () => {
+    if (Platform.OS === 'android') {
+      if (!o) return;
+      setDocumentError('');
+      try {
+        if (o.status === 'ready') await orderActions.printOrderReceipt(o);
+        else await orderActions.printKitchenTicket(o);
+      } catch (error) {
+        setDocumentError(error instanceof Error ? error.message : 'Impossible d’imprimer la commande.');
+      }
+      return;
+    }
     const capturedToken = token || getSessionToken();
     if (!capturedToken) {
       setDocumentError('Session absente. Reconnectez-vous puis réessayez.');
       return;
     }
-    const filename = kind === 'receipt' ? `jatek-ticket-${orderId}.pdf` : `jatek-facture-${orderId}.pdf`;
     setDocumentError('');
-    setDownloading(kind);
-    try {
-      await fetchDocument(`/api/orders/${orderId}/${kind === 'receipt' ? 'receipt' : 'invoice'}.pdf`, filename, capturedToken);
-    } catch (error) {
-      setDocumentError(error instanceof Error ? error.message : 'Le document n’a pas pu être téléchargé.');
-    } finally {
-      setDownloading(null);
-    }
-  };
-
-  const printReceipt = async () => {
-    const capturedToken = token || getSessionToken();
-    if (!capturedToken) {
-      setDocumentError('Session absente. Reconnectez-vous puis réessayez.');
-      return;
-    }
     try {
       const opened = await Linking.openURL(receiptUrl(orderId, capturedToken));
       void opened;
     } catch {
-      setDocumentError('Impossible d’ouvrir le reçu. Vérifiez votre connexion puis réessayez.');
+      setDocumentError('Impossible d’ouvrir le document à imprimer. Vérifiez votre connexion puis réessayez.');
     }
   };
 
@@ -246,7 +224,7 @@ export default function OrderDetailScreen() {
               <Line label="Total" value={money(o.total, o.currency)} strong />
             </View>
           </ScrollView>
-          {o && (action || cancellableStatuses.has(o.status) || documentError || workflowError) ? (
+          {o && (action || cancellableStatuses.has(o.status) || canPrintOrderDocument || documentError || workflowError) ? (
             <View style={[s.actionFooter, { paddingHorizontal: horizontalPadding, paddingBottom: Math.max(insets.bottom, 12), backgroundColor: c.card, borderTopColor: c.border }]} testID="order-action-footer">
               {(updateStatus.isError || cancelOrder.isError || documentError || workflowError) ? (
                 <View accessibilityRole="alert" style={[s.actionError, { backgroundColor: '#d8393514', borderRadius: c.radius }]}>
@@ -284,10 +262,18 @@ export default function OrderDetailScreen() {
                 {cancellableStatuses.has(o.status) ? <Button testID="order-cancel-action" label="Annuler" icon="x-circle" variant="danger" loading={busy} onPress={confirmCancel} /> : null}
               </View>
               <View style={s.actionRow}>
-                <Button testID="order-print-receipt" label="Imprimer le reçu" icon="printer" variant="outline" disabled={busy} onPress={() => void printReceipt()} accessibilityHint="Ouvrir le reçu dans le navigateur pour impression" />
-                <Button testID="order-share-receipt" label={Platform.OS === 'web' ? 'Télécharger le ticket PDF' : 'Partager le ticket PDF'} icon="file-text" variant="outline" loading={downloading === 'receipt'} disabled={busy} onPress={() => void download('receipt')} accessibilityHint="Partager le PDF ou le télécharger pour l’imprimer" />
+                {canPrintOrderDocument ? (
+                  <Button
+                    testID={o.status === 'ready' ? 'order-print-receipt' : 'order-print-ticket'}
+                    label={printButtonLabel}
+                    icon="printer"
+                    variant="outline"
+                    disabled={busy}
+                    onPress={() => void printOrderDocument()}
+                    accessibilityHint={o.status === 'ready' ? 'Ouvrir le reçu de commande pour impression' : 'Ouvrir le ticket de cuisine pour impression'}
+                  />
+                ) : null}
               </View>
-              <Button testID="order-share-invoice" label={Platform.OS === 'web' ? 'Télécharger la facture PDF' : 'Partager la facture PDF'} icon="download" variant="outline" loading={downloading === 'invoice'} disabled={busy} onPress={() => void download('invoice')} accessibilityHint="Partager le PDF ou le télécharger pour l’imprimer" />
             </View>
           ) : null}
         </>
