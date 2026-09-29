@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ButtonHTMLAttributes, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import {
@@ -20,6 +20,7 @@ import NotFound from '@/pages/not-found';
 import { clearToken, getStoredToken, storeToken, API_BASE_URL } from '@/lib/merchant-auth';
 import { printThermalTicket } from '@/utils/printOrder';
 import { isOrderAlarmAudible, startOrderAlarm, stopOrderAlarm, unlockAudioContext } from '@/utils/soundAlert';
+import { sortOrdersOldestFirst } from '@/utils/orderQueue';
 import './index.css';
 
 import { useMutation } from '@tanstack/react-query';
@@ -171,6 +172,7 @@ const navItems = [
 ];
 
 const seenPendingOrderIds = new Set<number>();
+const openedPendingOrderIds = new Set<number>();
 
 function Shell({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -206,17 +208,19 @@ function Shell({ children }: { children: ReactNode }) {
     pendingOrders.data.forEach((order) => seenPendingOrderIds.add(order.id));
     if (isNew && location !== '/orders') setLocation('/orders');
   }, [pendingOrders.data, location, setLocation]);
-  useEffect(() => () => stopOrderAlarm(), []);
   useEffect(() => {
-    const reset = () => seenPendingOrderIds.clear();
+    const reset = () => {
+      seenPendingOrderIds.clear();
+      openedPendingOrderIds.clear();
+    };
     window.addEventListener('jatek-auth-change', reset);
     return () => window.removeEventListener('jatek-auth-change', reset);
   }, []);
   const active = (href: string) => href === '/' ? location === '/' : location.startsWith(href);
   const user = me.data?.user;
   const logout = () => { clearToken(); setLocation('/login'); };
-  return <div className="min-h-[100dvh] bg-background" onPointerDownCapture={unlockAlarm} onKeyDownCapture={unlockAlarm}>
-    <aside className={`fixed inset-y-0 left-0 z-40 flex w-[248px] -translate-x-full flex-col bg-sidebar px-4 py-5 text-sidebar-foreground shadow-[12px_0_40px_rgba(33,39,58,.16)] transition-transform lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : ''}`}>
+  return <div className="min-h-[100dvh] bg-background" onPointerDownCapture={unlockAlarm} onKeyDownCapture={(event) => { if (event.key === 'Escape') setMobileOpen(false); unlockAlarm(); }}>
+    <aside id="merchant-navigation" className={`fixed inset-y-0 left-0 z-40 flex w-[min(300px,88vw)] -translate-x-full flex-col bg-sidebar px-4 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1.25rem)] text-sidebar-foreground shadow-[12px_0_40px_rgba(33,39,58,.16)] transition-transform lg:w-[248px] lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : ''}`} aria-label="Navigation principale">
       <div className="flex items-center justify-between px-3"><Brand light /><button data-testid="button-close-menu" aria-label="Fermer le menu" className="rounded-lg p-2 text-white/75 hover:bg-white/15 hover:text-white lg:hidden" onClick={() => setMobileOpen(false)}><X size={18} /></button></div>
       <div className="mt-10 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-sidebar-foreground/45">Espace de travail</div>
       <nav className="mt-3 space-y-1">{navItems.map(({ href, label, icon: Icon }) => <Link key={href} href={href} data-testid={`link-nav-${label.toLowerCase().replace(' ', '-')}`} onClick={() => setMobileOpen(false)} className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar ${active(href) ? 'bg-primary text-primary-foreground shadow-sm' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}><Icon size={18} strokeWidth={active(href) ? 2.4 : 1.8} /><span>{label}</span>{label === 'Commandes' && <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active(href) ? 'bg-white/25 text-white' : 'bg-sidebar-accent text-sidebar-accent-foreground'}`}>en direct</span>}</Link>)}</nav>
@@ -228,8 +232,8 @@ function Shell({ children }: { children: ReactNode }) {
     </aside>
     {mobileOpen && <button aria-label="Fermer la navigation" data-testid="button-overlay-menu" className="fixed inset-0 z-30 bg-fuchsia-950/40 backdrop-blur-[2px] lg:hidden" onClick={() => setMobileOpen(false)} />}
     <div className="lg:pl-[248px]">
-      <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-border/80 bg-background/90 px-5 backdrop-blur-md sm:px-8">
-        <div className="flex items-center gap-3 lg:hidden"><button data-testid="button-open-menu" aria-label="Ouvrir le menu" className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm hover:brightness-95" onClick={() => setMobileOpen(true)}><MenuIcon size={21} /></button><Brand /></div>
+       <header className="merchant-header sticky top-0 z-20 flex items-center justify-between border-b border-border/80 bg-background/90 px-4 backdrop-blur-md sm:px-8">
+         <div className="flex items-center gap-3 lg:hidden"><button data-testid="button-open-menu" aria-label="Ouvrir le menu" aria-expanded={mobileOpen} aria-controls="merchant-navigation" className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm hover:brightness-95" onClick={() => setMobileOpen(true)}><MenuIcon size={21} /></button><Brand /></div>
         <div className="hidden text-xs font-semibold text-muted-foreground sm:block">Espace Commerçant <span className="mx-2 text-border">/</span> {location === '/' ? 'Aperçu' : location.slice(1).replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
         <div className="ml-auto flex items-center gap-3"><Link href="/orders" data-testid="button-notifications" aria-label="Voir les commandes" className="relative grid h-11 w-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted"><Bell size={18} /><span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-primary" /></Link><div className="hidden h-7 w-px bg-border sm:block" /><Link href="/settings" aria-label="Ouvrir les paramètres du compte" className="flex min-h-11 items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-muted"><span data-testid="text-user-initials" className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">{user?.name?.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'JT'}</span><div className="hidden leading-tight sm:block"><div data-testid="text-user-name" className="text-sm font-bold">{user?.name || 'Équipe commerçant'}</div><div className="text-[11px] text-muted-foreground">{formatRôle(user?.role) || 'Membre de l\'équipe'}</div></div><ChevronDown size={15} className="hidden text-muted-foreground sm:block" /></Link></div>
       </header>
@@ -239,7 +243,7 @@ function Shell({ children }: { children: ReactNode }) {
          {!audioReady && <button type="button" onClick={unlockAlarm} className="min-h-10 rounded-lg border border-amber-300 bg-amber-50 px-3 font-semibold text-amber-900">Activer le son</button>}
        </div>}
        {pendingOrders.isError && <div role="alert" className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-3 px-5 pt-3 text-sm text-red-700 sm:px-8"><CircleAlert size={17} />Surveillance des commandes interrompue. <button type="button" onClick={() => void pendingOrders.refetch()} className="font-bold underline">Réessayer</button></div>}
-       <main className="mx-auto max-w-[1500px] p-5 sm:p-8">{children}</main>
+       <main className="merchant-main mx-auto max-w-[1500px] p-4 sm:p-8">{children}</main>
     </div>
   </div>;
 }
@@ -261,7 +265,7 @@ function Guard({ children }: { children: ReactNode }) {
 }
 
 function PageHeading({ eyebrow, title, description, action }: { eyebrow: string; title: string; description?: string; action?: ReactNode }) {
-  return <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">{eyebrow}</p><h1 data-testid="text-page-title" className="mt-2 display text-3xl font-bold tracking-[-.04em] sm:text-4xl">{title}</h1>{description && <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>}</div>{action}</div>;
+  return <div className="mb-6 flex min-w-0 flex-col justify-between gap-4 sm:mb-8 sm:flex-row sm:items-end"><div className="min-w-0"><p className="text-xs font-bold uppercase tracking-[.14em] text-primary sm:tracking-[.18em]">{eyebrow}</p><h1 data-testid="text-page-title" className="mt-2 display break-words text-3xl font-bold tracking-[-.04em] sm:text-4xl">{title}</h1>{description && <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>}</div>{action && <div className="page-heading-action w-full sm:w-auto">{action}</div>}</div>;
 }
 
 function StatCard({ label, value, detail, icon: Icon, tone = 'coral' }: { label: string; value: string; detail: string; icon: typeof TrendingUp; tone?: 'coral' | 'mint' | 'yellow' | 'ink' }) {
