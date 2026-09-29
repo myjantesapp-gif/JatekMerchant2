@@ -4623,6 +4623,10 @@ components:
           type: integer
           minimum: 5
           maximum: 180
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
       required:
         - status
     Driver:

@@ -30,6 +30,7 @@ import { closeUserSubscriptions, publish } from "../lib/sse";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
 import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectStorage";
 import { getBackendProductsOrderBy, normalizeProductSort, normalizeProductSortDirection } from "../lib/productOrdering";
+import { employeeMayCloseShop } from "../lib/employeeShopPermissions";
 
 const router: IRouter = Router();
 
@@ -1306,6 +1307,12 @@ router.patch("/backend/shops/:id", requireAuth, async (req: AuthedRequest, res, 
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    if (ctx.role === "employee") {
+      if (!employeeMayCloseShop(req.body)) {
+        res.status(403).json({ error: "Les employés peuvent uniquement déclarer leur boutique fermée." });
+        return;
+      }
+    }
     const scoped = await getScopedShopIds(ctx.id, ctx.role, ctx.assignedShopId);
     if (scoped !== null && !scoped.includes(id)) {
       res.status(403).json({ error: "Forbidden: not your restaurant" }); return;

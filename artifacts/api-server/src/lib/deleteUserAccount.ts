@@ -2,13 +2,17 @@ import {
   activityLogsTable,
   chatMessagesTable,
   db,
+  dashboardTodosTable,
+  favoritesTable,
   notificationsTable,
+  notificationPrefsTable,
   ordersTable,
   otpCodesTable,
   quotesTable,
   referralsTable,
   refundsTable,
   reviewsTable,
+  supportTicketsTable,
   usersTable,
 } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
@@ -30,6 +34,10 @@ export async function deleteUserAccount(userId: number): Promise<boolean> {
     if (!user) return false;
 
     await tx.delete(notificationsTable).where(eq(notificationsTable.userId, userId));
+    await tx.delete(notificationPrefsTable).where(eq(notificationPrefsTable.userId, userId));
+    await tx.delete(favoritesTable).where(eq(favoritesTable.userId, userId));
+    await tx.delete(supportTicketsTable).where(eq(supportTicketsTable.userId, userId));
+    await tx.delete(dashboardTodosTable).where(eq(dashboardTodosTable.userId, userId));
     await tx.delete(chatMessagesTable).where(eq(chatMessagesTable.senderId, userId));
     await tx.delete(reviewsTable).where(eq(reviewsTable.userId, userId));
     await tx.delete(quotesTable).where(eq(quotesTable.userId, userId));

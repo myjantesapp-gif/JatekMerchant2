@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { router, usePathname } from 'expo-router';
 import { useAudioPlayer } from 'expo-audio';
 import { Button, font } from '@/components/ui';
 import { useColors } from '@/hooks/useColors';
@@ -14,6 +15,7 @@ const alertSound = require('@/assets/sounds/order-alert.wav');
 
 export function IncomingOrderAlert({ pendingOrders, loading }: { pendingOrders: Order[]; loading: boolean }) {
   const c = useColors();
+  const pathname = usePathname();
   const orderActions = useOrderContext();
   const [prepTimeMinutes, setPrepTimeMinutes] = useState<number>(15);
   const [refusalOpen, setRefusalOpen] = useState(false);
@@ -80,7 +82,7 @@ export function IncomingOrderAlert({ pendingOrders, loading }: { pendingOrders: 
 
   return (
     <Modal
-      visible={!!activeOrder && !loading}
+      visible={!!activeOrder && !loading && !pathname.endsWith('/orders')}
       animationType="fade"
       presentationStyle="fullScreen"
       onRequestClose={() => { /* A pending order must be accepted or refused. */ }}
@@ -94,6 +96,17 @@ export function IncomingOrderAlert({ pendingOrders, loading }: { pendingOrders: 
         <ScrollView contentContainerStyle={s.content}>
           <Text style={s.title}>#{activeOrder?.reference || activeOrder?.id}</Text>
           <Text style={s.subtitle}>{activeOrder?.restaurantName || 'Boutique'} · {activeOrder?.userName || 'Client'}</Text>
+          <Pressable
+            testID="incoming-order-see-list"
+            accessibilityRole="button"
+            accessibilityLabel="Voir la liste des commandes"
+            onPress={() => router.push('/(tabs)/orders')}
+            style={({ pressed }) => [s.listButton, { borderColor: '#514d47', opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Feather name="list" size={15} color="#f2b63d" />
+            <Text style={s.listButtonText}>Voir la liste des commandes</Text>
+            <Feather name="arrow-up-right" size={14} color="#f2b63d" />
+          </Pressable>
           <View style={s.totalCard}>
             <Text style={s.totalLabel}>TOTAL À PRÉPARER</Text>
             <Text style={s.total}>{activeOrder ? money(activeOrder.total, activeOrder.currency) : '—'}</Text>
@@ -203,6 +216,8 @@ const s = StyleSheet.create({
   content: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingBottom: 20 },
   title: { color: '#fff', fontFamily: font.display, fontSize: 36 },
   subtitle: { color: '#b9b3aa', fontFamily: font.regular, fontSize: 15, marginTop: 4, marginBottom: 18 },
+  listButton: { alignSelf: 'flex-start', minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 11, borderWidth: 1, marginBottom: 14 },
+  listButtonText: { color: '#f2b63d', fontFamily: font.semibold, fontSize: 13 },
   totalCard: { backgroundColor: '#272522', borderRadius: 18, padding: 18, marginBottom: 14 },
   totalLabel: { color: '#b9b3aa', fontFamily: font.bold, fontSize: 10, letterSpacing: 1.2 },
   total: { color: '#fff', fontFamily: font.bold, fontSize: 30, marginTop: 6 },

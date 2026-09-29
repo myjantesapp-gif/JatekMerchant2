@@ -17,7 +17,8 @@
       "env": {
         "NODE_ENV": "production",
         "EAS_UPDATE_CHANNEL": "preview",
-        "EXPO_PUBLIC_PROJECT_ID": "894f0535-7157-444f-9641-a4e0f2430b98"
+        "EXPO_PUBLIC_PROJECT_ID": "894f0535-7157-444f-9641-a4e0f2430b98",
+        "EXPO_PUBLIC_API_URL": "https://api.jatek.app"
       }
     },
     "production": {
@@ -32,7 +33,8 @@
       "env": {
         "NODE_ENV": "production",
         "EAS_UPDATE_CHANNEL": "production",
-        "EXPO_PUBLIC_PROJECT_ID": "894f0535-7157-444f-9641-a4e0f2430b98"
+        "EXPO_PUBLIC_PROJECT_ID": "894f0535-7157-444f-9641-a4e0f2430b98",
+        "EXPO_PUBLIC_API_URL": "https://api.jatek.app"
       }
     }
   }

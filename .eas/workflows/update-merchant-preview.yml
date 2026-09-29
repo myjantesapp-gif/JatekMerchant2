@@ -1,0 +1,10 @@
+name: Publish Jatek Merchant preview OTA
+on:
+  workflow_dispatch: {}
+jobs:
+  publish_android_preview:
+    name: Publish Android preview update
+    type: update
+    params:
+      branch: preview
+      platform: android

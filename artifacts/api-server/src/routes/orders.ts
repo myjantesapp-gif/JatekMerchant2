@@ -37,6 +37,7 @@ import { sendFcmPush } from "../lib/fcmPush";
 import { sendWebPush } from "../lib/vapid";
 import { DEFAULT_PLATFORM_SETTINGS, getPlatformSettingNumber } from "../lib/platformSettings";
 import { calculateOrderPricing } from "../lib/orderPricing";
+import { validateCancellationReason } from "../lib/employeeShopPermissions";
 import {
   DELIVERY_CODE_TTL_MS,
   classifyDriverAcceptance,
@@ -367,7 +368,6 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-
   const { restaurantId, deliveryAddress, notes, items } = parsed.data;
   const userId = req.userId!;
   const { promoCode, deliveryType, scheduledFor, isContactless, paymentMethod } = req.body as {
@@ -680,6 +680,11 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const rejection = validateCancellationReason(parsed.data.status, parsed.data.reason);
+  if (!rejection.ok) {
+    res.status(400).json({ error: rejection.error });
+    return;
+  }
 
   // Drivers must use the dedicated /confirm-delivery endpoint to mark an order
   // as delivered — that endpoint validates the customer pickup code.
@@ -764,6 +769,7 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
   }
 
   const updateData: any = { status: parsed.data.status };
+  if (rejection.reason) updateData.rejectionReason = rejection.reason;
   if (parsed.data.driverId) {
     updateData.driverId = parsed.data.driverId;
   }

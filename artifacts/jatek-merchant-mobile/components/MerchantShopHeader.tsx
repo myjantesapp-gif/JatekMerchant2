@@ -23,7 +23,7 @@ export function MerchantShopHeader() {
           onPress={() => setChooserOpen(true)}
           style={({ pressed }) => [s.selector, { borderColor: c.border, backgroundColor: c.card, opacity: pressed ? 0.78 : 1, maxWidth: compact ? 116 : 164 }]}
         >
-          <Feather name="store" size={14} color={c.primary} />
+          <Feather name="home" size={14} color={c.primary} />
           <View style={s.copy}>
             <Text numberOfLines={1} style={[s.name, { color: c.foreground }]}>{shopName}</Text>
             {selectedShop ? (

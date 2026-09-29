@@ -118,3 +118,13 @@ export function useExtendPrepTime() {
     },
   });
 }
+
+export function useDeleteMerchantAccount() {
+  const { token } = useAuth();
+  return useMutation({
+    mutationFn: async (userId: number) => {
+      if (!token) throw new ApiError(401, 'Session absente.');
+      await apiRequest(`/api/users/${userId}`, { method: 'DELETE', token });
+    },
+  });
+}

@@ -11,6 +11,7 @@ import {
 import { requireAuth, attachAuth, type AuthedRequest } from "../middlewares/auth";
 import { closeUserSubscriptions } from "../lib/sse";
 import { resolveLegacyMediaPath } from "../lib/objectStorage";
+import { deleteUserAccount } from "../lib/deleteUserAccount";
 
 const router: IRouter = Router();
 
@@ -145,13 +146,14 @@ router.delete("/users/:id", requireAuth, async (req: AuthedRequest, res, next): 
       return;
     }
 
-    const deleted = await db
-      .delete(usersTable)
-      .where(eq(usersTable.id, params.data.id))
-      .returning({ id: usersTable.id });
-    if (deleted.length > 0) closeUserSubscriptions(params.data.id);
+    const deleted = await deleteUserAccount(params.data.id);
+    if (deleted) closeUserSubscriptions(params.data.id);
     res.sendStatus(204);
   } catch (err) {
+    if ((err as { code?: string })?.code === "23503") {
+      res.status(409).json({ error: "Ce compte est lié à des données opérationnelles qui doivent être examinées avant suppression." });
+      return;
+    }
     next(err);
   }
 });

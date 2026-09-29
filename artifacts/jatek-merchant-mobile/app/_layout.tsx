@@ -13,6 +13,9 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { queryClient } from '@/lib/query-client';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { useMe } from '@/lib/merchant-data';
+import { OrderProvider } from '@/lib/order-context';
+import { ShopProvider } from '@/lib/shop-context';
 import { useColors } from '@/hooks/useColors';
 import { font } from '@/components/ui';
 
@@ -20,9 +23,11 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   const { status } = useAuth();
+  const me = useMe();
   const c = useColors();
   if (status === 'loading') return null;
   const signedIn = status === 'signedIn';
+  const employee = me.data?.user.role === 'employee';
   return (
     <Stack screenOptions={{
       headerBackTitle: 'Retour',
@@ -36,6 +41,8 @@ function RootLayoutNav() {
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="order/[id]" options={{ title: 'Commande' }} />
+      </Stack.Protected>
+      <Stack.Protected guard={signedIn && !!me.data && !employee}>
         <Stack.Screen name="reviews" options={{ headerShown: false }} />
         <Stack.Screen name="shop-profile" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
@@ -69,11 +76,15 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <AuthProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
+            <OrderProvider>
+              <ShopProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <RootLayoutNav />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </ShopProvider>
+            </OrderProvider>
           </AuthProvider>
         </ErrorBoundary>
       </SafeAreaProvider>

@@ -29,7 +29,7 @@ export function buildApiUrl(path: string): string {
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   token?: string | null;
   signal?: AbortSignal;

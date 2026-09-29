@@ -552,7 +552,16 @@ export const UpdateOrderStatusBodyStatus = {
 export interface UpdateOrderStatusBody {
   status: UpdateOrderStatusBodyStatus;
   driverId?: number;
+  /**
+     * @minimum 5
+     * @maximum 180
+     */
   prepTimeMinutes?: number;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason?: string;
 }
 
 export interface Driver {

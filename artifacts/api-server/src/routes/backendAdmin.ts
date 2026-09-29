@@ -41,6 +41,7 @@ import {
 } from "../lib/appConfig";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth";
 import { closeUserSubscriptions, publish } from "../lib/sse";
+import { parseEmployeeCloseTimes } from "../lib/employeeShopPermissions";
 import * as tracking from "../lib/trackingService";
 import { normalizeStoredMediaPath, resolveLegacyMediaPath } from "../lib/objectStorage";
 import { migrateLegacyMedia } from "../scripts/migrate-media-storage";
@@ -373,7 +374,8 @@ router.delete("/backend/ads/:id", requireAuth, async (req: AuthedRequest, res, n
 // ────────────────────────────────────────────────────────────────────────────
 
 router.get("/backend/shops/:id/hours", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
-  if (!isAdmin(req.userRole) && req.userRole !== "restaurant_owner") { res.status(403).json({ error: "Forbidden" }); return; }
+  const isEmployee = req.userRole === "employee";
+  if (!isAdmin(req.userRole) && req.userRole !== "restaurant_owner" && !isEmployee) { res.status(403).json({ error: "Forbidden" }); return; }
   try {
     const shopId = parseInt(String(req.params.id), 10);
     if (isNaN(shopId)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -382,6 +384,11 @@ router.get("/backend/shops/:id/hours", requireAuth, async (req: AuthedRequest, r
       const owned = await db.select({ id: restaurantsTable.id }).from(restaurantsTable)
         .where(and(eq(restaurantsTable.id, shopId), eq(restaurantsTable.ownerId, req.userId!)));
       if (owned.length === 0) { res.status(403).json({ error: "Forbidden: not your restaurant" }); return; }
+    }
+    if (isEmployee) {
+      const [employee] = await db.select({ assignedShopId: usersTable.assignedShopId })
+        .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+      if (employee?.assignedShopId !== shopId) { res.status(403).json({ error: "Forbidden: not your assigned restaurant" }); return; }
     }
     const hours = await db.select().from(restaurantHoursTable)
       .where(eq(restaurantHoursTable.restaurantId, shopId))
@@ -392,18 +399,50 @@ router.get("/backend/shops/:id/hours", requireAuth, async (req: AuthedRequest, r
 
 /** Upsert full weekly schedule — body: { hours: [{dayOfWeek,openTime,closeTime,isClosed}] } */
 router.put("/backend/shops/:id/hours", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
-  if (!isAdmin(req.userRole) && req.userRole !== "restaurant_owner") { res.status(403).json({ error: "Forbidden" }); return; }
+  const isEmployee = req.userRole === "employee";
+  if (!isAdmin(req.userRole) && req.userRole !== "restaurant_owner" && !isEmployee) { res.status(403).json({ error: "Forbidden" }); return; }
   try {
     const shopId = parseInt(String(req.params.id), 10);
+    if (isNaN(shopId)) { res.status(400).json({ error: "Invalid id" }); return; }
     // restaurant_owner: verify they own this shop
     if (req.userRole === "restaurant_owner") {
       const owned = await db.select({ id: restaurantsTable.id }).from(restaurantsTable)
         .where(and(eq(restaurantsTable.id, shopId), eq(restaurantsTable.ownerId, req.userId!)));
       if (owned.length === 0) { res.status(403).json({ error: "Forbidden: not your restaurant" }); return; }
     }
-    if (isNaN(shopId)) { res.status(400).json({ error: "Invalid id" }); return; }
     const { hours } = req.body ?? {};
     if (!Array.isArray(hours)) { res.status(400).json({ error: "hours[] requis" }); return; }
+
+    if (isEmployee) {
+      const [employee] = await db.select({ assignedShopId: usersTable.assignedShopId })
+        .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+      if (employee?.assignedShopId !== shopId) { res.status(403).json({ error: "Forbidden: not your assigned restaurant" }); return; }
+      const parsed = parseEmployeeCloseTimes(req.body);
+      if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
+
+      const existingDays = await db.select({ dayOfWeek: restaurantHoursTable.dayOfWeek })
+        .from(restaurantHoursTable).where(eq(restaurantHoursTable.restaurantId, shopId));
+      if (parsed.hours.some((hour) => !existingDays.some((row) => row.dayOfWeek === hour.dayOfWeek))) {
+        res.status(409).json({ error: "Les horaires hebdomadaires doivent d’abord être configurés par le propriétaire." });
+        return;
+      }
+
+      await db.transaction(async (tx) => {
+        for (const hour of parsed.hours) {
+          await tx.update(restaurantHoursTable)
+            .set({ closeTime: hour.closeTime })
+            .where(and(
+              eq(restaurantHoursTable.restaurantId, shopId),
+              eq(restaurantHoursTable.dayOfWeek, hour.dayOfWeek),
+            ));
+        }
+      });
+      const updated = await db.select().from(restaurantHoursTable)
+        .where(eq(restaurantHoursTable.restaurantId, shopId))
+        .orderBy(restaurantHoursTable.dayOfWeek);
+      res.json(updated);
+      return;
+    }
 
     await db.transaction(async (tx) => {
       for (const h of hours) {

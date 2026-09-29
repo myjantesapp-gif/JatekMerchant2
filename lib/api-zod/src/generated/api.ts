@@ -101,6 +101,7 @@ export const DeleteAddressResponse = zod.void()
  * @summary Get recent orders for admin dashboard
  */
 export const getRecentOrdersResponsePaymentMethodDefault = `cash`;
+export const getRecentOrdersResponsePrepTimeMinutesDefault = 20;
 
 export const GetRecentOrdersResponseItem = zod.object({
   "id": zod.number().int(),
@@ -129,6 +130,10 @@ export const GetRecentOrdersResponseItem = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(getRecentOrdersResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(getRecentOrdersResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -594,6 +599,7 @@ export const ListBackendOrdersQueryParams = zod.object({
 })
 
 export const listBackendOrdersResponsePaymentMethodDefault = `cash`;
+export const listBackendOrdersResponsePrepTimeMinutesDefault = 20;
 
 export const ListBackendOrdersResponseItem = zod.object({
   "id": zod.number().int(),
@@ -622,6 +628,10 @@ export const ListBackendOrdersResponseItem = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(listBackendOrdersResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(listBackendOrdersResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -1382,6 +1392,7 @@ export const DeleteMyDataResponse = zod.void()
  * @summary Export current user personal data
  */
 export const exportMyDataResponseOrdersItemPaymentMethodDefault = `cash`;
+export const exportMyDataResponseOrdersItemPrepTimeMinutesDefault = 20;
 
 export const ExportMyDataResponse = zod.object({
   "generatedAt": zod.coerce.date(),
@@ -1425,6 +1436,10 @@ export const ExportMyDataResponse = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(exportMyDataResponseOrdersItemPaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(exportMyDataResponseOrdersItemPrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -1784,6 +1799,7 @@ export const ListOrdersQueryParams = zod.object({
 })
 
 export const listOrdersResponsePaymentMethodDefault = `cash`;
+export const listOrdersResponsePrepTimeMinutesDefault = 20;
 
 export const ListOrdersResponseItem = zod.object({
   "id": zod.number().int(),
@@ -1812,6 +1828,10 @@ export const ListOrdersResponseItem = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(listOrdersResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(listOrdersResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -1853,6 +1873,7 @@ export const CreateOrderBody = zod.object({
 })
 
 export const createOrderResponsePaymentMethodDefault = `cash`;
+export const createOrderResponsePrepTimeMinutesDefault = 20;
 
 export const CreateOrderResponse = zod.object({
   "id": zod.number().int(),
@@ -1881,6 +1902,10 @@ export const CreateOrderResponse = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(createOrderResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(createOrderResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -1906,6 +1931,7 @@ export const GetOrderParams = zod.object({
 })
 
 export const getOrderResponsePaymentMethodDefault = `cash`;
+export const getOrderResponsePrepTimeMinutesDefault = 20;
 
 export const GetOrderResponse = zod.object({
   "id": zod.number().int(),
@@ -1934,6 +1960,10 @@ export const GetOrderResponse = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(getOrderResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(getOrderResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -1963,6 +1993,7 @@ export const AcceptOrderDeliveryBody = zod.object({
 })
 
 export const acceptOrderDeliveryResponsePaymentMethodDefault = `cash`;
+export const acceptOrderDeliveryResponsePrepTimeMinutesDefault = 20;
 
 export const AcceptOrderDeliveryResponse = zod.object({
   "id": zod.number().int(),
@@ -1991,6 +2022,10 @@ export const AcceptOrderDeliveryResponse = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(acceptOrderDeliveryResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(acceptOrderDeliveryResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -2023,6 +2058,7 @@ export const ConfirmOrderDeliveryBody = zod.object({
 })
 
 export const confirmOrderDeliveryResponsePaymentMethodDefault = `cash`;
+export const confirmOrderDeliveryResponsePrepTimeMinutesDefault = 20;
 
 export const ConfirmOrderDeliveryResponse = zod.object({
   "id": zod.number().int(),
@@ -2051,6 +2087,10 @@ export const ConfirmOrderDeliveryResponse = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(confirmOrderDeliveryResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(confirmOrderDeliveryResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -2105,13 +2145,23 @@ export const UpdateOrderStatusParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const updateOrderStatusBodyPrepTimeMinutesMin = 5;
+export const updateOrderStatusBodyPrepTimeMinutesMax = 180;
+
+export const updateOrderStatusBodyReasonMin = 3;
+export const updateOrderStatusBodyReasonMax = 500;
+
+
+
 export const UpdateOrderStatusBody = zod.object({
   "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
   "driverId": zod.number().int().optional(),
-  "prepTimeMinutes": zod.number().int().min(5).max(180).optional()
+  "prepTimeMinutes": zod.number().int().min(updateOrderStatusBodyPrepTimeMinutesMin).max(updateOrderStatusBodyPrepTimeMinutesMax).optional(),
+  "reason": zod.string().min(updateOrderStatusBodyReasonMin).max(updateOrderStatusBodyReasonMax).optional()
 })
 
 export const updateOrderStatusResponsePaymentMethodDefault = `cash`;
+export const updateOrderStatusResponsePrepTimeMinutesDefault = 20;
 
 export const UpdateOrderStatusResponse = zod.object({
   "id": zod.number().int(),
@@ -2140,6 +2190,10 @@ export const UpdateOrderStatusResponse = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(updateOrderStatusResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(updateOrderStatusResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -2170,6 +2224,7 @@ export const UpdateOrderStepBody = zod.object({
 })
 
 export const updateOrderStepResponsePaymentMethodDefault = `cash`;
+export const updateOrderStepResponsePrepTimeMinutesDefault = 20;
 
 export const UpdateOrderStepResponse = zod.object({
   "id": zod.number().int(),
@@ -2198,6 +2253,10 @@ export const UpdateOrderStepResponse = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(updateOrderStepResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(updateOrderStepResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -2219,6 +2278,7 @@ export const UpdateOrderStepResponse = zod.object({
  * @summary Get active orders for current driver
  */
 export const getActiveOrdersResponsePaymentMethodDefault = `cash`;
+export const getActiveOrdersResponsePrepTimeMinutesDefault = 20;
 
 export const GetActiveOrdersResponseItem = zod.object({
   "id": zod.number().int(),
@@ -2247,6 +2307,10 @@ export const GetActiveOrdersResponseItem = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(getActiveOrdersResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(getActiveOrdersResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),
@@ -2269,6 +2333,7 @@ export const GetActiveOrdersResponse = zod.array(GetActiveOrdersResponseItem)
  * @summary List ready orders available for driver pickup
  */
 export const getAvailableOrdersResponsePaymentMethodDefault = `cash`;
+export const getAvailableOrdersResponsePrepTimeMinutesDefault = 20;
 
 export const GetAvailableOrdersResponseItem = zod.object({
   "id": zod.number().int(),
@@ -2297,6 +2362,10 @@ export const GetAvailableOrdersResponseItem = zod.object({
   "notes": zod.string().nullish(),
   "paymentMethod": zod.enum(['cash', 'card']).default(getAvailableOrdersResponsePaymentMethodDefault),
   "estimatedDeliveryTime": zod.number().int().nullish(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "readyAt": zod.coerce.date().nullish(),
+  "handedOverAt": zod.coerce.date().nullish(),
+  "prepTimeMinutes": zod.number().int().default(getAvailableOrdersResponsePrepTimeMinutesDefault),
   "items": zod.array(zod.object({
   "id": zod.number().int(),
   "orderId": zod.number().int(),

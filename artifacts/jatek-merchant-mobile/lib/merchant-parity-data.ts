@@ -100,6 +100,14 @@ export const productsSchema = z.array(productSchema);
 export const categoriesSchema = z.array(menuCategorySchema);
 export const reviewsSchema = z.array(reviewSchema);
 export const shopsProfileSchema = z.array(merchantShopSchema);
+export const merchantShopHoursSchema = z.array(z.object({
+  id: z.coerce.number(),
+  restaurantId: z.coerce.number(),
+  dayOfWeek: z.coerce.number().int().min(0).max(6),
+  openTime: z.string(),
+  closeTime: z.string(),
+  isClosed: z.boolean(),
+}).passthrough());
 
 export type Dashboard = z.infer<typeof dashboardSchema>;
 export type DashboardTodo = z.infer<typeof todoSchema>;
@@ -108,6 +116,7 @@ export type MerchantProductsPage = z.infer<typeof productsPageSchema>;
 export type MenuCategory = z.infer<typeof menuCategorySchema>;
 export type MerchantReview = z.infer<typeof reviewSchema>;
 export type MerchantShop = z.infer<typeof merchantShopSchema>;
+export type MerchantShopHours = z.infer<typeof merchantShopHoursSchema>;
 
 const key = (path: string, token: string | null) => sessionKey(path, token);
 function invalidatePrefix(client: ReturnType<typeof useQueryClient>, prefix: string, token: string | null) {
@@ -227,8 +236,34 @@ export function useMerchantShops() {
   });
 }
 
+export function useMerchantShopHours(shopId?: number) {
+  const { token } = useAuth();
+  const path = `/api/backend/shops/${shopId ?? 0}/hours`;
+  return useQuery({
+    queryKey: key(path, token),
+    enabled: !!token && !!shopId,
+    select: (d: unknown) => parseWith(merchantShopHoursSchema, d, 'horaires'),
+  });
+}
+
+export function useUpdateMerchantShopCloseTimes() {
+  const { token } = useAuth();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ shopId, hours }: { shopId: number; hours: { dayOfWeek: number; closeTime: string }[] }) =>
+      apiRequest(`/api/backend/shops/${shopId}/hours`, {
+        method: 'PUT',
+        body: { hours },
+        token: requireToken(token),
+      }).then((d) => parseWith(merchantShopHoursSchema, d, 'horaires')),
+    onSuccess: (_hours, variables) => client.invalidateQueries({
+      queryKey: key(`/api/backend/shops/${variables.shopId}/hours`, token),
+    }),
+  });
+}
+
 export type MerchantShopUpdate = {
-  name: string; description?: string | null; address?: string | null; phone?: string | null;
+  name?: string; description?: string | null; address?: string | null; phone?: string | null;
   category?: string | null; businessType?: string | null; deliveryTime?: number | null;
   deliveryFee?: number | null; minimumOrder?: number | null; isOpen?: boolean;
   imageUrl?: string | null; coverImageUrl?: string | null; logoUrl?: string | null;
