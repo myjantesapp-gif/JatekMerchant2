@@ -253,6 +253,18 @@ async function getOrderWithItems(orderId: number) {
   return { ...order, items };
 }
 
+async function canAccessOrderDocument(
+  req: AuthedRequest,
+  restaurant: Pick<typeof restaurantsTable.$inferSelect, "id" | "ownerId">,
+): Promise<boolean> {
+  if (["admin", "super_admin", "manager"].includes(req.userRole ?? "")) return true;
+  if (restaurant.ownerId === req.userId) return true;
+  if (req.userRole !== "employee" || !req.userId) return false;
+  const [employee] = await db.select({ assignedShopId: usersTable.assignedShopId })
+    .from(usersTable).where(eq(usersTable.id, req.userId)).limit(1);
+  return employee?.assignedShopId === restaurant.id;
+}
+
 /** Active orders — for admin/restaurant live ops dashboards. Requires auth. */
 router.get("/orders/active", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   const role = req.userRole;
@@ -678,6 +690,7 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
 
   const isStaff = ["admin", "super_admin", "manager"].includes(req.userRole ?? "");
   let expectedStatus: string | null = null;
+  let authorizedMerchantRestaurantId: number | null = null;
 
   // Only operational users may mutate an order. Customers must never be able
   // to forge an order status or reassign a driver through this generic route.
@@ -717,10 +730,16 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
       return;
     }
     const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, existing.restaurantId)).limit(1);
-    if (!restaurant || restaurant.ownerId !== req.userId) {
-      res.status(403).json({ error: "Only the restaurant owner can update this order." });
+    const [employee] = req.userRole === "employee"
+      ? await db.select({ assignedShopId: usersTable.assignedShopId }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1)
+      : [];
+    const ownsRestaurant = restaurant?.ownerId === req.userId;
+    const isAssignedEmployee = req.userRole === "employee" && employee?.assignedShopId === existing.restaurantId;
+    if (!restaurant || (!ownsRestaurant && !isAssignedEmployee)) {
+      res.status(403).json({ error: "Only this restaurant's owner or assigned employee can update this order." });
       return;
     }
+    authorizedMerchantRestaurantId = existing.restaurantId;
     if (!RESTAURANT_MANAGED_STATUSES.includes(parsed.data.status as typeof RESTAURANT_MANAGED_STATUSES[number])) {
       res.status(403).json({ error: "Restaurant owners cannot report delivery milestones." });
       return;
@@ -748,6 +767,18 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
   if (parsed.data.driverId) {
     updateData.driverId = parsed.data.driverId;
   }
+  if (parsed.data.status === "accepted") {
+    updateData.acceptedAt = new Date();
+    if (parsed.data.prepTimeMinutes !== undefined) {
+      updateData.prepTimeMinutes = parsed.data.prepTimeMinutes;
+    }
+  }
+  if (parsed.data.status === "ready") {
+    updateData.readyAt = new Date();
+  }
+  if (parsed.data.status === "picked_up") {
+    updateData.handedOverAt = new Date();
+  }
 
   // On acceptance, gate on owner profile completeness and mint the
   // kitchen + customer pickup codes if not already present.
@@ -758,8 +789,8 @@ async function updateOrderStatusHandler(req: AuthedRequest, res: Response, next:
     const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, existing.restaurantId)).limit(1);
     if (!restaurant) { res.status(404).json({ error: "Restaurant not found" }); return; }
 
-    // Authorization: only the restaurant owner, admin, super_admin or manager may accept.
-    if (!isStaff && restaurant.ownerId !== req.userId) {
+    // Merchant ownership or same-shop employee assignment was checked above.
+    if (!isStaff && authorizedMerchantRestaurantId !== existing.restaurantId) {
       res.status(403).json({ error: "Not authorized to accept orders for this restaurant" });
       return;
     }
@@ -1228,22 +1259,49 @@ router.get("/orders/:id/receipt", requireAuth, async (req: AuthedRequest, res, n
   const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, order.restaurantId)).limit(1);
   if (!restaurant) { res.status(404).send("Restaurant not found"); return; }
 
-  if (req.userRole !== "admin" && req.userRole !== "super_admin" && restaurant.ownerId !== req.userId) {
+  if (!(await canAccessOrderDocument(req, restaurant))) {
     res.status(403).send("Forbidden");
     return;
   }
 
+  const [customer] = await db.select({ phone: usersTable.phone })
+    .from(usersTable).where(eq(usersTable.id, order.userId)).limit(1);
   const escape = (s: string) => String(s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
-  const itemsHtml = order.items.map((it: any) => `
+  const itemsHtml = order.items.map((it) => {
+    let extras = it.selectedExtras || "";
+    if (extras) {
+      try {
+        const values: unknown = JSON.parse(extras);
+        if (Array.isArray(values)) extras = values.filter((value): value is string => typeof value === "string").join(", ");
+      } catch {
+        // Legacy rows may store free text instead of JSON.
+      }
+    }
+    const options = [
+      it.selectedSize ? `Taille : ${it.selectedSize}` : "",
+      extras ? `Extras : ${extras}` : "",
+    ].filter(Boolean).join(" · ");
+    return `
     <tr>
-      <td style="text-align:left">${it.quantity}× ${escape(it.menuItemName)}</td>
-      <td style="text-align:right">${(it.totalPrice ?? 0).toFixed(2)}</td>
-    </tr>`).join("");
+      <td style="text-align:left">${it.quantity}× ${escape(it.menuItemName)}
+        ${options ? `<div class="muted">${escape(options)}</div>` : ""}
+      </td>
+      <td style="text-align:right;white-space:nowrap">
+        <span class="muted">${it.unitPrice.toFixed(2)} × ${it.quantity}</span><br/>
+        <strong>${it.totalPrice.toFixed(2)}</strong>
+      </td>
+    </tr>`;
+  }).join("");
 
   const created = new Date(order.createdAt).toLocaleString("fr-FR");
+  const timeline = [
+    order.acceptedAt ? `Acceptée : ${new Date(order.acceptedAt).toLocaleString("fr-FR")}` : "",
+    order.readyAt ? `Prête : ${new Date(order.readyAt).toLocaleString("fr-FR")}` : "",
+    order.handedOverAt ? `Remise : ${new Date(order.handedOverAt).toLocaleString("fr-FR")}` : "",
+  ].filter(Boolean).map((line) => escape(line)).join("<br/>");
 
   const html = `<!doctype html>
 <html><head>
@@ -1277,15 +1335,23 @@ router.get("/orders/:id/receipt", requireAuth, async (req: AuthedRequest, res, n
   <div class="muted center">Code cuisine</div>
   <hr/>
   <div><strong>Client:</strong> ${escape(order.userName)}</div>
+  ${customer?.phone ? `<div class="muted">Tél. ${escape(customer.phone)}</div>` : ""}
   <div class="muted">${escape(order.deliveryAddress)}</div>
+  <div class="muted">Type : ${order.deliveryType === "scheduled" ? "Programmée" : "Dès que possible"} · Préparation : ${order.prepTimeMinutes} min</div>
+  ${timeline ? `<div class="muted">${timeline}</div>` : ""}
   ${order.notes ? `<div class="muted"><em>Note: ${escape(order.notes)}</em></div>` : ""}
   <table>${itemsHtml}</table>
   <hr/>
   <table>
     <tr><td>Sous-total</td><td style="text-align:right">${order.subtotal.toFixed(2)}</td></tr>
+    ${order.discountAmount > 0 ? `<tr><td>Remise</td><td style="text-align:right">-${order.discountAmount.toFixed(2)}</td></tr>` : ""}
     <tr><td>Livraison</td><td style="text-align:right">${(order.deliveryFee ?? 0).toFixed(2)}</td></tr>
+    ${order.vatAmount > 0 ? `<tr><td>TVA (${order.vatRate} %)</td><td style="text-align:right">${order.vatAmount.toFixed(2)}</td></tr>` : ""}
+    ${order.serviceFee > 0 ? `<tr><td>Frais de service</td><td style="text-align:right">${order.serviceFee.toFixed(2)}</td></tr>` : ""}
+    ${order.refundedAmount > 0 ? `<tr><td>Remboursé</td><td style="text-align:right">-${order.refundedAmount.toFixed(2)}</td></tr>` : ""}
     <tr class="total"><td>TOTAL MAD</td><td style="text-align:right">${order.total.toFixed(2)}</td></tr>
   </table>
+  <div class="muted">Paiement : ${escape(order.paymentMethod === "cash" ? "Espèces" : order.paymentMethod === "card" ? "Carte bancaire" : order.paymentMethod)}</div>
   <hr/>
   <div class="footer">Le client présentera son code à 4 chiffres au livreur lors de la remise.</div>
 </body></html>`;
@@ -1308,7 +1374,7 @@ router.get("/orders/:id/receipt.pdf", requireAuth, async (req: AuthedRequest, re
     if (!order) { res.status(404).send("Order not found"); return; }
     const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, order.restaurantId)).limit(1);
     if (!restaurant) { res.status(404).send("Restaurant not found"); return; }
-    if (req.userRole !== "admin" && req.userRole !== "super_admin" && restaurant.ownerId !== req.userId) {
+    if (!(await canAccessOrderDocument(req, restaurant))) {
       res.status(403).send("Forbidden");
       return;
     }

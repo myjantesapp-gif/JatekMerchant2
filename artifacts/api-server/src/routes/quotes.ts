@@ -327,10 +327,15 @@ router.get("/orders/:id/invoice.pdf", requireAuth, async (req: AuthedRequest, re
     if (!order) { res.status(404).send("Order not found"); return; }
 
     const isOwner = order.userId === req.userId;
-    let isMerchant = req.userRole === "admin" || req.userRole === "super_admin";
+    let isMerchant = ["admin", "super_admin", "manager"].includes(req.userRole ?? "");
     if (!isMerchant && req.userRole === "restaurant_owner") {
       const owned = await ownedRestaurantIds(req.userId!, req.userRole);
       isMerchant = owned !== null && owned.includes(order.restaurantId);
+    }
+    if (!isMerchant && req.userRole === "employee" && req.userId) {
+      const [employee] = await db.select({ assignedShopId: usersTable.assignedShopId })
+        .from(usersTable).where(eq(usersTable.id, req.userId)).limit(1);
+      isMerchant = employee?.assignedShopId === order.restaurantId;
     }
     if (!isOwner && !isMerchant) { res.status(403).send("Forbidden"); return; }
 

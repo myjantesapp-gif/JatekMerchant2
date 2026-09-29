@@ -486,6 +486,13 @@ export interface Order {
   paymentMethod: OrderPaymentMethod;
   /** @nullable */
   estimatedDeliveryTime?: number | null;
+  /** @nullable */
+  acceptedAt?: string | null;
+  /** @nullable */
+  readyAt?: string | null;
+  /** @nullable */
+  handedOverAt?: string | null;
+  prepTimeMinutes?: number;
   items: OrderItem[];
   createdAt: string;
   updatedAt: string;
@@ -545,6 +552,7 @@ export const UpdateOrderStatusBodyStatus = {
 export interface UpdateOrderStatusBody {
   status: UpdateOrderStatusBodyStatus;
   driverId?: number;
+  prepTimeMinutes?: number;
 }
 
 export interface Driver {

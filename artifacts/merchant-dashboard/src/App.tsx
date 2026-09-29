@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ButtonHTMLAttributes, type FormEvent, type ReactNode } from 'react';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type FormEvent, type ReactNode } from 'react';
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import {
   Activity, ArrowUpRight, Bell, BookOpen, Check, ChevronDown, CircleAlert, Clock3,
@@ -13,11 +13,13 @@ import {
   useBackendLogin, useBackendMe, useCreateBackendTodo, useDeleteBackendTodo, useDeleteMenuItem,
   useGetBackendDashboard, useGetMenuItem, useListBackendOrders, useListBackendProductsPage,
   useListBackendReviews, useListBackendShops, useListBackendTodos, useListMenuCategories,
-  useToggleBackendTodo, useUpdateOrderStatus, customFetch,
+  useToggleBackendTodo, useUpdateOrderStatus, customFetch, type Order,
 } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/pages/not-found';
 import { clearToken, getStoredToken, storeToken, API_BASE_URL } from '@/lib/merchant-auth';
+import { printThermalTicket } from '@/utils/printOrder';
+import { isOrderAlarmAudible, startOrderAlarm, stopOrderAlarm, unlockAudioContext } from '@/utils/soundAlert';
 import './index.css';
 
 import { useMutation } from '@tanstack/react-query';
@@ -29,7 +31,7 @@ const ENDPOINTS = {
   updateShop: (id: number) => `/api/backend/shops/${id}`,
   uploadImage: '/api/storage/uploads/image',
   downloadReceipt: (id: number) => `${API_BASE_URL}/api/orders/${id}/receipt.pdf`,
-  printReceipt: (id: number, token: string) => `${API_BASE_URL}/api/orders/${id}/receipt?token=${encodeURIComponent(token)}`,
+  printReceipt: (id: number) => `${API_BASE_URL}/api/orders/${id}/receipt`,
   downloadInvoice: (id: number) => `${API_BASE_URL}/api/orders/${id}/invoice.pdf`,
 };
 
@@ -126,7 +128,7 @@ function Login() {
     event.preventDefault();
     login.mutate({ data: { email, password } }, { onSuccess: (response) => { storeToken(response.token); setLocation('/'); } });
   };
-  return <main className="paper-grid flex min-h-[100dvh] items-center justify-center p-5">
+  return <main className="paper-grid flex min-h-[100dvh] items-center justify-center p-5" onPointerDownCapture={() => void unlockAudioContext()} onKeyDownCapture={() => void unlockAudioContext()}>
     <div className="grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-border bg-card shadow-[0_24px_70px_rgba(33,39,58,.12)] md:grid-cols-[.9fr_1.1fr]">
       <section className="relative hidden overflow-hidden bg-sidebar p-10 text-sidebar-foreground md:flex md:flex-col md:justify-between">
         <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full border-[34px] border-primary/40" />
@@ -168,14 +170,52 @@ const navItems = [
   { href: '/shop', label: 'Boutique', icon: Store },
 ];
 
+const seenPendingOrderIds = new Set<number>();
+
 function Shell({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const me = useBackendMe({ query: { enabled: Boolean(getStoredToken()), queryKey: getBackendMeQueryKey() } });
+  const pendingOrders = useListBackendOrders(
+    { status: 'pending', limit: 100 },
+    { query: { queryKey: getListBackendOrdersQueryKey({ status: 'pending', limit: 100 }), refetchInterval: 4000, refetchIntervalInBackground: true, refetchOnWindowFocus: true, staleTime: 0 } },
+  );
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [audioReady, setAudioReady] = useState(false);
+  const pendingCount = pendingOrders.data?.length ?? 0;
+  const unlockAlarm = () => {
+    void unlockAudioContext().then(() => {
+      if (pendingCount > 0 && getStoredToken()) {
+        startOrderAlarm();
+        setAudioReady(isOrderAlarmAudible());
+      }
+    });
+  };
+  useEffect(() => {
+    if (!pendingOrders.data) return;
+    if (pendingCount > 0) {
+      startOrderAlarm();
+      setAudioReady(isOrderAlarmAudible());
+    } else {
+      stopOrderAlarm();
+      setAudioReady(false);
+    }
+  }, [pendingCount, pendingOrders.isSuccess]);
+  useEffect(() => {
+    if (!pendingOrders.data) return;
+    const isNew = pendingOrders.data.some((order) => !seenPendingOrderIds.has(order.id));
+    pendingOrders.data.forEach((order) => seenPendingOrderIds.add(order.id));
+    if (isNew && location !== '/orders') setLocation('/orders');
+  }, [pendingOrders.data, location, setLocation]);
+  useEffect(() => () => stopOrderAlarm(), []);
+  useEffect(() => {
+    const reset = () => seenPendingOrderIds.clear();
+    window.addEventListener('jatek-auth-change', reset);
+    return () => window.removeEventListener('jatek-auth-change', reset);
+  }, []);
   const active = (href: string) => href === '/' ? location === '/' : location.startsWith(href);
   const user = me.data?.user;
   const logout = () => { clearToken(); setLocation('/login'); };
-  return <div className="min-h-[100dvh] bg-background">
+  return <div className="min-h-[100dvh] bg-background" onPointerDownCapture={unlockAlarm} onKeyDownCapture={unlockAlarm}>
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[248px] -translate-x-full flex-col bg-sidebar px-4 py-5 text-sidebar-foreground shadow-[12px_0_40px_rgba(33,39,58,.16)] transition-transform lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : ''}`}>
       <div className="flex items-center justify-between px-3"><Brand light /><button data-testid="button-close-menu" aria-label="Fermer le menu" className="rounded-lg p-2 text-white/75 hover:bg-white/15 hover:text-white lg:hidden" onClick={() => setMobileOpen(false)}><X size={18} /></button></div>
       <div className="mt-10 px-3 text-[10px] font-bold uppercase tracking-[.2em] text-sidebar-foreground/45">Espace de travail</div>
@@ -193,7 +233,13 @@ function Shell({ children }: { children: ReactNode }) {
         <div className="hidden text-xs font-semibold text-muted-foreground sm:block">Espace Commerçant <span className="mx-2 text-border">/</span> {location === '/' ? 'Aperçu' : location.slice(1).replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
         <div className="ml-auto flex items-center gap-3"><Link href="/orders" data-testid="button-notifications" aria-label="Voir les commandes" className="relative grid h-11 w-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted"><Bell size={18} /><span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-primary" /></Link><div className="hidden h-7 w-px bg-border sm:block" /><Link href="/settings" aria-label="Ouvrir les paramètres du compte" className="flex min-h-11 items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-muted"><span data-testid="text-user-initials" className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">{user?.name?.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'JT'}</span><div className="hidden leading-tight sm:block"><div data-testid="text-user-name" className="text-sm font-bold">{user?.name || 'Équipe commerçant'}</div><div className="text-[11px] text-muted-foreground">{formatRôle(user?.role) || 'Membre de l\'équipe'}</div></div><ChevronDown size={15} className="hidden text-muted-foreground sm:block" /></Link></div>
       </header>
-      <main className="mx-auto max-w-[1500px] p-5 sm:p-8">{children}</main>
+       {pendingCount > 0 && <div role="status" aria-live="polite" className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-3 px-5 pt-4 text-sm sm:px-8">
+         <Bell size={17} className="shrink-0 animate-pulse text-amber-700" />
+         <Link href="/orders" className="font-semibold text-amber-900 underline-offset-2 hover:underline">{pendingCount} commande{pendingCount > 1 ? 's' : ''} en attente · Voir les commandes</Link>
+         {!audioReady && <button type="button" onClick={unlockAlarm} className="min-h-10 rounded-lg border border-amber-300 bg-amber-50 px-3 font-semibold text-amber-900">Activer le son</button>}
+       </div>}
+       {pendingOrders.isError && <div role="alert" className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-3 px-5 pt-3 text-sm text-red-700 sm:px-8"><CircleAlert size={17} />Surveillance des commandes interrompue. <button type="button" onClick={() => void pendingOrders.refetch()} className="font-bold underline">Réessayer</button></div>}
+       <main className="mx-auto max-w-[1500px] p-5 sm:p-8">{children}</main>
     </div>
   </div>;
 }
@@ -329,19 +375,207 @@ function Dashboard() {
   </div>;
 }
 
+type OrderTrackingFields = {
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+  acceptedAt?: string | null;
+  readyAt?: string | null;
+  handedOverAt?: string | null;
+  prepTimeMinutes?: number | null;
+};
+
+function elapsedSeconds(start?: string | null, endMs = Date.now()): number | null {
+  if (!start) return null;
+  const startMs = Date.parse(start);
+  if (!Number.isFinite(startMs)) return null;
+  return Math.max(0, Math.floor((endMs - startMs) / 1000));
+}
+
+function formatDuration(seconds: number | null): string {
+  if (seconds === null) return '—';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainder = seconds % 60;
+  return hours > 0
+    ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
+    : `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+}
+
+function activeOrderClock(order: OrderTrackingFields): { label: string; since: string; seconds: number; tone: string } | null {
+  if (order.status === 'pending') {
+    return { label: 'En attente', since: order.createdAt, seconds: 0, tone: 'pending' };
+  }
+  if (['accepted', 'confirmed', 'preparing'].includes(order.status)) {
+    return { label: 'Cuisine', since: order.acceptedAt || order.updatedAt || order.createdAt, seconds: 0, tone: 'preparing' };
+  }
+  if (['ready', 'driver_at_restaurant'].includes(order.status)) {
+    return { label: 'Collecte', since: order.readyAt || order.updatedAt || order.createdAt, seconds: 0, tone: 'ready' };
+  }
+  return null;
+}
+
+function OrderTimerBadge({ order, nowMs }: { order: OrderTrackingFields; nowMs: number }) {
+  const clock = activeOrderClock(order);
+  if (!clock) return null;
+  const seconds = elapsedSeconds(clock.since, nowMs) ?? 0;
+  const prepLimitSeconds = Math.max(1, order.prepTimeMinutes || 20) * 60;
+  const overdue = clock.tone === 'preparing' && seconds > prepLimitSeconds;
+  const nearLimit = clock.tone === 'preparing' && seconds >= prepLimitSeconds * 0.75;
+  const style = clock.tone === 'pending' || overdue
+    ? 'bg-red-100 text-red-700 animate-pulse'
+    : nearLimit
+      ? 'bg-amber-100 text-amber-800'
+      : clock.tone === 'ready'
+        ? 'bg-cyan-100 text-cyan-800'
+        : 'bg-emerald-100 text-emerald-800';
+  return <span data-testid={`timer-order-${order.status}`} className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold tabular-nums ${style}`} title={`${clock.label} · ${formatDuration(seconds)}`}>
+    <Clock3 size={12} />{clock.label} {formatDuration(seconds)}
+  </span>;
+}
+
+function OrderTimestampSummary({ order }: { order: OrderTrackingFields }) {
+  const stages = [
+    { label: 'Acceptation', start: order.createdAt, end: order.acceptedAt },
+    { label: 'Cuisine', start: order.acceptedAt, end: order.readyAt },
+    { label: 'Remise', start: order.readyAt, end: order.handedOverAt },
+  ];
+  return <div className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-background p-3">
+    {stages.map((stage) => (
+      <div key={stage.label} className="min-w-0 text-center">
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{stage.label}</div>
+        <div className="mt-1 text-xs font-bold tabular-nums">{stage.end ? formatDuration(elapsedSeconds(stage.start, Date.parse(stage.end))) : '—'}</div>
+      </div>
+    ))}
+  </div>;
+}
+
+type MerchantOrderDetail = Omit<Order, 'items'> & {
+  items: (Order['items'][number] & { selectedSize?: string | null; selectedExtras?: string | null })[];
+};
+
+function orderExtrasLabel(value?: string | null): string {
+  if (!value) return '';
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((part): part is string => typeof part === 'string').join(', ') : value;
+  } catch {
+    return value;
+  }
+}
+
 function Orders() {
   const [status, setStatus] = useState('toutes');
   const [search, setSearch] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [downloadError, setDownloadError] = useState('');
+  const [workflowError, setWorkflowError] = useState('');
   const [downloadingDocument, setDownloadingDocument] = useState<string | null>(null);
-  
+  const [prepTimeMinutes, setPrepTimeMinutes] = useState(20);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const autoOpenedPendingIds = useRef(new Set<number>());
+
   const orders = useListBackendOrders({ status: status === 'toutes' ? undefined : status, search: search || undefined, limit: 100 });
+  const pendingOrders = useListBackendOrders(
+    { status: 'pending', limit: 100 },
+    { query: { queryKey: getListBackendOrdersQueryKey({ status: 'pending', limit: 100 }) } },
+  );
+  const orderDetail = useQuery({
+    queryKey: ['merchant-order-detail', selectedOrderId],
+    enabled: selectedOrderId !== null,
+    queryFn: ({ signal }) => {
+      if (selectedOrderId === null) throw new Error('Aucune commande sélectionnée.');
+      return customFetch<MerchantOrderDetail>(`/api/backend/orders/${selectedOrderId}`, { signal });
+    },
+    staleTime: 0,
+    refetchInterval: 4000,
+  });
   const updateStatus = useUpdateOrderStatus();
   const client = useQueryClient();
   
   const nextStatus = (current: string) => current === 'pending' ? 'accepted' : (current === 'accepted' || current === 'confirmed') ? 'preparing' : current === 'preparing' ? 'ready' : null;
-  const selectedOrder = (orders.data || []).find(o => o.id === selectedOrderId);
+  const selectedOrder = orderDetail.data;
+
+  useEffect(() => {
+    if (selectedOrder) setPrepTimeMinutes(selectedOrder.prepTimeMinutes || 20);
+  }, [selectedOrder?.id]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!pendingOrders.data || selectedOrderId !== null) return;
+    const nextPending = pendingOrders.data.find(order => !autoOpenedPendingIds.current.has(order.id));
+    if (nextPending) {
+      autoOpenedPendingIds.current.add(nextPending.id);
+      setSelectedOrderId(nextPending.id);
+    }
+  }, [pendingOrders.data, selectedOrderId]);
+
+  const invalidateOrderViews = async () => {
+    await Promise.all([
+      client.invalidateQueries({ queryKey: getListBackendOrdersQueryKey() }),
+      client.invalidateQueries({ queryKey: ['merchant-order-detail'] }),
+      client.invalidateQueries({ queryKey: getGetBackendDashboardQueryKey({ range: 'week' }) }),
+    ]);
+  };
+
+  const changeOrderStatus = async (id: number, next: string, extra: { prepTimeMinutes?: number } = {}) => {
+    setWorkflowError('');
+    try {
+      await updateStatus.mutateAsync({
+        id,
+        data: {
+          status: next as never,
+          ...(next === 'accepted' ? { prepTimeMinutes: extra.prepTimeMinutes ?? 20 } : {}),
+        },
+      });
+      await invalidateOrderViews();
+      return true;
+    } catch {
+      setWorkflowError('Le statut n’a pas pu être enregistré. Actualisez les commandes puis réessayez.');
+      return false;
+    }
+  };
+
+  const acceptAndStartPreparation = async () => {
+    if (!selectedOrder) return;
+    setWorkflowError('');
+    try {
+      await updateStatus.mutateAsync({
+        id: selectedOrder.id,
+        data: { status: 'accepted' as never, prepTimeMinutes },
+      });
+      void printTicket(selectedOrder.id);
+      await updateStatus.mutateAsync({
+        id: selectedOrder.id,
+        data: { status: 'preparing' as never },
+      });
+      await invalidateOrderViews();
+      setSelectedOrderId(null);
+    } catch {
+      setStatus('toutes');
+      await invalidateOrderViews();
+      setWorkflowError('L’acceptation ou le démarrage a échoué. Vérifiez le statut de la commande avant de réessayer.');
+    }
+  };
+
+  const advanceSelectedOrder = async () => {
+    if (!selectedOrder) return;
+    const next = nextStatus(selectedOrder.status);
+    if (next && await changeOrderStatus(selectedOrder.id, next)) {
+      setSelectedOrderId(null);
+    }
+  };
+
+  const refuseSelectedOrder = async () => {
+    if (!selectedOrder || !window.confirm('Voulez-vous refuser cette commande ?')) return;
+    if (await changeOrderStatus(selectedOrder.id, 'cancelled')) {
+      setSelectedOrderId(null);
+    }
+  };
 
   const downloadDocument = async (id: number, endpoint: string, fallbackName: string) => {
     const token = getStoredToken();
@@ -369,23 +603,59 @@ function Orders() {
     }
   };
 
-  const openBrowserReceipt = (id: number) => {
+  const printTicket = async (id: number) => {
     const token = getStoredToken();
     if (!token) return;
-    const popup = window.open(ENDPOINTS.printReceipt(id, token), '_blank', 'noopener,noreferrer');
-    if (!popup) setDownloadError('Le navigateur a bloqué la fenêtre d’impression. Autorisez les fenêtres pour Jatek puis réessayez.');
+    setDownloadError('');
+    try {
+      await printThermalTicket(ENDPOINTS.printReceipt(id), token);
+    } catch {
+      setDownloadError('Le ticket n’a pas pu être imprimé. Vérifiez la connexion et les autorisations d’impression.');
+    }
   };
 
   return <div className="page-in"><PageHeading eyebrow="Tableau de service" title="Commandes" description="Gardez les relais fluides. Mettez à jour les commandes dès que la cuisine a terminé." action={<Button data-testid="button-refresh-orders" variant="soft" onClick={() => orders.refetch()}><RefreshCw size={15} />Actualiser</Button>} />
     <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-card-border bg-card p-3 shadow-sm sm:flex-row"><div className="relative flex-1"><Search size={16} className="absolute left-3 top-3 text-muted-foreground" /><input data-testid="input-order-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Chercher une référence ou un client" className="h-11 w-full rounded-xl bg-muted/60 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="no-scrollbar flex gap-2 overflow-x-auto">{['toutes', 'pending', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled'].map((filter) => <button key={filter} data-testid={`button-filter-${filter}`} onClick={() => setStatus(filter)} className={`min-h-11 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition ${status === filter ? 'bg-sidebar text-sidebar-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary hover:text-secondary-foreground'}`}>{formatStatus(filter)}</button>)}</div></div>
     {downloadError && <div role="alert" className="mb-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><CircleAlert size={17} className="mt-0.5 shrink-0" /><span>{downloadError}</span><button type="button" aria-label="Fermer le message d’erreur" className="ml-auto rounded-lg p-1 hover:bg-red-100" onClick={() => setDownloadError('')}><X size={15} /></button></div>}
+    {workflowError && <div role="alert" className="mb-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><CircleAlert size={17} className="mt-0.5 shrink-0" /><span>{workflowError}</span><button type="button" aria-label="Fermer le message d’erreur" className="ml-auto rounded-lg p-1 hover:bg-red-100" onClick={() => setWorkflowError('')}><X size={15} /></button></div>}
     <QueryState loading={orders.isLoading} error={orders.isError} empty={!orders.isLoading && !orders.isError && (orders.data || []).length === 0} onRetry={() => orders.refetch()}>
-      <section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-sm"><div className="hidden grid-cols-[1.25fr_1fr_.8fr_.7fr_1fr] gap-4 border-b border-border bg-muted/50 px-5 py-3 text-[10px] font-bold uppercase tracking-[.15em] text-muted-foreground md:grid"><span>Commande</span><span>Client</span><span>Placée</span><span>Total</span><span className="text-right">Statut</span></div><div className="divide-y divide-border">{(orders.data || []).map((order) => { const next = nextStatus(order.status); return <div key={order.id} data-testid={`row-order-${order.id}`} role="button" tabIndex={0} aria-label={`Ouvrir la commande ${order.reference || order.id}`} onClick={() => setSelectedOrderId(order.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedOrderId(order.id); } }} className="grid cursor-pointer gap-3 px-5 py-4 transition hover:bg-muted/30 focus-visible:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary md:grid-cols-[1.25fr_1fr_.8fr_.7fr_1fr] md:items-center"><div><div className="flex items-center gap-2"><span className="font-bold">#{order.reference || order.id}</span><span className="text-[10px] text-muted-foreground">ID {order.id}</span></div><p className="mt-1 text-xs text-muted-foreground">{order.items?.length || 0} article{order.items?.length === 1 ? '' : 's'} · {order.restaurantName}</p></div><div className="text-sm font-medium">{order.userName || 'Client'}<p className="mt-1 text-xs text-muted-foreground md:hidden">{dateLabel(order.createdAt)}</p></div><div className="hidden text-xs text-muted-foreground md:block">{dateLabel(order.createdAt)}</div><div className="font-bold">{money(order.total)}</div><div className="flex items-center justify-between gap-2 md:justify-end">{next && <Button data-testid={`button-advance-order-${order.id}`} variant="soft" className="px-2.5 py-2 text-xs" disabled={updateStatus.isPending} onClick={(e) => { e.stopPropagation(); updateStatus.mutate({ id: order.id, data: { status: next as never } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendOrdersQueryKey({ status: status === 'toutes' ? undefined : status, search: search || undefined, limit: 100 }) }); client.invalidateQueries({ queryKey: getGetBackendDashboardQueryKey({ range: 'week' }) }); } })}}>{next === 'accepted' ? 'Accepter' : `Marquer ${formatStatus(next).toLowerCase()}`}<ArrowUpRight size={13} /></Button>}<StatusPill status={order.status} /></div></div>; })}</div></section>
+      <section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-sm">
+        <div className="hidden grid-cols-[1.25fr_1fr_.8fr_.7fr_1fr] gap-4 border-b border-border bg-muted/50 px-5 py-3 text-[10px] font-bold uppercase tracking-[.15em] text-muted-foreground md:grid">
+          <span>Commande</span><span>Client</span><span>Placée</span><span>Total</span><span className="text-right">Statut</span>
+        </div>
+        <div className="divide-y divide-border">
+          {(orders.data || []).map((order) => {
+            const next = nextStatus(order.status);
+            const openOrder = () => {
+              if (order.status === 'pending') autoOpenedPendingIds.current.add(order.id);
+              setSelectedOrderId(order.id);
+            };
+            return <div key={order.id} data-testid={`row-order-${order.id}`} role="button" tabIndex={0} aria-label={`Ouvrir la commande ${order.reference || order.id}`} onClick={openOrder} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openOrder(); } }} className="grid cursor-pointer gap-3 px-5 py-4 transition hover:bg-muted/30 focus-visible:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary md:grid-cols-[1.25fr_1fr_.8fr_.7fr_1fr] md:items-center">
+              <div>
+                <div className="flex items-center gap-2"><span className="font-bold">#{order.reference || order.id}</span><span className="text-[10px] text-muted-foreground">ID {order.id}</span></div>
+                <p className="mt-1 text-xs text-muted-foreground">{order.items?.length || 0} article{order.items?.length === 1 ? '' : 's'} · {order.restaurantName}</p>
+                <div className="mt-2"><OrderTimerBadge order={order} nowMs={nowMs} /></div>
+              </div>
+              <div className="text-sm font-medium">{order.userName || 'Client'}<p className="mt-1 text-xs text-muted-foreground md:hidden">{dateLabel(order.createdAt)}</p></div>
+              <div className="hidden text-xs text-muted-foreground md:block">{dateLabel(order.createdAt)}</div>
+              <div className="font-bold">{money(order.total)}</div>
+              <div className="flex items-center justify-between gap-2 md:justify-end">
+                {next && <Button data-testid={`button-advance-order-${order.id}`} variant="soft" className="px-2.5 py-2 text-xs" disabled={updateStatus.isPending} onClick={(event) => { event.stopPropagation(); if (next === 'accepted') openOrder(); else void changeOrderStatus(order.id, next); }}>{next === 'accepted' ? 'Voir & accepter' : `Marquer ${formatStatus(next).toLowerCase()}`}<ArrowUpRight size={13} /></Button>}
+                <StatusPill status={order.status} />
+              </div>
+            </div>;
+          })}
+        </div>
+      </section>
     </QueryState>
 
-    {selectedOrder && (
+    {selectedOrderId !== null && (
       <div className="fixed inset-0 z-50 grid place-items-center bg-sidebar/45 p-4 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) setSelectedOrderId(null); }}>
         <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-card shadow-2xl">
+          {!selectedOrder ? <div className="p-8 text-center">
+            <button aria-label="Fermer le détail de la commande" onClick={() => setSelectedOrderId(null)} className="absolute right-4 top-4 rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
+            {orderDetail.isError ? <><CircleAlert className="mx-auto text-red-600" /><p className="mt-3 text-sm">Impossible de charger les articles. Aucune action n’a été effectuée.</p><Button className="mt-4" onClick={() => void orderDetail.refetch()}><RefreshCw size={15} />Réessayer</Button></> : <><Loader2 className="mx-auto animate-spin text-primary" /><p className="mt-3 text-sm text-muted-foreground">Chargement des articles de la commande…</p></>}
+          </div> : <>
           <button aria-label="Fermer le détail de la commande" onClick={() => setSelectedOrderId(null)} className="absolute right-4 top-4 rounded-lg p-2 text-muted-foreground hover:bg-muted"><X size={18} /></button>
           <div className="border-b border-border p-6">
             <h2 className="text-xl font-bold">Commande #{selectedOrder.reference || selectedOrder.id}</h2>
@@ -393,6 +663,11 @@ function Orders() {
               <span>{dateLabel(selectedOrder.createdAt)}</span>
               <StatusPill status={selectedOrder.status} />
             </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <OrderTimerBadge order={selectedOrder} nowMs={nowMs} />
+              {selectedOrder.status === 'preparing' && <span className="text-xs text-muted-foreground">Délai annoncé : {selectedOrder.prepTimeMinutes || 20} min</span>}
+            </div>
+            <div className="mt-4"><OrderTimestampSummary order={selectedOrder} /></div>
           </div>
           <div className="max-h-[60vh] overflow-y-auto p-6">
             <div className="grid gap-6 md:grid-cols-2">
@@ -410,12 +685,15 @@ function Orders() {
             <div className="mt-8">
               <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-3">Articles</h3>
               <div className="space-y-3">
-                {selectedOrder.items?.map(item => (
+                {selectedOrder.items?.map(item => {
+                  const extras = orderExtrasLabel(item.selectedExtras);
+                  return (
                   <div key={item.id} className="flex justify-between gap-4 text-sm">
-                    <div><span className="font-bold">{item.quantity}×</span> {item.menuItemName}<p className="text-xs text-muted-foreground">{money(item.unitPrice)} l’unité</p></div>
+                    <div><span className="font-bold">{item.quantity}×</span> {item.menuItemName}<p className="text-xs text-muted-foreground">{money(item.unitPrice)} l’unité</p>{(item.selectedSize || extras) && <p className="text-xs text-muted-foreground">{[item.selectedSize && `Taille : ${item.selectedSize}`, extras && `Extras : ${extras}`].filter(Boolean).join(' · ')}</p>}</div>
                     <div className="font-medium">{money(item.totalPrice)}</div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             <div className="mt-6 space-y-2 border-t border-border pt-4 text-sm">
@@ -428,23 +706,29 @@ function Orders() {
             </div>
           </div>
           <div className="border-t border-border bg-muted/30 p-6">
-            <div className="flex flex-wrap gap-3">
-              {nextStatus(selectedOrder.status) && (
-                <Button disabled={updateStatus.isPending} onClick={() => updateStatus.mutate({ id: selectedOrder.id, data: { status: nextStatus(selectedOrder.status) as never } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendOrdersQueryKey() }); setSelectedOrderId(null); } })}>
-                  {nextStatus(selectedOrder.status) === 'accepted' ? 'Accepter' : `Marquer ${formatStatus(nextStatus(selectedOrder.status)).toLowerCase()}`}
-                </Button>
-              )}
+            <div className="flex flex-wrap items-center gap-3">
+              {selectedOrder.status === 'pending' && <div className="w-full rounded-xl border border-border bg-card p-4">
+                <div className="text-sm font-bold">Temps de préparation estimé</div>
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  {[15, 20, 30, 45].map(minutes => <button key={minutes} type="button" aria-pressed={prepTimeMinutes === minutes} onClick={() => setPrepTimeMinutes(minutes)} className={`min-h-10 rounded-lg border px-2 text-sm font-bold ${prepTimeMinutes === minutes ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background hover:bg-muted'}`}>{minutes} min</button>)}
+                </div>
+                <Button data-testid="button-accept-print-order" className="mt-3 w-full bg-emerald-600 text-white hover:bg-emerald-700" disabled={updateStatus.isPending} onClick={() => void acceptAndStartPreparation()}><Check size={16} />Accepter & imprimer le ticket</Button>
+              </div>}
+              {['accepted', 'confirmed'].includes(selectedOrder.status) && <Button data-testid="button-start-preparing" className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={updateStatus.isPending} onClick={() => void advanceSelectedOrder()}><UtensilsCrossed size={16} />Démarrer la préparation</Button>}
+              {selectedOrder.status === 'preparing' && <Button data-testid="button-mark-order-ready" className="bg-cyan-700 text-white hover:bg-cyan-800" disabled={updateStatus.isPending} onClick={() => void advanceSelectedOrder()}><Check size={16} />Commande prête · appeler le livreur</Button>}
+              {selectedOrder.status === 'ready' && <div className="w-full rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">Commande prête · en attente du livreur. La remise est confirmée par le livreur.</div>}
               {['pending', 'accepted', 'confirmed', 'preparing'].includes(selectedOrder.status) && (
-                <Button variant="danger" disabled={updateStatus.isPending} onClick={() => { if(window.confirm('Voulez-vous vraiment annuler cette commande ?')) updateStatus.mutate({ id: selectedOrder.id, data: { status: 'cancelled' as never } }, { onSuccess: () => { client.invalidateQueries({ queryKey: getListBackendOrdersQueryKey() }); setSelectedOrderId(null); } }) }}>Annuler la commande</Button>
+                <Button variant="danger" disabled={updateStatus.isPending} onClick={() => void refuseSelectedOrder()}>{selectedOrder.status === 'pending' ? 'Refuser' : 'Annuler la commande'}</Button>
               )}
-              <div className="ml-auto flex items-center gap-2">
-                 <Button variant="soft" onClick={() => openBrowserReceipt(selectedOrder.id)}><Printer size={15} />Imprimer dans le navigateur</Button>
-                 <Button variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadReceipt(selectedOrder.id), `jatek-ticket-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-ticket-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}Télécharger le ticket</Button>
-                 <Button variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadInvoice(selectedOrder.id), `jatek-facture-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-facture-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}Télécharger la facture PDF</Button>
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                 <Button variant="soft" onClick={() => void printTicket(selectedOrder.id)}><Printer size={15} />Ticket 80 mm</Button>
+                 <Button variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadReceipt(selectedOrder.id), `jatek-ticket-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-ticket-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}PDF du ticket</Button>
+                 <Button variant="soft" disabled={downloadingDocument !== null} onClick={() => void downloadDocument(selectedOrder.id, ENDPOINTS.downloadInvoice(selectedOrder.id), `jatek-facture-${selectedOrder.id}.pdf`)}>{downloadingDocument === `jatek-facture-${selectedOrder.id}.pdf` ? <Loader2 className="animate-spin" size={15} /> : null}Facture PDF A4</Button>
               </div>
             </div>
             <p className="mt-3 text-right text-xs text-muted-foreground">PDF prêt à télécharger · QR code inclus pour identifier la commande.</p>
           </div>
+          </>}
         </div>
       </div>
     )}

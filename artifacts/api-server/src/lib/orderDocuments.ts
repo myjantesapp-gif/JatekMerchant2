@@ -60,10 +60,19 @@ export function documentFilenamePart(value: string): string {
 }
 
 function itemDetails(item: DocumentItem): string {
+  let extras = item.selectedExtras || "";
+  if (extras) {
+    try {
+      const values: unknown = JSON.parse(extras);
+      if (Array.isArray(values)) extras = values.filter((value): value is string => typeof value === "string").join(", ");
+    } catch {
+      // Older orders may store extras as plain text.
+    }
+  }
   const details = [
     item.selectedSize ? `Taille: ${item.selectedSize}` : "",
-    item.selectedExtras
-      ? `Extras: ${item.selectedExtras}`
+    extras
+      ? `Extras: ${extras}`
       : "",
   ].filter(Boolean);
   return details.join(" · ");

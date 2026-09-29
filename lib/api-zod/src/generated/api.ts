@@ -2107,7 +2107,8 @@ export const UpdateOrderStatusParams = zod.object({
 
 export const UpdateOrderStatusBody = zod.object({
   "status": zod.enum(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'delivered', 'cancelled']),
-  "driverId": zod.number().int().optional()
+  "driverId": zod.number().int().optional(),
+  "prepTimeMinutes": zod.number().int().min(5).max(180).optional()
 })
 
 export const updateOrderStatusResponsePaymentMethodDefault = `cash`;

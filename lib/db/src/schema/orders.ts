@@ -53,6 +53,14 @@ export const ordersTable = pgTable("orders", {
   promoCode: text("promo_code"),
   /** Payment method chosen by the customer: "cash" or "card". */
   paymentMethod: text("payment_method").notNull().default("cash"),
+  /** Merchant acceptance time, used to measure acknowledgement and preparation SLAs. */
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  /** Time the kitchen marked the order ready for collection. */
+  readyAt: timestamp("ready_at", { withTimezone: true }),
+  /** Driver hand-off time. Delivery confirmation remains handled by its OTP route. */
+  handedOverAt: timestamp("handed_over_at", { withTimezone: true }),
+  /** Merchant-selected preparation estimate in minutes. */
+  prepTimeMinutes: integer("prep_time_minutes").notNull().default(20),
   /** 1-5 star rating the customer gives the driver after delivery. */
   driverRating: integer("driver_rating"),
   driverRatingComment: text("driver_rating_comment"),
