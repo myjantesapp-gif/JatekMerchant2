@@ -37,6 +37,7 @@ export default function SettingsScreen() {
   const u = q.data?.user as (MerchantUser & { phone?: string | null; createdAt?: string | null; joinedAt?: string | null }) | undefined;
   const name = u?.name || u?.email || '';
   const permissions = q.data?.permissions ?? [];
+  const isEmployee = u?.role === 'employee';
 
   const confirmLogout = () => {
     if (Platform.OS === 'web') { void logout(); return; }
@@ -70,22 +71,30 @@ export default function SettingsScreen() {
               </View>
             </View>
             <View style={[ui.card, s.card, { backgroundColor: c.card, borderColor: c.cardBorder, borderRadius: c.radius }]}>
-              <Row label="Téléphone" value={u.phone || '—'} />
-              <Row label="Membre depuis" value={memberDate(u.createdAt || u.joinedAt)} />
-              <Row label="Boutiques autorisées" value={q.data.scopedShopIds?.length ? String(q.data.scopedShopIds.length) : 'Toutes'} />
+              {isEmployee ? (
+                <Row label="Boutique assignée" value={q.data.scopedShopIds?.length ? '1 boutique' : 'Aucune'} />
+              ) : (
+                <>
+                  <Row label="Téléphone" value={u.phone || '—'} />
+                  <Row label="Membre depuis" value={memberDate(u.createdAt || u.joinedAt)} />
+                  <Row label="Boutiques autorisées" value={q.data.scopedShopIds?.length ? String(q.data.scopedShopIds.length) : 'Toutes'} />
+                </>
+              )}
             </View>
-            <View style={[ui.card, s.permissionCard, { backgroundColor: c.card, borderColor: c.cardBorder, borderRadius: c.radius }]}>
-              <Text style={[s.sectionTitle, { color: c.foreground }]}>Permissions effectives</Text>
-              {permissions.length ? (
-                <View style={s.permissions}>
-                  {permissions.map((permission) => (
-                    <View key={permission} style={[s.permission, { backgroundColor: c.secondary }]}>
-                      <Text style={[s.permissionText, { color: c.secondaryForeground }]}>{labelPermission(permission)}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : <Text style={[s.muted, { color: c.mutedForeground }]}>Aucune permission détaillée fournie.</Text>}
-            </View>
+            {!isEmployee ? (
+              <View style={[ui.card, s.permissionCard, { backgroundColor: c.card, borderColor: c.cardBorder, borderRadius: c.radius }]}>
+                <Text style={[s.sectionTitle, { color: c.foreground }]}>Permissions effectives</Text>
+                {permissions.length ? (
+                  <View style={s.permissions}>
+                    {permissions.map((permission) => (
+                      <View key={permission} style={[s.permission, { backgroundColor: c.secondary }]}>
+                        <Text style={[s.permissionText, { color: c.secondaryForeground }]}>{labelPermission(permission)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : <Text style={[s.muted, { color: c.mutedForeground }]}>Aucune permission détaillée fournie.</Text>}
+              </View>
+            ) : null}
           </>
         ) : null}
         <View style={{ flex: 1 }} />
