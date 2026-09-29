@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Linking, Platform, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -13,8 +13,11 @@ import { Button, ErrorState, SkeletonCards, StateView, StatusPill, font, styles 
 import { API_BASE_URL, ApiError, buildApiUrl, frenchMessage } from '@/lib/api-core';
 import { getSessionToken, notifyUnauthorized } from '@/lib/query-client';
 import { useAuth } from '@/lib/auth';
+import { OrderTimerBadge, OrderTimestampSummary } from '@/components/OrderTiming';
+import { statusInfo } from '@/lib/format';
 
 const cancellableStatuses = new Set(['pending', 'accepted', 'confirmed', 'preparing']);
+const PREP_TIMES = [15, 20, 30, 45] as const;
 
 async function fetchDocument(path: string, filename: string, token: string): Promise<void> {
   const endpoint = buildApiUrl(path);
@@ -62,6 +65,9 @@ export default function OrderDetailScreen() {
   const { token } = useAuth();
   const [documentError, setDocumentError] = React.useState('');
   const [downloading, setDownloading] = React.useState<string | null>(null);
+  const [prepTimeMinutes, setPrepTimeMinutes] = React.useState(20);
+  const [workflowError, setWorkflowError] = React.useState('');
+  const [nowMs, setNowMs] = React.useState(() => Date.now());
   const cancelOrder = useMutation({
     mutationFn: async () => {
       const capturedToken = token || getSessionToken();
@@ -90,6 +96,34 @@ export default function OrderDetailScreen() {
         : null;
   const horizontalPadding = width < 360 ? 14 : 16;
   const busy = updateStatus.isPending || cancelOrder.isPending || downloading !== null;
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  React.useEffect(() => {
+    if (o) setPrepTimeMinutes(o.prepTimeMinutes || 20);
+  }, [o?.id]);
+
+  const advanceOrder = async () => {
+    if (!o || !nextStatus) return;
+    setWorkflowError('');
+    try {
+      if (o.status === 'pending') {
+        await updateStatus.mutateAsync({ id: orderId, status: 'accepted', prepTimeMinutes });
+        await updateStatus.mutateAsync({ id: orderId, status: 'preparing' });
+        await q.refetch();
+        void printReceipt();
+        return;
+      }
+      await updateStatus.mutateAsync({ id: orderId, status: nextStatus });
+      await q.refetch();
+    } catch {
+      setWorkflowError('L’acceptation ou le changement de statut a échoué. Actualisez la commande avant de réessayer.');
+      void q.refetch();
+    }
+  };
 
   const confirmCancel = () => {
     const run = () => cancelOrder.mutate();
@@ -165,6 +199,8 @@ export default function OrderDetailScreen() {
               <StatusPill status={o.status} />
               <Text style={[s.total, { color: c.inkForeground }]}>{money(o.total, o.currency)}</Text>
               <Text style={[s.heroMeta, { color: '#b9b3aa' }]}>{dateTime(o.createdAt)} · {o.deliveryType === 'scheduled' ? 'Programmée' : 'Dès que possible'}</Text>
+              <OrderTimerBadge order={o} nowMs={nowMs} />
+              {o.status === 'preparing' ? <Text style={[s.heroMeta, { color: '#b9b3aa' }]}>Délai annoncé : {o.prepTimeMinutes || 20} min</Text> : null}
               {o.kitchenCode ? (
                 <View style={[s.code, { borderColor: c.accent }]}>
                   <Text style={[s.codeLabel, { color: c.accent }]}>CODE CUISINE</Text>
@@ -179,6 +215,8 @@ export default function OrderDetailScreen() {
               <Info icon="map-pin" label="Adresse" value={o.deliveryAddress || '—'} />
               {o.notes ? <Info icon="message-square" label="Note" value={o.notes} /> : null}
             </View>
+            <Text style={[s.section, { color: c.foreground }]}>Temps de traitement</Text>
+            <OrderTimestampSummary order={o} />
 
             <Text style={[s.section, { color: c.foreground }]}>Articles ({o.items.length})</Text>
             <View style={[ui.card, { backgroundColor: c.card, borderColor: c.cardBorder, borderRadius: c.radius, paddingVertical: 4 }]}>
@@ -208,18 +246,41 @@ export default function OrderDetailScreen() {
               <Line label="Total" value={money(o.total, o.currency)} strong />
             </View>
           </ScrollView>
-          {o && (action || cancellableStatuses.has(o.status) || documentError) ? (
+          {o && (action || cancellableStatuses.has(o.status) || documentError || workflowError) ? (
             <View style={[s.actionFooter, { paddingHorizontal: horizontalPadding, paddingBottom: Math.max(insets.bottom, 12), backgroundColor: c.card, borderTopColor: c.border }]} testID="order-action-footer">
-              {(updateStatus.isError || cancelOrder.isError || documentError) ? (
+              {(updateStatus.isError || cancelOrder.isError || documentError || workflowError) ? (
                 <View accessibilityRole="alert" style={[s.actionError, { backgroundColor: '#d8393514', borderRadius: c.radius }]}>
                   <Feather name="alert-circle" size={16} color={c.destructive} />
                   <Text style={[s.meta, { color: c.destructive, flex: 1 }]}>
-                    {documentError || (cancelOrder.error instanceof Error ? cancelOrder.error.message : updateStatus.error instanceof Error ? updateStatus.error.message : 'Mise à jour impossible. Réessayez.')}
+                    {documentError || workflowError || (cancelOrder.error instanceof Error ? cancelOrder.error.message : updateStatus.error instanceof Error ? updateStatus.error.message : 'Mise à jour impossible. Réessayez.')}
                   </Text>
                 </View>
               ) : null}
+              {o.status === 'pending' ? (
+                <View style={[s.prepPicker, { borderColor: c.border, borderRadius: c.radius, backgroundColor: c.background }]} testID="prep-time-picker">
+                  <Text style={[s.itemName, { color: c.foreground }]}>Temps de préparation estimé</Text>
+                  <View style={s.prepOptions}>
+                    {PREP_TIMES.map((minutes) => {
+                      const selected = prepTimeMinutes === minutes;
+                      return (
+                        <Pressable
+                          key={minutes}
+                          testID={`prep-time-${minutes}`}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected }}
+                          accessibilityLabel={`${minutes} minutes`}
+                          onPress={() => setPrepTimeMinutes(minutes)}
+                          style={[s.prepOption, { backgroundColor: selected ? c.primary : c.card, borderColor: selected ? c.primary : c.border }]}
+                        >
+                          <Text style={[s.prepOptionText, { color: selected ? c.primaryForeground : c.foreground }]}>{minutes} min</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
               <View style={s.actionRow}>
-                {action && nextStatus ? <Button testID="order-status-action" label={action.label} icon={action.icon} loading={busy} onPress={() => updateStatus.mutate({ id: orderId, status: nextStatus }, { onSuccess: () => void q.refetch() })} accessibilityHint="Mettre à jour le statut et prévenir le client" /> : null}
+                {action && nextStatus ? <Button testID="order-status-action" label={o.status === 'pending' ? 'Accepter et lancer la préparation' : action.label} icon={action.icon} loading={busy} onPress={() => void advanceOrder()} accessibilityHint="Mettre à jour le statut et prévenir le client" /> : null}
                 {cancellableStatuses.has(o.status) ? <Button testID="order-cancel-action" label="Annuler" icon="x-circle" variant="danger" loading={busy} onPress={confirmCancel} /> : null}
               </View>
               <View style={s.actionRow}>
@@ -264,6 +325,10 @@ const s = StyleSheet.create({
   actionFooter: { gap: 10, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionError: { flexDirection: 'row', gap: 8, padding: 10, alignItems: 'flex-start' },
+  prepPicker: { gap: 10, borderWidth: 1, padding: 12 },
+  prepOptions: { flexDirection: 'row', gap: 8 },
+  prepOption: { flex: 1, minHeight: 42, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingHorizontal: 4 },
+  prepOptionText: { fontFamily: font.bold, fontSize: 13 },
   total: { fontFamily: font.bold, fontSize: 32, marginTop: 6 },
   heroMeta: { fontFamily: font.regular, fontSize: 13 },
   code: { borderWidth: 1, borderRadius: 10, padding: 10, alignSelf: 'flex-start', marginTop: 8 },

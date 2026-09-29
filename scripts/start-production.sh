@@ -4,13 +4,6 @@ export NODE_ENV=production
 export PORT="${PORT:-8080}"
 export MOBILE_STATIC_PORT="${MOBILE_STATIC_PORT:-25896}"
 
-if [ "${SKIP_PRODUCTION_MIGRATIONS:-0}" != "1" ]; then
-  echo "[start] Applying DB schema migrations…"
-  node artifacts/api-server/scripts/push-prod-schema.mjs
-else
-  echo "[start] Skipping DB schema migrations (smoke test mode)"
-fi
-
 node - <<'NODE'
 const path = require("path");
 const { validateStaticBuild } = require(path.resolve("artifacts/jatek-mobile/server/build-check"));

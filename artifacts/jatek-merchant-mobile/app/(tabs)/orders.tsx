@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { dateTime, money, statusInfo } from '@/lib/format';
 import { ErrorState, SkeletonCards, StateView, StatusPill, font, styles as ui } from '@/components/ui';
 import { ScreenHeader, useBottomPad } from '@/components/ScreenHeader';
 import type { Order } from '@/lib/api-core';
+import { OrderTimerBadge } from '@/components/OrderTiming';
 
 const ACTIVE = new Set(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'assigned', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'on_the_way', 'delivering']);
 type Filter = 'all' | 'pending' | 'accepted' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
@@ -37,8 +38,14 @@ export default function OrdersScreen() {
   const { width } = useWindowDimensions();
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const horizontalPadding = Math.min(24, Math.max(14, Math.round(width * 0.05)));
   const orders = q.data ?? [];
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const counts = useMemo(() => ({
     all: orders.length,
@@ -95,6 +102,7 @@ export default function OrdersScreen() {
             <StatusPill status={item.status} />
             <Text style={[s.meta, s.date, { color: c.mutedForeground }]}>{dateTime(item.createdAt)}</Text>
           </View>
+          <OrderTimerBadge order={item} nowMs={nowMs} />
         </View>
         <Feather name="chevron-right" size={18} color={c.mutedForeground} />
       </Pressable>

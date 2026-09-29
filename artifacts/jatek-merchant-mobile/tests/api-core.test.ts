@@ -35,10 +35,10 @@ test('sends bearer + json body to fixed host', async () => {
 test('supports authenticated PATCH status updates', async () => {
   let seen: { url: string; init?: RequestInit } | null = null;
   const f = async (url: string, init?: RequestInit) => { seen = { url, init }; return new Response('{"id":7}', { status: 200 }); };
-  await requestJson(f, '/api/orders/7/status', { method: 'PATCH', body: { status: 'accepted' }, token: 'T' });
+  await requestJson(f, '/api/orders/7/status', { method: 'PATCH', body: { status: 'accepted', prepTimeMinutes: 30 }, token: 'T' });
   assert.equal(seen!.url, 'https://api.jatek.app/api/orders/7/status');
   assert.equal(seen!.init!.method, 'PATCH');
-  assert.deepEqual(JSON.parse(String(seen!.init!.body)), { status: 'accepted' });
+  assert.deepEqual(JSON.parse(String(seen!.init!.body)), { status: 'accepted', prepTimeMinutes: 30 });
   assert.equal((seen!.init!.headers as Record<string, string>).Authorization, 'Bearer T');
 });
 

@@ -30,14 +30,14 @@ function useScreenFocused() {
   return focused;
 }
 
-/** Polls every 30 s only while this screen is focused and the app is in the foreground. */
+/** Keeps merchant order activity aligned with the PWA while the screen is active. */
 export function useOrders() {
   const { token } = useAuth();
   const focused = useScreenFocused();
   return useQuery({
     queryKey: sessionKey('/api/backend/orders?limit=100', token),
     enabled: !!token,
-    refetchInterval: focused ? 30_000 : false,
+    refetchInterval: focused ? 4_000 : false,
     refetchIntervalInBackground: false,
     select: (d: unknown) => parseWith(ordersSchema, d, 'commandes'),
   });
@@ -67,11 +67,11 @@ export function useUpdateOrderStatus() {
   const client = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: MerchantOrderStatus }) => {
+    mutationFn: async ({ id, status, prepTimeMinutes }: { id: number; status: MerchantOrderStatus; prepTimeMinutes?: number }) => {
       if (!token) throw new ApiError(401, 'Session absente.');
       const data = await apiRequest(`/api/orders/${id}/status`, {
         method: 'PATCH',
-        body: { status },
+        body: { status, ...(status === 'accepted' && prepTimeMinutes !== undefined ? { prepTimeMinutes } : {}) },
         token,
       });
       return parseWith(orderDetailSchema, data, 'commande');

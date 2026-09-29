@@ -36,7 +36,6 @@ echo "[smoke] Starting production server on port $PORT (logs: $LOG_FILE)"
 export NODE_ENV=production
 export PORT
 export MOBILE_STATIC_PORT
-export SKIP_PRODUCTION_MIGRATIONS=1
 export DATABASE_URL="${DATABASE_URL:-postgres://smoke:smoke@127.0.0.1:5/smoke}"
 # auth.ts hard-fails when NODE_ENV=production and SESSION_SECRET is missing.
 export SESSION_SECRET="${SESSION_SECRET:-smoke-test-session-secret-not-used}"

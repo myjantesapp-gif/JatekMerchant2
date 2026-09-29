@@ -134,6 +134,11 @@ export const orderSchema = z.object({
   notes: optStr,
   kitchenCode: optStr,
   createdAt: optStr,
+  updatedAt: optStr,
+  acceptedAt: optStr,
+  readyAt: optStr,
+  handedOverAt: optStr,
+  prepTimeMinutes: num.nullish(),
 }).passthrough();
 
 export const orderItemSchema = z.object({

@@ -7,6 +7,7 @@
 - [GitHub push auth](git-push-auth.md) — push via GIT_TOKEN as Basic auth header, never in the remote URL; Git pane pushes fail until user connects GitHub to Replit.
 - [Admin profile verification](admin-profile-verification.md) — admin-created restaurants/drivers are operationally verified and complete; never invent legal identity data for legacy profiles.
 - [Mobile production Expo project](mobile-production-expo-project.md) — published mobile manifest fallback must match the current static Expo config, EAS project, and preview channel.
+- [EAS GitHub source selection](eas-github-source.md) — resolve the repo from recent EAS build metadata before syncing when GitHub mirrors diverge.
 - [Expo tunnel availability](expo-tunnel-outage.md) — Ngrok may block Android previews even when the mobile app itself builds successfully.
 - [Expo static-build restart race](expo-static-build-restart-race.md) — restart the Expo workflow after the mobile web static build finishes, not concurrently.
 - [Expo driver workflow port](expo-driver-workflow-port.md) — driver Metro can be ready while a Replit port gate never detects 8099; use console-only workflow validation.
