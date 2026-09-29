@@ -1,6 +1,4 @@
-import { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useFocusEffect } from 'expo-router';
 import { ApiError, meSchema, orderDetailSchema, ordersSchema, parseWith, shopsSchema } from '@/lib/api-core';
 import { apiRequest, sessionKey } from '@/lib/query-client';
 import { useAuth } from '@/lib/auth';
@@ -24,20 +22,13 @@ export function useShops() {
   });
 }
 
-function useScreenFocused() {
-  const [focused, setFocused] = useState(false);
-  useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
-  return focused;
-}
-
-/** Keeps merchant order activity aligned with the PWA while the screen is active. */
+/** Shared live order feed; React Query pauses polling while the app is backgrounded. */
 export function useOrders() {
   const { token } = useAuth();
-  const focused = useScreenFocused();
   return useQuery({
     queryKey: sessionKey('/api/backend/orders?limit=100', token),
     enabled: !!token,
-    refetchInterval: focused ? 4_000 : false,
+    refetchInterval: 5_000,
     refetchIntervalInBackground: false,
     select: (d: unknown) => parseWith(ordersSchema, d, 'commandes'),
   });
@@ -81,6 +72,49 @@ export function useUpdateOrderStatus() {
       await client.invalidateQueries({
         queryKey: sessionKey('/api/backend/orders?limit=100', token),
       });
+    },
+  });
+}
+
+export function useRejectOrder() {
+  const { token } = useAuth();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
+      const normalizedReason = reason.trim();
+      if (normalizedReason.length < 3 || normalizedReason.length > 500) {
+        throw new ApiError(400, 'Le motif doit contenir entre 3 et 500 caractères.');
+      }
+      const data = await apiRequest(`/api/orders/${id}/status`, {
+        method: 'PATCH',
+        body: { status: 'cancelled', reason: normalizedReason },
+        token: token ?? (() => { throw new ApiError(401, 'Session absente.'); })(),
+      });
+      return parseWith(orderDetailSchema, data, 'commande');
+    },
+    onSuccess: async (order) => {
+      client.setQueryData(sessionKey(`/api/backend/orders/${order.id}`, token), order);
+      await client.invalidateQueries({ queryKey: sessionKey('/api/backend/orders?limit=100', token) });
+    },
+  });
+}
+
+export function useExtendPrepTime() {
+  const { token } = useAuth();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, prepTimeMinutes }: { id: number; prepTimeMinutes: number }) => {
+      if (!token) throw new ApiError(401, 'Session absente.');
+      const data = await apiRequest(`/api/orders/${id}/prep-time`, {
+        method: 'PATCH',
+        body: { prepTimeMinutes },
+        token,
+      });
+      return parseWith(orderDetailSchema, data, 'commande');
+    },
+    onSuccess: async (order) => {
+      client.setQueryData(sessionKey(`/api/backend/orders/${order.id}`, token), order);
+      await client.invalidateQueries({ queryKey: sessionKey('/api/backend/orders?limit=100', token) });
     },
   });
 }

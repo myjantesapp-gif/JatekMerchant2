@@ -1,6 +1,7 @@
 import { AppState, Platform } from 'react-native';
 import { QueryClient, focusManager, type QueryFunction } from '@tanstack/react-query';
-import { API_BASE_URL, ApiError, requestJson, type RequestOptions } from '@/lib/api-core';
+import { API_BASE_URL, ApiError, type RequestOptions } from '@/lib/api-core';
+import { axiosRequestJson } from '@/lib/api-client';
 
 /** Pinned to https://api.jatek.app by explicit user requirement (no env override). */
 export function getApiUrl(): string {
@@ -22,7 +23,7 @@ export function notifyUnauthorized(staleToken: string | null | undefined) {
 export async function apiRequest(path: string, opts: Omit<RequestOptions, 'token'> & { token?: string | null } = {}) {
   const token = opts.token !== undefined ? opts.token : currentToken;
   try {
-    return await requestJson(fetch, path, { ...opts, token });
+    return await axiosRequestJson(path, { ...opts, token });
   } catch (e) {
     // Only the token that actually received the 401 can be invalidated.
     if (e instanceof ApiError && e.status === 401) notifyUnauthorized(token);

@@ -27,7 +27,8 @@
           "cameraPermission": "Autorisez Jatek Merchant à photographier vos produits et votre boutique."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,
