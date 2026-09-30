@@ -275,9 +275,7 @@ router.get("/orders/active", requireAuth, async (req: AuthedRequest, res, next):
   }
   try {
     const activeStatuses = ["pending", "accepted", "confirmed", "preparing", "ready", "picked_up", "driver_at_restaurant", "en_route", "out_for_delivery"];
-    const orders = conditions.length > 0
-      ? await db.select().from(ordersTable).where(and(...conditions))
-      : await db.select().from(ordersTable);
+    const orders = await db.select().from(ordersTable).where(inArray(ordersTable.status, activeStatuses));
 
     const ordersWithItems = await Promise.all(
       orders.map(async (o) => {
@@ -300,9 +298,23 @@ router.get("/orders/available", requireAuth, async (req: AuthedRequest, res, nex
     return;
   }
   try {
-    const orders = conditions.length > 0
-      ? await db.select().from(ordersTable).where(and(...conditions))
-      : await db.select().from(ordersTable);
+    const orders = await db
+      .select({
+        id: ordersTable.id,
+        reference: ordersTable.reference,
+        restaurantId: ordersTable.restaurantId,
+        restaurantName: ordersTable.restaurantName,
+        deliveryAddress: ordersTable.deliveryAddress,
+        total: ordersTable.total,
+        deliveryFee: ordersTable.deliveryFee,
+        driverEarning: ordersTable.driverEarning,
+        estimatedDeliveryTime: ordersTable.estimatedDeliveryTime,
+        status: ordersTable.status,
+        createdAt: ordersTable.createdAt,
+        itemsCount: sql<number>`(SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE order_id = ${ordersTable.id})`,
+      })
+      .from(ordersTable)
+      .where(and(eq(ordersTable.status, "ready"), isNull(ordersTable.driverId)));
 
     res.json(orders);
   } catch (err) {
@@ -370,7 +382,7 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
     return;
   }
 
-  const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, order.restaurantId)).limit(1);
+  const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId)).limit(1);
   if (!restaurant) {
     res.status(404).json({ error: "Restaurant not found" });
     return;
@@ -441,19 +453,22 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
       }
     }
 
-    const unitPrice = menuItem.price;
+    const unitPrice = Math.max(0, menuItem.price + sizeAdjustment + extrasTotal);
     const itemTotal = unitPrice * item.quantity;
     subtotal += itemTotal;
-    newOrderItems.push({
+    orderItemsData.push({
       menuItemId: menuItem.id,
       menuItemName: menuItem.name,
       quantity: item.quantity,
       unitPrice,
       totalPrice: itemTotal,
+      selectedSize: selectedSizeLabel,
+      selectedSizePriceAdjustment: sizeAdjustment,
+      selectedExtras: selectedExtraLabels.length ? JSON.stringify(selectedExtraLabels) : null,
     });
   }
 
-  if (newOrderItems.length === 0) {
+  if (orderItemsData.length === 0) {
     res.status(400).json({ error: "Aucun article disponible dans cette commande" });
     return;
   }
@@ -499,7 +514,9 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
   const pricing = calculateOrderPricing({
     subtotal,
     deliveryFee,
-    discountAmount: 0,
+    discountAmount,
+    // Product prices are TTC; Jatek's commission is the customer-facing
+    // service fee and no additional VAT is added here.
     vatRate: 0,
     commissionRate,
     currency: String(DEFAULT_PLATFORM_SETTINGS.currency || "MAD"),
@@ -511,10 +528,38 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
   // (e.g. orderItems insert fails) doesn't leave an orphaned order row or
   // phantom promo-usage counter increments.
   let createdOrderId: number;
-  const pointsEarned = Math.floor(pricing.total / 10);
+  let pointsEarned: number;
 
   await db.transaction(async (tx) => {
-  const [order] = await db.select().from(ordersTable).where(and(eq(ordersTable.id, orderId), eq(ordersTable.userId, userId))).limit(1);
+    const [order] = await tx.insert(ordersTable).values({
+      reference,
+      userId,
+      restaurantId,
+      restaurantName: restaurant.name,
+      userName: user?.name || "Customer",
+      status: "pending",
+      subtotal,
+      deliveryFee,
+      discountAmount,
+      currency: pricing.currency,
+      vatRate: pricing.vatRate,
+      vatAmount: pricing.vatAmount,
+      serviceFee: pricing.serviceFee,
+      commissionRate: pricing.commissionRate,
+      merchantEarning: pricing.merchantEarning,
+      driverEarning: pricing.driverEarning,
+      jatekEarning: pricing.jatekEarning,
+      pricingVersion: pricing.pricingVersion,
+      total,
+      deliveryAddress,
+      notes: notes ?? null,
+      estimatedDeliveryTime: restaurant.deliveryTime || 30,
+      deliveryType: deliveryType ?? "asap",
+      scheduledFor: scheduledFor ? new Date(scheduledFor) : null,
+      isContactless: isContactless ?? false,
+      promoCode: promoCode ? promoCode.toUpperCase().trim() : null,
+      paymentMethod: paymentMethod ?? "cash",
+    }).returning();
 
     createdOrderId = order.id;
 
@@ -563,7 +608,7 @@ router.post("/orders", requireAuth, async (req: AuthedRequest, res, next): Promi
     // See POST /orders/:id/confirm-delivery for the credit logic.
   });
 
-  const orderWithItems = await getOrderWithItems(order.id);
+  const orderWithItems = await getOrderWithItems(createdOrderId!);
 
   // Push real-time event to restaurant
   publish(`restaurant:${restaurantId}`, "order_new", orderWithItems);
@@ -585,7 +630,7 @@ router.get("/orders/:id", attachAuth, async (req: AuthedRequest, res, next): Pro
       return;
     }
 
-    const order = await getOrderWithItems(orderId);
+    const order = await getOrderWithItems(params.data.id);
     if (!order) {
       res.status(404).json({ error: "Order not found" });
       return;
@@ -599,7 +644,10 @@ router.get("/orders/:id", attachAuth, async (req: AuthedRequest, res, next): Pro
     let isRestaurantOwner = false;
 
     if (req.userRole === "driver" && order.driverId) {
-    const [driver] = await db.select().from(driversTable).where(eq(driversTable.id, order.driverId)).limit(1);
+      const [driver] = await db.select({ userId: driversTable.userId })
+        .from(driversTable)
+        .where(eq(driversTable.id, order.driverId))
+        .limit(1);
       isAssignedDriver = driver?.userId === req.userId;
     }
     if (["owner", "restaurant_owner", "restaurant"].includes(req.userRole ?? "")) {
@@ -889,7 +937,7 @@ router.get("/orders/:id/tracking", attachAuth, async (req: AuthedRequest, res, n
     const id = parseInt(String(req.params.id), 10);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid order id" }); return; }
 
-  const [order] = await db.select().from(ordersTable).where(and(eq(ordersTable.id, orderId), eq(ordersTable.userId, userId))).limit(1);
+    const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, id)).limit(1);
     if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
     // Public tracking snapshot — usable from a deep link without auth (a la
@@ -940,7 +988,7 @@ router.post("/orders/:id/accept-delivery", requireAuth, async (req: AuthedReques
   }
 
   // Validate driver + authorization before touching the order row
-    const [driver] = await db.select().from(driversTable).where(eq(driversTable.id, order.driverId)).limit(1);
+  const [driver] = await db.select().from(driversTable).where(eq(driversTable.id, driverId)).limit(1);
   if (!driver) { res.status(404).json({ error: "Driver not found" }); return; }
 
   // Caller must be the driver themselves, or an admin
@@ -1008,7 +1056,7 @@ router.post("/orders/:id/accept-delivery", requireAuth, async (req: AuthedReques
     });
     return;
   }
-    const order = await getOrderWithItems(orderId);
+  const order = acceptance.order;
 
   if (!order) {
     // The conditional UPDATE matched 0 rows — distinguish the three cases:
@@ -1038,15 +1086,35 @@ router.post("/orders/:id/accept-delivery", requireAuth, async (req: AuthedReques
   }
 
   const orderWithItems = await getOrderWithItems(order.id);
-  publish(`order:${order.id}`, "order_status", { orderId: order.id, status: "delivered", order: orderWithItems });
-  publish(`restaurant:${order.restaurantId}`, "order_status", { orderId: order.id, status: "delivered" });
-  publish("admin_tracking", "order_status", { orderId: order.id, status: "delivered", driverId: order.driverId });
+  if (acceptance.alreadyAccepted) {
+    // The prior accept request completed but its response was lost. Return the
+    // current assignment without duplicating customer notifications.
+    res.json(orderWithItems);
+    return;
+  }
+
+  // Notify customer + restaurant + admin tracking dashboard.
+  publish(`order:${orderId}`, "order_status", { orderId, status: "accepted", driverName: driver.name, order: orderWithItems });
+  publish("available_orders", "order_status", { orderId, status: "accepted" });
+  publish(`restaurant:${order.restaurantId}`, "order_status", { orderId, status: "accepted", driverName: driver.name });
+  publish("admin_tracking", "order_status", { orderId, status: "accepted", driverId, driverName: driver.name });
 
   // Customer push + in-app notification
-  notifyCustomerStatus(order.userId, "delivered", order.id, order.restaurantName);
+  notifyCustomerStatus(order.userId, "accepted", orderId, order.restaurantName);
 
-  // Stop fanning out live location updates for this completed order.
-  if (order.driverId) tracking.detachOrder(order.driverId, order.id);
+  // The driver accepted the order while the app may be backgrounded. Send a
+  // remote confirmation as well as the live event above.
+  notifyAssignedDriver(
+    driverId,
+    order.id,
+    order.restaurantName,
+    order.deliveryAddress,
+    Number(order.driverEarning ?? 0),
+  ).catch((err) => console.warn("[orders] driver acceptance push failed:", err));
+
+  // Start tracking the order in the in-memory live state so subsequent driver
+  // location pings get fanned out on this order:{id} channel.
+  tracking.attachOrder(driverId, orderId);
 
   res.json(orderWithItems);
   } catch (err) {
@@ -1055,11 +1123,10 @@ router.post("/orders/:id/accept-delivery", requireAuth, async (req: AuthedReques
 });
 
 /**
- * Printable kitchen ticket. Returns minimal HTML auto-styled for thermal
- * 80mm printers. Accessible to the restaurant owner via a signed token in
- * the query string so a freshly opened browser tab can fetch it.
+ * Driver confirms hand-off by entering the 4-digit code shown on the
+ * customer's screen. Only the assigned driver (or admin) may call this.
  */
-router.get("/orders/:id/receipt", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
+router.post("/orders/:id/confirm-delivery", requireAuth, async (req: AuthedRequest, res, next): Promise<void> => {
   try {
   const orderId = parseInt(String(req.params.id), 10);
   if (isNaN(orderId)) { res.status(400).json({ error: "Invalid order id" }); return; }
@@ -1078,7 +1145,7 @@ router.get("/orders/:id/receipt", requireAuth, async (req: AuthedRequest, res, n
       res.status(403).json({ error: "Order has no assigned driver" });
       return;
     }
-    const [driver] = await db.select().from(driversTable).where(eq(driversTable.id, order.driverId)).limit(1);
+    const [driver] = await db.select().from(driversTable).where(eq(driversTable.id, existing.driverId)).limit(1);
     if (!driver || driver.userId !== req.userId) {
       res.status(403).json({ error: "Only the assigned driver can confirm delivery" });
       return;
@@ -1096,7 +1163,15 @@ router.get("/orders/:id/receipt", requireAuth, async (req: AuthedRequest, res, n
     res.status(codeAttempt.status).json({ error: codeAttempt.message, code: codeAttempt.code });
     return;
   }
-  const [order] = await db.select().from(ordersTable).where(and(eq(ordersTable.id, orderId), eq(ordersTable.userId, userId))).limit(1);
+  const [order] = await db
+    .update(ordersTable)
+    .set({ status: "delivered", pickupCodeUsedAt: new Date() })
+    .where(and(
+      eq(ordersTable.id, orderId),
+      eq(ordersTable.status, "out_for_delivery"),
+      isNull(ordersTable.pickupCodeUsedAt),
+    ))
+    .returning();
   if (!order) {
     res.status(409).json({ error: "Cette course a déjà été mise à jour. Actualisez l'écran." });
     return;
@@ -1116,8 +1191,7 @@ router.get("/orders/:id/receipt", requireAuth, async (req: AuthedRequest, res, n
   // Doing it here (not at placement) prevents cancelled-order abuse.
   (async () => {
     try {
-  const [customer] = await db.select({ phone: usersTable.phone })
-    .from(usersTable).where(eq(usersTable.id, order.userId)).limit(1);
+      const [customer] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId)).limit(1);
       if (customer?.referredBy) {
         const allDelivered = await db
           .select({ id: ordersTable.id })
@@ -1316,7 +1390,7 @@ router.get("/orders/:id/receipt.pdf", requireAuth, async (req: AuthedRequest, re
     }
 
     const pdf = await createOrderPdf(order, restaurant, "receipt");
-  const reference = await generateUniqueOrderReference();
+    const reference = documentFilenamePart(order.reference || `CMD${String(order.id).padStart(6, "0")}`);
     res.set({
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="jatek-ticket-${reference}.pdf"`,
@@ -1341,13 +1415,13 @@ router.post("/orders/:id/rate-driver", requireAuth, async (req: AuthedRequest, r
     return;
   }
 
-  const [order] = await db.select().from(ordersTable).where(and(eq(ordersTable.id, orderId), eq(ordersTable.userId, userId))).limit(1);
+  const [order] = await db.select().from(ordersTable).where(and(eq(ordersTable.id, orderId), eq(ordersTable.userId, req.userId!))).limit(1);
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
   if (order.status !== "delivered") { res.status(400).json({ error: "Order must be delivered to rate" }); return; }
   if (order.driverRating !== null) { res.status(400).json({ error: "Vous avez déjà évalué ce livreur" }); return; }
 
   const [updated] = await db.update(ordersTable)
-    .set({ customerRating: Math.round(rating) })
+    .set({ driverRating: Math.round(rating), driverRatingComment: comment ?? null })
     .where(eq(ordersTable.id, orderId))
     .returning();
 
@@ -1385,7 +1459,7 @@ router.post("/orders/:id/rate-customer", requireAuth, async (req: AuthedRequest,
     return;
   }
 
-  const [order] = await db.select().from(ordersTable).where(and(eq(ordersTable.id, orderId), eq(ordersTable.userId, userId))).limit(1);
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId)).limit(1);
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
   if (order.status !== "delivered") { res.status(400).json({ error: "Order must be delivered to rate" }); return; }
 
