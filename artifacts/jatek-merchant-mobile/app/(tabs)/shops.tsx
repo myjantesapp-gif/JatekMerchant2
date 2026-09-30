@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, FlatList, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Alert, FlatList, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useAuth } from '@/lib/auth';
 import { useMe, useShops } from '@/lib/merchant-data';
 import { useMerchantShopHours, useMerchantShops, useUpdateMerchantShop, useUpdateMerchantShopCloseTimes } from '@/lib/merchant-parity-data';
 import { Button, ErrorState, Skeleton, SkeletonCards, StateView, font, styles as ui } from '@/components/ui';
@@ -162,6 +163,7 @@ const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 function EmployeeShopScreen() {
   const c = useColors();
   const bottom = useBottomPad();
+  const { logout } = useAuth();
   const shops = useMerchantShops();
   const shop = shops.data?.[0];
   const hours = useMerchantShopHours(shop?.id);
@@ -175,6 +177,14 @@ function EmployeeShopScreen() {
   );
   const invalidTime = changed.some((row) => !TIME_PATTERN.test(closeTimes[row.dayOfWeek] ?? row.closeTime));
 
+  const confirmLogout = () => {
+    if (Platform.OS === 'web') { void logout(); return; }
+    Alert.alert('Se déconnecter ?', 'Les données de session seront effacées de cet appareil.', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Déconnexion', style: 'destructive', onPress: () => void logout() },
+    ]);
+  };
+
   const saveCloseTimes = () => {
     if (!shop || !changed.length || invalidTime) return;
     updateHours.mutate({
@@ -185,7 +195,21 @@ function EmployeeShopScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
-      <ScreenHeader kicker="Espace employé" title="Boutique" />
+      <ScreenHeader
+        kicker="Espace employé"
+        title="Paramètres boutique"
+        right={
+          <Pressable
+            testID="employee-logout"
+            accessibilityRole="button"
+            accessibilityLabel="Se déconnecter"
+            onPress={confirmLogout}
+            style={({ pressed }) => [s.logoutButton, { borderColor: c.border, backgroundColor: pressed ? c.secondary : 'transparent' }]}
+          >
+            <Feather name="log-out" size={17} color={c.primary} />
+          </Pressable>
+        }
+      />
       <ScrollView contentContainerStyle={[s.employeeContent, { paddingBottom: bottom }]}>
         {shops.isPending ? <SkeletonCards count={2} /> : shops.isError && !shops.data ? (
           <ErrorState error={shops.error} onRetry={() => void shops.refetch()} />
@@ -322,6 +346,7 @@ const s = StyleSheet.create({
   clear: { minWidth: 32, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
   profileButton: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 12 },
   profileButtonText: { fontFamily: font.semibold, fontSize: 12 },
+  logoutButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1 },
   list: { paddingTop: 4, gap: 10, flexGrow: 1, width: '100%', maxWidth: 900, alignSelf: 'center' },
   employeeContent: { paddingHorizontal: 18, paddingTop: 4, gap: 14, flexGrow: 1, width: '100%', maxWidth: 760, alignSelf: 'center' },
   employeeShopCard: { gap: 14 },

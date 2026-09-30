@@ -9,7 +9,7 @@ import {
   useFonts as useDMSansFonts,
 } from '@expo-google-fonts/dm-sans';
 import { Syne_600SemiBold, Syne_700Bold, Syne_800ExtraBold } from '@expo-google-fonts/syne';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { queryClient } from '@/lib/query-client';
 import { IncomingOrderAlertHost } from '@/components/IncomingOrderAlert';
@@ -26,9 +26,22 @@ function RootLayoutNav() {
   const { status } = useAuth();
   const me = useMe();
   const c = useColors();
-  if (status === 'loading') return null;
+  const router = useRouter();
+  const segments = useSegments();
   const signedIn = status === 'signedIn';
   const employee = me.data?.user.role === 'employee';
+
+  useEffect(() => {
+    if (!signedIn || !employee) return;
+    const [root, screen] = segments;
+    const allowedTab = root === '(tabs)' && (screen === 'orders' || screen === 'shops');
+    const allowedOrderPopup = root === 'order' && screen === '[id]';
+    if (root && !allowedTab && !allowedOrderPopup) {
+      router.replace('/(tabs)/orders');
+    }
+  }, [employee, router, segments, signedIn]);
+
+  if (status === 'loading') return null;
   return (
     <Stack screenOptions={{
       headerBackTitle: 'Retour',
@@ -41,7 +54,14 @@ function RootLayoutNav() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="order/[id]" options={{ title: 'Commande' }} />
+        <Stack.Screen
+          name="order/[id]"
+          options={{
+            title: 'Commande',
+            presentation: employee ? 'modal' : 'card',
+            headerBackTitle: employee ? 'Fermer' : 'Retour',
+          }}
+        />
       </Stack.Protected>
       <Stack.Protected guard={signedIn && !!me.data && !employee}>
         <Stack.Screen name="reviews" options={{ headerShown: false }} />

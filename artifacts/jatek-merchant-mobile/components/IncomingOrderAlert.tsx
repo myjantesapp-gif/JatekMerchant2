@@ -93,7 +93,7 @@ export function IncomingOrderAlert({ pendingOrders, loading }: { pendingOrders: 
 
   return (
     <Modal
-      visible={!!activeOrder && !loading && !pathname.endsWith('/orders')}
+      visible={!!activeOrder && !loading && !pathname.endsWith('/orders') && !pathname.startsWith('/order/')}
       animationType="fade"
       presentationStyle="fullScreen"
       onRequestClose={() => { /* A pending order must be accepted or refused. */ }}

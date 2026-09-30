@@ -28,13 +28,11 @@ function NativeTabLayout({ employee }: { employee: boolean }) {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="shops">
         <NativeTabs.Trigger.Icon sf={{ default: 'storefront', selected: 'storefront.fill' }} />
-        <NativeTabs.Trigger.Label>{employee ? 'Boutique' : 'Boutiques'}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{employee ? 'Paramètres' : 'Boutiques'}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="more">
-        <NativeTabs.Trigger.Icon sf={employee
-          ? { default: 'person.crop.circle', selected: 'person.crop.circle.fill' }
-          : { default: 'ellipsis.circle', selected: 'ellipsis.circle.fill' }} />
-        <NativeTabs.Trigger.Label>{employee ? 'Profil' : 'Plus'}</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="more" hidden={employee}>
+        <NativeTabs.Trigger.Icon sf={{ default: 'ellipsis.circle', selected: 'ellipsis.circle.fill' }} />
+        <NativeTabs.Trigger.Label>Plus</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -69,8 +67,8 @@ function ClassicTabLayout({ employee }: { employee: boolean }) {
       <Tabs.Screen name="overview" options={employee ? { href: null } : { title: 'Aperçu', tabBarIcon: icon('bar-chart-2') }} />
       <Tabs.Screen name="orders" options={{ title: 'Commandes', tabBarIcon: icon('shopping-bag') }} />
       <Tabs.Screen name="menu" options={employee ? { href: null } : { title: 'Menu', tabBarIcon: icon('grid') }} />
-      <Tabs.Screen name="shops" options={{ title: employee ? 'Boutique' : 'Boutiques', tabBarIcon: icon('home') }} />
-      <Tabs.Screen name="more" options={{ title: employee ? 'Profil' : 'Plus', tabBarIcon: icon(employee ? 'user' : 'more-horizontal') }} />
+      <Tabs.Screen name="shops" options={{ title: employee ? 'Paramètres' : 'Boutiques', tabBarIcon: icon('home') }} />
+      <Tabs.Screen name="more" options={employee ? { href: null } : { title: 'Plus', tabBarIcon: icon('more-horizontal') }} />
     </Tabs>
   );
 }
