@@ -34,7 +34,7 @@ function RootLayoutNav() {
   useEffect(() => {
     if (!signedIn || !employee) return;
     const [root, screen] = segments;
-    const allowedTab = root === '(tabs)' && (screen === 'orders' || screen === 'shops');
+    const allowedTab = root === '(tabs)' && (screen === 'orders' || screen === 'menu' || screen === 'more');
     const allowedOrderPopup = root === 'order' && screen === '[id]';
     if (root && !allowedTab && !allowedOrderPopup) {
       router.replace('/(tabs)/orders');

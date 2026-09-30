@@ -93,7 +93,7 @@ export function IncomingOrderAlert({ pendingOrders, loading }: { pendingOrders: 
 
   return (
     <Modal
-      visible={!!activeOrder && !loading && !pathname.endsWith('/orders') && !pathname.startsWith('/order/')}
+      visible={!!activeOrder && !loading && !pathname.startsWith('/order/')}
       animationType="fade"
       presentationStyle="fullScreen"
       onRequestClose={() => { /* A pending order must be accepted or refused. */ }}
@@ -107,17 +107,19 @@ export function IncomingOrderAlert({ pendingOrders, loading }: { pendingOrders: 
         <ScrollView contentContainerStyle={s.content}>
           <Text style={s.title}>#{activeOrder?.reference || activeOrder?.id}</Text>
           <Text style={s.subtitle}>{activeOrder?.restaurantName || 'Boutique'} · {activeOrder?.userName || 'Client'}</Text>
-          <Pressable
-            testID="incoming-order-see-list"
-            accessibilityRole="button"
-            accessibilityLabel="Voir la liste des commandes"
-            onPress={() => router.push('/(tabs)/orders')}
-            style={({ pressed }) => [s.listButton, { borderColor: '#514d47', opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Feather name="list" size={15} color="#f2b63d" />
-            <Text style={s.listButtonText}>Voir la liste des commandes</Text>
-            <Feather name="arrow-up-right" size={14} color="#f2b63d" />
-          </Pressable>
+          {!pathname.endsWith('/orders') ? (
+            <Pressable
+              testID="incoming-order-see-list"
+              accessibilityRole="button"
+              accessibilityLabel="Voir la liste des commandes"
+              onPress={() => router.push('/(tabs)/orders')}
+              style={({ pressed }) => [s.listButton, { borderColor: '#514d47', opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Feather name="list" size={15} color="#f2b63d" />
+              <Text style={s.listButtonText}>Voir la liste des commandes</Text>
+              <Feather name="arrow-up-right" size={14} color="#f2b63d" />
+            </Pressable>
+          ) : null}
           <View style={s.totalCard}>
             <Text style={s.totalLabel}>TOTAL À PRÉPARER</Text>
             <Text style={s.total}>{activeOrder ? money(activeOrder.total, activeOrder.currency) : '—'}</Text>
