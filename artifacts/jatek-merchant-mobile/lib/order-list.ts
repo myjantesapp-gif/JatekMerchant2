@@ -1,7 +1,13 @@
 import type { Order } from '@/lib/api-core';
 
-export const ORDER_FILTERS = [
+export const QUICK_ORDER_FILTERS = [
   { key: 'all', label: 'Toutes' },
+  { key: 'attention', label: 'À traiter' },
+  { key: 'inProgress', label: 'En cours' },
+  { key: 'history', label: 'Historique' },
+] as const;
+
+export const STATUS_FILTERS = [
   { key: 'pending', label: 'À confirmer' },
   { key: 'preparing', label: 'En préparation' },
   { key: 'ready', label: 'Prêtes' },
@@ -10,6 +16,7 @@ export const ORDER_FILTERS = [
   { key: 'cancelled', label: 'Annulées' },
 ] as const;
 
+export const ORDER_FILTERS = [...QUICK_ORDER_FILTERS, ...STATUS_FILTERS] as const;
 export type OrderFilter = (typeof ORDER_FILTERS)[number]['key'];
 
 const PREPARING_STATUSES = new Set(['accepted', 'confirmed', 'preparing']);
@@ -38,8 +45,13 @@ export function orderMatchesFilter(status: string, filter: OrderFilter): boolean
   switch (filter) {
     case 'all':
       return true;
+    case 'attention':
     case 'pending':
       return status === 'pending';
+    case 'inProgress':
+      return isActiveOrderStatus(status) && status !== 'pending';
+    case 'history':
+      return status === 'delivered' || CANCELLED_STATUSES.has(status);
     case 'preparing':
       return PREPARING_STATUSES.has(status);
     case 'ready':

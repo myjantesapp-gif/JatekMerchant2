@@ -9,10 +9,13 @@ import { ErrorState, SkeletonCards, StateView, StatusPill, font, styles as ui } 
 import { ScreenHeader, useBottomPad } from '@/components/ScreenHeader';
 import type { Order } from '@/lib/api-core';
 import { OrderTimerBadge } from '@/components/OrderTiming';
-import { countOrdersByFilter, filterAndSortOrders, isActiveOrderStatus, ORDER_FILTERS, type OrderFilter } from '@/lib/order-list';
+import { countOrdersByFilter, filterAndSortOrders, isActiveOrderStatus, QUICK_ORDER_FILTERS, STATUS_FILTERS, type OrderFilter } from '@/lib/order-list';
 
 const EMPTY_FILTER_LABEL: Record<OrderFilter, string> = {
   all: 'Aucune commande',
+  attention: 'Aucune commande à traiter',
+  inProgress: 'Aucune commande en cours',
+  history: 'Aucune commande dans l’historique',
   pending: 'Aucune commande à confirmer',
   preparing: 'Aucune commande en préparation',
   ready: 'Aucune commande prête',
@@ -26,8 +29,9 @@ export default function OrdersScreen() {
   const q = useOrders();
   const bottom = useBottomPad();
   const { width } = useWindowDimensions();
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<OrderFilter>('all');
   const [search, setSearch] = useState('');
+  const [showStatusFilters, setShowStatusFilters] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const horizontalPadding = width < 350 ? 12 : width < 600 ? 16 : Math.min(24, Math.round(width * 0.05));
   const orders = q.data ?? [];
@@ -41,6 +45,12 @@ export default function OrdersScreen() {
   const activeCount = useMemo(() => orders.filter((o) => isActiveOrderStatus(o.status) && o.status !== 'pending').length, [orders]);
   const pendingCount = counts.pending;
   const list = useMemo(() => filterAndSortOrders(orders, filter, search), [orders, filter, search]);
+  const selectedQuickFilter =
+    filter === 'pending' ? 'attention'
+      : filter === 'preparing' || filter === 'ready' || filter === 'delivery' ? 'inProgress'
+        : filter === 'delivered' || filter === 'cancelled' ? 'history'
+          : filter;
+  const selectedStatusLabel = STATUS_FILTERS.find(({ key }) => key === filter)?.label;
 
   const renderItem = ({ item }: { item: Order }) => {
     const reference = item.reference || String(item.id);
@@ -53,7 +63,7 @@ export default function OrdersScreen() {
         onPress={() => router.push({ pathname: '/order/[id]', params: { id: String(item.id) } })}
         style={({ pressed }) => [ui.card, s.row, { backgroundColor: c.card, borderColor: c.cardBorder, borderRadius: c.radius, opacity: pressed ? 0.84 : 1 }]}
       >
-        <View style={[s.bar, { backgroundColor: item.status === 'pending' ? c.accent : ACTIVE.has(item.status) ? c.primary : c.border }]} />
+        <View style={[s.bar, { backgroundColor: item.status === 'pending' ? c.accent : isActiveOrderStatus(item.status) ? c.primary : c.border }]} />
         <View style={s.content}>
           <View style={s.between}>
             <Text style={[s.ref, { color: c.foreground }]} numberOfLines={1}>#{reference}</Text>
@@ -123,6 +133,7 @@ export default function OrdersScreen() {
             <View>
               <Text style={[s.filterTitle, { color: c.foreground }]}>Statut des commandes</Text>
               <Text style={[s.filterSubtitle, { color: c.mutedForeground }]}>
+                {selectedStatusLabel ? `${selectedStatusLabel} · ` : ''}
                 {list.length} sur {orders.length} {orders.length > 1 ? 'commandes' : 'commande'}
               </Text>
             </View>
@@ -131,7 +142,7 @@ export default function OrdersScreen() {
                 testID="orders-clear-filters"
                 accessibilityRole="button"
                 accessibilityLabel="Effacer les filtres et la recherche"
-                onPress={() => { setFilter('all'); setSearch(''); }}
+                onPress={() => { setFilter('all'); setSearch(''); setShowStatusFilters(false); }}
                 style={s.resetButton}
               >
                 <Text style={[s.resetText, { color: c.primary }]}>Effacer</Text>
@@ -139,8 +150,8 @@ export default function OrdersScreen() {
             ) : null}
           </View>
           <View style={[s.chips, { paddingHorizontal: horizontalPadding }]}>
-            {ORDER_FILTERS.map(({ key, label }) => {
-              const selected = filter === key;
+            {QUICK_ORDER_FILTERS.map(({ key, label }) => {
+              const selected = selectedQuickFilter === key;
               const count = counts[key];
               return (
                 <Pressable
@@ -160,6 +171,44 @@ export default function OrdersScreen() {
               );
             })}
           </View>
+          <Pressable
+            testID="orders-toggle-statuses"
+            accessibilityRole="button"
+            accessibilityLabel={showStatusFilters ? 'Masquer les filtres par statut' : 'Afficher les filtres par statut'}
+            accessibilityState={{ expanded: showStatusFilters }}
+            onPress={() => setShowStatusFilters((visible) => !visible)}
+            style={[s.statusToggle, { marginHorizontal: horizontalPadding }]}
+          >
+            <Feather name="sliders" size={14} color={c.primary} />
+            <Text style={[s.statusToggleText, { color: c.primary }]}>
+              {showStatusFilters ? 'Statuts précis' : 'Autres statuts'}
+            </Text>
+            <Feather name={showStatusFilters ? 'chevron-up' : 'chevron-down'} size={14} color={c.primary} />
+          </Pressable>
+          {showStatusFilters ? (
+            <View style={[s.chips, s.detailChips, { paddingHorizontal: horizontalPadding }]}>
+              {STATUS_FILTERS.map(({ key, label }) => {
+                const selected = filter === key;
+                const count = counts[key];
+                return (
+                  <Pressable
+                    key={key}
+                    testID={`filter-${key}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${label}, ${count} ${count > 1 ? 'commandes' : 'commande'}`}
+                    accessibilityState={{ selected }}
+                    onPress={() => setFilter(key)}
+                    style={[s.chip, s.detailChip, { backgroundColor: selected ? c.ink : c.card, borderColor: selected ? c.ink : c.border }]}
+                  >
+                    <Text style={[s.chipText, { color: selected ? c.inkForeground : c.foreground }]} numberOfLines={1}>{label}</Text>
+                    <View style={[s.chipCount, { backgroundColor: selected ? c.inkForeground : c.muted }]}>
+                      <Text style={[s.chipCountText, { color: selected ? c.ink : c.mutedForeground }]}>{count}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
       </View>
       {q.isPending ? <SkeletonCards /> : q.isError && !q.data ? (
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
@@ -207,6 +256,10 @@ const s = StyleSheet.create({
   chipText: { flexShrink: 1, fontFamily: font.semibold, fontSize: 12 },
   chipCount: { minWidth: 22, height: 22, paddingHorizontal: 5, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   chipCountText: { fontFamily: font.bold, fontSize: 11, textAlign: 'center' },
+  statusToggle: { minHeight: 36, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, paddingHorizontal: 2 },
+  statusToggleText: { fontFamily: font.semibold, fontSize: 12 },
+  detailChips: { paddingBottom: 8 },
+  detailChip: { minHeight: 38, paddingHorizontal: 9, borderRadius: 12 },
   list: { paddingTop: 4, gap: 10, flexGrow: 1, width: '100%', maxWidth: 900, alignSelf: 'center' },
   stale: { fontFamily: font.medium, fontSize: 12, marginBottom: 6 },
 });

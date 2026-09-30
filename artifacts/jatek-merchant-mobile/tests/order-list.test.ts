@@ -1,3 +1,4 @@
+// @ts-nocheck -- run with node:test via tsx; Node types are not part of the Expo app tsconfig.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Order } from '../lib/api-core';
@@ -24,6 +25,8 @@ test('order filters include every operational delivery status', () => {
   }
   assert.equal(orderMatchesFilter('rejected', 'cancelled'), true);
   assert.equal(orderMatchesFilter('delivered', 'delivery'), false);
+  assert.equal(orderMatchesFilter('preparing', 'inProgress'), true);
+  assert.equal(orderMatchesFilter('cancelled', 'history'), true);
 });
 
 test('filter counts report grouped statuses without losing the all-orders total', () => {
@@ -36,6 +39,9 @@ test('filter counts report grouped statuses without losing the all-orders total'
   ];
   assert.deepEqual(countOrdersByFilter(orders), {
     all: 5,
+    attention: 1,
+    inProgress: 2,
+    history: 2,
     pending: 1,
     preparing: 1,
     ready: 0,

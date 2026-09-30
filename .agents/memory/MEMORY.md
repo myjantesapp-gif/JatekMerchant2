@@ -25,6 +25,7 @@
 - [Expo native-module autolinking](expo-native-module-autolinking.md) — Expo's Android Gradle integration can discover native packages even when the standalone `react-native config` CLI is absent.
 - [Merchant order-alert context boundary](merchant-order-alert-provider.md) — Keep the incoming-order alert host outside the order provider module to avoid a circular import.
 - [Merchant employee screen flow](merchant-employee-screens.md) — Employees use Orders, Menu, and Profile; show incoming alerts over Orders and order details as modals.
+- [Merchant mobile visual reference](merchant-mobile-visual-reference.md) — German Wolt captures are UI references only; keep Jatek branding, French copy, and live order data.
 - [Mobile location resilience](mobile-location-resilience.md) — GPS selection must survive reverse-geocoding failures and provide settings access when services are disabled.
 - [App Storage deployment access](app-storage-deployment-access.md) — media 403s can require granting the deployment identity read/write access to the managed App Storage bucket.
 - [Order commission pricing](order-commission-pricing.md) — JATEK service fee is shop-specific and applies to discounted TTC products only; delivery remains separate.
