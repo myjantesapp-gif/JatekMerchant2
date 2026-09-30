@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -9,24 +9,14 @@ import { ErrorState, SkeletonCards, StateView, StatusPill, font, styles as ui } 
 import { ScreenHeader, useBottomPad } from '@/components/ScreenHeader';
 import type { Order } from '@/lib/api-core';
 import { OrderTimerBadge } from '@/components/OrderTiming';
+import { countOrdersByFilter, filterAndSortOrders, isActiveOrderStatus, ORDER_FILTERS, type OrderFilter } from '@/lib/order-list';
 
-const ACTIVE = new Set(['pending', 'accepted', 'confirmed', 'preparing', 'ready', 'assigned', 'driver_at_restaurant', 'picked_up', 'en_route', 'out_for_delivery', 'on_the_way', 'delivering']);
-type Filter = 'all' | 'pending' | 'accepted' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
-const FILTERS = [
-  { key: 'all', label: 'Toutes' },
-  { key: 'pending', label: 'En attente' },
-  { key: 'accepted', label: 'Acceptées' },
-  { key: 'preparing', label: 'En préparation' },
-  { key: 'ready', label: 'Prêtes' },
-  { key: 'delivered', label: 'Livrées' },
-  { key: 'cancelled', label: 'Annulées' },
-] as const;
-const EMPTY_FILTER_LABEL: Record<Filter, string> = {
+const EMPTY_FILTER_LABEL: Record<OrderFilter, string> = {
   all: 'Aucune commande',
-  pending: 'Aucune commande en attente',
-  accepted: 'Aucune commande acceptée',
+  pending: 'Aucune commande à confirmer',
   preparing: 'Aucune commande en préparation',
   ready: 'Aucune commande prête',
+  delivery: 'Aucune commande en livraison',
   delivered: 'Aucune commande livrée',
   cancelled: 'Aucune commande annulée',
 };
@@ -39,7 +29,7 @@ export default function OrdersScreen() {
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const horizontalPadding = Math.min(24, Math.max(14, Math.round(width * 0.05)));
+  const horizontalPadding = width < 350 ? 12 : width < 600 ? 16 : Math.min(24, Math.round(width * 0.05));
   const orders = q.data ?? [];
 
   useEffect(() => {
@@ -47,36 +37,10 @@ export default function OrdersScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const counts = useMemo(() => ({
-    all: orders.length,
-    pending: orders.filter((o) => o.status === 'pending').length,
-    accepted: orders.filter((o) => o.status === 'accepted').length,
-    preparing: orders.filter((o) => o.status === 'preparing').length,
-    ready: orders.filter((o) => o.status === 'ready').length,
-    delivered: orders.filter((o) => o.status === 'delivered').length,
-    cancelled: orders.filter((o) => o.status === 'cancelled').length,
-  }), [orders]);
-  const activeCount = useMemo(() => orders.filter((o) => ACTIVE.has(o.status)).length, [orders]);
-  const pendingCount = useMemo(() => orders.filter((o) => o.status === 'pending').length, [orders]);
-  const list = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase('fr');
-    return orders
-      .filter((o) => filter === 'all' || o.status === filter)
-      .filter((o) => {
-        if (!term) return true;
-        return [o.reference, String(o.id), o.userName, o.restaurantName]
-          .filter(Boolean)
-          .join(' ')
-          .toLocaleLowerCase('fr')
-          .includes(term);
-      })
-      .sort((a, b) => {
-        const aPriority = a.status === 'pending' ? 0 : ACTIVE.has(a.status) ? 1 : 2;
-        const bPriority = b.status === 'pending' ? 0 : ACTIVE.has(b.status) ? 1 : 2;
-        if (aPriority !== bPriority) return aPriority - bPriority;
-        return (Date.parse(b.createdAt ?? '') || 0) - (Date.parse(a.createdAt ?? '') || 0);
-      });
-  }, [orders, filter, search]);
+  const counts = useMemo(() => countOrdersByFilter(orders), [orders]);
+  const activeCount = useMemo(() => orders.filter((o) => isActiveOrderStatus(o.status) && o.status !== 'pending').length, [orders]);
+  const pendingCount = counts.pending;
+  const list = useMemo(() => filterAndSortOrders(orders, filter, search), [orders, filter, search]);
 
   const renderItem = ({ item }: { item: Order }) => {
     const reference = item.reference || String(item.id);
@@ -84,7 +48,7 @@ export default function OrdersScreen() {
       <Pressable
         testID={`order-${item.id}`}
         accessibilityRole="button"
-        accessibilityLabel={`Commande ${reference}, ${statusInfo(item.status).label}, ${money(item.total, item.currency)}`}
+        accessibilityLabel={`Commande ${reference}, ${statusInfo(item.status).label}, ${item.userName || 'Client'}, ${money(item.total, item.currency)}`}
         accessibilityHint="Ouvrir le détail de la commande et ses actions"
         onPress={() => router.push({ pathname: '/order/[id]', params: { id: String(item.id) } })}
         style={({ pressed }) => [ui.card, s.row, { backgroundColor: c.card, borderColor: c.cardBorder, borderRadius: c.radius, opacity: pressed ? 0.84 : 1 }]}
@@ -95,12 +59,20 @@ export default function OrdersScreen() {
             <Text style={[s.ref, { color: c.foreground }]} numberOfLines={1}>#{reference}</Text>
             <Text style={[s.total, { color: c.foreground }]} numberOfLines={1}>{money(item.total, item.currency)}</Text>
           </View>
-          <Text style={[s.meta, { color: c.mutedForeground }]} numberOfLines={2}>
-            {item.userName || 'Client'} · {item.restaurantName || 'Boutique'}
-          </Text>
+          <View style={s.detailLine}>
+            <Feather name="user" size={13} color={c.mutedForeground} />
+            <Text style={[s.meta, s.detailText, { color: c.mutedForeground }]} numberOfLines={1}>{item.userName || 'Client'}</Text>
+          </View>
+          <View style={s.detailLine}>
+            <Feather name="shopping-bag" size={13} color={c.mutedForeground} />
+            <Text style={[s.meta, s.detailText, { color: c.mutedForeground }]} numberOfLines={1}>{item.restaurantName || 'Boutique'}</Text>
+          </View>
           <View style={s.statusLine}>
             <StatusPill status={item.status} />
-            <Text style={[s.meta, s.date, { color: c.mutedForeground }]}>{dateTime(item.createdAt)}</Text>
+            <View style={s.dateLine}>
+              <Feather name="clock" size={12} color={c.mutedForeground} />
+              <Text style={[s.meta, s.date, { color: c.mutedForeground }]} numberOfLines={1}>{dateTime(item.createdAt)}</Text>
+            </View>
           </View>
           <OrderTimerBadge order={item} nowMs={nowMs} />
         </View>
@@ -120,8 +92,7 @@ export default function OrdersScreen() {
         kicker={q.data ? pendingCount ? `${pendingCount} à confirmer` : `${activeCount} en cours` : 'Jatek marchand'}
         title="Commandes"
       />
-      {q.data ? (
-        <>
+      <View style={s.controls}>
           <View style={[s.search, { marginHorizontal: horizontalPadding, backgroundColor: c.card, borderColor: c.border, borderRadius: c.radius }]}>
             <Feather name="search" size={17} color={c.mutedForeground} />
             <TextInput
@@ -148,26 +119,48 @@ export default function OrdersScreen() {
               </Pressable>
             ) : null}
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.chips, { paddingHorizontal: horizontalPadding }]} style={{ flexGrow: 0 }}>
-            {FILTERS.map(({ key, label }) => {
+          <View style={[s.filterHeader, { paddingHorizontal: horizontalPadding }]}>
+            <View>
+              <Text style={[s.filterTitle, { color: c.foreground }]}>Statut des commandes</Text>
+              <Text style={[s.filterSubtitle, { color: c.mutedForeground }]}>
+                {list.length} sur {orders.length} {orders.length > 1 ? 'commandes' : 'commande'}
+              </Text>
+            </View>
+            {filter !== 'all' || search.trim() ? (
+              <Pressable
+                testID="orders-clear-filters"
+                accessibilityRole="button"
+                accessibilityLabel="Effacer les filtres et la recherche"
+                onPress={() => { setFilter('all'); setSearch(''); }}
+                style={s.resetButton}
+              >
+                <Text style={[s.resetText, { color: c.primary }]}>Effacer</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <View style={[s.chips, { paddingHorizontal: horizontalPadding }]}>
+            {ORDER_FILTERS.map(({ key, label }) => {
               const selected = filter === key;
-              const count = key === 'all' ? counts.all : counts[key];
+              const count = counts[key];
               return (
                 <Pressable
                   key={key}
                   testID={`filter-${key}`}
-                  accessibilityRole="tab"
+                  accessibilityRole="button"
+                  accessibilityLabel={`${label}, ${count} ${count > 1 ? 'commandes' : 'commande'}`}
                   accessibilityState={{ selected }}
                   onPress={() => setFilter(key)}
                   style={[s.chip, { backgroundColor: selected ? c.ink : c.card, borderColor: selected ? c.ink : c.border }]}
                 >
-                  <Text style={[s.chipText, { color: selected ? c.inkForeground : c.foreground }]}>{label} · {count}</Text>
+                  <Text style={[s.chipText, { color: selected ? c.inkForeground : c.foreground }]} numberOfLines={1}>{label}</Text>
+                  <View style={[s.chipCount, { backgroundColor: selected ? c.inkForeground : c.muted }]}>
+                    <Text style={[s.chipCountText, { color: selected ? c.ink : c.mutedForeground }]}>{count}</Text>
+                  </View>
                 </Pressable>
               );
             })}
-          </ScrollView>
-        </>
-      ) : null}
+          </View>
+      </View>
       {q.isPending ? <SkeletonCards /> : q.isError && !q.data ? (
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
@@ -190,19 +183,30 @@ export default function OrdersScreen() {
 const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 12, overflow: 'hidden' },
   bar: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
-  content: { flex: 1, minWidth: 0, gap: 7 },
+  content: { flex: 1, minWidth: 0, gap: 7, paddingVertical: 12 },
   between: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   statusLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  detailLine: { flexDirection: 'row', alignItems: 'center', gap: 7, minWidth: 0 },
+  detailText: { flex: 1 },
+  dateLine: { flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: '60%' },
   ref: { flex: 1, fontFamily: font.bold, fontSize: 15 },
   total: { flexShrink: 0, fontFamily: font.bold, fontSize: 15 },
   meta: { fontFamily: font.regular, fontSize: 13, lineHeight: 18 },
   date: { flexShrink: 0, textAlign: 'right' },
-  search: { minHeight: 48, borderWidth: 1, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  controls: { paddingBottom: 8 },
+  search: { minHeight: 48, borderWidth: 1, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   searchInput: { flex: 1, minWidth: 0, minHeight: 46, paddingVertical: 0, fontFamily: font.regular, fontSize: 14 },
   clear: { minWidth: 32, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
-  chips: { gap: 8, paddingBottom: 10 },
-  chip: { paddingHorizontal: 14, minHeight: 44, borderRadius: 22, borderWidth: 1, justifyContent: 'center' },
-  chipText: { fontFamily: font.semibold, fontSize: 13 },
+  filterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 8 },
+  filterTitle: { fontFamily: font.semibold, fontSize: 14 },
+  filterSubtitle: { fontFamily: font.regular, fontSize: 12, marginTop: 2 },
+  resetButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 4 },
+  resetText: { fontFamily: font.semibold, fontSize: 13 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 10 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, minHeight: 42, maxWidth: '100%', borderRadius: 14, borderWidth: 1, justifyContent: 'center' },
+  chipText: { flexShrink: 1, fontFamily: font.semibold, fontSize: 12 },
+  chipCount: { minWidth: 22, height: 22, paddingHorizontal: 5, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  chipCountText: { fontFamily: font.bold, fontSize: 11, textAlign: 'center' },
   list: { paddingTop: 4, gap: 10, flexGrow: 1, width: '100%', maxWidth: 900, alignSelf: 'center' },
   stale: { fontFamily: font.medium, fontSize: 12, marginBottom: 6 },
 });
